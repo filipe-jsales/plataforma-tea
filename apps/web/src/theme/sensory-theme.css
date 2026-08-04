@@ -1,0 +1,71 @@
+/*
+  Tema sensorial base.
+  Regra não-negociável 1: decisão estética sem respaldo em RQ4/RQ6 nasce DESLIGADA
+  por padrão (sem animação, sem som, contraste padrão) e só é ativada nas
+  configurações do aluno/professor.
+
+  O estado real (data-motion, data-contrast, data-font-scale) é escrito no <html>
+  pelo store de perfil sensorial (ver src/stores/useSensoryProfileStore.ts).
+  Aqui definimos os valores de cada configuração — nunca lógica de decisão.
+*/
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f4f6f8;
+  --color-text: #1c1e21;
+  --color-primary: #2b6cb0;
+  --color-success: #2f855a;
+  --color-warning: #b7791f;
+  --color-border: #d7dbe0;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  --radius-md: 8px;
+
+  /* Duração/curva de transição — só têm efeito quando data-motion="full". */
+  --motion-duration: 180ms;
+  --motion-easing: ease-out;
+}
+
+/* Alto contraste, opt-in (RF de acessibilidade — rotulagem redundante, nunca só cor). */
+:root[data-contrast='high'] {
+  --color-bg: #000000;
+  --color-surface: #0d0d0d;
+  --color-text: #ffffff;
+  --color-primary: #7fb2ff;
+  --color-border: #ffffff;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/*
+  Sem animação por padrão: motion só é habilitado quando o próprio usuário liga
+  E o SO não pediu "reduzir movimento". Respeita prefers-reduced-motion sempre,
+  mesmo que o aluno tenha ativado animações nas configurações da plataforma.
+*/
+:root:not([data-motion='full']) *,
+:root:not([data-motion='full']) *::before,
+:root:not([data-motion='full']) *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
