@@ -21,8 +21,10 @@ import { UsersModule } from './users/users.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        // Apenas para desenvolvimento local. Em produção, usar migrations.
-        synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
+        // Schema é controlado por migrations (ver src/database/), nunca por sync
+        // automático — mesmo em desenvolvimento, para o schema real de tabelas
+        // ficar sempre rastreável e revisável em código.
+        synchronize: false,
       }),
     }),
     AuthModule,
