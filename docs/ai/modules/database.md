@@ -58,27 +58,63 @@ Ver `apps/api/src/users/entities/user.entity.ts`. Ponto de atenção:
 pseudonimização fora do software — nunca é exposto em UI/relatório do
 professor (regra não-negociável 8 em `docs/ai/rules/coding-rule.md`).
 
+### `subjects` / `topics`
+
+Ver `apps/api/src/subjects/entities/`. Tabelas, não enum fixo — o MVP tem uma
+única linha de cada (`geometria` / `angulos_formas`, inseridas via seed na
+própria migration), mas o catálogo cresce sem migration destrutiva. `topics`
+tem FK `CASCADE` para `subjects` e unicidade de `slug` só dentro da mesma
+disciplina (`UNIQUE(subjectId, slug)`).
+
+### `schools` / `classrooms` / `enrollments`
+
+Ver `apps/api/src/schools/entities/`. `classrooms.teacherId` (FK → `users`,
+`ON DELETE SET NULL`) é o professor titular atual — reatribuível com
+`UPDATE`. `enrollments` é o histórico de matrícula aluno↔turma (`active` +
+`unenrolledAt`, nunca `DELETE` de uma matrícula encerrada), para um aluno
+poder trocar de turma/professor sem perder o rastro anterior. Nenhuma FK
+valida `role` no banco (ex.: nada impede um `teacherId` apontar para um user
+com `role=student`) — é invariante de aplicação, a validar na camada de
+serviço quando os endpoints existirem.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
 append-only (nunca `UPDATE`/`DELETE` de evento já gravado), indexada por
-`(studentPseudoId, createdAt)` para consultas de histórico/longitudinais.
-`category` é o enum RD-I/RD-P/RD-C/RD-E/RD-L — ver `event-category.enum.ts`
-e a regra 6/7 em `coding-rule.md` antes de adicionar um novo `type` de evento.
+`(studentPseudoId, createdAt)` e por `challengeId` para consultas de
+histórico/longitudinais. `category` é o enum RD-I/RD-P/RD-C/RD-E/RD-L — ver
+`event-category.enum.ts` e a regra 6/7 em `coding-rule.md` antes de adicionar
+um novo `type` de evento. `challengeId` é nullable e sem FK (a entidade
+`Challenge` ainda não existe) — vira FK real via `ALTER TABLE` quando o módulo
+de desafios for criado.
 
-### Migration inicial
+### Migrations aplicadas
 
-`1785866463111-CreateUsersAndInteractionEvents.ts` — cria as duas tabelas
-acima, os enums Postgres (`users_role_enum`,
-`interaction_events_category_enum`) e a extensão `uuid-ossp` (necessária para
-`uuid_generate_v4()` nas chaves primárias). Foi escrita à mão (via
-`migration:create`), e já foi validada rodando `npm run migration:run` contra
-um Postgres real (`\d users` / `\d interaction_events` conferidos no `psql`).
+1. `1785866463111-CreateUsersAndInteractionEvents.ts` — cria `users` e
+   `interaction_events`, os enums Postgres (`users_role_enum`,
+   `interaction_events_category_enum`) e a extensão `uuid-ossp` (necessária
+   para `uuid_generate_v4()` nas chaves primárias). Escrita à mão (via
+   `migration:create`).
+2. `1785938679870-CreateSubjectsAndTopics.ts` — cria `subjects`/`topics` +
+   seed do MVP (`geometria`/`angulos_formas`). Gerada com `migration:generate`
+   — inclui também um rename de índice em `users`/`interaction_events` sem
+   relação com subjects/topics (comentado no arquivo): reconcilia o nome que
+   a migration 1 (hand-written) usou com a convenção auto-gerada do TypeORM,
+   mesmo schema, sem mudança de comportamento.
+3. `1785938810043-CreateSchoolsClassroomsAndEnrollments.ts` — cria `schools`,
+   `classrooms`, `enrollments`. Gerada com `migration:generate`.
+4. `1785938848017-AddChallengeIdToInteractionEvents.ts` — adiciona a coluna
+   `challengeId` (nullable) + índice em `interaction_events`. Gerada com
+   `migration:generate`.
+
+Todas as 4 já foram validadas com `npm run migration:run` contra um Postgres
+real, e `\dt` + `\d <tabela>` conferidos no `psql`.
 
 ## Adicionando uma migration nova
 
 1. Alterar/criar a entidade TypeORM.
-2. Com o Postgres do `docker-compose.yml` rodando:
+2. Com o Postgres rodando (via `docker-compose.yml` ou nativo — ver README
+   seção 2b):
    `npm run migration:generate -- src/database/migrations/NomeDescritivo --workspace apps/api`
    (ou `cd apps/api` e rodar sem `--workspace`).
 3. Revisar o SQL gerado — TypeORM às vezes gera índices/constraints a mais ou

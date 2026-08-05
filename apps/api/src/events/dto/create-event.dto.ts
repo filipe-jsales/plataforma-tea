@@ -1,4 +1,4 @@
-import { IsEnum, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { EventCategory } from '../../common/enums/event-category.enum';
 
 export class CreateEventDto {
@@ -21,4 +21,8 @@ export class CreateEventDto {
   @IsString()
   @MaxLength(64)
   sessionId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  challengeId?: string;
 }

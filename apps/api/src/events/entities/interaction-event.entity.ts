@@ -6,6 +6,7 @@ import { EventCategory } from '../../common/enums/event-category.enum';
 // e escassez de estudos longitudinais) — cada interação relevante é capturada desde já.
 @Entity('interaction_events')
 @Index(['studentPseudoId', 'createdAt'])
+@Index(['challengeId'])
 export class InteractionEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,6 +32,12 @@ export class InteractionEvent {
   // ID da sessão de desafio/atividade, para reconstrução do ciclo PRIMM completo.
   @Column({ type: 'varchar', length: 64, nullable: true })
   sessionId: string | null;
+
+  // Sem FK ainda — a entidade Challenge (desafio) não existe neste MVP.
+  // Coluna já modelada para não exigir migration destrutiva quando o módulo
+  // de desafios for implementado; vira FK real nesse momento.
+  @Column({ type: 'uuid', nullable: true })
+  challengeId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

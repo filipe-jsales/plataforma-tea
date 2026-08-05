@@ -18,6 +18,7 @@ export class EventsService {
       type: dto.type,
       payload: dto.payload ?? {},
       sessionId: dto.sessionId ?? null,
+      challengeId: dto.challengeId ?? null,
     });
     return this.eventsRepository.save(event);
   }

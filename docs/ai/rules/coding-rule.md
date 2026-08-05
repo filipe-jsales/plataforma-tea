@@ -92,6 +92,36 @@ achados desse mapeamento em restrições de engenharia.
   propriedade como está, sem naming strategy customizada) — manter
   consistência em qualquer entidade nova.
 
+### Modelagem de domínio (backend)
+
+Padrões já estabelecidos — seguir para qualquer entidade nova, não reabrir a
+decisão a cada feature:
+
+- **Papel do usuário é uma coluna (`users.role`), nunca tabelas separadas por
+  papel.** Permissão é sempre derivada do papel via `RolesGuard` +
+  `@Roles()`, nunca hardcoded em controller/tela. Ver `src/users/entities/
+  user.entity.ts`.
+- **Catálogo (disciplina, assunto, e qualquer lista que possa crescer) é
+  tabela, nunca enum fixo no código.** Um enum exige migration + deploy para
+  adicionar um valor; uma tabela não. Ver `src/subjects/entities/` — o MVP
+  cadastra uma única linha, mas a estrutura já aguenta crescer.
+- **Vínculo entre pessoas/entidades que muda com o tempo (matrícula,
+  atribuição de turma) é histórico, não referência fixa.** Marcar
+  `active: false` + timestamp de encerramento, nunca `DELETE` da linha
+  antiga nem um FK único e permanente. Ver `src/schools/entities/
+  enrollment.entity.ts`. Isso também alimenta RD-L (longitudinal) de graça —
+  o histórico já fica no banco.
+- **Coluna que referencia uma entidade que ainda não existe** (ex.:
+  `interaction_events.challengeId` antes de existir `Challenge`) nasce
+  nullable e sem FK, com comentário explicando o porquê — vira FK real numa
+  migration `ALTER TABLE` quando a entidade existir. Nunca esperar a
+  feature completa existir para começar a coletar o dado (regra
+  não-negociável 6).
+- **FK não valida invariante de negócio no banco** (ex.: nada impede um
+  `role=admin` em `classrooms.teacherId`). Documentar isso na entidade e
+  validar na camada de serviço quando o endpoint existir — não é motivo para
+  adicionar trigger/constraint customizado sem necessidade concreta.
+
 ### Frontend (`apps/web`, React + Vite)
 
 - React fixado em `^18`, não `19` — `react-blockly` (peer dep) só suporta até
