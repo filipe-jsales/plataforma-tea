@@ -22,6 +22,12 @@ usado **apenas pelo CLI** (`migration:generate`, `migration:run`,
 roda fora do processo Nest (que usa `TypeOrmModule.forRootAsync` +
 `ConfigService` em `app.module.ts`, um caminho de configuração separado).
 
+**Atenção:** o arquivo precisa ter **uma única exportação** de instância de
+`DataSource` (só `export default`, por exemplo). Se houver uma exportação
+nomeada e uma `default` apontando para o mesmo objeto, o CLI do TypeORM 1.x
+falha com `Given data source file must contain only one export of DataSource
+instance` — já aconteceu neste projeto.
+
 Os scripts em `apps/api/package.json`:
 
 ```jsonc
@@ -66,10 +72,8 @@ e a regra 6/7 em `coding-rule.md` antes de adicionar um novo `type` de evento.
 acima, os enums Postgres (`users_role_enum`,
 `interaction_events_category_enum`) e a extensão `uuid-ossp` (necessária para
 `uuid_generate_v4()` nas chaves primárias). Foi escrita à mão (via
-`migration:create`) porque o ambiente de desenvolvimento não tinha Docker
-disponível no momento — **antes de confiar nela em produção, rode
-`npm run migration:run` uma vez contra um Postgres real e confira o resultado
-com `\d users` / `\d interaction_events` no `psql`.**
+`migration:create`), e já foi validada rodando `npm run migration:run` contra
+um Postgres real (`\d users` / `\d interaction_events` conferidos no `psql`).
 
 ## Adicionando uma migration nova
 

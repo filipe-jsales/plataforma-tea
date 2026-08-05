@@ -6,7 +6,9 @@ import { DataSource } from 'typeorm';
 // runtime usa TypeOrmModule.forRootAsync (ver app.module.ts) — não este arquivo.
 config();
 
-export const AppDataSource = new DataSource({
+// Export único: o CLI do TypeORM rejeita o arquivo se houver mais de uma
+// exportação de instância de DataSource (mesmo apontando pro mesmo objeto).
+const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT ?? 5432),

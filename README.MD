@@ -20,7 +20,9 @@ referenciado por [`AGENTS.md`](./AGENTS.md) e [`CLAUDE.md`](./CLAUDE.md)).
 
 - [Node.js](https://nodejs.org/) 20+ (testado com Node 24) e npm 11+.
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para o
-  Postgres local).
+  Postgres local) **ou** um PostgreSQL 16 instalado nativamente — ver
+  [seção 2b](#2b-alternativa-sem-docker-postgresql-nativo-no-windows) se sua
+  máquina não tiver suporte a virtualização (Docker Desktop exige WSL2/Hyper-V).
 
 ## 1. Instalar dependências
 
@@ -40,7 +42,9 @@ npm install --workspace apps/api <pacote>
 
 Nunca rode `npm install` de dentro de `apps/web` ou `apps/api` isoladamente.
 
-## 2. Banco de dados (PostgreSQL via Docker)
+## 2. Banco de dados (PostgreSQL)
+
+### 2a. Via Docker (padrão)
 
 Suba o Postgres local definido em `docker-compose.yml`:
 
@@ -61,6 +65,37 @@ Para apagar também os dados (reset total do banco local):
 ```powershell
 docker compose down -v
 ```
+
+### 2b. Alternativa sem Docker: PostgreSQL nativo no Windows
+
+Se o Docker Desktop não conseguir iniciar com o erro **"Virtualization
+support not detected"**, sua máquina (ou uma política de TI) não tem
+virtualização de hardware habilitada — Docker Desktop no Windows depende de
+WSL2/Hyper-V. Nesse caso, instale o PostgreSQL 16 direto no Windows:
+
+```powershell
+winget install --id PostgreSQL.PostgreSQL.16 -e --silent `
+  --accept-package-agreements --accept-source-agreements `
+  --override "--mode unattended --superpassword <SENHA_ADMIN_LOCAL> --serverport 5432"
+```
+
+Isso instala o serviço `postgresql-x64-16` (inicia automaticamente) e o
+`psql` em `C:\Program Files\PostgreSQL\16\bin`. Em seguida, crie o usuário e
+o banco com as mesmas credenciais já usadas no `.env.example`
+(usuário/senha/banco `plataforma_tea`), usando a senha de admin definida
+acima:
+
+```powershell
+$env:Path += ";C:\Program Files\PostgreSQL\16\bin"
+$env:PGPASSWORD = "<SENHA_ADMIN_LOCAL>"
+psql -U postgres -h localhost -c "CREATE ROLE plataforma_tea WITH LOGIN PASSWORD 'plataforma_tea' CREATEDB;"
+psql -U postgres -h localhost -c "CREATE DATABASE plataforma_tea OWNER plataforma_tea;"
+```
+
+Com isso, o `.env` do backend (seção seguinte) não precisa de nenhum ajuste —
+`DB_HOST=localhost` e porta `5432` funcionam igual ao Docker. O
+`docker-compose.yml` continua no repo para quando a virtualização for
+liberada; os dois caminhos usam o mesmo schema (mesmas migrations).
 
 ### Variáveis de ambiente do backend
 
