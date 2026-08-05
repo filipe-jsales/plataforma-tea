@@ -1,12 +1,15 @@
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { generateJoinCode } from '../join-code';
 import { School } from './school.entity';
 
 // Turma. O professor titular pode ser reatribuído a qualquer momento (UPDATE
@@ -38,6 +41,20 @@ export class Classroom {
   @Column({ type: 'varchar', length: 120 })
   name: string;
 
+  // Código curto que o aluno usa pra entrar no fluxo de login (ex.:
+  // "AZUL-7"), gerado automaticamente — nunca digitado pelo professor à mão,
+  // pra não virar previsível/sequencial.
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 20, unique: true })
+  joinCode: string;
+
   @CreateDateColumn()
   createdAt: Date;
+
+  @BeforeInsert()
+  generateJoinCode(): void {
+    if (!this.joinCode) {
+      this.joinCode = generateJoinCode();
+    }
+  }
 }

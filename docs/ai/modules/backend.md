@@ -12,15 +12,26 @@ apps/api/src/
 │   ├── role.enum.ts             # student | teacher | admin
 │   └── event-category.enum.ts   # RD-I | RD-P | RD-C | RD-E | RD-L
 ├── users/
-│   ├── entities/user.entity.ts  # pseudonymId, schoolReversibleRef, role...
+│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado no @BeforeInsert), role...
 │   ├── users.service.ts
 │   └── users.module.ts
+├── identity/
+│   ├── entities/student-identity-reversal.entity.ts  # pseudônimo → id real
+│   ├── identity.service.ts
+│   └── identity.module.ts       # NUNCA importar a partir do EventsModule
 ├── auth/
 │   ├── strategies/jwt.strategy.ts
 │   ├── guards/jwt-auth.guard.ts
 │   ├── guards/roles.guard.ts
 │   ├── decorators/roles.decorator.ts
-│   └── auth.module.ts           # JwtModule configurado — sem login/register ainda
+│   ├── dto/{student,teacher,admin}-login.dto.ts
+│   ├── auth.service.ts          # 3 fluxos de login — ver seção "Login" abaixo
+│   ├── auth.controller.ts       # GET roster + 3x POST .../login
+│   └── auth.module.ts
+├── illustrations/
+│   ├── entities/illustration.entity.ts  # catálogo avatar | login_image, position fixa
+│   ├── illustrations.service.ts
+│   └── illustrations.module.ts
 ├── subjects/
 │   ├── entities/subject.entity.ts   # disciplina (tabela, não enum) — ex.: "geometria"
 │   ├── entities/topic.entity.ts     # assunto dentro da disciplina — ex.: "angulos_formas"
@@ -32,6 +43,10 @@ apps/api/src/
 │   ├── entities/enrollment.entity.ts  # matrícula aluno↔turma, histórico (active/unenrolledAt)
 │   ├── schools.service.ts
 │   └── schools.module.ts
+├── challenges/
+│   ├── entities/challenge.entity.ts  # modelagem mínima — PRIMM/toolbox são feature futura
+│   ├── challenges.service.ts
+│   └── challenges.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
 │   ├── dto/create-event.dto.ts
@@ -45,11 +60,40 @@ apps/api/src/
 └── main.ts                      # ValidationPipe global + CORS
 ```
 
-## Autenticação
+## Autenticação e Login
 
-`AuthModule` hoje só monta a infraestrutura (`JwtModule`, `JwtStrategy`,
-`JwtAuthGuard`, `RolesGuard`, decorator `@Roles()`) — **não há endpoint de
-login/registro ainda**. Para proteger uma rota nova:
+Três fluxos distintos, não um formulário genérico — a tela "Quem é você?" é
+a única coisa realmente única; o que vem depois diverge totalmente por
+papel (ver decisão de design completa na conversa que originou esta
+implementação).
+
+`GET /auth/student/classrooms/:joinCode/roster` — passo 1+2 do fluxo aluno
+(código de turma → lista de avatares dos alunos ativos da turma, pra
+reconhecimento visual). **Sem guard** de propósito: acontece antes de
+qualquer autenticação — só devolve `userId` + `displayName` + avatar, nunca
+e-mail/pseudônimo/dado reversível.
+
+`POST /auth/student/login` — `{ userId, imageSequence: [id,id,id] }`,
+compara a sequência exatamente (ordem importa) contra
+`User.loginImageSequence`. Emite `login_attempt` (RD-I) sempre que o
+`userId` resolve pra um aluno real, e `login_success` (RD-L) só no sucesso.
+
+`POST /auth/teacher/login` — `{ email, password }`, bcrypt contra
+`passwordHash`, escopado a `role=teacher` (mesmo e-mail com role errado não
+autentica).
+
+`POST /auth/admin/login` — `{ email, password, otp }`, bcrypt + TOTP
+(`otplib`, `verify({secret, token})`) contra `User.totpSecret`. Segundo
+fator obrigatório — maior superfície de risco (múltiplas escolas).
+
+Todos os três emitem JWT via `issueToken()` com `{ sub, pseudonymId, role }`
+— o mesmo payload que `JwtStrategy`/`RolesGuard` já esperavam desde o início.
+Mensagens de erro da API são genéricas de propósito ("Credenciais
+inválidas.", "Sequência incorreta.") — a linguagem não-punitiva da regra 4 é
+responsabilidade da tela (frontend), a API só precisa não vazar qual campo
+falhou.
+
+Para proteger uma rota nova (fora do auth):
 
 ```ts
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,6 +101,23 @@ login/registro ainda**. Para proteger uma rota nova:
 @Controller('turmas')
 export class TurmasController { ... }
 ```
+
+### Gap conhecido: eventos pré-login
+
+`login_screen_viewed` e `sensory_setting_changed_pre_login` (ver spec de
+login) acontecem **antes** de qualquer autenticação — não têm como carregar
+JWT. `POST /events` hoje exige `JwtAuthGuard` sempre, então esses dois tipos
+de evento não têm por onde entrar ainda. Não implementado de propósito:
+abrir um endpoint de ingestão sem autenticação é uma decisão de segurança
+(superfície de abuso/spam) que merece ser tomada explicitamente, não
+resolvida por conveniência. Próxima decisão necessária antes do frontend
+precisar disso.
+
+### Credenciais de desenvolvimento (seed)
+
+Ver `docs/ai/modules/database.md` — a migration `AddLoginMechanisms` semeia
+1 turma (`AZUL-1`) com 1 professor, 1 admin e 1 aluno de teste. **Nunca usar
+essas credenciais fora de ambiente local.**
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -79,6 +140,20 @@ export class TurmasController { ... }
   com `role=admin` de ser inserido como `Classroom.teacherId`, ou um
   `role=teacher` como `Enrollment.studentId`). É invariante de aplicação —
   validar na camada de serviço quando os endpoints forem implementados.
+- **Pseudonimização é automática, não uma etapa que o código de registro
+  precisa lembrar de fazer.** `User.pseudonymId` é gerado por um
+  `@BeforeInsert()` (`randomUUID()`) direto na entidade — qualquer caminho
+  que crie um `User` (endpoint de registro futuro, seed, import em lote)
+  ganha o pseudônimo de graça. A identidade real (referência da escola) fica
+  em `StudentIdentityReversal`, tabela **separada**, em módulo próprio
+  (`src/identity/`) que **o `EventsModule` nunca importa** — assim o backend
+  de eventos fisicamente não tem acesso de código à reversão, não é só uma
+  política de acesso em nível de rota. Regra não-negociável 8.
+- **`challenges`** é modelagem mínima (título, enunciado, `config` jsonb
+  vazio) — o suficiente para existir "1 desafio de geometria" e para
+  `interaction_events.challengeId` ser uma FK real. O ciclo PRIMM interno e a
+  paleta de blocos contextual (Use-Modify-Create) ainda não estão modelados —
+  ver "Próximos passos".
 
 ## Eventos de interação
 
@@ -92,10 +167,8 @@ ver regra não-negociável 6 em `coding-rule.md`.
 vocabulário controlado por feature (ex.: `block.snap`, `challenge.predict`),
 nunca texto livre vindo direto do frontend sem validação.
 
-`challengeId` existe na tabela desde já (nullable, sem FK) mesmo sem a
-entidade `Challenge` (desafio) existir ainda — quando o módulo de desafios for
-criado, essa coluna vira FK real via uma migration `ALTER TABLE ... ADD
-CONSTRAINT`, sem precisar recriar a tabela de eventos.
+`challengeId` já é FK real para `challenges.id` (`ON DELETE SET NULL`,
+nullable — nem todo evento é escopado a um desafio, ex.: login).
 
 ## Banco de dados
 
@@ -105,13 +178,19 @@ migration nova em `src/database/migrations/`.
 
 ## Próximos passos (fora do escopo já implementado)
 
-- `POST /auth/login` e `POST /auth/register` (hash de senha com `bcrypt`,
-  emissão de JWT com `sub`/`pseudonymId`/`role`).
-- Entidade/módulo `Challenge` (desafio) — quando existir, migrar
-  `interaction_events.challengeId` para FK real (ver seção acima).
+- `POST /auth/register` — hoje só existe seed via migration; não há como
+  criar aluno/professor/admin em runtime ainda.
+- Ingestão de eventos pré-login (ver "Gap conhecido" acima).
+- Ciclo PRIMM interno e paleta de blocos contextual (Use-Modify-Create) na
+  entidade `Challenge` — hoje ela só tem título/enunciado/config vazio.
 - Endpoints CRUD para `subjects`/`topics`/`schools`/`classrooms`/`enrollments`
   (hoje só existem como entidades + services de leitura mínimos — sem
   controller ainda; ver regra 9 antes de expor isso ao professor: nada de
   formulário que exija entender a estrutura de tabelas).
+- Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
+  existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como
   sinal observável, nunca como inferência clínica — regra 7).
+- Rate limiting / bloqueio após N tentativas nos 3 endpoints de login — hoje
+  não existe (o `retryCount` do fluxo aluno é só o que o frontend observa e
+  manda no payload, o backend não impõe limite nenhum).

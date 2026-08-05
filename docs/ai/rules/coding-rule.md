@@ -121,6 +121,32 @@ decisão a cada feature:
   `role=admin` em `classrooms.teacherId`). Documentar isso na entidade e
   validar na camada de serviço quando o endpoint existir — não é motivo para
   adicionar trigger/constraint customizado sem necessidade concreta.
+- **Pseudônimo é gerado na entidade, não em código de aplicação.** Use
+  `@BeforeInsert()` (ver `User.generatePseudonymId`) para garantir que
+  qualquer caminho de criação (endpoint, seed, import em lote) sempre gera o
+  identificador — nunca deixar isso como responsabilidade de quem escreve o
+  próximo endpoint de registro lembrar de fazer.
+- **Dado reversível para identidade real do aluno vive em módulo próprio,
+  nunca na mesma tabela/módulo que dados operacionais.** Ver
+  `src/identity/` (`StudentIdentityReversal`). Regra rígida: **o
+  `EventsModule` nunca importa `IdentityModule`** — a separação é em nível de
+  módulo/import, não só de guard de rota, para não depender de disciplina em
+  code review pra manter o isolamento. Isso é o requisito de arquitetura
+  LGPD/ECA (regra não-negociável 8) implementado, não um comentário de
+  intenção.
+- **Seed de migration (`INSERT` em SQL puro) não aciona `@BeforeInsert`.**
+  Qualquer valor que uma entidade geraria sozinha em runtime (`pseudonymId`
+  via `randomUUID()`, `joinCode` via `generateJoinCode()`) precisa ser
+  gerado explicitamente na própria query de seed (`uuid_generate_v4()` do
+  Postgres, ou um literal fixo). Já causou uma falha de `NOT NULL
+  constraint` neste projeto (ver `AddLoginMechanisms1785942128821`) — checar
+  isso é rotina ao escrever seed, não uma surpresa.
+- **Login por papel não é um formulário único.** Aluno usa turma + avatar +
+  sequência de imagens (nunca e-mail/senha); professor e admin usam
+  e-mail/senha (admin com TOTP). Os pools de ilustração de avatar e de
+  sequência de login são tabelas separadas (`Illustration.kind`) de
+  propósito — nunca deixar o aluno escolher a mesma imagem pras duas coisas,
+  isso confunde "quem eu sou" com "minha senha". Ver `src/auth/auth.service.ts`.
 
 ### Frontend (`apps/web`, React + Vite)
 

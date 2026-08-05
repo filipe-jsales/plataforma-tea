@@ -26,4 +26,18 @@ export class SchoolsService {
       relations: { classroom: true },
     });
   }
+
+  findClassroomByJoinCode(joinCode: string): Promise<Classroom | null> {
+    return this.classroomsRepository.findOne({ where: { joinCode } });
+  }
+
+  // Roster de alunos ativos da turma — passo "seleção de avatar" do login.
+  // Só devolve o suficiente para reconhecimento visual (avatar + nome de
+  // exibição); nunca e-mail, pseudônimo ou qualquer dado de reversão.
+  findActiveStudentsInClassroom(classroomId: string): Promise<Enrollment[]> {
+    return this.enrollmentsRepository.find({
+      where: { classroomId, active: true },
+      relations: { student: { avatar: true } },
+    });
+  }
 }

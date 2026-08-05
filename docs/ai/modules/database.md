@@ -52,11 +52,30 @@ Os scripts em `apps/api/package.json`:
 
 ### `users`
 
-Ver `apps/api/src/users/entities/user.entity.ts`. Ponto de atenção:
-`pseudonymId` é o identificador usado em qualquer log/relatório;
-`schoolReversibleRef` existe só para a escola conseguir reverter a
-pseudonimização fora do software — nunca é exposto em UI/relatório do
-professor (regra não-negociável 8 em `docs/ai/rules/coding-rule.md`).
+Ver `apps/api/src/users/entities/user.entity.ts`. `pseudonymId` é o
+identificador usado em qualquer log/relatório — gerado automaticamente
+(`@BeforeInsert`, `randomUUID()`), nunca escolhido/derivado de dado real. A
+tabela **não tem mais** a referência real da escola (isso saiu daqui, ver
+`student_identity_reversals` abaixo).
+
+`email`/`passwordHash` são **nullable** — só preenchidos para
+`role=teacher|admin` (Postgres permite múltiplos `NULL` num `UNIQUE`, então
+isso não quebra a constraint). Alunos não têm e-mail/senha: autenticam por
+turma + avatar + sequência de imagens (`avatarId`, `loginImageSequence`).
+`totpSecret` é só para `role=admin` (segundo fator). Nenhum desses campos é
+validado por `role` no banco — é invariante de aplicação (ver
+`AuthService`).
+
+### `student_identity_reversals`
+
+Ver `apps/api/src/identity/entities/student-identity-reversal.entity.ts`.
+Tabela de reversão pseudônimo → identidade real, separada de `users` de
+propósito: fica num módulo (`src/identity/`) que o `EventsModule` nunca
+importa, então o backend de eventos não tem acesso de código a essa reversão
+— não é só uma checagem de permissão em nível de rota. `schoolReversibleRef`
+é a referência com sentido pro sistema da própria escola (SIS); reversível
+só pela escola/admin, nunca exposta em UI/relatório do professor (regra
+não-negociável 8).
 
 ### `subjects` / `topics`
 
@@ -77,6 +96,34 @@ valida `role` no banco (ex.: nada impede um `teacherId` apontar para um user
 com `role=student`) — é invariante de aplicação, a validar na camada de
 serviço quando os endpoints existirem.
 
+`classrooms.joinCode` (ex.: `"AZUL-1"`) é gerado por `@BeforeInsert`
+(`generateJoinCode()`, palavra de uma lista curta + dígito — ver
+`src/schools/join-code.ts`) — é o código que o aluno usa no passo 1 do
+login. **Não garante unicidade global sozinho**: só a `UNIQUE` do banco
+garante isso, e uma colisão rara faria o `INSERT` falhar. Aceitável no MVP
+dado o volume esperado; se turmas simultâneas crescerem muito, aumentar o
+espaço de códigos (mais palavras, mais dígitos) antes de qualquer outra
+mudança.
+
+### `illustrations`
+
+Ver `apps/api/src/illustrations/entities/illustration.entity.ts`. Catálogo
+(tabela, mesmo padrão de `subjects`), com `kind` (`avatar` | `login_image`) e
+`position` — a posição de exibição é fixa e **nunca deve mudar entre
+sessões** (requisito explícito do login por sequência de imagens: layout
+previsível, sem elemento decorativo concorrente). Os pools de `avatar` e
+`login_image` são propositalmente separados: avatar é "quem eu sou" (visível
+pra colegas no roster), login_image é a credencial (nunca deveria aparecer
+fora da tela de login da própria pessoa) — misturar os dois pools seria
+confundir identidade com segredo.
+
+### `challenges`
+
+Ver `apps/api/src/challenges/entities/challenge.entity.ts`. Modelagem
+mínima (`title`, `prompt`, `config` jsonb vazio) — o suficiente para existir
+"1 desafio de geometria" (seed do MVP) e para `interaction_events.challengeId`
+ser FK real. FK `CASCADE` para `topics`.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
@@ -84,9 +131,9 @@ append-only (nunca `UPDATE`/`DELETE` de evento já gravado), indexada por
 `(studentPseudoId, createdAt)` e por `challengeId` para consultas de
 histórico/longitudinais. `category` é o enum RD-I/RD-P/RD-C/RD-E/RD-L — ver
 `event-category.enum.ts` e a regra 6/7 em `coding-rule.md` antes de adicionar
-um novo `type` de evento. `challengeId` é nullable e sem FK (a entidade
-`Challenge` ainda não existe) — vira FK real via `ALTER TABLE` quando o módulo
-de desafios for criado.
+um novo `type` de evento. `challengeId` é nullable (nem todo evento é
+escopado a um desafio) e **é FK real** para `challenges.id`
+(`ON DELETE SET NULL`).
 
 ### Migrations aplicadas
 
@@ -106,9 +153,38 @@ de desafios for criado.
 4. `1785938848017-AddChallengeIdToInteractionEvents.ts` — adiciona a coluna
    `challengeId` (nullable) + índice em `interaction_events`. Gerada com
    `migration:generate`.
+5. `1785940075961-CreateStudentIdentityReversals.ts` — cria
+   `student_identity_reversals` e remove `schoolReversibleRef` de `users`.
+   Gerada com `migration:generate`.
+6. `1785940824460-CreateChallenges.ts` — cria `challenges`, adiciona a FK
+   `interaction_events.challengeId → challenges.id`, e semeia (0.6) 1 desafio
+   de geometria (`Monte o quadrado`, no topic `angulos_formas`) + 1 escola de
+   exemplo (`Escola Exemplo`). Gerada com `migration:generate` + seed manual.
+7. `1785942128821-AddLoginMechanisms.ts` — cria `illustrations`; adiciona
+   `totpSecret`/`avatarId`/`loginImageSequence` em `users` e `joinCode` em
+   `classrooms`; torna `users.email`/`passwordHash` nullable. Semeia (1.1) o
+   catálogo de ilustrações (4 avatares + 4 imagens de login) e **3 contas de
+   desenvolvimento** — nunca usar fora de ambiente local:
 
-Todas as 4 já foram validadas com `npm run migration:run` contra um Postgres
-real, e `\dt` + `\d <tabela>` conferidos no `psql`.
+   | Papel | Login | Credencial |
+   |---|---|---|
+   | Professor | `professor.demo@escolaexemplo.test` | senha `demo-professor-2026` |
+   | Admin | `admin.demo@plataforma-tea.test` | senha `demo-admin-2026` + TOTP (secret `4PQTUDCGD7VD7ZMXKB5YLDAO5WO2QY6W`, ex.: importar num app authenticator) |
+   | Aluno | turma `AZUL-1`, avatar "Gato" | sequência de login: Sol → Lua → Estrela |
+
+   Gerada com `migration:generate` + seed manual (via SQL puro — `INSERT`
+   direto não passa pelos `@BeforeInsert` das entidades, então `pseudonymId`
+   e `joinCode` precisam ser gerados explicitamente na própria query, ver o
+   arquivo da migration).
+
+Todas as 7 já foram validadas com `npm run migration:run` contra um Postgres
+real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
+`migration:generate` extra confirmou "No changes in database schema were
+found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login
+(`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
+testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
+falha (senha/OTP/sequência errados) ambos verificados, e os eventos
+`login_attempt`/`login_success` conferidos em `interaction_events`.
 
 ## Adicionando uma migration nova
 

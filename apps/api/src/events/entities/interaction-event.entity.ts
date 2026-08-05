@@ -1,4 +1,13 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Challenge } from '../../challenges/entities/challenge.entity';
 import { EventCategory } from '../../common/enums/event-category.enum';
 
 // Tabela append-only: eventos nunca são atualizados ou apagados, apenas inseridos.
@@ -33,11 +42,13 @@ export class InteractionEvent {
   @Column({ type: 'varchar', length: 64, nullable: true })
   sessionId: string | null;
 
-  // Sem FK ainda — a entidade Challenge (desafio) não existe neste MVP.
-  // Coluna já modelada para não exigir migration destrutiva quando o módulo
-  // de desafios for implementado; vira FK real nesse momento.
+  // Nullable: nem todo evento é escopado a um desafio (ex.: login, navegação).
   @Column({ type: 'uuid', nullable: true })
   challengeId: string | null;
+
+  @ManyToOne(() => Challenge, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'challengeId' })
+  challenge: Challenge | null;
 
   @CreateDateColumn()
   createdAt: Date;

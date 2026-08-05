@@ -8,5 +8,6 @@ import { InteractionEvent } from './entities/interaction-event.entity';
   imports: [TypeOrmModule.forFeature([InteractionEvent])],
   controllers: [EventsController],
   providers: [EventsService],
+  exports: [EventsService],
 })
 export class EventsModule {}

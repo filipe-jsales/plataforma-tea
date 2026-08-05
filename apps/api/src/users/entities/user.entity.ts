@@ -1,32 +1,61 @@
+import { randomUUID } from 'node:crypto';
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Role } from '../../common/enums/role.enum';
+import { Illustration } from '../../illustrations/entities/illustration.entity';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Identificador pseudonimizado, seguro para uso em logs de evento e telas do professor.
+  // Identificador pseudonimizado, seguro para uso em logs de evento e telas do
+  // professor. Gerado automaticamente na criação da conta (ver
+  // generatePseudonymId abaixo) — nunca escolhido/derivado de dado real do
+  // aluno (nome, e-mail etc.), para não ser reversível por inspeção.
+  // A ligação pseudônimo → identidade real fica em StudentIdentityReversal
+  // (src/identity/), uma tabela separada que o EventsModule nunca acessa.
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 64, unique: true })
   pseudonymId: string;
 
-  // Reversível apenas pela escola (fora do software), nunca exposto em relatórios/UI.
-  // Requisito de arquitetura LGPD/ECA, não nota de rodapé de compliance.
-  @Column({ type: 'varchar', length: 128, nullable: true })
-  schoolReversibleRef: string | null;
+  // Nullable: aluno não tem e-mail/senha (login por turma+avatar+imagens,
+  // ver loginImageSequence). Preenchido só para teacher/admin. Postgres
+  // permite múltiplos NULL num UNIQUE — não precisa de índice parcial.
+  @Column({ type: 'varchar', length: 180, unique: true, nullable: true })
+  email: string | null;
 
-  @Column({ type: 'varchar', length: 180, unique: true })
-  email: string;
+  @Column({ type: 'varchar', nullable: true })
+  passwordHash: string | null;
 
-  @Column({ type: 'varchar' })
-  passwordHash: string;
+  // Só para role=admin — segundo fator obrigatório (papel com maior
+  // superfície de risco, acesso a dados de múltiplas escolas).
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  totpSecret: string | null;
+
+  // Só para role=student — identidade visual em listas/roster (nunca foto
+  // real). Selecionado pelo aluno/professor na criação da conta.
+  @Column({ type: 'uuid', nullable: true })
+  avatarId: string | null;
+
+  @ManyToOne(() => Illustration, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'avatarId' })
+  avatar: Illustration | null;
+
+  // Só para role=student — credencial do login por sequência de imagens:
+  // 3 ids de Illustration(kind=login_image), em ordem, comparados
+  // exatamente na autenticação. Pool separado do avatar de propósito (ver
+  // Illustration). Postgres array preserva a ordem nativamente.
+  @Column({ type: 'uuid', array: true, nullable: true })
+  loginImageSequence: string[] | null;
 
   @Column({ type: 'enum', enum: Role, default: Role.STUDENT })
   role: Role;
@@ -36,4 +65,11 @@ export class User {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @BeforeInsert()
+  generatePseudonymId(): void {
+    if (!this.pseudonymId) {
+      this.pseudonymId = randomUUID();
+    }
+  }
 }
