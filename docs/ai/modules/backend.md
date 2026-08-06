@@ -230,6 +230,15 @@ Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra
 central: `synchronize: false` sempre — qualquer mudança de schema é uma
 migration nova em `src/database/migrations/`.
 
+## Testes
+
+Jest, já configurado no `package.json` do app (`npm run test --workspace
+apps/api`, ou `npm run test:api` na raiz). Todo `*.service.ts` tem um
+`*.service.spec.ts` ao lado, testando a classe com repositórios mockados
+(`jest.Mocked<Repository<T>>`) — sem `TestingModule`/Postgres real. Ver regra
+"Testes" em `docs/ai/rules/coding-rule.md` para o padrão esperado em módulos
+novos.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - `POST /auth/register` — hoje só existe seed via migration; não há como

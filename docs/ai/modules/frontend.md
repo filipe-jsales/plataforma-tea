@@ -136,6 +136,17 @@ avatar e pool de login-image usam paletas/formas diferentes de propósito —
 nunca reaproveitar um ícone nas duas categorias (confundiria "quem eu sou"
 com "minha senha").
 
+## Testes
+
+Vitest + `@testing-library/react`, configurado em `vitest.config.ts`
+(`environment: 'jsdom'`, setup em `src/test/setup.ts`). Rodar com `npm run
+test --workspace apps/web`, ou `npm run test:web` na raiz. Todo módulo em
+`lib/` e todo store Zustand têm um `*.spec.ts` ao lado — stores são
+singletons reaproveitados entre testes, então cada `describe` reseta o
+estado em `beforeEach` (`useStore.setState({...})`), nunca assume estado
+limpo por padrão. Ver regra "Testes" em `docs/ai/rules/coding-rule.md` para
+o padrão esperado em código novo.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Editor de blocos com toolbox contextual por desafio (Use–Modify–Create) —
