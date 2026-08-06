@@ -48,9 +48,16 @@ apps/api/src/
 │   ├── entities/enrollment.entity.ts  # matrícula aluno↔turma, histórico (active/unenrolledAt)
 │   ├── schools.service.ts
 │   └── schools.module.ts
+├── blocks/
+│   ├── entities/block-definition.entity.ts  # catálogo de blocos Blockly (tabela, não enum)
+│   ├── blocks.service.ts
+│   └── blocks.module.ts
 ├── challenges/
-│   ├── entities/challenge.entity.ts  # modelagem mínima — PRIMM/toolbox são feature futura
+│   ├── entities/challenge.entity.ts  # config.toolbox — ver seção "Blocos por desafio"
+│   ├── challenge-config.interface.ts  # forma tipada de Challenge.config
+│   ├── block-progression.ts     # valida a regra Use-Modify-Create (AC2)
 │   ├── challenges.service.ts
+│   ├── challenges.controller.ts # GET /challenges/by-topic/:topicId — aluno só
 │   └── challenges.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
@@ -173,6 +180,48 @@ professor/admin, isso é uma tabela nova (ou um `type`/schema explicitamente
 pensado pra isso), não um forçar de pseudônimo de staff dentro de
 `studentPseudoId`.
 
+## Blocos por desafio (RQ4 — sobrecarga cognitiva/abstração, 39,13%)
+
+`GET /challenges/by-topic/:topicId` (`ChallengesController`, aluno só) alimenta
+o editor de blocos do frontend com a paleta **restrita** ao desafio — nunca a
+paleta completa do Blockly (AC1). O mecanismo:
+
+- **`blocks`** (`BlocksModule`) é o catálogo de blocos — tabela, não enum
+  fixo (mesmo padrão de `subjects`/`topics`/`illustrations`, ver regra de
+  modelagem abaixo). Cada linha tem `blockType` (o `type` que o Blockly usa
+  em runtime), `label` em português, `category`/`categoryLabel` (agrupamento
+  livre, curado por quem cadastra — não uma enum de código) e `blocklyJson`,
+  a definição completa no formato de `Blockly.defineBlocksWithJsonArray`. O
+  frontend nunca hardcoda a forma de um bloco — registra em runtime a partir
+  daqui. Um bloco novo existe só cadastrando uma linha + o desafio que o usa,
+  sem deploy de frontend.
+- **`Challenge.config`** (jsonb, tipado em `challenge-config.interface.ts`)
+  guarda `{ stage: 'use'|'modify'|'create', allowedBlockTypes: string[],
+  goal }` — `stage` é o estágio Use-Modify-Create do desafio (regra
+  não-negociável 2/3); `allowedBlockTypes` é a lista de `blockType`
+  permitidos, resolvida contra o catálogo `blocks` e devolvida já agrupada
+  por categoria (AC5 — abas pequenas e nomeadas, nunca uma lista única).
+- **`block-progression.ts`** (`findBlockProgressionViolations`) é a
+  implementação de AC2: nenhum `blockType` pode "estrear" (aparecer pela
+  primeira vez, na ordem cronológica dos desafios) fora do estágio `use`.
+  É uma checagem de autoria de currículo, testada contra o seed real em
+  `block-progression.spec.ts` — não uma trava em runtime por aluno (não há
+  ainda um segundo desafio modify/create pra isso fazer sentido, ver
+  "Próximos passos").
+- **Sem autoria de toolbox pelo professor nesta versão.** O backlog da
+  feature cita "config JSON gerada pelo professor via camada visual" como
+  dependência — decisão explícita (a pedido de quem props a feature): em vez
+  de construir essa camada de autoria visual, o conteúdo (`blocks` +
+  `Challenge.config`) é curado via seed/migration, e o professor não
+  programa nada. O MVP já tem exatamente 1 desafio por tópico
+  (`ChallengesService.findFirstByTopicId`), então não existe hoje nem
+  "escolher entre desafios" — isso é `findFirst`-like, igual ao resto do
+  MVP. Ver "Próximos passos".
+- Seed de referência: migrations `CreateBlocks` (catálogo dos 3 blocos MVP —
+  mover, girar, repetir) e `SeedSquareChallengeToolbox` (preenche o `config`
+  do desafio "Monte o quadrado", que já usava o assunto/tópico geometria —
+  ver `docs/ai/modules/database.md`).
+
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
 - **`users` é uma tabela única com `role`** (`student | teacher | admin`),
@@ -203,11 +252,12 @@ pensado pra isso), não um forçar de pseudônimo de staff dentro de
   (`src/identity/`) que **o `EventsModule` nunca importa** — assim o backend
   de eventos fisicamente não tem acesso de código à reversão, não é só uma
   política de acesso em nível de rota. Regra não-negociável 8.
-- **`challenges`** é modelagem mínima (título, enunciado, `config` jsonb
-  vazio) — o suficiente para existir "1 desafio de geometria" e para
-  `interaction_events.challengeId` ser uma FK real. O ciclo PRIMM interno e a
-  paleta de blocos contextual (Use-Modify-Create) ainda não estão modelados —
-  ver "Próximos passos".
+- **`challenges`** é modelagem mínima (título, enunciado, `config` jsonb —
+  ver "Blocos por desafio" acima pro que `config` guarda hoje). O suficiente
+  para existir "1 desafio de geometria" e para `interaction_events.challengeId`
+  ser uma FK real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make
+  como estrutura de estado do desafio, não só a paleta Use-Modify-Create)
+  ainda não está modelado — ver "Próximos passos".
 
 ## Eventos de interação
 
@@ -244,8 +294,19 @@ novos.
 - `POST /auth/register` — hoje só existe seed via migration; não há como
   criar aluno/professor/admin em runtime ainda.
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
-- Ciclo PRIMM interno e paleta de blocos contextual (Use-Modify-Create) na
-  entidade `Challenge` — hoje ela só tem título/enunciado/config vazio.
+- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
+  estado do desafio) — a paleta de blocos por estágio Use-Modify-Create já
+  existe (ver "Blocos por desafio"), o PRIMM em si ainda não.
+- Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
+  blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
+  Se um dia for necessária de verdade: um jeito pequeno de começar é
+  `Classroom.activeChallengeId` (nullable, default o desafio seed) + um
+  endpoint pro professor trocar entre um catálogo pequeno de desafios
+  pré-curados — continua sem o professor "programar" nada.
+- Trava em runtime da progressão Use-Modify-Create por aluno (hoje
+  `block-progression.ts` só valida a ordem de autoria dos desafios, não
+  bloqueia um aluno específico) — só faz sentido quando existir um segundo
+  desafio em estágio modify/create pra travar contra.
 - Endpoints CRUD para `schools`/`classrooms`/`enrollments` (`subjects`/`topics`
   já têm leitura via `GET /subjects/topics`; escrita continua não exposta —
   ver regra 9 antes de expor isso ao professor: nada de formulário que

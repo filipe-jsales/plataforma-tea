@@ -122,12 +122,27 @@ pra colegas no roster), login_image é a credencial (nunca deveria aparecer
 fora da tela de login da própria pessoa) — misturar os dois pools seria
 confundir identidade com segredo.
 
+### `blocks`
+
+Ver `apps/api/src/blocks/entities/block-definition.entity.ts`. Catálogo dos
+blocos Blockly disponíveis (tabela, mesmo padrão de `subjects`/
+`illustrations`) — `blockType` é o `type` que o Blockly usa em runtime
+(`UNIQUE`), `category`/`categoryLabel` agrupam a paleta em abas (texto livre,
+não enum), `blocklyJson` é a definição completa no formato de
+`Blockly.defineBlocksWithJsonArray`. Seed do MVP: `move_forward` (mover),
+`turn` (girar, com campo `DIR`) e `repeat_times` (repetir, com campo `TIMES`
++ input de estatuto `DO`) — ver `docs/ai/modules/backend.md#blocos-por-desafio`.
+
 ### `challenges`
 
 Ver `apps/api/src/challenges/entities/challenge.entity.ts`. Modelagem
-mínima (`title`, `prompt`, `config` jsonb vazio) — o suficiente para existir
-"1 desafio de geometria" (seed do MVP) e para `interaction_events.challengeId`
-ser FK real. FK `CASCADE` para `topics`.
+mínima (`title`, `prompt`, `config` jsonb) — o suficiente para existir "1
+desafio de geometria" (seed do MVP) e para `interaction_events.challengeId`
+ser FK real. FK `CASCADE` para `topics`. `config` guarda `{ stage,
+allowedBlockTypes, goal }` (tipado em `challenge-config.interface.ts`) desde
+a migration `SeedSquareChallengeToolbox` — nasceu `{}` na migration original
+(`CreateChallenges`), preenchido depois numa migration separada (nunca
+editando a original já rodada).
 
 ### `interaction_events`
 
@@ -186,15 +201,26 @@ escopado a um desafio) e **é FK real** para `challenges.id`
    `sensoryOnboardingCompletedAt` (nullable) em `users`. Gerada com
    `migration:generate`, sem seed (as 3 contas demo já existentes ficam com
    os defaults).
+9. `1786027226877-CreateBlocks.ts` — cria `blocks` (catálogo de blocos
+   Blockly) e semeia os 3 blocos MVP (`move_forward`/`turn`/`repeat_times`).
+   Gerada com `migration:generate` + seed manual.
+10. `1786027834394-SeedSquareChallengeToolbox.ts` — preenche o `config` do
+    desafio seed "Monte o quadrado" (stage `use`, os 3 `blockTypes` acima, e
+    a meta de fechar um quadrado de 4 lados/90°) — escrita à mão (só
+    `UPDATE`, sem mudança de schema, `migration:generate` não gera diff pra
+    isso).
 
-Todas as 8 já foram validadas com `npm run migration:run` contra um Postgres
+Todas as 10 já foram validadas com `npm run migration:run` contra um Postgres
 real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
 `migration:generate` extra confirmou "No changes in database schema were
 found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos
-`login_attempt`/`login_success` conferidos em `interaction_events`.
+`login_attempt`/`login_success` conferidos em `interaction_events`. O fluxo
+`GET /challenges/by-topic/:topicId` também foi testado ponta a ponta via
+`curl` contra a conta demo de aluno — devolve as 2 categorias (`Movimento`,
+`Controle`) com os 3 blocos e a meta configurada.
 
 ## Adicionando uma migration nova
 

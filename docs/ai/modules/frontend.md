@@ -29,12 +29,16 @@ apps/web/src/
 │   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer
 │   ├── authFlow.ts                  # completeLogin() — login → GET /users/me → setSession
 │   ├── logEvent.ts                  # POST /events centralizado (nunca fetch direto)
-│   └── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
+│   ├── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
+│   ├── blocklyToolbox.ts            # registra blocos + monta toolbox JSON a partir do catálogo
+│   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
+│   └── turtleWorld.ts               # matemática pura do "personagem tartaruga" + checagem de meta
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
+├── components/challenge/
+│   └── PixiTurtleWorld.tsx          # mundo PixiJS — só desenha o caminho já calculado
 ├── routes/
 │   ├── RootRedirect.tsx             # decide login → onboarding → home
 │   ├── RequireAuth.tsx              # guard de sessão/papel
-│   ├── StubPage.css                 # estilo compartilhado de placeholders
 │   ├── login/
 │   │   ├── RoleSelect.tsx           # 1.2.1 — "Quem é você?", 3 botões grandes
 │   │   ├── StudentLogin.tsx         # 1.2.1 — código → avatar (roster) → sequência de 3 imagens
@@ -44,7 +48,8 @@ apps/web/src/
 │   │   └── StaffLogin.css           # formulário padrão (sem restrição sensorial — ver nota abaixo)
 │   ├── OnboardingSensorial.tsx      # 2.2 — só aluno, só antes do onboarding concluído
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
-│   ├── ModuleStub.tsx               # placeholder pós-seleção (desafio ainda não existe)
+│   ├── challenge/
+│   │   └── ChallengePage.tsx        # editor de blocos do desafio — ver seção própria abaixo
 │   └── home/
 │       ├── HomeRouter.tsx           # 2.1 — dispatch por papel
 │       ├── StudentHome.tsx
@@ -123,6 +128,50 @@ aluno" em `backend.md`): só telas do aluno chamam `logEvent`
 (`StudentHome`, `OnboardingSensorial`, `SubjectSelector`); `TeacherHome`/
 `AdminHome` não emitem eventos RD-*.
 
+## Editor de blocos do desafio (`ChallengePage`, RQ4)
+
+Substitui o antigo placeholder da rota `/subjects/:topicId`. Busca
+`GET /challenges/by-topic/:topicId` e monta a tela em cima da resposta —
+nunca decide sozinho quais blocos mostrar:
+
+- `blocklyToolbox.ts` registra os blocos vindos do backend com
+  `Blockly.defineBlocksWithJsonArray` (a forma de cada bloco é 100% dado, não
+  código) e monta o toolbox JSON categorizado (`buildToolboxConfiguration`) —
+  só os blocos do desafio aparecem, agrupados em abas pequenas e nomeadas
+  (AC1/AC5), nunca a paleta padrão do Blockly inteira.
+- `blocklyToolbox.applyGenerousSnapTolerance()` sobe `Blockly.config.
+  snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima do default —
+  tolerância ampla de encaixe (AC3, RQ4 coordenação motora fina). Chamado uma
+  vez no carregamento do módulo, antes de qualquer workspace injetar.
+- **Execução é interpretada, não gerada.** `blockProgram.ts` anda a árvore
+  serializada do workspace (`Blockly.serialization.blocks.save`) e devolve
+  uma lista plana de ações (`move`/`turn`, com `repeat_times` expandido em
+  runtime); `turtleWorld.ts` é a matemática pura que transforma essa lista
+  num caminho de pontos + heading final, e a checagem de meta (fechou o
+  quadrado?). As duas são só lógica pura, cobertas por unit test sem
+  precisar de Blockly/DOM de verdade (ver `blockProgram.spec.ts`/
+  `turtleWorld.spec.ts`) — não usamos os geradores de código do Blockly
+  (`javascript_generator` etc.) porque não há necessidade de produzir texto
+  de código nenhuma hora do fluxo.
+- `PixiTurtleWorld` só desenha o resultado já calculado (nenhuma lógica de
+  interpretação/geometria no componente) — anima segmento a segmento se
+  `useSensoryProfileStore().motionEnabled`, ou desenha tudo de uma vez se não
+  (regra não-negociável 1: motion é decisão do aluno/professor, nunca
+  hardcoded).
+- Feedback de sucesso/tentativa nova é sempre reversível (regra não-negociável
+  4) — nunca "errado"/X vermelho, ver `challenge-page__feedback--retry`.
+- Logging: `toolbox_rendered` (RD-I) uma vez, ao carregar o desafio;
+  `block_dragged` (RD-I) a cada solta de bloco (via
+  `workspace.addChangeListener` + `Blockly.Events.BlockDrag`, não o
+  `onWorkspaceChange` simplificado do `react-blockly`, que não expõe o tipo
+  do evento); `challenge.completed` (RD-C) só quando a meta é atingida — é o
+  mesmo `type` que `HomeService`/`StudentHome` já esperavam desde 2.1 pra
+  contar "desafios concluídos" (ver `docs/ai/modules/backend.md`).
+- **Sem autoria de toolbox pelo professor nesta versão** — decisão
+  explícita, ver "Blocos por desafio" em `backend.md`. O professor não
+  escolhe nem programa nada hoje; o MVP continua com exatamente 1 desafio
+  por tópico.
+
 ## Assets visuais (`assets/illustrations/`)
 
 Os 8 SVGs (4 avatares + 4 imagens de login) foram **desenhados
@@ -149,9 +198,14 @@ o padrão esperado em código novo.
 
 ## Próximos passos (fora do escopo já implementado)
 
-- Editor de blocos com toolbox contextual por desafio (Use–Modify–Create) —
-  hoje `ModuleStub.tsx` é só um placeholder de texto.
-- Componente do mundo PixiJS que executa o programa montado no Blockly.
+- Múltiplos desafios por tópico / estágios modify-create — hoje
+  `ChallengesController` sempre devolve o primeiro (único) desafio do
+  tópico; a tela já lê `toolbox.stage`, mas nada consome esse valor ainda
+  (ex.: workspace pré-preenchido com blocos iniciais no estágio "modify").
+- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
+  tela, não só a paleta Use-Modify-Create) — hoje `ChallengePage` só tem
+  "montar → executar → feedback", sem as etapas Predict/Investigate
+  separadas.
 - Ingestão de eventos pré-login (`login_screen_viewed`,
   `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
   documentado em `backend.md`.

@@ -7,7 +7,10 @@ describe('ChallengesService', () => {
   let repository: jest.Mocked<Repository<Challenge>>;
 
   beforeEach(() => {
-    repository = { find: jest.fn() } as unknown as jest.Mocked<Repository<Challenge>>;
+    repository = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+    } as unknown as jest.Mocked<Repository<Challenge>>;
 
     service = new ChallengesService(repository);
   });
@@ -36,6 +39,36 @@ describe('ChallengesService', () => {
 
       await expect(service.findFirst()).resolves.toBe(challenge);
       expect(repository.find).toHaveBeenCalledWith({ take: 1 });
+    });
+  });
+
+  describe('findFirstByTopicId', () => {
+    it('returns null when the topic has no challenge yet', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await expect(service.findFirstByTopicId('topic-1')).resolves.toBeNull();
+    });
+
+    it('scopes by topicId and orders by createdAt to respect authoring order', async () => {
+      const challenge = { id: 'c1', topicId: 'topic-1' } as Challenge;
+      repository.find.mockResolvedValue([challenge]);
+
+      await expect(service.findFirstByTopicId('topic-1')).resolves.toBe(challenge);
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { topicId: 'topic-1' },
+        order: { createdAt: 'ASC' },
+        take: 1,
+      });
+    });
+  });
+
+  describe('findById', () => {
+    it('looks up a single challenge by id', async () => {
+      repository.findOne.mockResolvedValue(null);
+
+      await service.findById('c1');
+
+      expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 'c1' } });
     });
   });
 });

@@ -3,7 +3,7 @@ import { AdminLogin } from './routes/login/AdminLogin'
 import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
 import { TeacherLogin } from './routes/login/TeacherLogin'
-import { ModuleStub } from './routes/ModuleStub'
+import { ChallengePage } from './routes/challenge/ChallengePage'
 import { OnboardingSensorial } from './routes/OnboardingSensorial'
 import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
@@ -46,7 +46,7 @@ function App() {
         path="/subjects/:topicId"
         element={
           <RequireAuth roles={['student']}>
-            <ModuleStub />
+            <ChallengePage />
           </RequireAuth>
         }
       />

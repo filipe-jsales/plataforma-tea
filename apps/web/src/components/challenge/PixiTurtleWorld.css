@@ -1,0 +1,12 @@
+.pixi-turtle-world {
+  width: 320px;
+  height: 320px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pixi-turtle-world canvas {
+  display: block;
+}
