@@ -209,13 +209,14 @@ prop/estado inventado no frontend.
 
 ### Fase Use travada — Desafio 1 (3.3)
 
-Quando `challenge.locked` (config tem `program`): workspace nasce com
-`initialJson` = o programa pré-montado (mesmo formato de
-`Blockly.serialization.workspaces.load`), `workspaceConfiguration.readOnly:
-true` e **sem `toolboxConfiguration`** — nenhum bloco arrastável, nenhuma
-paleta visível. Único controle é o botão Executar/Repetir execução (mesmo
-`handleRun` do modo livre — o programa é lido do workspace normalmente,
-só que o aluno não pode alterá-lo).
+Quando `challenge.locked` (`stage === 'use'`, ver "Blocos por desafio" em
+`backend.md` — não é mais `Boolean(program)`, porque a fase `modify` também
+tem `program`): workspace nasce com `initialJson` = o programa pré-montado
+(mesmo formato de `Blockly.serialization.workspaces.load`),
+`workspaceConfiguration.readOnly: true` e **sem `toolboxConfiguration`** —
+nenhum bloco arrastável, nenhuma paleta visível. Único controle é o botão
+Executar/Repetir execução (mesmo `handleRun` do modo livre — o programa é
+lido do workspace normalmente, só que o aluno não pode alterá-lo).
 
 Depois da 1ª execução (`attempts >= 1`): aparece a pergunta de investigação
 (`challenge.investigationQuestion`, motor PRIMM "Investigate" — placeholder
@@ -225,7 +226,7 @@ mínimo, resposta livre só logada, nunca corrigida) e o botão "Avançar", que:
   segue literalmente a notação "RD-P + RD-C" do backlog da feature, já que
   uma linha de `interaction_events` só tem uma `category`), com
   `attempts_before_proceed`.
-- Navega pra `/challenge/:nextChallengeId` (Desafio 2) — nunca habilitado
+- Navega pra `/challenge/:nextChallengeId` (a fase `modify`, ver abaixo) — nunca habilitado
   antes de `attempts >= 1` (AC4: "aluno não pode avançar sem executar ao
   menos uma vez").
 
@@ -233,9 +234,62 @@ Fase `use` **não avalia sucesso/falha** — o programa vem pronto e sempre
 "funciona" por construção; o feedback reversível (regra não-negociável 4)
 só faz sentido na fase `create`.
 
-### Fase Create livre + botão de Ajuda — Desafio 2 (3.5)
+### Fase Modify — Desafio 3 (3.4)
 
-Quando `challenge.locked` é `false`: o editor livre de sempre (toolbox
+Reaproveita o mesmo `initialJson`/`program` da fase `use` (`initialJson`
+hoje é derivado só de `challenge.program`, não mais de `challenge.locked`),
+mas com `workspaceConfiguration.readOnly: false` (senão nenhum campo dá pra
+editar) e **ainda sem `toolboxConfiguration`** (`toolboxConfiguration` só é
+montado quando `toolbox.stage === 'create'`) — nenhum bloco novo arrastável,
+`trashcan` também escondido.
+
+`applyModifyFieldLocking(workspace, challenge.editableFields)` roda uma vez
+no `onInject` do Blockly e é o que trava a estrutura sem travar os campos
+configurados:
+
+- todo bloco recebe `block.setMovable(false)` + `block.setDeletable(false)`
+  (a árvore de blocos não muda, só valores dentro dela — AC de 3.4).
+- todo campo (`Blockly.Field`, achado andando `block.inputList[*].fieldRow`)
+  que **não** está em `challenge.editableFields` recebe `field.setEnabled
+  (false)` — visível, mas não editável (nunca "sumiço" de informação).
+- todo campo que **está** na lista recebe `field.setEnabled(true)` e, se for
+  `Blockly.FieldNumber` (é o caso de `TIMES`/`ANGLE`), `field.setConstraints
+  (min, max, undefined)` com os limites de `EditableFieldConfig` — sobrepondo
+  o min/max técnico já embutido na definição do bloco (ver
+  `AddAngleFieldToTurnBlock` em `backend.md`).
+
+**Motor PRIMM "Predict"**: quando `challenge.predictQuestion` existe, o botão
+Executar não aparece até o aluno escolher uma opção — `primmStage: 'predict'
+| 'run'` controla isso, e volta pra `'predict'` depois de toda execução
+(valores podem ter mudado desde a última previsão, então uma previsão nova
+sempre precede o próximo Executar). O widget é um conjunto de botões grandes
+(não um campo numérico livre) com o intervalo do campo editável `TIMES` —
+motor fino (RQ4) e permite comparar a previsão contra o resultado real de
+forma determinística, sem heurística de texto livre.
+
+Em cada Executar (`handleRun`), além do `program_executed` genérico:
+`lib/editableFields.extractEditableFieldValues` lê o valor atual dos campos
+editáveis do bloco recém-serializado, `diffChangedValues` compara contra o
+snapshot inicial (calculado uma vez a partir de `challenge.program`), e
+`turtleWorld.closedPolygonSides(result)` diz quantos lados o traçado fechou
+com (`null` se não fechou) — os três juntos montam o evento
+`challenge_modify_attempt` (RD-P, ver "Eventos desta feature" em
+`backend.md`). A tela mostra uma frase só descritiva ("Você imaginou N
+lados. A figura fechou com M lados.") — nunca "certo/errado" (regra
+não-negociável 4); **sem avaliação de sucesso/fracasso** nesta fase, mesmo
+racional da fase `use`. Botão de Ajuda (abaixo) também não aparece aqui —
+não há forma-alvo escondida pra revelar, o aluno já vê e controla a forma
+diretamente.
+
+O botão "Avançar" (mesmo `challenge-page__investigation`/`handleProceed` da
+fase `use`, condição estendida pra `challenge.locked || isModify`) libera
+depois de `attempts >= 1`, mas **não** loga `challenge_use_completed` — esse
+evento é específico da fase `use`; a fase `modify` já loga cada rodada via
+`challenge_modify_attempt`.
+
+### Fase Create livre + botão de Ajuda (3.5)
+
+Quando `toolbox.stage === 'create'`: o editor livre de sempre (toolbox
 arrastável, feedback de sucesso/tentativa nova sempre reversível — nunca
 "errado"/X vermelho, ver `challenge-page__feedback--retry`) + `challenge.
 completed` (RD-C) só quando a meta é atingida, o mesmo `type` que
@@ -251,15 +305,19 @@ resolvem o desafio, porque ela não sabe o que são blocos. Toca num segundo
 independente da execução do aluno — abrir a Ajuda nunca apaga o traçado que
 o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I).
 
-### Estado intermediário: falta o Desafio 3 (fase Modify)
+### Motor PRIMM: vocabulário de config, não FSM de tela única
 
-Ver "Blocos por desafio" → "Estado intermediário" em `backend.md` e a nota
-de pesquisa em `apps/api/src/challenges/challenge-config.interface.ts`: a
-sequência atual (Desafio 1 `use` → Desafio 2 `create`) pula a etapa
-`modify` que RQ2 (21,74% dos estudos) respalda como parte do ciclo — **não
-tratar como sequência pedagógica completa/validada**. Qualquer desafio novo
-(neste tópico ou em outro) deve seguir Use→Modify→Create e declarar
-`position` explicitamente — ver a regra em `docs/ai/rules/coding-rule.md`.
+Ver "Como desafios futuros adotam PRIMM" em `backend.md` pra tabela completa
+— resumindo do lado do frontend: nenhum dos 5 estágios PRIMM é hardcoded por
+nome de desafio. `ChallengePage` deriva o que mostrar checando presença de
+campo (`challenge.predictQuestion`, `challenge.investigationQuestion`,
+`challenge.editableFields.length`) e `toolbox.stage` (só pra decidir toolbox/
+Ajuda/trashcan, nunca pra decidir se uma pergunta aparece) — nunca
+`if (challenge.title === '...')` nem equivalente. Um desafio novo (deste
+tópico ou de outro, qualquer disciplina) ganha Predict/Investigate só
+preenchendo o campo correspondente no seed; ganha Modify preenchendo
+`editableFields` com os campos do bloco que fazem sentido editar pro
+conceito curricular daquele desafio.
 
 ## Assets visuais (`assets/illustrations/`)
 
@@ -287,15 +345,10 @@ o padrão esperado em código novo.
 
 ## Próximos passos (fora do escopo já implementado)
 
-- **Desafio 3 (fase Modify)** entre os 2 desafios seed atuais — ver "Estado
-  intermediário" acima e em `backend.md`. A tela já lê `toolbox.stage` e já
-  sabe renderizar `readOnly`/`initialJson` a partir de `program` (usado hoje
-  só pela fase `use`) — uma fase `modify` reaproveitaria exatamente esse
-  mecanismo com `readOnly: false`, só sem toolbox de blocos novos.
-- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
-  tela) — a pergunta de investigação do Desafio 1 é um placeholder mínimo do
-  estágio "Investigate" (resposta livre, só logada); Predict/Run como
-  etapas próprias de tela ainda não existem.
+- O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)
+  só cobre o próprio desafio — não existe ainda uma visão agregada (pro
+  aluno ou pro professor) de "quais combinações de TIMES/ANGLE você já
+  tentou", só o log bruto (`challenge_modify_attempt`) por trás.
 - Ingestão de eventos pré-login (`login_screen_viewed`,
   `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
   documentado em `backend.md`.

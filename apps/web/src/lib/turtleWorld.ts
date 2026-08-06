@@ -43,7 +43,12 @@ export function runTurtleProgram(
       y -= Math.cos(headingRad) * stepLength;
       points.push({ x, y });
     } else {
-      const delta = action.direction === 'RIGHT' ? turnDeg : -turnDeg;
+      // Ângulo por ação (campo ANGLE do bloco "turn", fase Modify 3.4) tem
+      // prioridade; `turnDeg` (opção global) é só o fallback pra blocos sem
+      // esse campo — mantém 100% compatível com todo caminho que nunca
+      // passou `angle` (fase Use, Ajuda, e os testes existentes).
+      const stepAngle = action.angle ?? turnDeg;
+      const delta = action.direction === 'RIGHT' ? stepAngle : -stepAngle;
       headingDeg = ((headingDeg + delta) % 360 + 360) % 360;
     }
   }
@@ -66,6 +71,20 @@ export interface GoalEvaluation {
 // aplicado ao resultado visual em vez do encaixe de blocos).
 const CLOSE_TOLERANCE_PX = 5;
 
+// Fechou de verdade: voltou perto do ponto de partida E terminou de frente
+// pro mesmo lado que começou — as duas condições juntas, não só a posição
+// (um caminho pode "voltar" ao início de lado, ver teste dedicado). Base de
+// `evaluateSquareGoal` (fase Create, meta fixa) e `closedPolygonSides`
+// (fase Modify, exploração sem meta fixa) — a mesma checagem de geometria,
+// duas perguntas diferentes em cima dela.
+function isPathClosed(result: TurtleRunResult): boolean {
+  const start = result.points[0];
+  const end = result.points[result.points.length - 1];
+  const closedPosition = Math.hypot(end.x - start.x, end.y - start.y) <= CLOSE_TOLERANCE_PX;
+  const closedHeading = result.finalHeadingDeg % 360 === 0;
+  return closedPosition && closedHeading;
+}
+
 // Feedback nunca-punitivo (regra não-negociável 4): isto só devolve
 // sucesso/não-sucesso, nunca "errado" — a mensagem reversível é
 // responsabilidade da tela. Heurística MVP: caminho fechou (voltou perto do
@@ -78,12 +97,22 @@ export function evaluateSquareGoal(result: TurtleRunResult, goal: SquareGoal): G
     return { success: false };
   }
 
-  const start = result.points[0];
-  const end = result.points[result.points.length - 1];
-  const closed = Math.hypot(end.x - start.x, end.y - start.y) <= CLOSE_TOLERANCE_PX;
-  const headingClosed = result.finalHeadingDeg % 360 === 0;
+  return { success: isPathClosed(result) };
+}
 
-  return { success: closed && headingClosed };
+// Fase Modify (3.4): não há meta fixa nem avaliação certo/errado — o aluno
+// está explorando o efeito de mudar TIMES/ANGLE. Isto só devolve quantos
+// lados o traçado fechou com (pra comparar com a previsão do aluno, motor
+// PRIMM "Predict" — ver ChallengePage.tsx), `null` quando não fechou (nunca
+// vira mensagem de erro na tela, só compõe o log RD-P). Um caminho sem
+// nenhum movimento "fecha" trivialmente (início == fim) mas não é um
+// polígono — por isso o mínimo de 3 lados.
+export function closedPolygonSides(result: TurtleRunResult): number | null {
+  const moveCount = result.points.length - 1;
+  if (moveCount < 3 || !isPathClosed(result)) {
+    return null;
+  }
+  return moveCount;
 }
 
 // Botão "Ajuda" (fase Create, 3.5): mostra a forma-alvo sendo traçada no

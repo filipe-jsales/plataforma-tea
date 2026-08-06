@@ -198,26 +198,32 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   daqui. Um bloco novo existe só cadastrando uma linha + o desafio que o usa,
   sem deploy de frontend.
 - **`Challenge.config`** (jsonb, tipado em `challenge-config.interface.ts`)
-  guarda `{ stage, allowedBlockTypes, goal, program?, investigationQuestion?
-  }`. `stage` é o estágio Use-Modify-Create do desafio (regra não-negociável
-  2/3, ver nota de pesquisa completa no próprio arquivo de tipos);
-  `allowedBlockTypes` é a lista de `blockType` permitidos, resolvida contra
-  o catálogo `blocks` e devolvida já agrupada por categoria (AC5 de 3.1 —
-  abas pequenas e nomeadas, nunca uma lista única).
+  guarda `{ stage, allowedBlockTypes, goal, program?, investigationQuestion?,
+  predictQuestion?, editableFields? }`. `stage` é o estágio Use-Modify-Create
+  do desafio (regra não-negociável 2/3, ver nota de pesquisa completa no
+  próprio arquivo de tipos); `allowedBlockTypes` é a lista de `blockType`
+  permitidos, resolvida contra o catálogo `blocks` e devolvida já agrupada
+  por categoria (AC5 de 3.1 — abas pequenas e nomeadas, nunca uma lista
+  única). `predictQuestion`/`editableFields` são o motor PRIMM "Predict"/
+  "Modify" — ver "Fase Modify" abaixo e a nota de pesquisa "motor PRIMM" em
+  `challenge-config.interface.ts`.
 - **`Challenge.position`** (int, nunca `createdAt`) é a ordem pedagógica do
   desafio dentro do tópico — `ChallengesService.findByTopicIdOrdered`
   ordena por ele. Existe especificamente pra permitir inserir uma etapa no
-  meio depois (ex.: o desafio `modify` que falta hoje, ver "Estado
-  intermediário" abaixo) sem precisar forjar timestamp.
-- **`program` + `investigationQuestion`** (3.3, fase `use`): quando
-  presentes, `locked: true` na resposta — o frontend renderiza o workspace
-  com `readOnly: true` e **sem toolbox**, pré-carregado com este programa
-  (`initialJson`). Único controle do aluno é Executar/Repetir execução; a
-  pergunta de investigação aparece depois da 1ª execução (motor PRIMM
-  "Investigate", ainda sem estrutura própria — ver "Próximos passos").
-  `program` usa o mesmo formato de `Blockly.serialization.blocks.save()`
-  (tipado em `SerializedBlockState`, espelhado no frontend em
-  `apps/web/src/lib/blockProgram.ts`).
+  meio depois sem precisar forjar timestamp — foi assim que o desafio
+  `modify` entrou entre os dois desafios seed originais (ver "Sequência
+  Use→Modify→Create" abaixo).
+- **`program`** (3.3 fase `use`, e 3.4 fase `modify`): quando presente, o
+  frontend pré-carrega o workspace com este programa (`initialJson`) — mesmo
+  formato de `Blockly.serialization.blocks.save()` (tipado em
+  `SerializedBlockState`, espelhado no frontend em
+  `apps/web/src/lib/blockProgram.ts`). `locked: true` na resposta (fase
+  `use`) trava o Blockly inteiro (`readOnly: true`, sem toolbox) — único
+  controle do aluno é Executar/Repetir execução, e a pergunta de
+  investigação (`investigationQuestion`, motor PRIMM "Investigate") aparece
+  depois da 1ª execução. **`locked` não é `Boolean(program)`** — é
+  `stage === 'use'` explicitamente, porque a fase `modify` também nasce com
+  `program`, mas com `locked: false` (campos editáveis, ver abaixo).
 - **`nextChallengeId`**: resolvido andando `findByTopicIdOrdered` a partir do
   desafio atual — é pra onde o botão "Avançar" (3.3 AC4) navega depois do
   aluno executar ao menos uma vez. `null` quando não há próximo desafio
@@ -237,28 +243,78 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   programa nada. Não existe hoje "professor escolhe entre desafios" — a
   sequência de um tópico é fixa (por `position`), a mesma pra todo aluno.
 
-### Estado intermediário: Use → Create, sem o `Modify` do meio
+### Sequência Use→Modify→Create completa (3.4)
 
-O seed atual (migrations `SeedSquareChallengeToolbox` +
-`SeedUseModifyCreateSequence`) tem 2 desafios no tópico `angulos_formas`:
+O seed do tópico `angulos_formas` (migrations `SeedSquareChallengeToolbox`,
+`SeedUseModifyCreateSequence`, `AddAngleFieldToTurnBlock`,
+`SeedModifyChallenge`) tem hoje os 3 desafios do ciclo completo:
 
 | position | title | stage | Comportamento |
 |---|---|---|---|
 | 1 | Monte o quadrado | `use` | 3.3 — programa pré-montado, travado, só Executar/Repetir + pergunta de investigação |
-| 2 | Monte o quadrado — sua vez! | `create` | editor livre (3.1), com botão de Ajuda mostrando a forma-alvo sem entregar os blocos |
+| 2 | Monte o quadrado — agora mude! | `modify` | 3.4 — mesmo programa, campos TIMES/ANGLE editáveis dentro de limites, previsão antes de cada execução |
+| 3 | Monte o quadrado — sua vez! | `create` | editor livre (3.1), com botão de Ajuda mostrando a forma-alvo sem entregar os blocos |
 
-**Isso é um estado intermediário, não a sequência desenhada.** RQ2 do
-mapeamento sistemático (21,74% dos estudos primários) dá respaldo empírico
-ao ciclo **completo** Use→Modify→Create, não a Use+Create pulando o meio —
-falta o desafio `modify` (o mesmo programa do Desafio 1, mas editável, ex.:
-mudar `TIMES`/`DIR` pra virar triângulo/pentágono) que conecta
-pedagogicamente "só observar" a "criar do zero". Ver a nota de pesquisa
-completa (e as regras de como inserir esse desafio no meio via `position`)
-em `challenge-config.interface.ts` e em "Modelagem de domínio (backend)" →
-"Desafio novo..." em `docs/ai/rules/coding-rule.md`. **Não tratar esta
-sequência de 2 desafios como validada/completa** para fins de pesquisa com
-usuários reais ou de qualquer alegação de aderência ao framework
-Use-Modify-Create até o `modify` existir.
+RQ2 do mapeamento sistemático (21,74% dos estudos primários) dá respaldo
+empírico ao ciclo **completo** de 3 etapas — este é o primeiro tópico com o
+trio inteiro, use-o como referência ao desenhar um tópico novo (ver "Desafio
+novo..." em `docs/ai/rules/coding-rule.md`).
+
+### Fase Modify (3.4)
+
+O desafio `modify` reaproveita o mecanismo de `program` pré-montado da fase
+`use` (mesma árvore serializada), mas com `locked: false` — o Blockly não
+fica `readOnly`, senão os campos não dariam pra editar. Dois campos novos em
+`Challenge.config` sustentam isso:
+
+- **`editableFields: EditableFieldConfig[]`** — `{ blockType, fieldName,
+  label, min, max }[]`, os campos do `program` que ficam destravados e os
+  limites "definidos pelo professor" pra este desafio (AC de 3.4: "não
+  deixar ângulo negativo ou maior que 360°" etc.). Curado via seed, mesma
+  decisão já tomada pra toolbox ("Sem autoria de toolbox pelo professor
+  nesta versão" acima) — o professor não escreve isso numa tela, mas o
+  valor é por-desafio, não fixo no bloco, então um `modify` futuro noutro
+  tópico pode usar limites diferentes sem tocar na definição do bloco.
+  O frontend aplica isso travando estrutura (bloco não-móvel/não-deletável)
+  e habilitando só os campos listados — ver `applyModifyFieldLocking` em
+  `ChallengePage.tsx`.
+- **`predictQuestion`** — motor PRIMM "Predict" (ver "Como desafios futuros
+  adotam PRIMM" abaixo).
+- **Campo `ANGLE` no bloco `turn`** (migration `AddAngleFieldToTurnBlock`):
+  o ângulo de giro era um valor fixo (90°) no executor, nunca um campo do
+  bloco — sem isso não dava pra "mudar o ângulo" (AC de 3.4). O limite
+  técnico do próprio bloco (1–359°) é o piso de segurança; o limite
+  específico deste desafio vem de `editableFields`, por cima. Efeito em
+  desafios existentes: o bloco `turn` passa a mostrar o valor do ângulo em
+  toda tela que o usa (fase `use` só exibe, travado; fase `create` passa a
+  exigir que o aluno defina o ângulo, antes implícito) — decisão aceita,
+  correta pro tópico geometria.
+- **Sem avaliação de sucesso/fracasso**, mesmo racional da fase `use`: o
+  objetivo é observar a transformação, não bater uma meta fixa. O `goal`
+  ainda vai no config (tipagem exige), mas o frontend não o usa pra
+  sucesso/fracasso nesta fase.
+
+### Como desafios futuros adotam PRIMM (3.6)
+
+PRIMM (Predict-Run-Investigate-Modify-Make) é modelado como **vocabulário de
+`Challenge.config`**, nunca como uma máquina de 5 estados hardcoded numa
+tela ou numa `Challenge`. Cada estágio "existe" só quando o campo
+correspondente está presente:
+
+| Estágio | Campo de config | Onde vive hoje |
+|---|---|---|
+| Predict | `predictQuestion` | desafio `modify` |
+| Run | (sempre — todo desafio tem Executar) | todos |
+| Investigate | `investigationQuestion` | desafio `use` |
+| Modify | `editableFields` | desafio `modify` |
+| Make | ausência de `program` | desafio `create` |
+
+Um tópico novo (de qualquer disciplina) adota PRIMM só preenchendo os campos
+relevantes em `Challenge.config` ao cadastrar cada desafio — nunca
+escrevendo lógica de tela nova nem expondo os rótulos técnicos ao aluno
+(regra não-negociável 3). Ver a nota de pesquisa "motor PRIMM" completa em
+`challenge-config.interface.ts` e a implementação do lado do frontend em
+`docs/ai/modules/frontend.md`.
 
 ### Eventos desta feature
 
@@ -268,6 +324,16 @@ de `program`) e `challenge_use_completed` (3.3 — logado duas vezes, uma
 `RD-P` e uma `RD-C`, seguindo literalmente a notação "RD-P + RD-C" do
 backlog da feature, já que uma linha de `interaction_events` só tem uma
 `category`).
+
+`challenge_modify_attempt` (3.4, RD-P) — logado a cada Executar dentro do
+desafio `modify` (além do `program_executed` genérico, que continua saindo
+igual): `{ challenge_id, changed_values, prediction_given,
+result_matched_prediction, timestamp }`. `changed_values` só lista os campos
+de `editableFields` cujo valor diverge do `program` original (calculado no
+frontend via `lib/editableFields.ts`); `result_matched_prediction` compara a
+previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
+realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
+traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -341,19 +407,13 @@ novos.
 - `POST /auth/register` — hoje só existe seed via migration; não há como
   criar aluno/professor/admin em runtime ainda.
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
-- **Desafio 3 (fase `modify`) entre os 2 desafios seed atuais** — a peça que
-  falta pra fechar o ciclo Use→Modify→Create com respaldo empírico completo
-  (RQ2), ver "Estado intermediário" em "Blocos por desafio" acima. Cadastrar
-  com `position: 2` (empurrando o atual "Desafio 2" pra `position: 3`) — o
-  workspace nasceria com o mesmo `program` do Desafio 1, mas **editável**
-  (`readOnly: false`, sem toolbox de blocos novos — só os campos dos blocos
-  já existentes, ex.: `TIMES`/`DIR`), pra virar triângulo/pentágono.
-- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
-  estado do desafio) — a paleta de blocos por estágio Use-Modify-Create já
-  existe (ver "Blocos por desafio"), e a pergunta de investigação do Desafio
-  1 é um placeholder mínimo do estágio "Investigate" (resposta livre, só
-  logada, nunca corrigida) — o motor PRIMM completo (Predict/Run como
-  estágios próprios de tela) ainda não existe.
+- Motor PRIMM ainda não cobre um ciclo Predict→Run→Investigate→Modify→Make
+  **dentro de um único desafio** — hoje ele se distribui pela sequência de 3
+  desafios do tópico (ver "Como desafios futuros adotam PRIMM" acima). Isso
+  é suficiente pro MVP e pro que 3.6 pede, mas um desafio futuro que precise
+  de Investigate *depois* de Modify (não só depois de Use) exigiria estender
+  `Challenge.config` com uma segunda pergunta de investigação — não
+  implementado, sem caso de uso concreto ainda.
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

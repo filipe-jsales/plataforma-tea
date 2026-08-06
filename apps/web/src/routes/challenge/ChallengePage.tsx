@@ -11,8 +11,14 @@ import {
 } from '../../lib/blocklyToolbox';
 import { interpretProgram, type SerializedBlock } from '../../lib/blockProgram';
 import { apiClient } from '../../lib/apiClient';
+import { diffChangedValues, extractEditableFieldValues } from '../../lib/editableFields';
 import { logEvent } from '../../lib/logEvent';
-import { buildGoalPreviewPath, evaluateSquareGoal, runTurtleProgram } from '../../lib/turtleWorld';
+import {
+  buildGoalPreviewPath,
+  closedPolygonSides,
+  evaluateSquareGoal,
+  runTurtleProgram,
+} from '../../lib/turtleWorld';
 import { createTurtleExecutionStore } from '../../stores/turtleExecutionStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
@@ -37,6 +43,17 @@ interface ChallengeGoal {
   turnAngleDeg: number;
 }
 
+// Motor PRIMM "Modify" (3.4/3.6) — um campo do `program` que o aluno pode
+// editar, com os limites curados pra este desafio (ver EditableFieldConfig
+// em apps/api/src/challenges/challenge-config.interface.ts, mesma forma).
+interface EditableField {
+  blockType: string;
+  fieldName: string;
+  label: string;
+  min: number;
+  max: number;
+}
+
 interface ChallengeDetail {
   id: string;
   title: string;
@@ -46,22 +63,71 @@ interface ChallengeDetail {
   goal: ChallengeGoal;
   program: SerializedBlock | null;
   investigationQuestion: string | null;
+  predictQuestion: string | null;
+  editableFields: EditableField[];
   nextChallengeId: string | null;
 }
 
 type Feedback = { kind: 'success' | 'retry'; message: string } | null;
 
+// Motor PRIMM "Predict" (3.6): só 2 estágios são alcançáveis dentro desta
+// tela (ver a nota de pesquisa "motor PRIMM" em challenge-config.interface.ts
+// pra onde os outros 3 — Run/Investigate/Make — vivem na sequência) —
+// 'predict' trava o botão Executar até o aluno responder a
+// `challenge.predictQuestion`; volta pra 'predict' depois de cada execução,
+// porque os valores editáveis podem ter mudado desde a última previsão.
+type PrimmStage = 'predict' | 'run';
+
+interface ModifyResult {
+  predictedSides: number | null;
+  actualSides: number | null;
+  matched: boolean;
+}
+
 function toInitialWorkspaceJson(program: SerializedBlock): object {
   return { blocks: { languageVersion: 0, blocks: [program] } };
 }
 
-// 3.1/3.2/3.3 — editor de blocos com paleta restrita (RQ4), mundo de
-// execução 2D desacoplado via store (RQ1), e a fase "Use" do Desafio 1
-// (observar um programa pré-montado antes de montar algo, RQ2). Duas
-// entradas de rota: `/subjects/:topicId` (2.3 → aqui, sempre o Desafio 1 da
+// Motor PRIMM "Modify": trava a estrutura do programa (bloco não pode ser
+// movido/apagado) e o valor de todo campo que não está em `editableFields` —
+// só os campos configurados pro desafio aceitam edição, e com o min/max
+// definidos ali (não o min/max técnico do bloco em si, ver migration
+// AddAngleFieldToTurnBlock). Chamado uma vez no `onInject` do workspace.
+function applyModifyFieldLocking(workspace: WorkspaceSvg, editableFields: EditableField[]): void {
+  for (const block of workspace.getAllBlocks(false)) {
+    block.setMovable(false);
+    block.setDeletable(false);
+
+    const editableForBlock = editableFields.filter((field) => field.blockType === block.type);
+    for (const input of block.inputList) {
+      for (const field of input.fieldRow) {
+        if (!field.name) continue;
+        const spec = editableForBlock.find((candidate) => candidate.fieldName === field.name);
+        if (!spec) {
+          field.setEnabled(false);
+          continue;
+        }
+        field.setEnabled(true);
+        if (field instanceof Blockly.FieldNumber) {
+          field.setConstraints(spec.min, spec.max, undefined);
+        }
+      }
+    }
+  }
+}
+
+// 3.1/3.2/3.3/3.4 — editor de blocos com paleta restrita (RQ4), mundo de
+// execução 2D desacoplado via store (RQ1), e as 3 fases Use-Modify-Create
+// (RQ2) de um tópico, cada uma com seu próprio subconjunto do motor PRIMM
+// (ver a nota de pesquisa "motor PRIMM" em
+// apps/api/src/challenges/challenge-config.interface.ts): `use` é
+// Predict-ausente/Run/Investigate (travado), `modify` é Predict/Run em loop
+// sobre campos editáveis, `create` é só Make (editor livre). Duas entradas
+// de rota: `/subjects/:topicId` (2.3 → aqui, sempre o Desafio 1 da
 // sequência) e `/challenge/:challengeId` (acesso direto, usado pelo
-// "Avançar" saindo de um desafio anterior). `challenge.locked` decide entre
-// os dois modos de tela — nunca uma prop/estado inventado no frontend.
+// "Avançar" saindo de um desafio anterior). `challenge.toolbox.stage` (não
+// `locked` — esse só descreve o Blockly `readOnly`) decide entre os 3 modos
+// de tela — nunca uma prop/estado inventado no frontend.
 export function ChallengePage() {
   const { topicId, challengeId } = useParams<{ topicId?: string; challengeId?: string }>();
   const navigate = useNavigate();
@@ -75,6 +141,9 @@ export function ChallengePage() {
   const [investigationAnswer, setInvestigationAnswer] = useState('');
   const [proceeded, setProceeded] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [primmStage, setPrimmStage] = useState<PrimmStage>('predict');
+  const [predictAnswer, setPredictAnswer] = useState<number | null>(null);
+  const [modifyResult, setModifyResult] = useState<ModifyResult | null>(null);
 
   const workspaceRef = useRef<WorkspaceSvg | null>(null);
   const toolboxRenderedRef = useRef(false);
@@ -90,6 +159,9 @@ export function ChallengePage() {
     setInvestigationAnswer('');
     setProceeded(false);
     setHelpOpen(false);
+    setPrimmStage('predict');
+    setPredictAnswer(null);
+    setModifyResult(null);
     toolboxRenderedRef.current = false;
     executionStore.getState().reset();
     helpStore.getState().reset();
@@ -124,14 +196,41 @@ export function ChallengePage() {
     });
   }, [challenge, user]);
 
+  // Só a fase `create` (Make) oferece paleta de blocos nova pra arrastar —
+  // `use` é travado, `modify` edita campos de um programa fixo, nenhuma das
+  // duas mostra toolbox (nunca inferido de `locked`, que hoje só descreve o
+  // Blockly `readOnly`).
+  const isModify = challenge?.toolbox.stage === 'modify';
+  const isCreate = challenge?.toolbox.stage === 'create';
+
   const toolboxConfiguration = useMemo(
-    () => (challenge && !challenge.locked ? buildToolboxConfiguration(challenge.toolbox.categories) : undefined),
-    [challenge],
+    () => (challenge && isCreate ? buildToolboxConfiguration(challenge.toolbox.categories) : undefined),
+    [challenge, isCreate],
   );
+  // `program` só existe em `use`/`modify` — não depende de `locked`.
   const initialJson = useMemo(
-    () => (challenge?.locked && challenge.program ? toInitialWorkspaceJson(challenge.program) : undefined),
+    () => (challenge?.program ? toInitialWorkspaceJson(challenge.program) : undefined),
     [challenge],
   );
+  // Snapshot dos valores originais dos campos editáveis (fase `modify`),
+  // calculado uma vez a partir do `program` pré-montado — comparado contra o
+  // valor atual a cada Executar pra montar `changed_values` do evento
+  // challenge_modify_attempt (ver lib/editableFields.ts).
+  const editableInitialValues = useMemo(
+    () => (challenge ? extractEditableFieldValues(challenge.program, challenge.editableFields) : {}),
+    [challenge],
+  );
+  // Opções de previsão (motor PRIMM "Predict"): quantos lados a figura vai
+  // ter. Os limites vêm do campo editável TIMES (é ele que decide o número
+  // de lados neste desafio) — nunca hardcoded, mas acoplado de propósito ao
+  // domínio deste desafio específico (repetir+girar desenha um polígono
+  // regular). Cai em 3–8 se o desafio não declarar TIMES como editável.
+  const predictOptions = useMemo(() => {
+    const timesField = challenge?.editableFields.find((field) => field.fieldName === 'TIMES');
+    const min = timesField?.min ?? 3;
+    const max = timesField?.max ?? 8;
+    return Array.from({ length: Math.max(max - min + 1, 0) }, (_, index) => min + index);
+  }, [challenge]);
 
   function handleWorkspaceEvent(event: Blockly.Events.Abstract) {
     if (!(event instanceof Blockly.Events.BlockDrag) || event.isStart || !event.blockId) {
@@ -156,9 +255,24 @@ export function ChallengePage() {
     });
   }
 
+  // Motor PRIMM "Predict" (3.6): resposta é uma ação explícita do aluno
+  // (clique num botão de opção), nunca avança sozinha — libera o Executar
+  // pra esta rodada. Não loga por si só: a previsão entra no mesmo evento
+  // `challenge_modify_attempt` que o resultado da execução, pra manter as
+  // duas coisas juntas numa única unidade logável (ver handleRun).
+  function handlePredict(sides: number) {
+    setPredictAnswer(sides);
+    setPrimmStage('run');
+  }
+
   function handleRun() {
     const workspace = workspaceRef.current;
     if (!workspace || !challenge || !user) return;
+    // AC de 3.4: a pergunta de predição aparece antes de CADA execução — se
+    // o desafio declara `predictQuestion` e o aluno ainda não respondeu
+    // pra esta rodada, Executar não faz nada (o botão nem aparece nesse
+    // estado, ver JSX — isto é defesa em profundidade).
+    if (challenge.predictQuestion && predictAnswer === null) return;
 
     const topBlock = workspace.getTopBlocks(true)[0] ?? null;
     const serialized = topBlock
@@ -195,9 +309,45 @@ export function ChallengePage() {
       },
     });
 
+    // Motor PRIMM "Modify" (3.4): sem avaliação de sucesso/fracasso, mesmo
+    // racional da fase "use" logo abaixo — o objetivo é explorar o efeito
+    // de mudar TIMES/ANGLE, não bater uma meta fixa. `challenge_modify_
+    // attempt` é o log estruturado (RD-P) da rodada: quais valores mudaram
+    // desde o início, o que o aluno previu, e se bateu com o resultado real
+    // — a reflexão que aparece na tela é só descritiva, nunca "certo/errado".
+    if (isModify) {
+      const currentValues = extractEditableFieldValues(serialized, challenge.editableFields);
+      const changedValues = diffChangedValues(editableInitialValues, currentValues);
+      const actualSides = closedPolygonSides(result);
+      const matched = actualSides !== null && actualSides === predictAnswer;
+
+      logEvent({
+        studentPseudoId: user.pseudonymId,
+        category: 'RD-P',
+        type: 'challenge_modify_attempt',
+        challengeId: challenge.id,
+        payload: {
+          challenge_id: challenge.id,
+          changed_values: changedValues,
+          prediction_given: predictAnswer,
+          result_matched_prediction: matched,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      setModifyResult({ predictedSides: predictAnswer, actualSides, matched });
+      setPredictAnswer(null);
+      // Volta pra "predict" só se o desafio de fato usa essa pergunta —
+      // nunca hardcoded a `isModify`, sempre a partir da config (AC4 3.6).
+      if (challenge.predictQuestion) {
+        setPrimmStage('predict');
+      }
+      return;
+    }
+
     // Fase "use" (Desafio 1) é só observação — o programa vem pronto e
     // sempre "funciona" por construção, não faz sentido avaliar sucesso.
-    // Fase "create" (Desafio 2) é onde o feedback reversível importa de
+    // Fase "create" (Desafio 2/4) é onde o feedback reversível importa de
     // verdade (regra não-negociável 4).
     if (challenge.locked) return;
 
@@ -218,29 +368,35 @@ export function ChallengePage() {
     if (!challenge || !user || attempts < 1) return;
     setProceeded(true);
 
-    logEvent({
-      studentPseudoId: user.pseudonymId,
-      category: 'RD-P',
-      type: 'challenge_use_completed',
-      challengeId: challenge.id,
-      payload: {
-        challenge_id: challenge.id,
-        attempts_before_proceed: attempts,
-        investigation_answer: investigationAnswer || null,
-        timestamp: new Date().toISOString(),
-      },
-    });
-    logEvent({
-      studentPseudoId: user.pseudonymId,
-      category: 'RD-C',
-      type: 'challenge_use_completed',
-      challengeId: challenge.id,
-      payload: {
-        challenge_id: challenge.id,
-        attempts_before_proceed: attempts,
-        timestamp: new Date().toISOString(),
-      },
-    });
+    // `challenge_use_completed` é específico da fase "use" (3.3) — a fase
+    // "modify" já loga cada rodada via `challenge_modify_attempt` em
+    // handleRun, não precisa de um evento de conclusão próprio (nada no
+    // backlog de 3.4 pede isso; não inventar um).
+    if (challenge.locked) {
+      logEvent({
+        studentPseudoId: user.pseudonymId,
+        category: 'RD-P',
+        type: 'challenge_use_completed',
+        challengeId: challenge.id,
+        payload: {
+          challenge_id: challenge.id,
+          attempts_before_proceed: attempts,
+          investigation_answer: investigationAnswer || null,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      logEvent({
+        studentPseudoId: user.pseudonymId,
+        category: 'RD-C',
+        type: 'challenge_use_completed',
+        challengeId: challenge.id,
+        payload: {
+          challenge_id: challenge.id,
+          attempts_before_proceed: attempts,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
 
     if (challenge.nextChallengeId) {
       navigate(`/challenge/${challenge.nextChallengeId}`);
@@ -291,7 +447,10 @@ export function ChallengePage() {
           initialJson={initialJson}
           workspaceConfiguration={{
             readOnly: challenge.locked,
-            trashcan: !challenge.locked,
+            // Trashcan/paleta só fazem sentido quando dá pra apagar/adicionar
+            // bloco de verdade — fase "modify" trava a estrutura (ver
+            // applyModifyFieldLocking), então nenhuma das duas aparece lá.
+            trashcan: isCreate,
             grid: { spacing: 24, length: 3, colour: '#d7dbe0', snap: false },
             zoom: { controls: !challenge.locked, wheel: false, startScale: 1 },
             move: { scrollbars: true, drag: !challenge.locked, wheel: false },
@@ -299,6 +458,9 @@ export function ChallengePage() {
           onInject={(workspace) => {
             workspaceRef.current = workspace;
             workspace.addChangeListener(handleWorkspaceEvent);
+            if (isModify) {
+              applyModifyFieldLocking(workspace, challenge.editableFields);
+            }
           }}
           onDispose={(workspace) => {
             workspace.removeChangeListener(handleWorkspaceEvent);
@@ -307,9 +469,33 @@ export function ChallengePage() {
 
         <aside className="challenge-page__sidebar">
           <PixiTurtleWorld store={executionStore} />
-          <button type="button" className="challenge-page__run-button" onClick={handleRun}>
-            {attempts > 0 ? '🔁 Repetir execução' : '▶️ Executar'}
-          </button>
+
+          {/* Motor PRIMM "Predict" (3.6): quando o desafio declara
+              predictQuestion (hoje só "modify") e o aluno ainda não
+              respondeu pra esta rodada, o botão Executar nem aparece —
+              a previsão é sempre a primeira ação disponível, nunca uma
+              etapa que dá pra pular. */}
+          {challenge.predictQuestion && primmStage === 'predict' ? (
+            <div className="challenge-page__predict">
+              <p>{challenge.predictQuestion}</p>
+              <div className="challenge-page__predict-options">
+                {predictOptions.map((sides) => (
+                  <button
+                    key={sides}
+                    type="button"
+                    className="challenge-page__predict-option"
+                    onClick={() => handlePredict(sides)}
+                  >
+                    {sides}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="challenge-page__run-button" onClick={handleRun}>
+              {attempts > 0 ? '🔁 Repetir execução' : '▶️ Executar'}
+            </button>
+          )}
 
           {/* 3.2 AC2 — padrão sensorial sem animação: o aluno controla o
               ritmo passo a passo, nunca um avanço automático. Só aparece
@@ -325,7 +511,11 @@ export function ChallengePage() {
             </button>
           )}
 
-          {!challenge.locked && (
+          {/* Botão de Ajuda mostra a forma-ALVO escondida — só faz sentido na
+              fase "create" (Desafio 2/4); na fase "modify" o aluno já vê e
+              controla a forma diretamente, não há alvo escondido pra
+              revelar. */}
+          {isCreate && (
             <>
               <button type="button" className="challenge-page__help-button" onClick={handleHelp}>
                 🔎 Ajuda: ver a forma
@@ -348,7 +538,20 @@ export function ChallengePage() {
             </p>
           )}
 
-          {challenge.locked && attempts > 0 && (
+          {/* Reflexão da fase "modify": só descreve o que aconteceu (o que o
+              aluno previu vs. o que a figura fez), nunca "certo/errado" —
+              regra não-negociável 4. O log de verdade (challenge_modify_
+              attempt) já saiu em handleRun; isto é só o que aparece na tela. */}
+          {isModify && modifyResult && (
+            <p className="challenge-page__modify-reflection">
+              Você imaginou {modifyResult.predictedSides} lados.{' '}
+              {modifyResult.actualSides
+                ? `A figura fechou com ${modifyResult.actualSides} lados.`
+                : 'Essa figura não fechou — quer tentar outros valores?'}
+            </p>
+          )}
+
+          {(challenge.locked || isModify) && attempts > 0 && (
             <div className="challenge-page__investigation">
               {challenge.investigationQuestion && (
                 <>

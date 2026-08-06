@@ -95,6 +95,39 @@
   background: var(--color-surface);
 }
 
+.challenge-page__predict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.challenge-page__predict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* AC de coordenação motora fina (RQ4, regra 4) — alvo de toque grande em
+   vez de um campo numérico pequeno, mesmo racional do login por imagem. */
+.challenge-page__predict-option {
+  min-width: 56px;
+  min-height: 56px;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+}
+
+.challenge-page__modify-reflection {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
 .challenge-page__investigation {
   display: flex;
   flex-direction: column;

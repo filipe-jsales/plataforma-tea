@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TurtleAction } from './blockProgram';
-import { buildGoalPreviewPath, evaluateSquareGoal, runTurtleProgram } from './turtleWorld';
+import { buildGoalPreviewPath, closedPolygonSides, evaluateSquareGoal, runTurtleProgram } from './turtleWorld';
 
 const squareProgram: TurtleAction[] = [
   { kind: 'move' },
@@ -54,6 +54,82 @@ describe('runTurtleProgram', () => {
     expect(last.x).toBeCloseTo(0);
     expect(last.y).toBeCloseTo(0);
     expect(result.finalHeadingDeg).toBe(0);
+  });
+
+  it('uses the per-action angle (fase Modify, 3.4) instead of the global turnDeg option when present', () => {
+    // Triângulo: 3 lados, giro de 120° por vez — vem do campo ANGLE do
+    // bloco, não da opção global (que aqui nem é passada).
+    const triangleProgram: TurtleAction[] = [
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+    ];
+
+    const result = runTurtleProgram(triangleProgram, { stepLength: 60 });
+
+    const last = result.points[result.points.length - 1];
+    expect(last.x).toBeCloseTo(0);
+    expect(last.y).toBeCloseTo(0);
+    expect(result.finalHeadingDeg).toBe(0);
+  });
+
+  it('falls back to the turnDeg option for a turn action with no angle field', () => {
+    const result = runTurtleProgram(
+      [{ kind: 'turn', direction: 'RIGHT' }, { kind: 'move' }],
+      { stepLength: 60, turnDeg: 45 },
+    );
+
+    expect(result.points[1].x).toBeCloseTo(Math.sin((45 * Math.PI) / 180) * 60);
+  });
+});
+
+describe('closedPolygonSides', () => {
+  it('returns the side count for a closed square path', () => {
+    const result = runTurtleProgram(squareProgram, { stepLength: 60, turnDeg: 90 });
+
+    expect(closedPolygonSides(result)).toBe(4);
+  });
+
+  it('returns the side count for a closed triangle (angle carried per turn action)', () => {
+    const triangleProgram: TurtleAction[] = [
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+      { kind: 'move' },
+      { kind: 'turn', direction: 'RIGHT', angle: 120 },
+    ];
+
+    const result = runTurtleProgram(triangleProgram, { stepLength: 60 });
+
+    expect(closedPolygonSides(result)).toBe(3);
+  });
+
+  it('returns the side count for a closed pentagon', () => {
+    const pentagonProgram: TurtleAction[] = Array.from({ length: 5 }, () => [
+      { kind: 'move' as const },
+      { kind: 'turn' as const, direction: 'RIGHT' as const, angle: 72 },
+    ]).flat();
+
+    const result = runTurtleProgram(pentagonProgram, { stepLength: 60 });
+
+    expect(closedPolygonSides(result)).toBe(5);
+  });
+
+  it('returns null for a path that never closes', () => {
+    const result = runTurtleProgram(
+      [{ kind: 'move' }, { kind: 'turn', direction: 'RIGHT', angle: 90 }, { kind: 'move' }],
+      { stepLength: 60 },
+    );
+
+    expect(closedPolygonSides(result)).toBeNull();
+  });
+
+  it('returns null for a no-op program instead of treating the trivial start==end as a closed shape', () => {
+    expect(closedPolygonSides(runTurtleProgram([]))).toBeNull();
   });
 });
 

@@ -5,7 +5,11 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { BlockDefinition } from '../blocks/entities/block-definition.entity';
 import { BlocksService } from '../blocks/blocks.service';
 import { Role } from '../common/enums/role.enum';
-import { isChallengeConfig, type SerializedBlockState } from './challenge-config.interface';
+import {
+  isChallengeConfig,
+  type EditableFieldConfig,
+  type SerializedBlockState,
+} from './challenge-config.interface';
 import { ChallengesService } from './challenges.service';
 import { Challenge } from './entities/challenge.entity';
 
@@ -20,13 +24,23 @@ interface ChallengeDetail {
   id: string;
   title: string;
   prompt: string;
-  // true = fase "use" (3.3): workspace pré-montado, travado, sem toolbox —
-  // frontend nunca decide isso sozinho, só lê esta flag.
+  // true só na fase "use" (3.3): workspace pré-montado, travado (Blockly
+  // readOnly), sem toolbox — frontend nunca decide isso sozinho, só lê esta
+  // flag. Não confundir com "tem programa pré-montado": a fase "modify"
+  // também nasce com `program`, mas `locked: false` (campos editáveis) — ver
+  // `stage` no toolbox pra frontend decidir toolbox/Ajuda/avaliação.
   locked: boolean;
   toolbox: { stage: string; categories: ToolboxCategory[] };
   goal: unknown;
   program: SerializedBlockState | null;
   investigationQuestion: string | null;
+  // Motor PRIMM "Predict" (3.6) — pergunta exibida antes de cada execução.
+  // Presente hoje só no desafio `modify`, mas resolvido genericamente a
+  // partir de `config.predictQuestion` (nunca hardcoded por stage).
+  predictQuestion: string | null;
+  // Motor PRIMM "Modify" (3.4/3.6) — campos do `program` que o aluno pode
+  // editar, com os limites min/max curados pra este desafio.
+  editableFields: EditableFieldConfig[];
   // Próximo desafio da sequência Use-Modify-Create deste tópico (por
   // `position`), null se este for o último cadastrado até agora.
   nextChallengeId: string | null;
@@ -88,7 +102,10 @@ export class ChallengesController {
       id: challenge.id,
       title: challenge.title,
       prompt: challenge.prompt,
-      locked: Boolean(challenge.config.program),
+      // Explícito por `stage`, não por "tem programa" — a fase `modify`
+      // também nasce com `program`, mas precisa do workspace editável (ver
+      // comentário em ChallengeDetail acima).
+      locked: challenge.config.stage === 'use',
       toolbox: {
         stage: challenge.config.stage,
         categories: this.groupByCategory(blocks),
@@ -96,6 +113,8 @@ export class ChallengesController {
       goal: challenge.config.goal,
       program: challenge.config.program ?? null,
       investigationQuestion: challenge.config.investigationQuestion ?? null,
+      predictQuestion: challenge.config.predictQuestion ?? null,
+      editableFields: challenge.config.editableFields ?? [],
       nextChallengeId: next?.id ?? null,
     };
   }
