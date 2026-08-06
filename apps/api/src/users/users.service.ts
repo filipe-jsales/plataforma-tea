@@ -28,4 +28,27 @@ export class UsersService {
   findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id }, relations: { avatar: true } });
   }
+
+  countAll(): Promise<number> {
+    return this.usersRepository.count();
+  }
+
+  async updateSensoryProfile(
+    id: string,
+    prefs: { soundEnabled: boolean; animationEnabled: boolean },
+  ): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { id }, relations: { avatar: true } });
+    if (!user) {
+      return null;
+    }
+    user.soundEnabled = prefs.soundEnabled;
+    user.animationEnabled = prefs.animationEnabled;
+    // Só marca a conclusão do onboarding na primeira vez — trocas
+    // posteriores (ex.: professor ajustando depois) não devem "reabrir"
+    // o onboarding nem mexer nesse timestamp.
+    if (!user.sensoryOnboardingCompletedAt) {
+      user.sensoryOnboardingCompletedAt = new Date();
+    }
+    return this.usersRepository.save(user);
+  }
 }

@@ -1,0 +1,31 @@
+.role-select {
+  max-width: 480px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.role-select__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.role-select__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: 64px;
+  font-size: 1.2rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.role-select__icon {
+  font-size: 1.8rem;
+}

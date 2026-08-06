@@ -63,6 +63,20 @@ export class User {
   @Column({ type: 'varchar', length: 120 })
   displayName: string;
 
+  // Perfil sensorial persistente (regra não-negociável 1): desligado por
+  // padrão, definido no onboarding do aluno (2.2) ou pelo professor no
+  // painel de turma/aluno — nunca precisa ser refeito a cada sessão/device.
+  @Column({ type: 'boolean', default: false })
+  soundEnabled: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  animationEnabled: boolean;
+
+  // Null até o aluno concluir o onboarding sensorial pela primeira vez —
+  // é o sinalizador que decide se a tela de onboarding aparece.
+  @Column({ type: 'timestamp', nullable: true })
+  sensoryOnboardingCompletedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

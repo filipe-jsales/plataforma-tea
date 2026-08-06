@@ -66,6 +66,11 @@ turma + avatar + sequência de imagens (`avatarId`, `loginImageSequence`).
 validado por `role` no banco — é invariante de aplicação (ver
 `AuthService`).
 
+`soundEnabled`/`animationEnabled` (default `false`) e
+`sensoryOnboardingCompletedAt` (nullable) são o perfil sensorial
+persistente — setados pelo onboarding (2.2) via `PATCH
+/users/:id/sensory-profile`, nunca por `synchronize`/UI direta no banco.
+
 ### `student_identity_reversals`
 
 Ver `apps/api/src/identity/entities/student-identity-reversal.entity.ts`.
@@ -176,8 +181,13 @@ escopado a um desafio) e **é FK real** para `challenges.id`
    direto não passa pelos `@BeforeInsert` das entidades, então `pseudonymId`
    e `joinCode` precisam ser gerados explicitamente na própria query, ver o
    arquivo da migration).
+8. `1786019220885-AddSensoryProfileToUsers.ts` — adiciona `soundEnabled`
+   (default `false`), `animationEnabled` (default `false`) e
+   `sensoryOnboardingCompletedAt` (nullable) em `users`. Gerada com
+   `migration:generate`, sem seed (as 3 contas demo já existentes ficam com
+   os defaults).
 
-Todas as 7 já foram validadas com `npm run migration:run` contra um Postgres
+Todas as 8 já foram validadas com `npm run migration:run` contra um Postgres
 real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
 `migration:generate` extra confirmou "No changes in database schema were
 found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login

@@ -1,0 +1,7 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pássaro">
+  <circle cx="32" cy="32" r="32" fill="#3FA9F5"/>
+  <ellipse cx="30" cy="34" rx="15" ry="13" fill="#fff"/>
+  <path d="M42 30 C48 28 50 32 44 35 Z" fill="#fff"/>
+  <path d="M43 33 L52 34 L43 37 Z" fill="#F2A93B"/>
+  <circle cx="36" cy="29" r="2.2" fill="#3FA9F5"/>
+</svg>

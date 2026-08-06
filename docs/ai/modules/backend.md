@@ -12,7 +12,9 @@ apps/api/src/
 │   ├── role.enum.ts             # student | teacher | admin
 │   └── event-category.enum.ts   # RD-I | RD-P | RD-C | RD-E | RD-L
 ├── users/
-│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado no @BeforeInsert), role...
+│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado), role, perfil sensorial...
+│   ├── dto/update-sensory-profile.dto.ts
+│   ├── users.controller.ts      # GET /users/me, PATCH /users/:id/sensory-profile
 │   ├── users.service.ts
 │   └── users.module.ts
 ├── identity/
@@ -30,11 +32,14 @@ apps/api/src/
 │   └── auth.module.ts
 ├── illustrations/
 │   ├── entities/illustration.entity.ts  # catálogo avatar | login_image, position fixa
+│   ├── dto/list-illustrations.dto.ts
+│   ├── illustrations.controller.ts  # GET /illustrations?kind= — SEM guard (pré-login)
 │   ├── illustrations.service.ts
 │   └── illustrations.module.ts
 ├── subjects/
 │   ├── entities/subject.entity.ts   # disciplina (tabela, não enum) — ex.: "geometria"
 │   ├── entities/topic.entity.ts     # assunto dentro da disciplina — ex.: "angulos_formas"
+│   ├── subjects.controller.ts       # GET /subjects/topics — alimenta o seletor 2.3
 │   ├── subjects.service.ts
 │   └── subjects.module.ts
 ├── schools/
@@ -53,6 +58,10 @@ apps/api/src/
 │   ├── events.service.ts
 │   ├── events.controller.ts     # POST /events (protegido por JwtAuthGuard)
 │   └── events.module.ts
+├── home/
+│   ├── home.service.ts          # agregações por papel — nunca dado individual pro admin
+│   ├── home.controller.ts       # GET /home/{student,teacher,admin}
+│   └── home.module.ts
 ├── database/
 │   ├── data-source.ts           # DataSource p/ CLI de migrations (fora do Nest DI)
 │   └── migrations/              # uma migration por mudança de schema
@@ -71,7 +80,9 @@ implementação).
 (código de turma → lista de avatares dos alunos ativos da turma, pra
 reconhecimento visual). **Sem guard** de propósito: acontece antes de
 qualquer autenticação — só devolve `userId` + `displayName` + avatar, nunca
-e-mail/pseudônimo/dado reversível.
+e-mail/pseudônimo/dado reversível. `GET /illustrations?kind=avatar|login_image`
+segue o mesmo raciocínio — o passo 3 (grade de imagens) também acontece
+pré-login, e só devolve `label`/`assetRef`/`position`.
 
 `POST /auth/student/login` — `{ userId, imageSequence: [id,id,id] }`,
 compara a sequência exatamente (ordem importa) contra
@@ -118,6 +129,49 @@ precisar disso.
 Ver `docs/ai/modules/database.md` — a migration `AddLoginMechanisms` semeia
 1 turma (`AZUL-1`) com 1 professor, 1 admin e 1 aluno de teste. **Nunca usar
 essas credenciais fora de ambiente local.**
+
+## Perfil sensorial persistente e Home por papel (2.1/2.2)
+
+`User.soundEnabled` / `animationEnabled` / `sensoryOnboardingCompletedAt`
+persistem a escolha do onboarding sensorial — não é um estado só de
+cliente, porque o aluno pode logar em outro computador da sala e o
+professor pode ajustar pelo painel dele. `GET /users/me` devolve o perfil
+completo (nunca `passwordHash`/`totpSecret`/`loginImageSequence` — ver
+`toPublicProfile()`); `PATCH /users/:id/sensory-profile` aceita o próprio
+usuário (`sub === id`) ou `teacher`/`admin` alterando o de qualquer aluno —
+autorização mais fina (só o professor *daquela* turma) fica para quando o
+painel de turma existir de verdade.
+
+`GET /home/{student,teacher,admin}` (`HomeModule`) — uma rota por papel,
+cada uma com sua própria regra de "o que pode aparecer":
+
+- **student**: `continueChallenge` (o único desafio do MVP) + `progress`
+  (contagem de desafios concluídos do próprio aluno). Nunca número
+  comparativo a outro aluno.
+- **teacher**: turmas do professor com `activeStudentsToday` (contagem de
+  alunos distintos com algum evento hoje) — nunca lista de quais alunos, e
+  nunca ranking.
+- **admin**: só `schoolsCount`/`classroomsCount`/`usersCount`. Nenhum dado
+  no nível de aluno individual nesta tela, mesmo que o admin tenha acesso
+  técnico a isso em outro lugar.
+
+### Padrão: eventos RD-* são escopados ao aluno
+
+`interaction_events.studentPseudoId` é `NOT NULL` e nomeado para aluno de
+propósito — o schema RD-I/RD-P/RD-C/RD-E/RD-L existe para avaliar Pensamento
+Computacional do estudante (RQ5), não para telemetria operacional de
+professor/admin. Por isso:
+
+- `login_attempt`/`login_success` só são emitidos no fluxo **aluno**
+  (`AuthService.loginStudent`) — login de professor/admin não gera evento
+  nessa tabela.
+- `home_viewed` só é emitido por `StudentHome` no frontend —
+  `TeacherHome`/`AdminHome` não chamam `POST /events`.
+
+Se um caso de uso futuro precisar de telemetria operacional real de
+professor/admin, isso é uma tabela nova (ou um `type`/schema explicitamente
+pensado pra isso), não um forçar de pseudônimo de staff dentro de
+`studentPseudoId`.
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -183,10 +237,10 @@ migration nova em `src/database/migrations/`.
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
 - Ciclo PRIMM interno e paleta de blocos contextual (Use-Modify-Create) na
   entidade `Challenge` — hoje ela só tem título/enunciado/config vazio.
-- Endpoints CRUD para `subjects`/`topics`/`schools`/`classrooms`/`enrollments`
-  (hoje só existem como entidades + services de leitura mínimos — sem
-  controller ainda; ver regra 9 antes de expor isso ao professor: nada de
-  formulário que exija entender a estrutura de tabelas).
+- Endpoints CRUD para `schools`/`classrooms`/`enrollments` (`subjects`/`topics`
+  já têm leitura via `GET /subjects/topics`; escrita continua não exposta —
+  ver regra 9 antes de expor isso ao professor: nada de formulário que
+  exija entender a estrutura de tabelas).
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como

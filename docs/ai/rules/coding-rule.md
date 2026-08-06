@@ -9,8 +9,9 @@ ou implementar código neste repositório.
 Plataforma web gamificada, baseada em blocos (Blockly), para ensinar lógica de
 programação e Pensamento Computacional a estudantes com TEA, integrando um
 conceito de disciplina da educação básica em cada desafio. Três áreas:
-Estudante, Professor, Admin. Ver `docs/ai/modules/` para a arquitetura de cada
-parte do sistema.
+Estudante, Professor, Admin. Ver [`docs/ai/persona.md`](../persona.md) para a
+identidade/missão completa e a base de evidência por trás de cada regra
+abaixo, e `docs/ai/modules/` para a arquitetura de cada parte do sistema.
 
 Todo o desenho do produto é orientado por um Mapeamento Sistemático da
 Literatura (23 estudos primários, 2016–2026) sobre metodologias ativas de
@@ -91,6 +92,11 @@ achados desse mapeamento em restrições de engenharia.
 - Nomes de coluna em `camelCase` nas entidades (TypeORM usa o nome da
   propriedade como está, sem naming strategy customizada) — manter
   consistência em qualquer entidade nova.
+- **`interaction_events` é escopado ao aluno, não telemetria genérica.**
+  `studentPseudoId` é `NOT NULL` de propósito (RQ5 — avaliação de
+  Pensamento Computacional do estudante). Ações de professor/admin (login,
+  visualização de home, etc.) não emitem evento nessa tabela — ver "Padrão:
+  eventos RD-* são escopados ao aluno" em `docs/ai/modules/backend.md`.
 
 ### Modelagem de domínio (backend)
 

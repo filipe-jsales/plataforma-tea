@@ -40,4 +40,16 @@ export class SchoolsService {
       relations: { student: { avatar: true } },
     });
   }
+
+  findClassroomsByTeacher(teacherId: string): Promise<Classroom[]> {
+    return this.classroomsRepository.find({ where: { teacherId } });
+  }
+
+  countSchools(): Promise<number> {
+    return this.schoolsRepository.count();
+  }
+
+  countClassrooms(): Promise<number> {
+    return this.classroomsRepository.count();
+  }
 }

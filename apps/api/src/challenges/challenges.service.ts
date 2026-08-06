@@ -16,4 +16,12 @@ export class ChallengesService {
       relations: { topic: true },
     });
   }
+
+  // MVP tem exatamente 1 desafio — "continuar desafio" na home do aluno
+  // (2.1) sempre aponta pra ele. Quando houver progressão real por aluno,
+  // isso vira "o desafio em andamento deste aluno", não o primeiro da tabela.
+  async findFirst(): Promise<Challenge | null> {
+    const [first] = await this.challengesRepository.find({ take: 1 });
+    return first ?? null;
+  }
 }
