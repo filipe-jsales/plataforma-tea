@@ -1,0 +1,57 @@
+.onboarding-sensorial {
+  max-width: 480px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.onboarding-sensorial__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.onboarding-sensorial__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  /* Alvo de toque grande — coordenação motora fina (RQ4, 21,74%). */
+  min-height: 56px;
+  cursor: pointer;
+}
+
+.onboarding-sensorial__icon {
+  font-size: 1.5rem;
+}
+
+.onboarding-sensorial__text {
+  flex: 1;
+  font-size: 1.1rem;
+}
+
+.onboarding-sensorial__option input[type='checkbox'] {
+  width: 24px;
+  height: 24px;
+}
+
+.onboarding-sensorial button {
+  font-size: 1.1rem;
+  padding: var(--space-2) var(--space-4);
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  cursor: pointer;
+}
+
+.onboarding-sensorial button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

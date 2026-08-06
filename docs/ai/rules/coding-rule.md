@@ -92,6 +92,11 @@ achados desse mapeamento em restrições de engenharia.
 - Nomes de coluna em `camelCase` nas entidades (TypeORM usa o nome da
   propriedade como está, sem naming strategy customizada) — manter
   consistência em qualquer entidade nova.
+- **`interaction_events` é escopado ao aluno, não telemetria genérica.**
+  `studentPseudoId` é `NOT NULL` de propósito (RQ5 — avaliação de
+  Pensamento Computacional do estudante). Ações de professor/admin (login,
+  visualização de home, etc.) não emitem evento nessa tabela — ver "Padrão:
+  eventos RD-* são escopados ao aluno" em `docs/ai/modules/backend.md`.
 
 ### Modelagem de domínio (backend)
 
@@ -148,6 +153,26 @@ decisão a cada feature:
   sequência de login são tabelas separadas (`Illustration.kind`) de
   propósito — nunca deixar o aluno escolher a mesma imagem pras duas coisas,
   isso confunde "quem eu sou" com "minha senha". Ver `src/auth/auth.service.ts`.
+- **Desafio novo (em qualquer tópico) segue o ciclo Use→Modify→Create,
+  nunca pula etapa.** Respaldo empírico: RQ2 do mapeamento sistemático,
+  21,74% dos estudos primários — é o ciclo completo de 3 etapas que tem
+  evidência, não uma combinação parcial. Regras concretas ao cadastrar um
+  desafio (ver nota de pesquisa completa em
+  `apps/api/src/challenges/challenge-config.interface.ts`):
+  - Declare `Challenge.position` explicitamente (nunca deduza ordem de
+    `createdAt`) — é o que permite inserir uma etapa no meio depois (ex.: um
+    "modify" entre um "use" e um "create" já existentes) sem forjar
+    timestamp. Mesmo raciocínio de `Illustration.position`/
+    `BlockDefinition.position`.
+  - Todo `blockType` em `allowedBlockTypes` só pode aparecer pela primeira
+    vez (na ordem de `position`) num desafio `stage: 'use'` — nunca estreando
+    em `modify`/`create`. Testado contra o seed real em
+    `block-progression.spec.ts`.
+  - Um tópico com só `use`+`create` (sem `modify` no meio) é um estado
+    intermediário aceitável como passo incremental — nunca trate como
+    sequência completa/validada para fins de pesquisa com usuários reais ou
+    de alegação de aderência ao framework Use-Modify-Create até o `modify`
+    existir de verdade.
 
 ### Frontend (`apps/web`, React + Vite)
 
@@ -169,3 +194,46 @@ decisão a cada feature:
   de cast tipado em vez de `any`, no `expiresIn` do JWT).
 - Sem comentário do tipo "o que o código faz" — só comentar o porquê quando
   não-óbvio (workaround, invariante, decisão sem alternativa clara).
+
+### Testes — não-negociável a partir deste ponto
+
+**Nenhuma feature nova (service, store, helper de `lib/`, guard, util) entra
+sem teste unitário no mesmo commit/PR que a introduz.** Isso vale tanto para
+código novo quanto para qualquer lógica não-trivial adicionada a um arquivo
+já existente — não é retroativo por padrão, mas toda mudança futura precisa
+sair coberta.
+
+- **Backend (`apps/api`)**: Jest, já configurado (`npm run test --workspace
+  apps/api`, ou `npm run test:api` na raiz). Testar o `*.service.ts`
+  instanciando a classe direto com repositórios/deps mockados (`jest.Mocked`)
+  — não subir `TestingModule`/Nest DI nem banco real só pra testar lógica de
+  service. Ver `apps/api/src/auth/auth.service.spec.ts` e
+  `apps/api/src/home/home.service.spec.ts` como referência de padrão
+  (mock de repositório/serviço colaborador, sem tocar Postgres). Módulos que
+  só fazem passthrough fino pro TypeORM (ex.: `SchoolsService`,
+  `SubjectsService`) ainda merecem teste — a asserção é sobre o `where`/
+  `relations` passado ao repositório, não sobre o retorno do Postgres.
+  Guards com lógica própria (`RolesGuard`) e métodos de entidade
+  (`User.generatePseudonymId`) também são testados — ver
+  `apps/api/src/auth/guards/roles.guard.spec.ts` e
+  `apps/api/src/users/entities/user.entity.spec.ts`.
+- **Frontend (`apps/web`)**: Vitest + Testing Library (`npm run test
+  --workspace apps/web`, ou `npm run test:web` na raiz;
+  `apps/web/vitest.config.ts` configura `jsdom`). Toda função de `lib/` e todo
+  store Zustand novo (ou store existente que ganhar lógica nova) precisa de
+  `*.spec.ts` cobrindo o comportamento, não só o caminho feliz — ver
+  `apps/web/src/lib/apiClient.spec.ts` (mock de `fetch` global via
+  `vi.stubGlobal`) e `apps/web/src/stores/useSensoryProfileStore.spec.ts`
+  (reset de estado em `beforeEach`, já que stores Zustand são singletons
+  compartilhados entre testes). Componentes de tela (`routes/`) que
+  contenham lógica de decisão (não só JSX declarativo) também devem ganhar
+  teste com `@testing-library/react` conforme forem escritos/alterados.
+- **O que testar de verdade, não só "ter um arquivo `.spec.ts`":** o
+  comportamento que a regra de negócio exige — ex. `HomeService` nunca
+  devolver identificação de aluno individual pro professor/admin (regra não-
+  negociável 5/9), `AuthService.loginStudent` nunca vazar pseudônimo/e-mail
+  no roster, `getIllustrationAsset` cair no fallback em vez de quebrar. Um
+  teste que só confirma "a função roda sem erro" não substitui isso.
+- Rodar a suíte relevante antes de considerar uma feature pronta. Se a
+  mudança tocar as duas apps, rodar as duas (`npm run test:api` e
+  `npm run test:web`).

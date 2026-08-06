@@ -1,46 +1,64 @@
-import './App.css'
-import { useSensoryProfileStore } from './stores/useSensoryProfileStore'
+import { Route, Routes } from 'react-router-dom'
+import { AdminLogin } from './routes/login/AdminLogin'
+import { RoleSelect } from './routes/login/RoleSelect'
+import { StudentLogin } from './routes/login/StudentLogin'
+import { TeacherLogin } from './routes/login/TeacherLogin'
+import { ChallengePage } from './routes/challenge/ChallengePage'
+import { OnboardingSensorial } from './routes/OnboardingSensorial'
+import { RequireAuth } from './routes/RequireAuth'
+import { RootRedirect } from './routes/RootRedirect'
+import { SubjectSelector } from './routes/SubjectSelector'
+import { HomeRouter } from './routes/home/HomeRouter'
 
-// Placeholder de instalação: confirma que tema sensorial + store Zustand estão
-// funcionando de ponta a ponta. As telas de Estudante/Professor/Admin, o editor
-// Blockly e o mundo PixiJS são implementados nas próximas etapas.
 function App() {
-  const { motionEnabled, soundEnabled, highContrast, setMotionEnabled, setSoundEnabled, setHighContrast } =
-    useSensoryProfileStore()
-
   return (
-    <main className="setup-check">
-      <h1>Plataforma TEA</h1>
-      <p>Instalação base do front (React + Vite) concluída.</p>
-
-      <section aria-labelledby="sensory-heading">
-        <h2 id="sensory-heading">Configurações sensoriais (opt-in, desligadas por padrão)</h2>
-        <label>
-          <input
-            type="checkbox"
-            checked={motionEnabled}
-            onChange={(e) => setMotionEnabled(e.target.checked)}
-          />
-          Ativar animações
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={soundEnabled}
-            onChange={(e) => setSoundEnabled(e.target.checked)}
-          />
-          Ativar sons
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={highContrast}
-            onChange={(e) => setHighContrast(e.target.checked)}
-          />
-          Alto contraste
-        </label>
-      </section>
-    </main>
+    <Routes>
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="/login" element={<RoleSelect />} />
+      <Route path="/login/student" element={<StudentLogin />} />
+      <Route path="/login/teacher" element={<TeacherLogin />} />
+      <Route path="/login/admin" element={<AdminLogin />} />
+      <Route
+        path="/onboarding"
+        element={
+          <RequireAuth roles={['student']}>
+            <OnboardingSensorial />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/home"
+        element={
+          <RequireAuth>
+            <HomeRouter />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/subjects"
+        element={
+          <RequireAuth roles={['student']}>
+            <SubjectSelector />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/subjects/:topicId"
+        element={
+          <RequireAuth roles={['student']}>
+            <ChallengePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/challenge/:challengeId"
+        element={
+          <RequireAuth roles={['student']}>
+            <ChallengePage />
+          </RequireAuth>
+        }
+      />
+    </Routes>
   )
 }
 

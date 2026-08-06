@@ -1,0 +1,101 @@
+.student-login {
+  max-width: 520px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.student-login__code-input {
+  display: block;
+  width: 100%;
+  font-size: 1.5rem;
+  text-align: center;
+  padding: var(--space-3);
+  min-height: 56px;
+  margin: var(--space-4) 0;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-transform: uppercase;
+}
+
+.student-login button[type='submit'] {
+  font-size: 1.1rem;
+  padding: var(--space-2) var(--space-4);
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  cursor: pointer;
+}
+
+.student-login button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.student-login__error {
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+/* Grid de posição fixa: a ordem vem do backend (position ASC) e não muda
+   entre sessões — previsibilidade/TEACCH, requisito explícito do login. */
+.student-login__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.student-login__tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  min-height: 120px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.student-login__tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.student-login__tile-image {
+  width: 56px;
+  height: 56px;
+}
+
+.student-login__order-badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-login__link {
+  display: block;
+  margin: var(--space-2) auto;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 1rem;
+  min-height: 44px;
+}

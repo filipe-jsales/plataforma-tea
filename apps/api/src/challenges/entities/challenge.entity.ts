@@ -8,11 +8,13 @@ import {
 } from 'typeorm';
 import { Topic } from '../../subjects/entities/topic.entity';
 
-// Modelagem mínima: o suficiente para existir "1 desafio de geometria"
-// referenciável por interaction_events.challengeId (seed do MVP, ver
-// docs/ai/modules/database.md). O ciclo PRIMM interno, a paleta de blocos
-// contextual (Use–Modify–Create) e o motor de execução (Blockly/PixiJS) são
-// features futuras — não modeladas aqui ainda, ver regra não-negociável 2/3.
+// Modelagem mínima (título, enunciado, config, ordem) — o suficiente pra uma
+// sequência de desafios Use-Modify-Create por tópico (ver
+// docs/ai/modules/backend.md#blocos-por-desafio e a nota de pesquisa em
+// challenge-config.interface.ts) e pra interaction_events.challengeId ser FK
+// real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como
+// estrutura de tela, não só a paleta Use-Modify-Create) ainda não está
+// modelado — ver regra não-negociável 3 e "Próximos passos" em backend.md.
 @Entity('challenges')
 export class Challenge {
   @PrimaryGeneratedColumn('uuid')
@@ -33,10 +35,20 @@ export class Challenge {
   @Column({ type: 'text' })
   prompt: string;
 
-  // Placeholder para configuração futura (toolbox restrita, blocos
-  // permitidos por estágio Use-Modify-Create etc.) — nasce vazio no MVP.
+  // Config tipado em challenge-config.interface.ts: stage Use-Modify-Create,
+  // blocos permitidos, meta, e (fase Use) o programa pré-montado + pergunta
+  // de investigação. Ver "Blocos por desafio" em docs/ai/modules/backend.md.
   @Column({ type: 'jsonb', default: {} })
   config: Record<string, unknown>;
+
+  // Ordem pedagógica do desafio DENTRO do tópico — nunca `createdAt`. Existe
+  // especificamente para permitir inserir uma etapa no meio depois sem
+  // precisar forjar timestamp (ex.: o desafio "Modify" que falta entre os 2
+  // desafios seed atuais, ver nota de pesquisa em
+  // challenge-config.interface.ts). Mesmo raciocínio de
+  // Illustration.position/BlockDefinition.position.
+  @Column({ type: 'int' })
+  position: number;
 
   @CreateDateColumn()
   createdAt: Date;

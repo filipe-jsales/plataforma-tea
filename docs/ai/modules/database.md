@@ -66,6 +66,11 @@ turma + avatar + sequência de imagens (`avatarId`, `loginImageSequence`).
 validado por `role` no banco — é invariante de aplicação (ver
 `AuthService`).
 
+`soundEnabled`/`animationEnabled` (default `false`) e
+`sensoryOnboardingCompletedAt` (nullable) são o perfil sensorial
+persistente — setados pelo onboarding (2.2) via `PATCH
+/users/:id/sensory-profile`, nunca por `synchronize`/UI direta no banco.
+
 ### `student_identity_reversals`
 
 Ver `apps/api/src/identity/entities/student-identity-reversal.entity.ts`.
@@ -117,12 +122,39 @@ pra colegas no roster), login_image é a credencial (nunca deveria aparecer
 fora da tela de login da própria pessoa) — misturar os dois pools seria
 confundir identidade com segredo.
 
+### `blocks`
+
+Ver `apps/api/src/blocks/entities/block-definition.entity.ts`. Catálogo dos
+blocos Blockly disponíveis (tabela, mesmo padrão de `subjects`/
+`illustrations`) — `blockType` é o `type` que o Blockly usa em runtime
+(`UNIQUE`), `category`/`categoryLabel` agrupam a paleta em abas (texto livre,
+não enum), `blocklyJson` é a definição completa no formato de
+`Blockly.defineBlocksWithJsonArray`. Seed do MVP: `move_forward` (mover),
+`turn` (girar, com campo `DIR`) e `repeat_times` (repetir, com campo `TIMES`
++ input de estatuto `DO`) — ver `docs/ai/modules/backend.md#blocos-por-desafio`.
+
 ### `challenges`
 
-Ver `apps/api/src/challenges/entities/challenge.entity.ts`. Modelagem
-mínima (`title`, `prompt`, `config` jsonb vazio) — o suficiente para existir
-"1 desafio de geometria" (seed do MVP) e para `interaction_events.challengeId`
-ser FK real. FK `CASCADE` para `topics`.
+Ver `apps/api/src/challenges/entities/challenge.entity.ts`. `config` guarda
+`{ stage, allowedBlockTypes, goal, program?, investigationQuestion? }`
+(tipado em `challenge-config.interface.ts`, que também documenta o respaldo
+de pesquisa do ciclo Use-Modify-Create — RQ2, 21,74% dos estudos) — nasceu
+`{}` na migration original (`CreateChallenges`), preenchido depois em
+migrations separadas (nunca editando a original já rodada). FK `CASCADE`
+para `topics`.
+
+`position` (int, adicionado em `AddPositionToChallenges`) é a ordem
+pedagógica do desafio **dentro do tópico** — nunca `createdAt`. Permite
+inserir uma etapa no meio depois (ex.: um desafio `modify` entre um `use` e
+um `create` já existentes) sem forjar timestamp; mesmo raciocínio de
+`Illustration.position`/`BlockDefinition.position`. Seed atual do tópico
+`angulos_formas` (ver `docs/ai/modules/backend.md#blocos-por-desafio` para o
+porquê disso ser um estado intermediário, não a sequência final):
+
+| position | title | stage |
+|---|---|---|
+| 1 | Monte o quadrado | `use` (`program` pré-montado + travado) |
+| 2 | Monte o quadrado — sua vez! | `create` (editor livre) |
 
 ### `interaction_events`
 
@@ -176,15 +208,46 @@ escopado a um desafio) e **é FK real** para `challenges.id`
    direto não passa pelos `@BeforeInsert` das entidades, então `pseudonymId`
    e `joinCode` precisam ser gerados explicitamente na própria query, ver o
    arquivo da migration).
+8. `1786019220885-AddSensoryProfileToUsers.ts` — adiciona `soundEnabled`
+   (default `false`), `animationEnabled` (default `false`) e
+   `sensoryOnboardingCompletedAt` (nullable) em `users`. Gerada com
+   `migration:generate`, sem seed (as 3 contas demo já existentes ficam com
+   os defaults).
+9. `1786027226877-CreateBlocks.ts` — cria `blocks` (catálogo de blocos
+   Blockly) e semeia os 3 blocos MVP (`move_forward`/`turn`/`repeat_times`).
+   Gerada com `migration:generate` + seed manual.
+10. `1786027834394-SeedSquareChallengeToolbox.ts` — preenche o `config` do
+    desafio seed "Monte o quadrado" (stage `use`, os 3 `blockTypes` acima, e
+    a meta de fechar um quadrado de 4 lados/90°) — escrita à mão (só
+    `UPDATE`, sem mudança de schema, `migration:generate` não gera diff pra
+    isso).
+11. `1786032598196-AddPositionToChallenges.ts` — adiciona `challenges.position`
+    (int, `NOT NULL`). Coluna nullable primeiro + `UPDATE ... SET position =
+    1` (backfill da única linha existente) + `ALTER COLUMN ... SET NOT NULL`
+    — não dá pra `ADD COLUMN NOT NULL` direto numa tabela não-vazia sem
+    default. Gerada com `migration:generate` (só o `ADD COLUMN`) + backfill
+    escrito à mão.
+12. `1786032637460-SeedUseModifyCreateSequence.ts` — reclassifica "Monte o
+    quadrado" como Desafio 1 da sequência (`position: 1`, `program`
+    pré-montado + `investigationQuestion`, ver "Blocos por desafio" em
+    `backend.md`) e insere o Desafio 2 "Monte o quadrado — sua vez!"
+    (`position: 2`, `stage: 'create'`, mesma paleta/meta, sem `program` —
+    editor livre). Escrita à mão (só `UPDATE`/`INSERT`, sem mudança de
+    schema).
 
-Todas as 7 já foram validadas com `npm run migration:run` contra um Postgres
+Todas as 12 já foram validadas com `npm run migration:run` contra um Postgres
 real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
 `migration:generate` extra confirmou "No changes in database schema were
 found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos
-`login_attempt`/`login_success` conferidos em `interaction_events`.
+`login_attempt`/`login_success` conferidos em `interaction_events`. Os dois
+desafios (`GET /challenges/by-topic/:topicId` e `GET /challenges/:id`)
+também foram testados ponta a ponta via `curl` contra a conta demo de
+aluno — Desafio 1 devolve `locked: true` com `program`/
+`investigationQuestion` e `nextChallengeId` apontando pro Desafio 2; Desafio
+2 devolve `locked: false`, `program: null` e `nextChallengeId: null`.
 
 ## Adicionando uma migration nova
 
