@@ -1,0 +1,46 @@
+/* Compartilhado por professor/admin — formulário padrão, sem as
+   restrições sensoriais do fluxo aluno (não precisa de alvo de toque
+   gigante nem grade de ilustrações). */
+.staff-login {
+  max-width: 360px;
+  margin: var(--space-5) auto;
+  padding: var(--space-4);
+}
+
+.staff-login label {
+  display: block;
+  margin-bottom: var(--space-3);
+  font-size: 0.95rem;
+}
+
+.staff-login input {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+}
+
+.staff-login button[type='submit'] {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg);
+  cursor: pointer;
+}
+
+.staff-login button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.staff-login__error {
+  color: var(--color-warning);
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}

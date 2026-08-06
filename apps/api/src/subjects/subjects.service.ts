@@ -23,4 +23,11 @@ export class SubjectsService {
       relations: { subject: true },
     });
   }
+
+  // Alimenta o seletor de matéria/módulo (2.3): já devolve subject+topic
+  // juntos porque o componente lista "módulos" (disciplina + assunto), não
+  // disciplinas soltas. MVP tem 1 linha, mas o componente não sabe disso.
+  findAllTopics(): Promise<Topic[]> {
+    return this.topicsRepository.find({ relations: { subject: true } });
+  }
 }
