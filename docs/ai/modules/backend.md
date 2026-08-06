@@ -57,7 +57,7 @@ apps/api/src/
 │   ├── challenge-config.interface.ts  # forma tipada de Challenge.config
 │   ├── block-progression.ts     # valida a regra Use-Modify-Create (AC2)
 │   ├── challenges.service.ts
-│   ├── challenges.controller.ts # GET /challenges/by-topic/:topicId — aluno só
+│   ├── challenges.controller.ts # GET /challenges/{by-topic/:topicId,:id} — aluno só
 │   └── challenges.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
@@ -182,9 +182,11 @@ pensado pra isso), não um forçar de pseudônimo de staff dentro de
 
 ## Blocos por desafio (RQ4 — sobrecarga cognitiva/abstração, 39,13%)
 
-`GET /challenges/by-topic/:topicId` (`ChallengesController`, aluno só) alimenta
-o editor de blocos do frontend com a paleta **restrita** ao desafio — nunca a
-paleta completa do Blockly (AC1). O mecanismo:
+`GET /challenges/by-topic/:topicId` (entrada da sequência de um tópico) e
+`GET /challenges/:id` (acesso direto a um desafio específico — usado pelo
+"Avançar" saindo do anterior) devolvem a paleta **restrita** ao desafio —
+nunca a paleta completa do Blockly (AC1 de 3.1). Ambas as rotas passam pelo
+mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
 
 - **`blocks`** (`BlocksModule`) é o catálogo de blocos — tabela, não enum
   fixo (mesmo padrão de `subjects`/`topics`/`illustrations`, ver regra de
@@ -196,31 +198,76 @@ paleta completa do Blockly (AC1). O mecanismo:
   daqui. Um bloco novo existe só cadastrando uma linha + o desafio que o usa,
   sem deploy de frontend.
 - **`Challenge.config`** (jsonb, tipado em `challenge-config.interface.ts`)
-  guarda `{ stage: 'use'|'modify'|'create', allowedBlockTypes: string[],
-  goal }` — `stage` é o estágio Use-Modify-Create do desafio (regra
-  não-negociável 2/3); `allowedBlockTypes` é a lista de `blockType`
-  permitidos, resolvida contra o catálogo `blocks` e devolvida já agrupada
-  por categoria (AC5 — abas pequenas e nomeadas, nunca uma lista única).
+  guarda `{ stage, allowedBlockTypes, goal, program?, investigationQuestion?
+  }`. `stage` é o estágio Use-Modify-Create do desafio (regra não-negociável
+  2/3, ver nota de pesquisa completa no próprio arquivo de tipos);
+  `allowedBlockTypes` é a lista de `blockType` permitidos, resolvida contra
+  o catálogo `blocks` e devolvida já agrupada por categoria (AC5 de 3.1 —
+  abas pequenas e nomeadas, nunca uma lista única).
+- **`Challenge.position`** (int, nunca `createdAt`) é a ordem pedagógica do
+  desafio dentro do tópico — `ChallengesService.findByTopicIdOrdered`
+  ordena por ele. Existe especificamente pra permitir inserir uma etapa no
+  meio depois (ex.: o desafio `modify` que falta hoje, ver "Estado
+  intermediário" abaixo) sem precisar forjar timestamp.
+- **`program` + `investigationQuestion`** (3.3, fase `use`): quando
+  presentes, `locked: true` na resposta — o frontend renderiza o workspace
+  com `readOnly: true` e **sem toolbox**, pré-carregado com este programa
+  (`initialJson`). Único controle do aluno é Executar/Repetir execução; a
+  pergunta de investigação aparece depois da 1ª execução (motor PRIMM
+  "Investigate", ainda sem estrutura própria — ver "Próximos passos").
+  `program` usa o mesmo formato de `Blockly.serialization.blocks.save()`
+  (tipado em `SerializedBlockState`, espelhado no frontend em
+  `apps/web/src/lib/blockProgram.ts`).
+- **`nextChallengeId`**: resolvido andando `findByTopicIdOrdered` a partir do
+  desafio atual — é pra onde o botão "Avançar" (3.3 AC4) navega depois do
+  aluno executar ao menos uma vez. `null` quando não há próximo desafio
+  cadastrado ainda.
 - **`block-progression.ts`** (`findBlockProgressionViolations`) é a
-  implementação de AC2: nenhum `blockType` pode "estrear" (aparecer pela
-  primeira vez, na ordem cronológica dos desafios) fora do estágio `use`.
-  É uma checagem de autoria de currículo, testada contra o seed real em
-  `block-progression.spec.ts` — não uma trava em runtime por aluno (não há
-  ainda um segundo desafio modify/create pra isso fazer sentido, ver
-  "Próximos passos").
+  implementação de AC2 (3.1): nenhum `blockType` pode "estrear" (aparecer
+  pela primeira vez, na ordem de `position`) fora do estágio `use`. É uma
+  checagem de autoria de currículo, testada contra o seed real em
+  `block-progression.spec.ts` — não uma trava em runtime por aluno (só faz
+  sentido travar por aluno quando existir um desafio `modify`/`create` de
+  verdade pra travar contra).
 - **Sem autoria de toolbox pelo professor nesta versão.** O backlog da
   feature cita "config JSON gerada pelo professor via camada visual" como
-  dependência — decisão explícita (a pedido de quem props a feature): em vez
-  de construir essa camada de autoria visual, o conteúdo (`blocks` +
+  dependência — decisão explícita (a pedido de quem propôs a feature): em
+  vez de construir essa camada de autoria visual, o conteúdo (`blocks` +
   `Challenge.config`) é curado via seed/migration, e o professor não
-  programa nada. O MVP já tem exatamente 1 desafio por tópico
-  (`ChallengesService.findFirstByTopicId`), então não existe hoje nem
-  "escolher entre desafios" — isso é `findFirst`-like, igual ao resto do
-  MVP. Ver "Próximos passos".
-- Seed de referência: migrations `CreateBlocks` (catálogo dos 3 blocos MVP —
-  mover, girar, repetir) e `SeedSquareChallengeToolbox` (preenche o `config`
-  do desafio "Monte o quadrado", que já usava o assunto/tópico geometria —
-  ver `docs/ai/modules/database.md`).
+  programa nada. Não existe hoje "professor escolhe entre desafios" — a
+  sequência de um tópico é fixa (por `position`), a mesma pra todo aluno.
+
+### Estado intermediário: Use → Create, sem o `Modify` do meio
+
+O seed atual (migrations `SeedSquareChallengeToolbox` +
+`SeedUseModifyCreateSequence`) tem 2 desafios no tópico `angulos_formas`:
+
+| position | title | stage | Comportamento |
+|---|---|---|---|
+| 1 | Monte o quadrado | `use` | 3.3 — programa pré-montado, travado, só Executar/Repetir + pergunta de investigação |
+| 2 | Monte o quadrado — sua vez! | `create` | editor livre (3.1), com botão de Ajuda mostrando a forma-alvo sem entregar os blocos |
+
+**Isso é um estado intermediário, não a sequência desenhada.** RQ2 do
+mapeamento sistemático (21,74% dos estudos primários) dá respaldo empírico
+ao ciclo **completo** Use→Modify→Create, não a Use+Create pulando o meio —
+falta o desafio `modify` (o mesmo programa do Desafio 1, mas editável, ex.:
+mudar `TIMES`/`DIR` pra virar triângulo/pentágono) que conecta
+pedagogicamente "só observar" a "criar do zero". Ver a nota de pesquisa
+completa (e as regras de como inserir esse desafio no meio via `position`)
+em `challenge-config.interface.ts` e em "Modelagem de domínio (backend)" →
+"Desafio novo..." em `docs/ai/rules/coding-rule.md`. **Não tratar esta
+sequência de 2 desafios como validada/completa** para fins de pesquisa com
+usuários reais ou de qualquer alegação de aderência ao framework
+Use-Modify-Create até o `modify` existir.
+
+### Eventos desta feature
+
+Além de `toolbox_rendered`/`block_dragged` (3.1, RD-I), `program_executed`
+(3.2, RD-P — `block_sequence_json` é o programa serializado, o mesmo formato
+de `program`) e `challenge_use_completed` (3.3 — logado duas vezes, uma
+`RD-P` e uma `RD-C`, seguindo literalmente a notação "RD-P + RD-C" do
+backlog da feature, já que uma linha de `interaction_events` só tem uma
+`category`).
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -294,19 +341,30 @@ novos.
 - `POST /auth/register` — hoje só existe seed via migration; não há como
   criar aluno/professor/admin em runtime ainda.
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
+- **Desafio 3 (fase `modify`) entre os 2 desafios seed atuais** — a peça que
+  falta pra fechar o ciclo Use→Modify→Create com respaldo empírico completo
+  (RQ2), ver "Estado intermediário" em "Blocos por desafio" acima. Cadastrar
+  com `position: 2` (empurrando o atual "Desafio 2" pra `position: 3`) — o
+  workspace nasceria com o mesmo `program` do Desafio 1, mas **editável**
+  (`readOnly: false`, sem toolbox de blocos novos — só os campos dos blocos
+  já existentes, ex.: `TIMES`/`DIR`), pra virar triângulo/pentágono.
 - Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
   estado do desafio) — a paleta de blocos por estágio Use-Modify-Create já
-  existe (ver "Blocos por desafio"), o PRIMM em si ainda não.
+  existe (ver "Blocos por desafio"), e a pergunta de investigação do Desafio
+  1 é um placeholder mínimo do estágio "Investigate" (resposta livre, só
+  logada, nunca corrigida) — o motor PRIMM completo (Predict/Run como
+  estágios próprios de tela) ainda não existe.
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
-  Se um dia for necessária de verdade: um jeito pequeno de começar é
-  `Classroom.activeChallengeId` (nullable, default o desafio seed) + um
-  endpoint pro professor trocar entre um catálogo pequeno de desafios
-  pré-curados — continua sem o professor "programar" nada.
+  Se um dia for necessária de verdade: um endpoint pro professor
+  escrever/curar `Challenge.config` (incluindo `program`/`position`) contra
+  um catálogo pequeno de `blocks` pré-existente — continua sem o professor
+  "programar" nada, só compor conteúdo já existente.
 - Trava em runtime da progressão Use-Modify-Create por aluno (hoje
   `block-progression.ts` só valida a ordem de autoria dos desafios, não
-  bloqueia um aluno específico) — só faz sentido quando existir um segundo
-  desafio em estágio modify/create pra travar contra.
+  bloqueia um aluno específico de pular pra `/challenge/:id` de um desafio
+  modify/create sem ter passado pelo use correspondente — a rota não checa
+  isso ainda).
 - Endpoints CRUD para `schools`/`classrooms`/`enrollments` (`subjects`/`topics`
   já têm leitura via `GET /subjects/topics`; escrita continua não exposta —
   ver regra 9 antes de expor isso ao professor: nada de formulário que

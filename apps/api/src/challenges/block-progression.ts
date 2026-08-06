@@ -13,15 +13,16 @@ export interface BlockProgressionViolation {
 }
 
 // AC2 da feature "blocos por desafio" (RQ4, regra não-negociável 2 — ciclo
-// Use-Modify-Create): valida que todo blockType aparece pela primeira vez,
-// na ordem cronológica de criação dos desafios, num desafio em estágio
-// "use" — nunca estreando direto em "modify"/"create". `challenges` deve vir
-// ordenado por criação (createdAt asc, a mesma ordem em que o currículo é
-// apresentado ao aluno); a violação aponta pro desafio que introduziu o
-// bloco errado. É uma checagem de autoria de currículo (roda contra o seed
-// real em block-progression.spec.ts), não uma trava em runtime por aluno —
-// não há ainda um segundo desafio (modify/create) para uma trava por aluno
-// fazer sentido, ver "Próximos passos" em docs/ai/modules/backend.md.
+// Use-Modify-Create, ver nota de pesquisa em challenge-config.interface.ts):
+// valida que todo blockType aparece pela primeira vez, na ordem pedagógica
+// dos desafios, num desafio em estágio "use" — nunca estreando direto em
+// "modify"/"create". `challenges` deve vir ordenado por `Challenge.position`
+// (nunca `createdAt` — position é o que permite inserir uma etapa no meio
+// depois, ex.: o "modify" que ainda falta entre os 2 desafios seed atuais);
+// a violação aponta pro desafio que introduziu o bloco errado. É uma
+// checagem de autoria de currículo (roda contra o seed real em
+// block-progression.spec.ts), não uma trava em runtime por aluno — ver
+// "Próximos passos" em docs/ai/modules/backend.md.
 export function findBlockProgressionViolations(
   challenges: ChallengeBlockUsage[],
 ): BlockProgressionViolation[] {

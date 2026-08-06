@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TurtleAction } from './blockProgram';
-import { evaluateSquareGoal, runTurtleProgram } from './turtleWorld';
+import { buildGoalPreviewPath, evaluateSquareGoal, runTurtleProgram } from './turtleWorld';
 
 const squareProgram: TurtleAction[] = [
   { kind: 'move' },
@@ -112,5 +112,34 @@ describe('evaluateSquareGoal', () => {
     expect(last.y).toBeCloseTo(0);
     expect(result.finalHeadingDeg).not.toBe(0);
     expect(evaluateSquareGoal(result, goal).success).toBe(false);
+  });
+});
+
+describe('buildGoalPreviewPath', () => {
+  const goal = { sides: 4, turnAngleDeg: 90 };
+
+  it('produces a path that itself satisfies evaluateSquareGoal — the preview is a real square', () => {
+    const result = buildGoalPreviewPath(goal, { stepLength: 60 });
+
+    expect(evaluateSquareGoal(result, goal)).toEqual({ success: true });
+  });
+
+  it('never depends on any block/program input — only the numeric goal', () => {
+    // Duas chamadas com o mesmo goal produzem exatamente o mesmo caminho,
+    // reforçando que não há nenhuma dependência de instruções/blocos aqui —
+    // só números (sides/turnAngleDeg), o que é a base do "anda sem entregar
+    // a resposta" do botão de Ajuda.
+    const first = buildGoalPreviewPath(goal);
+    const second = buildGoalPreviewPath(goal);
+
+    expect(first).toEqual(second);
+  });
+
+  it('adapts to a different number of sides (e.g. a future triangle goal)', () => {
+    const triangleGoal = { sides: 3, turnAngleDeg: 120 };
+
+    const result = buildGoalPreviewPath(triangleGoal, { stepLength: 60 });
+
+    expect(evaluateSquareGoal(result, triangleGoal)).toEqual({ success: true });
   });
 });

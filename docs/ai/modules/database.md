@@ -135,14 +135,26 @@ não enum), `blocklyJson` é a definição completa no formato de
 
 ### `challenges`
 
-Ver `apps/api/src/challenges/entities/challenge.entity.ts`. Modelagem
-mínima (`title`, `prompt`, `config` jsonb) — o suficiente para existir "1
-desafio de geometria" (seed do MVP) e para `interaction_events.challengeId`
-ser FK real. FK `CASCADE` para `topics`. `config` guarda `{ stage,
-allowedBlockTypes, goal }` (tipado em `challenge-config.interface.ts`) desde
-a migration `SeedSquareChallengeToolbox` — nasceu `{}` na migration original
-(`CreateChallenges`), preenchido depois numa migration separada (nunca
-editando a original já rodada).
+Ver `apps/api/src/challenges/entities/challenge.entity.ts`. `config` guarda
+`{ stage, allowedBlockTypes, goal, program?, investigationQuestion? }`
+(tipado em `challenge-config.interface.ts`, que também documenta o respaldo
+de pesquisa do ciclo Use-Modify-Create — RQ2, 21,74% dos estudos) — nasceu
+`{}` na migration original (`CreateChallenges`), preenchido depois em
+migrations separadas (nunca editando a original já rodada). FK `CASCADE`
+para `topics`.
+
+`position` (int, adicionado em `AddPositionToChallenges`) é a ordem
+pedagógica do desafio **dentro do tópico** — nunca `createdAt`. Permite
+inserir uma etapa no meio depois (ex.: um desafio `modify` entre um `use` e
+um `create` já existentes) sem forjar timestamp; mesmo raciocínio de
+`Illustration.position`/`BlockDefinition.position`. Seed atual do tópico
+`angulos_formas` (ver `docs/ai/modules/backend.md#blocos-por-desafio` para o
+porquê disso ser um estado intermediário, não a sequência final):
+
+| position | title | stage |
+|---|---|---|
+| 1 | Monte o quadrado | `use` (`program` pré-montado + travado) |
+| 2 | Monte o quadrado — sua vez! | `create` (editor livre) |
 
 ### `interaction_events`
 
@@ -209,18 +221,33 @@ escopado a um desafio) e **é FK real** para `challenges.id`
     a meta de fechar um quadrado de 4 lados/90°) — escrita à mão (só
     `UPDATE`, sem mudança de schema, `migration:generate` não gera diff pra
     isso).
+11. `1786032598196-AddPositionToChallenges.ts` — adiciona `challenges.position`
+    (int, `NOT NULL`). Coluna nullable primeiro + `UPDATE ... SET position =
+    1` (backfill da única linha existente) + `ALTER COLUMN ... SET NOT NULL`
+    — não dá pra `ADD COLUMN NOT NULL` direto numa tabela não-vazia sem
+    default. Gerada com `migration:generate` (só o `ADD COLUMN`) + backfill
+    escrito à mão.
+12. `1786032637460-SeedUseModifyCreateSequence.ts` — reclassifica "Monte o
+    quadrado" como Desafio 1 da sequência (`position: 1`, `program`
+    pré-montado + `investigationQuestion`, ver "Blocos por desafio" em
+    `backend.md`) e insere o Desafio 2 "Monte o quadrado — sua vez!"
+    (`position: 2`, `stage: 'create'`, mesma paleta/meta, sem `program` —
+    editor livre). Escrita à mão (só `UPDATE`/`INSERT`, sem mudança de
+    schema).
 
-Todas as 10 já foram validadas com `npm run migration:run` contra um Postgres
+Todas as 12 já foram validadas com `npm run migration:run` contra um Postgres
 real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
 `migration:generate` extra confirmou "No changes in database schema were
 found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos
-`login_attempt`/`login_success` conferidos em `interaction_events`. O fluxo
-`GET /challenges/by-topic/:topicId` também foi testado ponta a ponta via
-`curl` contra a conta demo de aluno — devolve as 2 categorias (`Movimento`,
-`Controle`) com os 3 blocos e a meta configurada.
+`login_attempt`/`login_success` conferidos em `interaction_events`. Os dois
+desafios (`GET /challenges/by-topic/:topicId` e `GET /challenges/:id`)
+também foram testados ponta a ponta via `curl` contra a conta demo de
+aluno — Desafio 1 devolve `locked: true` com `program`/
+`investigationQuestion` e `nextChallengeId` apontando pro Desafio 2; Desafio
+2 devolve `locked: false`, `program: null` e `nextChallengeId: null`.
 
 ## Adicionando uma migration nova
 

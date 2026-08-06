@@ -153,6 +153,26 @@ decisão a cada feature:
   sequência de login são tabelas separadas (`Illustration.kind`) de
   propósito — nunca deixar o aluno escolher a mesma imagem pras duas coisas,
   isso confunde "quem eu sou" com "minha senha". Ver `src/auth/auth.service.ts`.
+- **Desafio novo (em qualquer tópico) segue o ciclo Use→Modify→Create,
+  nunca pula etapa.** Respaldo empírico: RQ2 do mapeamento sistemático,
+  21,74% dos estudos primários — é o ciclo completo de 3 etapas que tem
+  evidência, não uma combinação parcial. Regras concretas ao cadastrar um
+  desafio (ver nota de pesquisa completa em
+  `apps/api/src/challenges/challenge-config.interface.ts`):
+  - Declare `Challenge.position` explicitamente (nunca deduza ordem de
+    `createdAt`) — é o que permite inserir uma etapa no meio depois (ex.: um
+    "modify" entre um "use" e um "create" já existentes) sem forjar
+    timestamp. Mesmo raciocínio de `Illustration.position`/
+    `BlockDefinition.position`.
+  - Todo `blockType` em `allowedBlockTypes` só pode aparecer pela primeira
+    vez (na ordem de `position`) num desafio `stage: 'use'` — nunca estreando
+    em `modify`/`create`. Testado contra o seed real em
+    `block-progression.spec.ts`.
+  - Um tópico com só `use`+`create` (sem `modify` no meio) é um estado
+    intermediário aceitável como passo incremental — nunca trate como
+    sequência completa/validada para fins de pesquisa com usuários reais ou
+    de alegação de aderência ao framework Use-Modify-Create até o `modify`
+    existir de verdade.
 
 ### Frontend (`apps/web`, React + Vite)
 

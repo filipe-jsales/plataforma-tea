@@ -42,6 +42,19 @@ describe('ChallengesService', () => {
     });
   });
 
+  describe('findByTopicIdOrdered', () => {
+    it('scopes by topicId and orders by position — never createdAt (ver challenge.entity.ts)', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await service.findByTopicIdOrdered('topic-1');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { topicId: 'topic-1' },
+        order: { position: 'ASC' },
+      });
+    });
+  });
+
   describe('findFirstByTopicId', () => {
     it('returns null when the topic has no challenge yet', async () => {
       repository.find.mockResolvedValue([]);
@@ -49,16 +62,12 @@ describe('ChallengesService', () => {
       await expect(service.findFirstByTopicId('topic-1')).resolves.toBeNull();
     });
 
-    it('scopes by topicId and orders by createdAt to respect authoring order', async () => {
-      const challenge = { id: 'c1', topicId: 'topic-1' } as Challenge;
-      repository.find.mockResolvedValue([challenge]);
+    it('returns the first challenge in position order (Desafio 1 of the sequence)', async () => {
+      const first = { id: 'c1', topicId: 'topic-1', position: 1 } as Challenge;
+      const second = { id: 'c2', topicId: 'topic-1', position: 2 } as Challenge;
+      repository.find.mockResolvedValue([first, second]);
 
-      await expect(service.findFirstByTopicId('topic-1')).resolves.toBe(challenge);
-      expect(repository.find).toHaveBeenCalledWith({
-        where: { topicId: 'topic-1' },
-        order: { createdAt: 'ASC' },
-        take: 1,
-      });
+      await expect(service.findFirstByTopicId('topic-1')).resolves.toBe(first);
     });
   });
 

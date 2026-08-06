@@ -24,7 +24,8 @@ apps/web/src/
 ├── theme/sensory-theme.css          # CSS vars + prefers-reduced-motion
 ├── stores/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
-│   └── useAuthStore.ts              # sessão (token + user), persistida em localStorage
+│   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
+│   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
 │   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer
 │   ├── authFlow.ts                  # completeLogin() — login → GET /users/me → setSession
@@ -32,10 +33,10 @@ apps/web/src/
 │   ├── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
 │   ├── blocklyToolbox.ts            # registra blocos + monta toolbox JSON a partir do catálogo
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
-│   └── turtleWorld.ts               # matemática pura do "personagem tartaruga" + checagem de meta
+│   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/challenge/
-│   └── PixiTurtleWorld.tsx          # mundo PixiJS — só desenha o caminho já calculado
+│   └── PixiTurtleWorld.tsx          # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
 ├── routes/
 │   ├── RootRedirect.tsx             # decide login → onboarding → home
 │   ├── RequireAuth.tsx              # guard de sessão/papel
@@ -49,7 +50,7 @@ apps/web/src/
 │   ├── OnboardingSensorial.tsx      # 2.2 — só aluno, só antes do onboarding concluído
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
 │   ├── challenge/
-│   │   └── ChallengePage.tsx        # editor de blocos do desafio — ver seção própria abaixo
+│   │   └── ChallengePage.tsx        # /subjects/:topicId e /challenge/:challengeId — ver seção própria
 │   └── home/
 │       ├── HomeRouter.tsx           # 2.1 — dispatch por papel
 │       ├── StudentHome.tsx
@@ -128,11 +129,16 @@ aluno" em `backend.md`): só telas do aluno chamam `logEvent`
 (`StudentHome`, `OnboardingSensorial`, `SubjectSelector`); `TeacherHome`/
 `AdminHome` não emitem eventos RD-*.
 
-## Editor de blocos do desafio (`ChallengePage`, RQ4)
+## Editor de blocos do desafio (`ChallengePage`, RQ4/RQ1/RQ2)
 
-Substitui o antigo placeholder da rota `/subjects/:topicId`. Busca
-`GET /challenges/by-topic/:topicId` e monta a tela em cima da resposta —
-nunca decide sozinho quais blocos mostrar:
+Duas rotas, o mesmo componente: `/subjects/:topicId` (2.3 → aqui, sempre o
+Desafio 1 da sequência do tópico, via `GET /challenges/by-topic/:topicId`) e
+`/challenge/:challengeId` (acesso direto a um desafio específico — é pra
+onde o botão "Avançar" navega, via `GET /challenges/:id`). `challenge.locked`
+na resposta decide entre os dois modos de tela abaixo — nunca uma
+prop/estado inventado no frontend.
+
+### Paleta restrita (3.1)
 
 - `blocklyToolbox.ts` registra os blocos vindos do backend com
   `Blockly.defineBlocksWithJsonArray` (a forma de cada bloco é 100% dado, não
@@ -143,34 +149,117 @@ nunca decide sozinho quais blocos mostrar:
   snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima do default —
   tolerância ampla de encaixe (AC3, RQ4 coordenação motora fina). Chamado uma
   vez no carregamento do módulo, antes de qualquer workspace injetar.
-- **Execução é interpretada, não gerada.** `blockProgram.ts` anda a árvore
-  serializada do workspace (`Blockly.serialization.blocks.save`) e devolve
-  uma lista plana de ações (`move`/`turn`, com `repeat_times` expandido em
-  runtime); `turtleWorld.ts` é a matemática pura que transforma essa lista
-  num caminho de pontos + heading final, e a checagem de meta (fechou o
-  quadrado?). As duas são só lógica pura, cobertas por unit test sem
-  precisar de Blockly/DOM de verdade (ver `blockProgram.spec.ts`/
-  `turtleWorld.spec.ts`) — não usamos os geradores de código do Blockly
-  (`javascript_generator` etc.) porque não há necessidade de produzir texto
-  de código nenhuma hora do fluxo.
-- `PixiTurtleWorld` só desenha o resultado já calculado (nenhuma lógica de
-  interpretação/geometria no componente) — anima segmento a segmento se
-  `useSensoryProfileStore().motionEnabled`, ou desenha tudo de uma vez se não
-  (regra não-negociável 1: motion é decisão do aluno/professor, nunca
-  hardcoded).
-- Feedback de sucesso/tentativa nova é sempre reversível (regra não-negociável
-  4) — nunca "errado"/X vermelho, ver `challenge-page__feedback--retry`.
 - Logging: `toolbox_rendered` (RD-I) uma vez, ao carregar o desafio;
   `block_dragged` (RD-I) a cada solta de bloco (via
   `workspace.addChangeListener` + `Blockly.Events.BlockDrag`, não o
   `onWorkspaceChange` simplificado do `react-blockly`, que não expõe o tipo
-  do evento); `challenge.completed` (RD-C) só quando a meta é atingida — é o
-  mesmo `type` que `HomeService`/`StudentHome` já esperavam desde 2.1 pra
-  contar "desafios concluídos" (ver `docs/ai/modules/backend.md`).
+  do evento).
 - **Sem autoria de toolbox pelo professor nesta versão** — decisão
   explícita, ver "Blocos por desafio" em `backend.md`. O professor não
-  escolhe nem programa nada hoje; o MVP continua com exatamente 1 desafio
-  por tópico.
+  escolhe nem programa nada hoje; a sequência de desafios de um tópico é
+  fixa (por `Challenge.position`), a mesma pra todo aluno.
+
+### Mundo de execução 2D desacoplado via store (3.2)
+
+- **Execução é interpretada, não gerada.** `blockProgram.ts` anda a árvore
+  serializada do workspace (`Blockly.serialization.blocks.save`) e devolve
+  uma lista plana de ações (`move`/`turn`, com `repeat_times` expandido em
+  runtime); `turtleWorld.ts` é a matemática pura que transforma essa lista
+  num caminho de pontos + heading final, a checagem de meta (fechou o
+  quadrado?) e o traçado-alvo do botão de Ajuda (`buildGoalPreviewPath`, ver
+  abaixo). As três são só lógica pura, cobertas por unit test sem precisar
+  de Blockly/DOM de verdade (`blockProgram.spec.ts`/`turtleWorld.spec.ts`) —
+  não usamos os geradores de código do Blockly (`javascript_generator` etc.)
+  porque não há necessidade de produzir texto de código nenhuma hora do
+  fluxo.
+- **`PixiTurtleWorld` não importa nem manipula o DOM/instância do Blockly —
+  comunicação exclusivamente via store (Zustand)** (3.2 AC1).
+  `stores/turtleExecutionStore.ts` exporta uma **factory**
+  (`createTurtleExecutionStore`), não um store singleton: `ChallengePage`
+  cria uma instância por "mundo" que precisa existir na tela (a execução do
+  aluno e, na fase Create, o preview de Ajuda são dois mundos
+  independentes) via `useMemo(() => createTurtleExecutionStore(), [])`.
+  `ChallengePage` calcula o caminho e chama `store.getState().play(points,
+  animate)`; `PixiTurtleWorld` só lê o store e desenha.
+- **Perfil sensorial decide o modo de execução, nunca o componente sozinho**
+  (3.2 AC2 — regra não-negociável 1): `animate = useSensoryProfileStore
+  ((s) => s.motionEnabled)`, passado pro `play()`.
+  - `animate=false` (**padrão**): avanço por passos controlados pelo aluno.
+    `PixiTurtleWorld` desenha só até `stepIndex`; um botão "Próximo passo →"
+    (visível só nesse modo, some quando `status` volta a `'idle'`) chama
+    `store.getState().advanceStep()`. Nada avança sozinho.
+  - `animate=true` (**opt-in**): `PixiTurtleWorld` anima segmento a segmento
+    sozinho (delay fixo por segmento), sempre que `runToken` muda.
+  - Um programa sem nenhum movimento nasce `status: 'idle'` direto (nunca
+    `'stepping'`) — não tem passo pra avançar, ver
+    `turtleExecutionStore.spec.ts`.
+- **Traçado persistente**: `pathGraphics` só é limpo (`clear()`) no início de
+  uma nova execução (`play()` chamado de novo, seja "Executar" ou "Repetir
+  execução") — nunca por timeout ou efeito colateral de outra coisa na tela.
+- **Limite de segurança contra loop infinito acidental** (AC4): `MAX_ACTIONS
+  = 500` em `blockProgram.ts` (`interpretProgram`) — um `repeat_times` com
+  `TIMES` absurdo (o campo já limita a 12 na UI, mas isso é defesa em
+  profundidade) nunca trava a interpretação nem a interface.
+- Logging: `program_executed` (RD-P) a cada "Executar"/"Repetir execução" —
+  `block_sequence_json` é o mesmo programa serializado enviado pro
+  interpretador; `execution_duration_ms` é uma **estimativa** (nº de
+  segmentos × duração fixa de animação) quando `animate=true`, e `0` em modo
+  passo-a-passo (não existe duração fixa, o aluno controla o ritmo) — não é
+  uma medição real de wall-clock.
+
+### Fase Use travada — Desafio 1 (3.3)
+
+Quando `challenge.locked` (config tem `program`): workspace nasce com
+`initialJson` = o programa pré-montado (mesmo formato de
+`Blockly.serialization.workspaces.load`), `workspaceConfiguration.readOnly:
+true` e **sem `toolboxConfiguration`** — nenhum bloco arrastável, nenhuma
+paleta visível. Único controle é o botão Executar/Repetir execução (mesmo
+`handleRun` do modo livre — o programa é lido do workspace normalmente,
+só que o aluno não pode alterá-lo).
+
+Depois da 1ª execução (`attempts >= 1`): aparece a pergunta de investigação
+(`challenge.investigationQuestion`, motor PRIMM "Investigate" — placeholder
+mínimo, resposta livre só logada, nunca corrigida) e o botão "Avançar", que:
+
+- Loga `challenge_use_completed` **duas vezes** (uma `RD-P`, uma `RD-C` —
+  segue literalmente a notação "RD-P + RD-C" do backlog da feature, já que
+  uma linha de `interaction_events` só tem uma `category`), com
+  `attempts_before_proceed`.
+- Navega pra `/challenge/:nextChallengeId` (Desafio 2) — nunca habilitado
+  antes de `attempts >= 1` (AC4: "aluno não pode avançar sem executar ao
+  menos uma vez").
+
+Fase `use` **não avalia sucesso/falha** — o programa vem pronto e sempre
+"funciona" por construção; o feedback reversível (regra não-negociável 4)
+só faz sentido na fase `create`.
+
+### Fase Create livre + botão de Ajuda — Desafio 2 (3.5)
+
+Quando `challenge.locked` é `false`: o editor livre de sempre (toolbox
+arrastável, feedback de sucesso/tentativa nova sempre reversível — nunca
+"errado"/X vermelho, ver `challenge-page__feedback--retry`) + `challenge.
+completed` (RD-C) só quando a meta é atingida, o mesmo `type` que
+`HomeService`/`StudentHome` já esperavam desde 2.1 pra contar "desafios
+concluídos".
+
+**Botão de Ajuda** ("🔎 Ajuda: ver a forma") — andaime visual sem entregar a
+resposta: `turtleWorld.buildGoalPreviewPath(goal)` gera o traçado da forma-
+alvo **só a partir dos números do `goal`** (`sides`/`turnAngleDeg`), nunca a
+partir de blocos — não existe como essa função "vazar" quais instruções
+resolvem o desafio, porque ela não sabe o que são blocos. Toca num segundo
+`PixiTurtleWorld`, com sua própria instância de store (`helpStore`,
+independente da execução do aluno — abrir a Ajuda nunca apaga o traçado que
+o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I).
+
+### Estado intermediário: falta o Desafio 3 (fase Modify)
+
+Ver "Blocos por desafio" → "Estado intermediário" em `backend.md` e a nota
+de pesquisa em `apps/api/src/challenges/challenge-config.interface.ts`: a
+sequência atual (Desafio 1 `use` → Desafio 2 `create`) pula a etapa
+`modify` que RQ2 (21,74% dos estudos) respalda como parte do ciclo — **não
+tratar como sequência pedagógica completa/validada**. Qualquer desafio novo
+(neste tópico ou em outro) deve seguir Use→Modify→Create e declarar
+`position` explicitamente — ver a regra em `docs/ai/rules/coding-rule.md`.
 
 ## Assets visuais (`assets/illustrations/`)
 
@@ -198,14 +287,15 @@ o padrão esperado em código novo.
 
 ## Próximos passos (fora do escopo já implementado)
 
-- Múltiplos desafios por tópico / estágios modify-create — hoje
-  `ChallengesController` sempre devolve o primeiro (único) desafio do
-  tópico; a tela já lê `toolbox.stage`, mas nada consome esse valor ainda
-  (ex.: workspace pré-preenchido com blocos iniciais no estágio "modify").
+- **Desafio 3 (fase Modify)** entre os 2 desafios seed atuais — ver "Estado
+  intermediário" acima e em `backend.md`. A tela já lê `toolbox.stage` e já
+  sabe renderizar `readOnly`/`initialJson` a partir de `program` (usado hoje
+  só pela fase `use`) — uma fase `modify` reaproveitaria exatamente esse
+  mecanismo com `readOnly: false`, só sem toolbox de blocos novos.
 - Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
-  tela, não só a paleta Use-Modify-Create) — hoje `ChallengePage` só tem
-  "montar → executar → feedback", sem as etapas Predict/Investigate
-  separadas.
+  tela) — a pergunta de investigação do Desafio 1 é um placeholder mínimo do
+  estágio "Investigate" (resposta livre, só logada); Predict/Run como
+  etapas próprias de tela ainda não existem.
 - Ingestão de eventos pré-login (`login_screen_viewed`,
   `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
   documentado em `backend.md`.

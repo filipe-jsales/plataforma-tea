@@ -85,3 +85,17 @@ export function evaluateSquareGoal(result: TurtleRunResult, goal: SquareGoal): G
 
   return { success: closed && headingClosed };
 }
+
+// Botão "Ajuda" (fase Create, 3.5): mostra a forma-alvo sendo traçada no
+// mundo Pixi, gerada só a partir do `goal` numérico (sides/turnAngleDeg) —
+// nunca a partir de blocos, então não existe como essa função "vazar" quais
+// instruções resolvem o desafio. É um andaime visual (o aluno já viu essa
+// mesma forma no Desafio 1 em fase Use), nunca a resposta.
+export function buildGoalPreviewPath(goal: SquareGoal, options: TurtleRunOptions = {}): TurtleRunResult {
+  const actions: TurtleAction[] = [];
+  for (let side = 0; side < goal.sides; side += 1) {
+    actions.push({ kind: 'move' });
+    actions.push({ kind: 'turn', direction: 'RIGHT' });
+  }
+  return runTurtleProgram(actions, { ...options, turnDeg: goal.turnAngleDeg });
+}

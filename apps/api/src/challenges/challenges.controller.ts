@@ -5,14 +5,31 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { BlockDefinition } from '../blocks/entities/block-definition.entity';
 import { BlocksService } from '../blocks/blocks.service';
 import { Role } from '../common/enums/role.enum';
-import { isChallengeConfig } from './challenge-config.interface';
+import { isChallengeConfig, type SerializedBlockState } from './challenge-config.interface';
 import { ChallengesService } from './challenges.service';
+import { Challenge } from './entities/challenge.entity';
 
 interface ToolboxCategory {
   slug: string;
   label: string;
   colour: number;
   blocks: Array<{ blockType: string; label: string; colour: number; json: Record<string, unknown> }>;
+}
+
+interface ChallengeDetail {
+  id: string;
+  title: string;
+  prompt: string;
+  // true = fase "use" (3.3): workspace pré-montado, travado, sem toolbox —
+  // frontend nunca decide isso sozinho, só lê esta flag.
+  locked: boolean;
+  toolbox: { stage: string; categories: ToolboxCategory[] };
+  goal: unknown;
+  program: SerializedBlockState | null;
+  investigationQuestion: string | null;
+  // Próximo desafio da sequência Use-Modify-Create deste tópico (por
+  // `position`), null se este for o último cadastrado até agora.
+  nextChallengeId: string | null;
 }
 
 // Aluno só — rota alimenta o editor de blocos do desafio já atribuído. Não
@@ -29,12 +46,29 @@ export class ChallengesController {
     private readonly blocksService: BlocksService,
   ) {}
 
+  // Entrada da sequência de um tópico (2.3 → aqui): sempre o desafio de
+  // menor `position` — hoje "Desafio 1" (fase use).
   @Get('by-topic/:topicId')
   async getByTopic(@Param('topicId') topicId: string) {
     const challenge = await this.challengesService.findFirstByTopicId(topicId);
     if (!challenge) {
       throw new NotFoundException('Nenhum desafio cadastrado para este módulo ainda.');
     }
+    return this.buildDetailOrThrow(challenge);
+  }
+
+  // Acesso direto a um desafio específico da sequência (ex.: "Avançar" saindo
+  // do desafio anterior, via nextChallengeId).
+  @Get(':id')
+  async getById(@Param('id') id: string) {
+    const challenge = await this.challengesService.findById(id);
+    if (!challenge) {
+      throw new NotFoundException('Desafio não encontrado.');
+    }
+    return this.buildDetailOrThrow(challenge);
+  }
+
+  private async buildDetailOrThrow(challenge: Challenge): Promise<ChallengeDetail> {
     if (!isChallengeConfig(challenge.config)) {
       // Desafio existe mas ainda não tem toolbox configurada (config vazio,
       // ver comentário em challenge.entity.ts) — não é um 404, é um estado
@@ -43,16 +77,26 @@ export class ChallengesController {
       throw new NotFoundException('Este desafio ainda não tem blocos configurados.');
     }
 
-    const blocks = await this.blocksService.findByTypes(challenge.config.allowedBlockTypes);
+    const [blocks, siblings] = await Promise.all([
+      this.blocksService.findByTypes(challenge.config.allowedBlockTypes),
+      this.challengesService.findByTopicIdOrdered(challenge.topicId),
+    ]);
+    const ownIndex = siblings.findIndex((sibling) => sibling.id === challenge.id);
+    const next = ownIndex >= 0 ? siblings[ownIndex + 1] : undefined;
+
     return {
       id: challenge.id,
       title: challenge.title,
       prompt: challenge.prompt,
+      locked: Boolean(challenge.config.program),
       toolbox: {
         stage: challenge.config.stage,
         categories: this.groupByCategory(blocks),
       },
       goal: challenge.config.goal,
+      program: challenge.config.program ?? null,
+      investigationQuestion: challenge.config.investigationQuestion ?? null,
+      nextChallengeId: next?.id ?? null,
     };
   }
 

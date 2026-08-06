@@ -50,6 +50,14 @@ function App() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/challenge/:challengeId"
+        element={
+          <RequireAuth roles={['student']}>
+            <ChallengePage />
+          </RequireAuth>
+        }
+      />
     </Routes>
   )
 }

@@ -1,15 +1,7 @@
 import { Application, Graphics } from 'pixi.js';
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import type { Point } from '../../lib/turtleWorld';
+import { useEffect, useRef } from 'react';
+import type { TurtleExecutionStore } from '../../stores/turtleExecutionStore';
 import './PixiTurtleWorld.css';
-
-export interface PixiTurtleWorldHandle {
-  // `animate: false` desenha o caminho inteiro de uma vez (perfil sensorial
-  // com motion desligado, regra não-negociável 1) — nunca decide isso
-  // sozinho, ChallengePage lê useSensoryProfileStore e passa a decisão.
-  playPath: (points: Point[], options: { animate: boolean }) => Promise<void>;
-  reset: () => void;
-}
 
 const WORLD_SIZE = 320;
 const CHARACTER_RADIUS = 12;
@@ -26,13 +18,17 @@ function drawCharacter(character: Graphics): void {
     .fill({ color: 0x2b6cb0 });
 }
 
-// Mundo PixiJS que só desenha o caminho já calculado por turtleWorld.ts —
-// nenhuma lógica de interpretação/geometria aqui, só apresentação (regra de
-// separar cálculo puro de renderização, ver turtleWorld.spec.ts).
-export const PixiTurtleWorld = forwardRef<PixiTurtleWorldHandle>(function PixiTurtleWorld(
-  _props,
-  ref,
-) {
+interface PixiTurtleWorldProps {
+  store: TurtleExecutionStore;
+}
+
+// Mundo PixiJS: comunicação exclusivamente via `store` (Zustand) — nunca
+// importa nem manipula o DOM/instância do Blockly diretamente (3.2 AC1).
+// ChallengePage calcula o caminho (blockProgram.ts + turtleWorld.ts, lógica
+// pura, sem Pixi/Blockly) e chama `store.getState().play(...)`; este
+// componente só reage a mudanças no store — poderia ser trocado por outro
+// motor de renderização sem tocar em ChallengePage nem vice-versa.
+export function PixiTurtleWorld({ store }: PixiTurtleWorldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const pathGraphicsRef = useRef<Graphics | null>(null);
@@ -85,46 +81,69 @@ export const PixiTurtleWorld = forwardRef<PixiTurtleWorldHandle>(function PixiTu
     };
   }, []);
 
-  useImperativeHandle(ref, () => ({
-    async playPath(points, options) {
+  const points = store((state) => state.points);
+  const animate = store((state) => state.animate);
+  const stepIndex = store((state) => state.stepIndex);
+  const runToken = store((state) => state.runToken);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
       await readyRef.current;
+      if (cancelled) return;
       const pathGraphics = pathGraphicsRef.current;
       const character = characterRef.current;
-      if (!pathGraphics || !character || points.length === 0) {
+      if (!pathGraphics || !character) return;
+
+      const origin = WORLD_SIZE / 2;
+      const drawUpTo = (index: number) => {
+        pathGraphics.clear();
+        character.rotation = 0;
+        if (points.length === 0) {
+          character.position.set(origin, origin);
+          return;
+        }
+        character.position.set(origin + points[0].x, origin + points[0].y);
+        pathGraphics.moveTo(origin + points[0].x, origin + points[0].y);
+        for (let i = 1; i <= index; i += 1) {
+          const from = points[i - 1];
+          const to = points[i];
+          character.rotation = Math.atan2(to.x - from.x, -(to.y - from.y));
+          character.position.set(origin + to.x, origin + to.y);
+          pathGraphics.lineTo(origin + to.x, origin + to.y);
+        }
+        if (index > 0) {
+          pathGraphics.stroke({ width: 4, color: 0x2b6cb0 });
+        }
+      };
+
+      if (!animate) {
+        // 3.2 AC2 — padrão sem animação: avanço por passos controlados pelo
+        // aluno (advanceStep() do store, disparado por um botão "Próximo
+        // passo" na tela). Este efeito só redesenha até `stepIndex`, nunca
+        // avança sozinho.
+        drawUpTo(stepIndex);
         return;
       }
 
-      const origin = WORLD_SIZE / 2;
-      pathGraphics.clear();
-      character.position.set(origin + points[0].x, origin + points[0].y);
-      character.rotation = 0;
-
-      pathGraphics.moveTo(origin + points[0].x, origin + points[0].y);
+      // animate=true (opt-in): anima segmento a segmento sozinho, sempre que
+      // `runToken` mudar (nova execução). `cancelled` evita que uma
+      // animação antiga continue desenhando por cima de uma nova.
+      drawUpTo(0);
       for (let i = 1; i < points.length; i += 1) {
-        const from = points[i - 1];
-        const to = points[i];
-        const headingRad = Math.atan2(to.x - from.x, -(to.y - from.y));
-
-        if (options.animate) {
-          // eslint-disable-next-line no-await-in-loop
-          await sleep(SEGMENT_DURATION_MS);
-        }
-
-        character.rotation = headingRad;
-        character.position.set(origin + to.x, origin + to.y);
-        pathGraphics.lineTo(origin + to.x, origin + to.y);
-        pathGraphics.stroke({ width: 4, color: 0x2b6cb0 });
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(SEGMENT_DURATION_MS);
+        if (cancelled) return;
+        drawUpTo(i);
       }
-    },
-    reset() {
-      pathGraphicsRef.current?.clear();
-      const character = characterRef.current;
-      if (character) {
-        character.position.set(WORLD_SIZE / 2, WORLD_SIZE / 2);
-        character.rotation = 0;
-      }
-    },
-  }));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runToken, stepIndex, animate]);
 
   return (
     <div
@@ -134,4 +153,4 @@ export const PixiTurtleWorld = forwardRef<PixiTurtleWorldHandle>(function PixiTu
       aria-label="Área onde o personagem executa o programa montado"
     />
   );
-});
+}

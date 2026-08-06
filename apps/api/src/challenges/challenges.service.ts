@@ -25,18 +25,20 @@ export class ChallengesService {
     return first ?? null;
   }
 
-  // Editor de blocos (3.x): MVP tem 1 desafio por tópico, então "o desafio
-  // do tópico" é sempre o mais antigo — mesma lógica de findFirst(), apenas
-  // escopada ao tópico escolhido no seletor (2.3). Ordenado por createdAt
-  // porque um tópico com N desafios no futuro precisa da ordem cronológica
-  // pra respeitar a progressão Use-Modify-Create (ver block-progression.ts).
-  async findFirstByTopicId(topicId: string): Promise<Challenge | null> {
-    const [first] = await this.challengesRepository.find({
+  // Editor de blocos (3.x): a sequência Use-Modify-Create de um tópico,
+  // ordenada por `position` (nunca `createdAt` — ver comentário em
+  // challenge.entity.ts). `getByTopic` do controller pega o índice 0 daqui
+  // (o "Desafio 1"); `nextChallengeId` é resolvido andando essa mesma lista.
+  findByTopicIdOrdered(topicId: string): Promise<Challenge[]> {
+    return this.challengesRepository.find({
       where: { topicId },
-      order: { createdAt: 'ASC' },
-      take: 1,
+      order: { position: 'ASC' },
     });
-    return first ?? null;
+  }
+
+  async findFirstByTopicId(topicId: string): Promise<Challenge | null> {
+    const challenges = await this.findByTopicIdOrdered(topicId);
+    return challenges[0] ?? null;
   }
 
   findById(id: string): Promise<Challenge | null> {

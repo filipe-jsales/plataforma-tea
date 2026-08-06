@@ -23,42 +23,99 @@ describe('ChallengesController', () => {
       ...overrides,
     }) as BlockDefinition;
 
+  const useChallenge = {
+    id: 'c1',
+    topicId: 'topic-1',
+    title: 'Monte o quadrado',
+    prompt: 'Encaixe os blocos para desenhar um quadrado.',
+    position: 1,
+    config: {
+      stage: 'use',
+      allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
+      goal: { shape: 'square', sides: 4, turnAngleDeg: 90 },
+      program: { type: 'repeat_times', fields: { TIMES: 4 } },
+      investigationQuestion: 'Quantas vezes o personagem virou?',
+    },
+  } as unknown as Challenge;
+
+  const createChallenge = {
+    id: 'c2',
+    topicId: 'topic-1',
+    title: 'Monte o quadrado — sua vez!',
+    prompt: 'Agora é com você.',
+    position: 2,
+    config: {
+      stage: 'create',
+      allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
+      goal: { shape: 'square', sides: 4, turnAngleDeg: 90 },
+    },
+  } as unknown as Challenge;
+
   beforeEach(() => {
     challengesService = {
       findFirstByTopicId: jest.fn(),
+      findById: jest.fn(),
+      findByTopicIdOrdered: jest.fn().mockResolvedValue([useChallenge, createChallenge]),
     } as unknown as jest.Mocked<ChallengesService>;
-    blocksService = { findByTypes: jest.fn() } as unknown as jest.Mocked<BlocksService>;
+    blocksService = { findByTypes: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<BlocksService>;
 
     controller = new ChallengesController(challengesService, blocksService);
   });
 
-  it('throws NotFoundException when the topic has no challenge yet', async () => {
-    challengesService.findFirstByTopicId.mockResolvedValue(null);
+  describe('getByTopic', () => {
+    it('throws NotFoundException when the topic has no challenge yet', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(null);
 
-    await expect(controller.getByTopic('topic-1')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(controller.getByTopic('topic-1')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('throws NotFoundException when the challenge exists but has no toolbox config yet', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue({ id: 'c1', config: {} } as Challenge);
+
+      await expect(controller.getByTopic('topic-1')).rejects.toBeInstanceOf(NotFoundException);
+      expect(blocksService.findByTypes).not.toHaveBeenCalled();
+    });
+
+    it('returns the entry (position 1) challenge of the sequence, locked, with its program and question', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.id).toBe('c1');
+      expect(result.locked).toBe(true);
+      expect(result.program).toEqual({ type: 'repeat_times', fields: { TIMES: 4 } });
+      expect(result.investigationQuestion).toBe('Quantas vezes o personagem virou?');
+    });
+
+    it('resolves nextChallengeId by walking the position-ordered sequence for the topic', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.nextChallengeId).toBe('c2');
+    });
   });
 
-  it('throws NotFoundException when the challenge exists but has no toolbox config yet', async () => {
-    challengesService.findFirstByTopicId.mockResolvedValue({
-      id: 'c1',
-      config: {},
-    } as Challenge);
+  describe('getById', () => {
+    it('throws NotFoundException when no challenge matches the id', async () => {
+      challengesService.findById.mockResolvedValue(null);
 
-    await expect(controller.getByTopic('topic-1')).rejects.toBeInstanceOf(NotFoundException);
-    expect(blocksService.findByTypes).not.toHaveBeenCalled();
+      await expect(controller.getById('missing')).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('returns an unlocked (free-build) challenge with no program, and no next after the last in the sequence', async () => {
+      challengesService.findById.mockResolvedValue(createChallenge);
+
+      const result = await controller.getById('c2');
+
+      expect(result.locked).toBe(false);
+      expect(result.program).toBeNull();
+      expect(result.nextChallengeId).toBeNull();
+    });
   });
 
   it('groups blocks by category (AC5: abas pequenas, nunca uma lista única)', async () => {
-    challengesService.findFirstByTopicId.mockResolvedValue({
-      id: 'c1',
-      title: 'Monte o quadrado',
-      prompt: 'Encaixe os blocos para desenhar um quadrado.',
-      config: {
-        stage: 'use',
-        allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
-        goal: { shape: 'square', sides: 4, turnAngleDeg: 90 },
-      },
-    } as Challenge);
+    challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
     blocksService.findByTypes.mockResolvedValue([
       blockFixture({ blockType: 'move_forward', category: 'movimento', categoryLabel: 'Movimento' }),
       blockFixture({ blockType: 'turn', category: 'movimento', categoryLabel: 'Movimento' }),
@@ -67,11 +124,7 @@ describe('ChallengesController', () => {
 
     const result = await controller.getByTopic('topic-1');
 
-    expect(blocksService.findByTypes).toHaveBeenCalledWith([
-      'move_forward',
-      'turn',
-      'repeat_times',
-    ]);
+    expect(blocksService.findByTypes).toHaveBeenCalledWith(['move_forward', 'turn', 'repeat_times']);
     expect(result.toolbox.stage).toBe('use');
     expect(result.toolbox.categories).toHaveLength(2);
     const movimento = result.toolbox.categories.find((c) => c.slug === 'movimento');
@@ -81,16 +134,7 @@ describe('ChallengesController', () => {
   });
 
   it('never leaks internal ids beyond what the toolbox needs — only blockType/label/colour/json', async () => {
-    challengesService.findFirstByTopicId.mockResolvedValue({
-      id: 'c1',
-      title: 'Monte o quadrado',
-      prompt: 'Encaixe os blocos.',
-      config: {
-        stage: 'use',
-        allowedBlockTypes: ['move_forward'],
-        goal: { shape: 'square', sides: 4, turnAngleDeg: 90 },
-      },
-    } as Challenge);
+    challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
     blocksService.findByTypes.mockResolvedValue([blockFixture({})]);
 
     const result = await controller.getByTopic('topic-1');
