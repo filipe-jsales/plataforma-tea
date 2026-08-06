@@ -44,7 +44,13 @@ export const PixiTurtleWorld = forwardRef<PixiTurtleWorldHandle>(function PixiTu
     const app = new Application();
     appRef.current = app;
 
-    readyRef.current = (async () => {
+    // app.init() é assíncrono; em React StrictMode o efeito monta/desmonta
+    // duas vezes de propósito (dev only) — se destroy() rodar antes do init
+    // terminar, os plugins internos do Pixi (ex.: resize) ainda não foram
+    // inicializados e destroy() quebra (`_cancelResize is not a function`).
+    // Por isso o cleanup só chama destroy() depois que `ready` resolve,
+    // nunca antes — `disposed` só decide se ainda vale montar o canvas.
+    const ready = (async () => {
       await app.init({
         width: WORLD_SIZE,
         height: WORLD_SIZE,
@@ -66,13 +72,16 @@ export const PixiTurtleWorld = forwardRef<PixiTurtleWorldHandle>(function PixiTu
       app.stage.addChild(character);
       characterRef.current = character;
     })();
+    readyRef.current = ready;
 
     return () => {
       disposed = true;
-      pathGraphicsRef.current = null;
-      characterRef.current = null;
-      appRef.current = null;
-      app.destroy(true);
+      ready.then(() => {
+        pathGraphicsRef.current = null;
+        characterRef.current = null;
+        appRef.current = null;
+        app.destroy(true);
+      });
     };
   }, []);
 
