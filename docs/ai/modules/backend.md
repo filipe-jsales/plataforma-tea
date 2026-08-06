@@ -316,6 +316,65 @@ escrevendo lógica de tela nova nem expondo os rótulos técnicos ao aluno
 `challenge-config.interface.ts` e a implementação do lado do frontend em
 `docs/ai/modules/frontend.md`.
 
+### Rastreabilidade PRIMM × Use-Modify-Create (tópico `angulos_formas`)
+
+Tabela de rastreabilidade — qual estágio de qual framework cada desafio
+seedado satisfaz hoje, verificada por leitura direta do `config` real (não
+só pela intenção documentada acima):
+
+| Estágio | Desafio(s) | Cadência | Framework(s) satisfeito(s) |
+|---|---|---|---|
+| Predict | 3.3 (Desafio 1, `use`, position 1) **e** 3.4 (Desafio 2, `modify`, position 2) | 3.3: só antes da 1ª execução (o programa nunca muda ali) · 3.4: antes de **cada** execução (os valores editáveis mudam a cada rodada) | PRIMM |
+| Run | 3.3, 3.4, 3.5 | sempre | PRIMM |
+| Investigate | 3.3 | depois da 1ª execução | PRIMM |
+| Modify | 3.4 | — | PRIMM + Use-Modify-Create |
+| Make/Create | 3.5 (Desafio 3, `create`, position 3) | — | PRIMM + Use-Modify-Create |
+
+**Use-Modify-Create**: as 3 etapas cobertas por 3 desafios distintos em
+sequência (position 1→2→3), sem lacuna — RQ2 (21,74% dos estudos) atendido
+por completo pela primeira vez neste tópico.
+
+**PRIMM**: os 5 estágios cobertos, sem lacuna — P-R-I unificados em 3.3
+(mais próxima da formulação clássica de PRIMM na literatura), com Predict
+também presente em 3.4 numa cadência própria (repetido a cada rodada, já
+que ali os valores editáveis mudam — em 3.3 o programa é fixo, então prever
+de novo a cada reexecução não agregaria nada). O mecanismo de tela
+(`challenge.predictQuestion` presente → mostra o widget de previsão antes
+do Executar) já era genérico desde a implementação de 3.4 — adicionar
+Predict a 3.3 foi só uma linha de config nova (migration
+`AddPredictQuestionToUseChallenge`), nenhuma tela nova.
+
+**Duas condições verificadas nos dados reais (não só na intenção
+documentada):**
+
+1. **Identidade do programa entre Investigate (3.3) e Modify (3.4).** O
+   PRIMM pressupõe que o aluno modifica o mesmo programa que investigou, não
+   uma cópia divergente. Confirmado por query direta em produção/dev: os
+   `config.program` dos dois desafios são **byte-a-byte idênticos**
+   (`repeat_times{TIMES:4}` → `move_forward` → `turn{DIR:RIGHT,ANGLE:90}`).
+   Não eram idênticos por padrão — o `program` de 3.3 foi seedado antes do
+   campo `ANGLE` existir no bloco `turn` (ver migration
+   `AddAngleFieldToTurnBlock`), então carregava o valor por default do
+   Blockly em vez de um valor explícito; a migration
+   `AlignUseProgramAngleField` fecha essa lacuna explicitamente, pra a
+   igualdade ser verificável por comparação direta do jsonb, não só "dá o
+   mesmo resultado visual". Isso é uma checagem manual de autoria de
+   currículo (mesma categoria de `block-progression.spec.ts`) — não existe
+   hoje um teste automatizado que trave essa igualdade se um dos dois
+   `program` for editado no futuro sem tocar o outro; ver "Próximos passos".
+2. **Cobertura agregada de PRIMM (checagem "4.7"/campo `primm_stages_covered`
+   de autoria "4.5").** Nenhum dos dois existe nesta base de código —
+   autoria de desafio pelo professor (4.5) foi explicitamente adiada (ver
+   "Sem autoria de toolbox pelo professor nesta versão" acima), e não há
+   verificador agregado de cobertura PRIMM em runtime (4.7). A cobertura
+   documentada nesta seção é garantida pela estrutura do seed/config,
+   verificável por leitura direta — não por um mecanismo de aviso que
+   "fecha sozinho". Quando 4.5/4.7 forem implementados: o valor certo de
+   `primm_stages_covered` pro desafio 3.3 é `['predict', 'run',
+   'investigate']`, e pro 3.4 é `['predict', 'run', 'modify']` (cada um
+   cobre os três — Run é implícito em toda execução — não só o nome que dá
+   título ao desafio).
+
 ### Eventos desta feature
 
 Além de `toolbox_rendered`/`block_dragged` (3.1, RD-I), `program_executed`
@@ -324,6 +383,15 @@ de `program`) e `challenge_use_completed` (3.3 — logado duas vezes, uma
 `RD-P` e uma `RD-C`, seguindo literalmente a notação "RD-P + RD-C" do
 backlog da feature, já que uma linha de `interaction_events` só tem uma
 `category`).
+
+`program_executed` ganha dois campos opcionais — `prediction_given`/
+`result_matched_prediction` — só quando o desafio pede previsão (motor
+PRIMM "Predict", 3.6) e não é a fase `modify` (que já tem seu próprio
+evento mais detalhado, ver abaixo, sem duplicar). Hoje isso cobre o desafio
+`use` (3.3): a previsão feita antes da 1ª execução é comparada contra
+quantos lados o traçado fechou com, em todo `program_executed` daquele
+desafio (inclusive reexecuções — o valor não muda porque o programa é
+fixo, então repetir o comparativo é intencional, não estado sujo).
 
 `challenge_modify_attempt` (3.4, RD-P) — logado a cada Executar dentro do
 desafio `modify` (além do `program_executed` genérico, que continua saindo
@@ -367,10 +435,11 @@ traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
   política de acesso em nível de rota. Regra não-negociável 8.
 - **`challenges`** é modelagem mínima (título, enunciado, `config` jsonb —
   ver "Blocos por desafio" acima pro que `config` guarda hoje). O suficiente
-  para existir "1 desafio de geometria" e para `interaction_events.challengeId`
-  ser uma FK real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make
-  como estrutura de estado do desafio, não só a paleta Use-Modify-Create)
-  ainda não está modelado — ver "Próximos passos".
+  para existir os 3 desafios do tópico de geometria e para
+  `interaction_events.challengeId` ser uma FK real. O ciclo PRIMM interno
+  (Predict-Run-Investigate-Modify-Make) é modelado como vocabulário de
+  `config`, não uma máquina de estado própria em `Challenge` — ver "Como
+  desafios futuros adotam PRIMM" acima.
 
 ## Eventos de interação
 
@@ -414,6 +483,17 @@ novos.
   de Investigate *depois* de Modify (não só depois de Use) exigiria estender
   `Challenge.config` com uma segunda pergunta de investigação — não
   implementado, sem caso de uso concreto ainda.
+- Checagem automatizada de identidade de programa entre desafios `use`/
+  `modify` do mesmo tópico (ver "Rastreabilidade PRIMM × Use-Modify-Create"
+  acima) — hoje é uma verificação manual feita ao seedar; um teste que
+  compare `config.program` de desafios adjacentes por `position` dentro do
+  mesmo `topicId` evitaria uma divergência silenciosa se um dos dois for
+  editado no futuro sem tocar o outro.
+- **Painel de métricas pro professor/admin** (dados agregados/por-aluno de
+  desafios e eventos, hoje só `GET /home/{teacher,admin}` com contagens
+  mínimas) — plano detalhado, dividido em features com critérios de
+  aceite, em `docs/ai/backlog/metricas-professor-admin.md`. Nada disso
+  está implementado ainda.
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

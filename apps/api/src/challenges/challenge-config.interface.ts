@@ -8,11 +8,13 @@
 // tópico `angulos_formas` (migrations SeedSquareChallengeToolbox,
 // SeedUseModifyCreateSequence, SeedModifyChallenge) implementa hoje o ciclo
 // COMPLETO:
-//   Desafio 1 "Monte o quadrado"            → stage 'use'    (position 1)
-//   Desafio 3 "Monte o quadrado — agora mude!" → stage 'modify' (position 2)
-//   Desafio 2 "Monte o quadrado — sua vez!" → stage 'create' (position 3)
+//   "Monte o quadrado"               → stage 'use'    (position 1)
+//   "Monte o quadrado — agora mude!" → stage 'modify' (position 2)
+//   "Monte o quadrado — sua vez!"    → stage 'create' (position 3)
 // Este é o primeiro tópico com o trio completo — trate-o como referência ao
-// desenhar um tópico novo, não como exceção.
+// desenhar um tópico novo, não como exceção. Ver a tabela de rastreabilidade
+// completa (PRIMM × Use-Modify-Create × desafio) em
+// docs/ai/modules/backend.md → "Rastreabilidade PRIMM × Use-Modify-Create".
 //
 // ── Nota de pesquisa: motor PRIMM (RQ2, 4,35% dos estudos) ────────────────
 // PRIMM (Predict-Run-Investigate-Modify-Make) é subexplorado na literatura
@@ -22,7 +24,8 @@
 // sequência Use→Modify→Create de um tópico, cada um ativado só quando o
 // campo de config correspondente está presente (nunca hardcoded por nome de
 // desafio/estágio no componente):
-//   Predict     → `predictQuestion` presente (hoje só no desafio 'modify')
+//   Predict     → `predictQuestion` presente (hoje nos desafios 'use' e
+//                 'modify' — cadência diferente em cada um, ver backend.md)
 //   Run         → sempre (todo desafio tem "Executar")
 //   Investigate → `investigationQuestion` presente (hoje só no desafio 'use')
 //   Modify      → `editableFields` presente (o desafio 'modify' inteiro)
@@ -97,11 +100,12 @@ export interface ChallengeConfig {
   // (RD-C), nunca corrigida automaticamente — não existe "certo/errado"
   // aqui de propósito, é reflexão guiada, não avaliação.
   investigationQuestion?: string;
-  // Pergunta de predição exibida antes de cada execução (motor PRIMM
-  // "Predict" — ver nota de pesquisa acima). Hoje só presente em desafios
-  // `stage: 'modify'`, mas nada impede um `use`/`create` futuro de também
-  // declarar isso — o frontend só ativa a tela de predição quando este
-  // campo existe, nunca por checar `stage`.
+  // Pergunta de predição (motor PRIMM "Predict" — ver nota de pesquisa
+  // acima). Presente em `stage: 'use'` (só antes da 1ª execução — o
+  // programa nunca muda ali) e em `stage: 'modify'` (antes de CADA
+  // execução — os valores editáveis mudam a cada rodada); nada impede um
+  // `create` futuro de também declarar isso. O frontend só ativa a tela de
+  // predição quando este campo existe, nunca por checar `stage`.
   predictQuestion?: string;
   // Presente só em desafios `stage: 'modify'` (motor PRIMM "Modify" — ver
   // nota de pesquisa acima): quais campos do `program` pré-montado ficam

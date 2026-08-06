@@ -285,6 +285,10 @@ export function ChallengePage() {
     const actions = interpretProgram(serialized);
     const result = runTurtleProgram(actions);
     const evaluation = evaluateSquareGoal(result, challenge.goal);
+    // Motor PRIMM "Predict": quantos lados o traçado realmente fechou com —
+    // calculado uma vez, reusado tanto pelo comparativo de 3.3 (abaixo, só
+    // no `program_executed`) quanto pelo de 3.4 (challenge_modify_attempt).
+    const actualSides = closedPolygonSides(result);
 
     setFeedback(null);
     executionStore.getState().play(result.points, motionEnabled);
@@ -294,6 +298,14 @@ export function ChallengePage() {
     // animação (ver SEGMENT_DURATION_MS acima), não uma medição real de
     // wall-clock — em modo passo-a-passo (padrão sensorial) não há duração
     // fixa, o aluno controla o ritmo, por isso 0 nesse caso.
+    //
+    // `prediction_given`/`result_matched_prediction` só aparecem quando o
+    // desafio pede previsão E não é a fase `modify` — lá o comparativo já
+    // sai em detalhe no `challenge_modify_attempt` logo abaixo, duplicar
+    // aqui não agrega. Em 3.3 a previsão só é pedida antes da 1ª execução
+    // (`predictAnswer` fica com o mesmo valor nas reexecuções seguintes,
+    // já que o programa nunca muda ali — repetir o comparativo a cada
+    // `program_executed` é intencional, não um bug de estado não-limpo).
     logEvent({
       studentPseudoId: user.pseudonymId,
       category: 'RD-P',
@@ -305,6 +317,12 @@ export function ChallengePage() {
         execution_duration_ms: motionEnabled
           ? Math.max(result.points.length - 1, 0) * SEGMENT_DURATION_MS
           : 0,
+        ...(challenge.predictQuestion && !isModify && predictAnswer !== null
+          ? {
+              prediction_given: predictAnswer,
+              result_matched_prediction: actualSides === predictAnswer,
+            }
+          : {}),
         timestamp: new Date().toISOString(),
       },
     });
@@ -318,7 +336,6 @@ export function ChallengePage() {
     if (isModify) {
       const currentValues = extractEditableFieldValues(serialized, challenge.editableFields);
       const changedValues = diffChangedValues(editableInitialValues, currentValues);
-      const actualSides = closedPolygonSides(result);
       const matched = actualSides !== null && actualSides === predictAnswer;
 
       logEvent({

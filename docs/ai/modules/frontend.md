@@ -218,6 +218,20 @@ nenhum bloco arrastável, nenhuma paleta visível. Único controle é o botão
 Executar/Repetir execução (mesmo `handleRun` do modo livre — o programa é
 lido do workspace normalmente, só que o aluno não pode alterá-lo).
 
+**Motor PRIMM "Predict"** (fechando P-R-I unificados neste desafio, ver
+"Rastreabilidade PRIMM × Use-Modify-Create" em `backend.md`):
+`challenge.predictQuestion` reaproveita o mesmo mecanismo genérico da fase
+`modify` (widget de botões grandes, `primmStage`/`predictAnswer`, ver
+abaixo) — mas só trava o **primeiro** Executar, nunca reaparece nas
+reexecuções seguintes, porque nada reseta `primmStage` de volta pra
+`'predict'` fora do fluxo específico de `modify` (o programa aqui nunca
+muda, então prever de novo a cada rodada não agregaria nada — diferente de
+`modify`, ver abaixo). O comparativo previsão×resultado (`closedPolygonSides`
+contra a previsão) vai direto no `program_executed` daquele desafio, sem
+evento próprio (a fase `modify` é que tem um evento dedicado,
+`challenge_modify_attempt`, porque ali também precisa registrar quais
+valores mudaram).
+
 Depois da 1ª execução (`attempts >= 1`): aparece a pergunta de investigação
 (`challenge.investigationQuestion`, motor PRIMM "Investigate" — placeholder
 mínimo, resposta livre só logada, nunca corrigida) e o botão "Avançar", que:
@@ -234,7 +248,7 @@ Fase `use` **não avalia sucesso/falha** — o programa vem pronto e sempre
 "funciona" por construção; o feedback reversível (regra não-negociável 4)
 só faz sentido na fase `create`.
 
-### Fase Modify — Desafio 3 (3.4)
+### Fase Modify (3.4)
 
 Reaproveita o mesmo `initialJson`/`program` da fase `use` (`initialJson`
 hoje é derivado só de `challenge.program`, não mais de `challenge.locked`),
