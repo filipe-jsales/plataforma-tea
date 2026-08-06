@@ -9,8 +9,9 @@ ou implementar código neste repositório.
 Plataforma web gamificada, baseada em blocos (Blockly), para ensinar lógica de
 programação e Pensamento Computacional a estudantes com TEA, integrando um
 conceito de disciplina da educação básica em cada desafio. Três áreas:
-Estudante, Professor, Admin. Ver `docs/ai/modules/` para a arquitetura de cada
-parte do sistema.
+Estudante, Professor, Admin. Ver [`docs/ai/persona.md`](../persona.md) para a
+identidade/missão completa e a base de evidência por trás de cada regra
+abaixo, e `docs/ai/modules/` para a arquitetura de cada parte do sistema.
 
 Todo o desenho do produto é orientado por um Mapeamento Sistemático da
 Literatura (23 estudos primários, 2016–2026) sobre metodologias ativas de
