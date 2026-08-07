@@ -1,8 +1,9 @@
 # Módulos — Plataforma TEA
 
 Índice da arquitetura do repositório, por módulo. Ver também
-`docs/ai/rules/coding-rule.md` para as regras de código que se aplicam a
-qualquer mudança nestes módulos.
+[`docs/ai/persona.md`](../persona.md) (identidade/missão/evidência do
+projeto) e `docs/ai/rules/coding-rule.md` (regras de código) para o contexto
+que se aplica a qualquer mudança nestes módulos.
 
 - [`frontend.md`](./frontend.md) — `apps/web`, React + Vite + Blockly + PixiJS.
 - [`backend.md`](./backend.md) — `apps/api`, NestJS + TypeORM + JWT.

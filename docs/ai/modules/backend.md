@@ -69,6 +69,21 @@ apps/api/src/
 │   ├── home.service.ts          # agregações por papel — nunca dado individual pro admin
 │   ├── home.controller.ts       # GET /home/{student,teacher,admin}
 │   └── home.module.ts
+├── settings/
+│   ├── entities/platform-setting.entity.ts  # tabela singleton (1 linha), N mínimo (6.5)
+│   ├── dto/update-settings.dto.ts
+│   ├── settings.controller.ts   # GET/PATCH /admin/settings
+│   ├── settings.service.ts
+│   └── settings.module.ts
+├── metrics/
+│   ├── statistics.ts             # 6.5 — motor estatístico puro (mean/median/stdDev/quartis/histogramas)
+│   ├── metrics.service.ts        # 6.1 — motor único de status/progresso por desafio
+│   ├── metrics-admin.service.ts  # 6.2 — visão institucional (escolas/turmas/professores)
+│   ├── metrics-admin-challenge.service.ts  # 6.5 — relatório de profundidade por desafio
+│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...]}
+│   ├── metrics-teacher.service.ts   # 6.3/6.4 — progresso por turma do professor
+│   ├── metrics-teacher.controller.ts  # GET /metrics/teacher/classrooms/:id/{students,summary}
+│   └── metrics.module.ts
 ├── database/
 │   ├── data-source.ts           # DataSource p/ CLI de migrations (fora do Nest DI)
 │   └── migrations/              # uma migration por mudança de schema
@@ -198,26 +213,32 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   daqui. Um bloco novo existe só cadastrando uma linha + o desafio que o usa,
   sem deploy de frontend.
 - **`Challenge.config`** (jsonb, tipado em `challenge-config.interface.ts`)
-  guarda `{ stage, allowedBlockTypes, goal, program?, investigationQuestion?
-  }`. `stage` é o estágio Use-Modify-Create do desafio (regra não-negociável
-  2/3, ver nota de pesquisa completa no próprio arquivo de tipos);
-  `allowedBlockTypes` é a lista de `blockType` permitidos, resolvida contra
-  o catálogo `blocks` e devolvida já agrupada por categoria (AC5 de 3.1 —
-  abas pequenas e nomeadas, nunca uma lista única).
+  guarda `{ stage, allowedBlockTypes, goal, program?, investigationQuestion?,
+  predictQuestion?, editableFields? }`. `stage` é o estágio Use-Modify-Create
+  do desafio (regra não-negociável 2/3, ver nota de pesquisa completa no
+  próprio arquivo de tipos); `allowedBlockTypes` é a lista de `blockType`
+  permitidos, resolvida contra o catálogo `blocks` e devolvida já agrupada
+  por categoria (AC5 de 3.1 — abas pequenas e nomeadas, nunca uma lista
+  única). `predictQuestion`/`editableFields` são o motor PRIMM "Predict"/
+  "Modify" — ver "Fase Modify" abaixo e a nota de pesquisa "motor PRIMM" em
+  `challenge-config.interface.ts`.
 - **`Challenge.position`** (int, nunca `createdAt`) é a ordem pedagógica do
   desafio dentro do tópico — `ChallengesService.findByTopicIdOrdered`
   ordena por ele. Existe especificamente pra permitir inserir uma etapa no
-  meio depois (ex.: o desafio `modify` que falta hoje, ver "Estado
-  intermediário" abaixo) sem precisar forjar timestamp.
-- **`program` + `investigationQuestion`** (3.3, fase `use`): quando
-  presentes, `locked: true` na resposta — o frontend renderiza o workspace
-  com `readOnly: true` e **sem toolbox**, pré-carregado com este programa
-  (`initialJson`). Único controle do aluno é Executar/Repetir execução; a
-  pergunta de investigação aparece depois da 1ª execução (motor PRIMM
-  "Investigate", ainda sem estrutura própria — ver "Próximos passos").
-  `program` usa o mesmo formato de `Blockly.serialization.blocks.save()`
-  (tipado em `SerializedBlockState`, espelhado no frontend em
-  `apps/web/src/lib/blockProgram.ts`).
+  meio depois sem precisar forjar timestamp — foi assim que o desafio
+  `modify` entrou entre os dois desafios seed originais (ver "Sequência
+  Use→Modify→Create" abaixo).
+- **`program`** (3.3 fase `use`, e 3.4 fase `modify`): quando presente, o
+  frontend pré-carrega o workspace com este programa (`initialJson`) — mesmo
+  formato de `Blockly.serialization.blocks.save()` (tipado em
+  `SerializedBlockState`, espelhado no frontend em
+  `apps/web/src/lib/blockProgram.ts`). `locked: true` na resposta (fase
+  `use`) trava o Blockly inteiro (`readOnly: true`, sem toolbox) — único
+  controle do aluno é Executar/Repetir execução, e a pergunta de
+  investigação (`investigationQuestion`, motor PRIMM "Investigate") aparece
+  depois da 1ª execução. **`locked` não é `Boolean(program)`** — é
+  `stage === 'use'` explicitamente, porque a fase `modify` também nasce com
+  `program`, mas com `locked: false` (campos editáveis, ver abaixo).
 - **`nextChallengeId`**: resolvido andando `findByTopicIdOrdered` a partir do
   desafio atual — é pra onde o botão "Avançar" (3.3 AC4) navega depois do
   aluno executar ao menos uma vez. `null` quando não há próximo desafio
@@ -237,37 +258,171 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   programa nada. Não existe hoje "professor escolhe entre desafios" — a
   sequência de um tópico é fixa (por `position`), a mesma pra todo aluno.
 
-### Estado intermediário: Use → Create, sem o `Modify` do meio
+### Sequência Use→Modify→Create completa (3.4)
 
-O seed atual (migrations `SeedSquareChallengeToolbox` +
-`SeedUseModifyCreateSequence`) tem 2 desafios no tópico `angulos_formas`:
+O seed do tópico `angulos_formas` (migrations `SeedSquareChallengeToolbox`,
+`SeedUseModifyCreateSequence`, `AddAngleFieldToTurnBlock`,
+`SeedModifyChallenge`) tem hoje os 3 desafios do ciclo completo:
 
 | position | title | stage | Comportamento |
 |---|---|---|---|
 | 1 | Monte o quadrado | `use` | 3.3 — programa pré-montado, travado, só Executar/Repetir + pergunta de investigação |
-| 2 | Monte o quadrado — sua vez! | `create` | editor livre (3.1), com botão de Ajuda mostrando a forma-alvo sem entregar os blocos |
+| 2 | Monte o quadrado — agora mude! | `modify` | 3.4 — mesmo programa, campos TIMES/ANGLE editáveis dentro de limites, previsão antes de cada execução |
+| 3 | Monte o quadrado — sua vez! | `create` | editor livre (3.1), com botão de Ajuda mostrando a forma-alvo sem entregar os blocos |
 
-**Isso é um estado intermediário, não a sequência desenhada.** RQ2 do
-mapeamento sistemático (21,74% dos estudos primários) dá respaldo empírico
-ao ciclo **completo** Use→Modify→Create, não a Use+Create pulando o meio —
-falta o desafio `modify` (o mesmo programa do Desafio 1, mas editável, ex.:
-mudar `TIMES`/`DIR` pra virar triângulo/pentágono) que conecta
-pedagogicamente "só observar" a "criar do zero". Ver a nota de pesquisa
-completa (e as regras de como inserir esse desafio no meio via `position`)
-em `challenge-config.interface.ts` e em "Modelagem de domínio (backend)" →
-"Desafio novo..." em `docs/ai/rules/coding-rule.md`. **Não tratar esta
-sequência de 2 desafios como validada/completa** para fins de pesquisa com
-usuários reais ou de qualquer alegação de aderência ao framework
-Use-Modify-Create até o `modify` existir.
+RQ2 do mapeamento sistemático (21,74% dos estudos primários) dá respaldo
+empírico ao ciclo **completo** de 3 etapas — este é o primeiro tópico com o
+trio inteiro, use-o como referência ao desenhar um tópico novo (ver "Desafio
+novo..." em `docs/ai/rules/coding-rule.md`).
+
+### Fase Modify (3.4)
+
+O desafio `modify` reaproveita o mecanismo de `program` pré-montado da fase
+`use` (mesma árvore serializada), mas com `locked: false` — o Blockly não
+fica `readOnly`, senão os campos não dariam pra editar. Dois campos novos em
+`Challenge.config` sustentam isso:
+
+- **`editableFields: EditableFieldConfig[]`** — `{ blockType, fieldName,
+  label, min, max }[]`, os campos do `program` que ficam destravados e os
+  limites "definidos pelo professor" pra este desafio (AC de 3.4: "não
+  deixar ângulo negativo ou maior que 360°" etc.). Curado via seed, mesma
+  decisão já tomada pra toolbox ("Sem autoria de toolbox pelo professor
+  nesta versão" acima) — o professor não escreve isso numa tela, mas o
+  valor é por-desafio, não fixo no bloco, então um `modify` futuro noutro
+  tópico pode usar limites diferentes sem tocar na definição do bloco.
+  O frontend aplica isso travando estrutura (bloco não-móvel/não-deletável)
+  e habilitando só os campos listados — ver `applyModifyFieldLocking` em
+  `ChallengePage.tsx`.
+- **`predictQuestion`** — motor PRIMM "Predict" (ver "Como desafios futuros
+  adotam PRIMM" abaixo).
+- **Campo `ANGLE` no bloco `turn`** (migration `AddAngleFieldToTurnBlock`):
+  o ângulo de giro era um valor fixo (90°) no executor, nunca um campo do
+  bloco — sem isso não dava pra "mudar o ângulo" (AC de 3.4). O limite
+  técnico do próprio bloco (1–359°) é o piso de segurança; o limite
+  específico deste desafio vem de `editableFields`, por cima. Efeito em
+  desafios existentes: o bloco `turn` passa a mostrar o valor do ângulo em
+  toda tela que o usa (fase `use` só exibe, travado; fase `create` passa a
+  exigir que o aluno defina o ângulo, antes implícito) — decisão aceita,
+  correta pro tópico geometria.
+- **Sem avaliação de sucesso/fracasso**, mesmo racional da fase `use`: o
+  objetivo é observar a transformação, não bater uma meta fixa. O `goal`
+  ainda vai no config (tipagem exige), mas o frontend não o usa pra
+  sucesso/fracasso nesta fase.
+
+### Como desafios futuros adotam PRIMM (3.6)
+
+PRIMM (Predict-Run-Investigate-Modify-Make) é modelado como **vocabulário de
+`Challenge.config`**, nunca como uma máquina de 5 estados hardcoded numa
+tela ou numa `Challenge`. Cada estágio "existe" só quando o campo
+correspondente está presente:
+
+| Estágio | Campo de config | Onde vive hoje |
+|---|---|---|
+| Predict | `predictQuestion` | desafio `modify` |
+| Run | (sempre — todo desafio tem Executar) | todos |
+| Investigate | `investigationQuestion` | desafio `use` |
+| Modify | `editableFields` | desafio `modify` |
+| Make | ausência de `program` | desafio `create` |
+
+Um tópico novo (de qualquer disciplina) adota PRIMM só preenchendo os campos
+relevantes em `Challenge.config` ao cadastrar cada desafio — nunca
+escrevendo lógica de tela nova nem expondo os rótulos técnicos ao aluno
+(regra não-negociável 3). Ver a nota de pesquisa "motor PRIMM" completa em
+`challenge-config.interface.ts` e a implementação do lado do frontend em
+`docs/ai/modules/frontend.md`.
+
+### Rastreabilidade PRIMM × Use-Modify-Create (tópico `angulos_formas`)
+
+Tabela de rastreabilidade — qual estágio de qual framework cada desafio
+seedado satisfaz hoje, verificada por leitura direta do `config` real (não
+só pela intenção documentada acima):
+
+| Estágio | Desafio(s) | Cadência | Framework(s) satisfeito(s) |
+|---|---|---|---|
+| Predict | 3.3 (Desafio 1, `use`, position 1) **e** 3.4 (Desafio 2, `modify`, position 2) | 3.3: só antes da 1ª execução (o programa nunca muda ali) · 3.4: antes de **cada** execução (os valores editáveis mudam a cada rodada) | PRIMM |
+| Run | 3.3, 3.4, 3.5 | sempre | PRIMM |
+| Investigate | 3.3 | depois da 1ª execução | PRIMM |
+| Modify | 3.4 | — | PRIMM + Use-Modify-Create |
+| Make/Create | 3.5 (Desafio 3, `create`, position 3) | — | PRIMM + Use-Modify-Create |
+
+**Use-Modify-Create**: as 3 etapas cobertas por 3 desafios distintos em
+sequência (position 1→2→3), sem lacuna — RQ2 (21,74% dos estudos) atendido
+por completo pela primeira vez neste tópico.
+
+**PRIMM**: os 5 estágios cobertos, sem lacuna — P-R-I unificados em 3.3
+(mais próxima da formulação clássica de PRIMM na literatura), com Predict
+também presente em 3.4 numa cadência própria (repetido a cada rodada, já
+que ali os valores editáveis mudam — em 3.3 o programa é fixo, então prever
+de novo a cada reexecução não agregaria nada). O mecanismo de tela
+(`challenge.predictQuestion` presente → mostra o widget de previsão antes
+do Executar) já era genérico desde a implementação de 3.4 — adicionar
+Predict a 3.3 foi só uma linha de config nova (migration
+`AddPredictQuestionToUseChallenge`), nenhuma tela nova.
+
+**Duas condições verificadas nos dados reais (não só na intenção
+documentada):**
+
+1. **Identidade do programa entre Investigate (3.3) e Modify (3.4).** O
+   PRIMM pressupõe que o aluno modifica o mesmo programa que investigou, não
+   uma cópia divergente. Confirmado por query direta em produção/dev: os
+   `config.program` dos dois desafios são **byte-a-byte idênticos**
+   (`repeat_times{TIMES:4}` → `move_forward` → `turn{DIR:RIGHT,ANGLE:90}`).
+   Não eram idênticos por padrão — o `program` de 3.3 foi seedado antes do
+   campo `ANGLE` existir no bloco `turn` (ver migration
+   `AddAngleFieldToTurnBlock`), então carregava o valor por default do
+   Blockly em vez de um valor explícito; a migration
+   `AlignUseProgramAngleField` fecha essa lacuna explicitamente, pra a
+   igualdade ser verificável por comparação direta do jsonb, não só "dá o
+   mesmo resultado visual". Isso é uma checagem manual de autoria de
+   currículo (mesma categoria de `block-progression.spec.ts`) — não existe
+   hoje um teste automatizado que trave essa igualdade se um dos dois
+   `program` for editado no futuro sem tocar o outro; ver "Próximos passos".
+2. **Cobertura agregada de PRIMM (checagem "4.7"/campo `primm_stages_covered`
+   de autoria "4.5").** Nenhum dos dois existe nesta base de código —
+   autoria de desafio pelo professor (4.5) foi explicitamente adiada (ver
+   "Sem autoria de toolbox pelo professor nesta versão" acima), e não há
+   verificador agregado de cobertura PRIMM em runtime (4.7). A cobertura
+   documentada nesta seção é garantida pela estrutura do seed/config,
+   verificável por leitura direta — não por um mecanismo de aviso que
+   "fecha sozinho". Quando 4.5/4.7 forem implementados: o valor certo de
+   `primm_stages_covered` pro desafio 3.3 é `['predict', 'run',
+   'investigate']`, e pro 3.4 é `['predict', 'run', 'modify']` (cada um
+   cobre os três — Run é implícito em toda execução — não só o nome que dá
+   título ao desafio).
 
 ### Eventos desta feature
 
 Além de `toolbox_rendered`/`block_dragged` (3.1, RD-I), `program_executed`
 (3.2, RD-P — `block_sequence_json` é o programa serializado, o mesmo formato
-de `program`) e `challenge_use_completed` (3.3 — logado duas vezes, uma
+de `program`), `challenge_use_completed` (3.3 — logado duas vezes, uma
 `RD-P` e uma `RD-C`, seguindo literalmente a notação "RD-P + RD-C" do
 backlog da feature, já que uma linha de `interaction_events` só tem uma
-`category`).
+`category`) e `challenge.help_viewed` (3.5, RD-I — clique no botão de Ajuda
+da fase `create`, sem payload além do `challengeId`; ver
+`ChallengePage.handleHelp` no frontend). Este último é o dado por trás de
+`helpButtonUsageRate` no painel do professor (6.4, ver "Painel do professor:
+progresso por turma" abaixo) — a única leitura agregada que existe hoje
+sobre esse evento; não há tela ainda que mostre o clique individual (isso
+seria M5, profundidade por desafio, no backlog do admin).
+
+`program_executed` ganha dois campos opcionais — `prediction_given`/
+`result_matched_prediction` — só quando o desafio pede previsão (motor
+PRIMM "Predict", 3.6) e não é a fase `modify` (que já tem seu próprio
+evento mais detalhado, ver abaixo, sem duplicar). Hoje isso cobre o desafio
+`use` (3.3): a previsão feita antes da 1ª execução é comparada contra
+quantos lados o traçado fechou com, em todo `program_executed` daquele
+desafio (inclusive reexecuções — o valor não muda porque o programa é
+fixo, então repetir o comparativo é intencional, não estado sujo).
+
+`challenge_modify_attempt` (3.4, RD-P) — logado a cada Executar dentro do
+desafio `modify` (além do `program_executed` genérico, que continua saindo
+igual): `{ challenge_id, changed_values, prediction_given,
+result_matched_prediction, timestamp }`. `changed_values` só lista os campos
+de `editableFields` cujo valor diverge do `program` original (calculado no
+frontend via `lib/editableFields.ts`); `result_matched_prediction` compara a
+previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
+realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
+traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -301,10 +456,11 @@ backlog da feature, já que uma linha de `interaction_events` só tem uma
   política de acesso em nível de rota. Regra não-negociável 8.
 - **`challenges`** é modelagem mínima (título, enunciado, `config` jsonb —
   ver "Blocos por desafio" acima pro que `config` guarda hoje). O suficiente
-  para existir "1 desafio de geometria" e para `interaction_events.challengeId`
-  ser uma FK real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make
-  como estrutura de estado do desafio, não só a paleta Use-Modify-Create)
-  ainda não está modelado — ver "Próximos passos".
+  para existir os 3 desafios do tópico de geometria e para
+  `interaction_events.challengeId` ser uma FK real. O ciclo PRIMM interno
+  (Predict-Run-Investigate-Modify-Make) é modelado como vocabulário de
+  `config`, não uma máquina de estado própria em `Challenge` — ver "Como
+  desafios futuros adotam PRIMM" acima.
 
 ## Eventos de interação
 
@@ -320,6 +476,133 @@ nunca texto livre vindo direto do frontend sem validação.
 
 `challengeId` já é FK real para `challenges.id` (`ON DELETE SET NULL`,
 nullable — nem todo evento é escopado a um desafio, ex.: login).
+
+## Painel do professor: progresso por turma (6.3/6.4)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M2/M3,
+"Status: ✅ Implementado" em cada seção). `MetricsTeacherModule`
+(`apps/api/src/metrics/metrics-teacher.{service,controller}.ts`) expõe duas
+rotas — sempre `@Roles(Role.TEACHER)`, sempre escopadas pelas turmas onde o
+professor autenticado é `Classroom.teacherId`, nunca a escola inteira:
+
+- `GET /metrics/teacher/classrooms/:classroomId/students` (6.3) — progresso
+  de cada aluno matriculado ativo da turma, desafio a desafio, em toda a
+  sequência Use→Modify→Create de todo tópico cadastrado (não só o tópico
+  "atual" — o MVP só tem `angulos_formas`, mas o serviço já percorre
+  `SubjectsService.findAllTopics()` × `ChallengesService.
+  findByTopicIdOrdered`, mantendo cada sequência de tópico independente
+  pra `nextChallengeId` nunca vazar de um tópico pro outro).
+- `GET /metrics/teacher/classrooms/:classroomId/summary` (6.4) — a mesma
+  base de dado agregada por estágio (`byStage: [{ stage, studentsCompleted,
+  studentsInProgress, studentsNotStarted }]`), mais `activeStudentsToday` e
+  `helpButtonUsageRate` — nunca um nome de aluno nesta rota (AC de 6.4: o
+  detalhe individual é sempre a rota de 6.3).
+
+Ambas as rotas reusam o motor 6.1 (`MetricsService.
+getChallengeProgressForStudents`) — nenhuma query nova de status/tentativas
+é escrita aqui, só a orquestração "quais desafios existem" +
+"quais alunos estão matriculados" em cima do motor já existente.
+
+**Titularidade de turma, checada antes de qualquer query de aluno**
+(`MetricsTeacherService.assertOwnClassroom`, chamado no início dos dois
+métodos públicos do serviço): turma inexistente → `404 NotFoundException`;
+turma de outro professor (mesma escola ou não) → `403 ForbiddenException`.
+É o primeiro lugar do backend que implementa a autorização "só o professor
+*daquela* turma" citada como gap em `PATCH /users/:id/sensory-profile` (ver
+"Perfil sensorial persistente e Home por papel" acima) — aquele endpoint
+continua sem essa checagem fina, não foi retroativamente alinhado por esta
+feature.
+
+**`helpButtonUsageRate` (6.4)** conta, entre os alunos ativos da turma,
+quantos têm ao menos um evento `challenge.help_viewed` (RD-I, ver "Eventos
+desta feature" acima) em qualquer desafio `stage: 'create'` da sequência —
+arredondado com `Math.round`, exposto como número puro (`42`, não `0.42` /
+"42% de dificuldade"), seguindo a regra não-negociável 7 (RD-E/sinal
+observável nunca vira inferência na resposta da API).
+
+**Ordenação nunca é por desempenho** (regra não-negociável 5): a rota de
+6.3 devolve os alunos ordenados por `enrolledAt` ascendente por padrão — a
+tela permite alternar pra ordenação por nome, nunca por status/tentativas.
+
+## Relatório de profundidade por desafio (6.5)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M5,
+"Status: ✅ Implementado" — a especificação real acabou bem mais rica que o
+rascunho original do documento, ver a nota lá). `GET /metrics/admin/
+challenges` (seletor — todo desafio cadastrado, qualquer tópico) e
+`GET /metrics/admin/challenges/:challengeId` (o relatório), ambas
+`@Roles(Role.ADMIN)`, sem escopo de turma/escola — é a plataforma inteira
+(visão de pesquisa do admin), nunca nome de aluno em lugar nenhum da
+resposta.
+
+**Decisão técnica não-negociável desta feature: todo cálculo estatístico
+(média, mediana, desvio padrão, quartis, histograma) é feito em código, a
+partir de valores brutos por aluno, nunca em SQL agregado**
+(`apps/api/src/metrics/statistics.ts` — funções puras, sem I/O, 28 testes
+com dataset canônico `[1..10]` conferido contra `numpy`). Duas razões:
+mantém a lógica testável sem depender de `PERCENTILE_CONT`/`STDDEV` do
+dialeto do banco, e reproduzível — os quartis usam interpolação linear
+(método R "type 7" / default de `numpy.percentile`) especificamente pra
+que o mesmo `p` aplicado ao mesmo dado bruto (exportável via M6, ainda não
+implementado) reproduza exatamente o número em R/Python.
+
+`MetricsAdminChallengeService` (`apps/api/src/metrics/
+metrics-admin-challenge.service.ts`) é o orquestrador: busca dado bruto via
+métodos novos de `EventsService` (`findDistinctStudentsForChallenge`,
+`findEarliestEventTimestamps`, `countEventsByCategoryForChallenge`,
+`countEventsByTypeForChallenge`, `findModifyAttempts`,
+`findExecutionsWithPrediction`, `findUseCompletions` — todos escopados só
+por `challengeId`, sem `pseudoIds` pré-filtrado, porque aqui a população é
+"todo aluno que já teve algum evento neste desafio", não uma turma) e
+delega todo cálculo a `statistics.ts`. Reaproveita o motor 6.1
+(`MetricsService.getChallengeProgressForStudents`) pra status/tentativas
+por aluno — mesma fonte que 6.3/6.4, nenhuma query de status duplicada.
+
+Pontos de desenho que valem registrar:
+
+- **Histograma de tentativas (`1`/`2`/`3`/`4+`) exclui alunos com 0
+  tentativas** — não existe bucket "0" no AC, e forçar um aluno que nunca
+  executou pro bucket "1" misrepresentaria o dado. `attemptsPerStudent`
+  (estatística descritiva) continua incluindo o zero — cada card carrega
+  seu próprio N implícito, podem divergir entre si de propósito.
+- **Desvio padrão é sempre amostral** (denominador n-1) e `null` (nunca 0)
+  quando N&lt;2 — indefinido matematicamente nesse caso, não um "sem
+  variação".
+- **Taxa de acerto de previsão nunca funde agregada com por-aluno**: a
+  primeira (`aggregate`) é sobre TENTATIVAS (todas juntas, de todos os
+  alunos), a segunda (`perStudent`) é sobre ALUNOS (média das taxas
+  individuais) — os dois `n` reportados são propositalmente diferentes.
+  `attemptsVsMatchRateScatter` (só no estágio `modify`) é 1 ponto por aluno,
+  sem nenhum identificador (nem pseudônimo) — o gráfico não precisa disso.
+- **"Tentativas até a previsão bater" (estágio `modify`) só conta alunos
+  que eventualmente bateram** — quem nunca bateu fica de fora dessa
+  distribuição específica (o `n` do card já comunica isso), não é forçado a
+  `null`/infinito nem contado como 0.
+- **`useCompletions`/`attemptsBeforeProceed` usa só a cópia RD-P de
+  `challenge_use_completed`** (a que carrega `attempts_before_proceed`/
+  `investigation_answer`) — a cópia RD-C é bookkeeping curricular duplicado,
+  contar as duas dobraria o N (ver "Eventos desta feature" acima, onde esse
+  evento é logado 2× por "Avançar").
+- **Estágio `create` não tem `modifyInsights` nem `useInsights`** — chave
+  ausente da resposta (não `null` forçado), a própria forma do JSON já
+  comunica o estágio (AC de 6.5: "ausência comunica o estágio").
+- **RD-E nunca interpretado** — só `eventsByCategory['RD-E']`, um número
+  puro, em qualquer parte da resposta (regra não-negociável 7 — o princípio
+  vale pro admin tanto quanto pro professor, mais dado bruto não é mais
+  interpretação).
+
+### N mínimo configurável (`SettingsModule`)
+
+`apps/api/src/settings/` — `PlatformSetting` é uma tabela singleton (1
+linha só, `getOrCreate` materializa o default na primeira leitura se
+ninguém alterou nada ainda) com `minSampleSizeThreshold` (default 5).
+`GET/PATCH /admin/settings`, admin only. Puramente de apresentação — mudar
+o valor nunca recalcula dado histórico nem afeta a resposta de
+`/metrics/admin/challenges/:challengeId` além de fazer o frontend decidir
+se mostra o aviso de amostra pequena (AC de 6.5). Não vive dentro de
+`MetricsModule` — é config de plataforma, não métrica; `MetricsModule`
+importa `SettingsModule` pra `MetricsAdminChallengeService` poder ler o
+threshold.
 
 ## Banco de dados
 
@@ -341,19 +624,32 @@ novos.
 - `POST /auth/register` — hoje só existe seed via migration; não há como
   criar aluno/professor/admin em runtime ainda.
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
-- **Desafio 3 (fase `modify`) entre os 2 desafios seed atuais** — a peça que
-  falta pra fechar o ciclo Use→Modify→Create com respaldo empírico completo
-  (RQ2), ver "Estado intermediário" em "Blocos por desafio" acima. Cadastrar
-  com `position: 2` (empurrando o atual "Desafio 2" pra `position: 3`) — o
-  workspace nasceria com o mesmo `program` do Desafio 1, mas **editável**
-  (`readOnly: false`, sem toolbox de blocos novos — só os campos dos blocos
-  já existentes, ex.: `TIMES`/`DIR`), pra virar triângulo/pentágono.
-- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
-  estado do desafio) — a paleta de blocos por estágio Use-Modify-Create já
-  existe (ver "Blocos por desafio"), e a pergunta de investigação do Desafio
-  1 é um placeholder mínimo do estágio "Investigate" (resposta livre, só
-  logada, nunca corrigida) — o motor PRIMM completo (Predict/Run como
-  estágios próprios de tela) ainda não existe.
+- Motor PRIMM ainda não cobre um ciclo Predict→Run→Investigate→Modify→Make
+  **dentro de um único desafio** — hoje ele se distribui pela sequência de 3
+  desafios do tópico (ver "Como desafios futuros adotam PRIMM" acima). Isso
+  é suficiente pro MVP e pro que 3.6 pede, mas um desafio futuro que precise
+  de Investigate *depois* de Modify (não só depois de Use) exigiria estender
+  `Challenge.config` com uma segunda pergunta de investigação — não
+  implementado, sem caso de uso concreto ainda.
+- Checagem automatizada de identidade de programa entre desafios `use`/
+  `modify` do mesmo tópico (ver "Rastreabilidade PRIMM × Use-Modify-Create"
+  acima) — hoje é uma verificação manual feita ao seedar; um teste que
+  compare `config.program` de desafios adjacentes por `position` dentro do
+  mesmo `topicId` evitaria uma divergência silenciosa se um dos dois for
+  editado no futuro sem tocar o outro.
+- **Painel de métricas pro professor/admin** — plano detalhado, dividido em
+  features com critérios de aceite, em
+  `docs/ai/backlog/metricas-professor-admin.md`. Implementado até agora:
+  motor de status/progresso (6.1, `MetricsService`), o painel institucional
+  do admin (6.2, `GET /metrics/admin/schools[...]` +
+  `apps/web/src/routes/metrics/AdminMetrics.tsx`), o painel do professor
+  por turma (6.3/6.4, `GET /metrics/teacher/classrooms/:classroomId/
+  {students,summary}` + `MetricsTeacherService` — ver "Painel do professor:
+  progresso por turma" abaixo) e o relatório de profundidade por desafio do
+  admin (6.5, `GET /metrics/admin/challenges[/:challengeId]` +
+  `MetricsAdminChallengeService`/`statistics.ts` — ver "Relatório de
+  profundidade por desafio" abaixo). Falta só a exportação bruta pra
+  pesquisa (M6 no documento, exclusivo do admin).
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

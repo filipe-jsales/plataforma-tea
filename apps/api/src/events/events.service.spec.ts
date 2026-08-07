@@ -12,6 +12,7 @@ describe('EventsService', () => {
       create: jest.fn(),
       save: jest.fn(),
       count: jest.fn(),
+      find: jest.fn(),
       createQueryBuilder: jest.fn(),
     } as unknown as jest.Mocked<Repository<InteractionEvent>>;
 
@@ -120,6 +121,283 @@ describe('EventsService', () => {
           category: EventCategory.CURRICULAR,
           type: 'challenge.completed',
         },
+      });
+    });
+  });
+
+  describe('countAttemptsByStudents', () => {
+    it('short-circuits to an empty map without querying when pseudoIds is empty', async () => {
+      const result = await service.countAttemptsByStudents([], 'challenge-1');
+
+      expect(result).toEqual(new Map());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('groups program_executed counts per student', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([
+            { studentPseudoId: 'p1', count: '3' },
+            { studentPseudoId: 'p2', count: '1' },
+          ]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countAttemptsByStudents(['p1', 'p2'], 'challenge-1');
+
+      expect(result).toEqual(
+        new Map([
+          ['p1', 3],
+          ['p2', 1],
+        ]),
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.challengeId = :challengeId', {
+        challengeId: 'challenge-1',
+      });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'program_executed',
+      });
+    });
+
+    it('omits a student from the map entirely when they have 0 attempts (never a 0 entry)', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1', count: '2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countAttemptsByStudents(['p1', 'p2'], 'challenge-1');
+
+      expect(result.has('p2')).toBe(false);
+    });
+  });
+
+  describe('findStudentsWithEvent', () => {
+    it('short-circuits to an empty set without querying when pseudoIds is empty', async () => {
+      const result = await service.findStudentsWithEvent([], 'challenge-1');
+
+      expect(result).toEqual(new Set());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('returns the distinct students with any event on the challenge when no type is given', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findStudentsWithEvent(['p1', 'p2', 'p3'], 'challenge-2');
+
+      expect(result).toEqual(new Set(['p1', 'p2']));
+      // Sem `type`: só studentPseudoId + challengeId no andWhere — nunca um
+      // terceiro andWhere de type.
+      expect(queryBuilder.andWhere).toHaveBeenCalledTimes(1);
+    });
+
+    it('scopes to a specific type when given (ex.: challenge_use_completed)', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.findStudentsWithEvent(['p1'], 'challenge-1', 'challenge_use_completed');
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'challenge_use_completed',
+      });
+    });
+  });
+
+  describe('findDistinctStudentsForChallenge (6.5)', () => {
+    it('returns the distinct pseudoIds with any event on the challenge, platform-wide (no pseudoIds pre-filter)', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findDistinctStudentsForChallenge('challenge-1');
+
+      expect(result).toEqual(['p1', 'p2']);
+      expect(queryBuilder.where).toHaveBeenCalledWith('event.challengeId = :challengeId', {
+        challengeId: 'challenge-1',
+      });
+    });
+  });
+
+  describe('findEarliestEventTimestamps (6.5)', () => {
+    it('groups the earliest createdAt per student, no type filter when omitted', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ studentPseudoId: 'p1', earliest: new Date('2026-01-01T10:00:00Z') }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findEarliestEventTimestamps('challenge-1');
+
+      expect(result.get('p1')).toEqual(new Date('2026-01-01T10:00:00Z'));
+      expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('adds a type filter when given', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.findEarliestEventTimestamps('challenge-1', 'program_executed');
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'program_executed',
+      });
+    });
+  });
+
+  describe('countEventsByCategoryForChallenge (6.5)', () => {
+    it('fills every RD-* category with 0 when there is no event yet, never a missing key', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countEventsByCategoryForChallenge('challenge-1');
+
+      expect(result).toEqual({
+        'RD-I': 0,
+        'RD-P': 0,
+        'RD-C': 0,
+        'RD-E': 0,
+        'RD-L': 0,
+      });
+    });
+
+    it('fills in the counts that exist, leaving the rest at 0', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ category: EventCategory.PRODUCT, count: '7' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countEventsByCategoryForChallenge('challenge-1');
+
+      expect(result['RD-P']).toBe(7);
+      expect(result['RD-I']).toBe(0);
+    });
+  });
+
+  describe('countEventsByTypeForChallenge (6.5)', () => {
+    it('sorts by count desc, ties broken alphabetically by type', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { type: 'block_dragged', count: '2' },
+          { type: 'program_executed', count: '5' },
+          { type: 'toolbox_rendered', count: '2' },
+        ]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countEventsByTypeForChallenge('challenge-1');
+
+      expect(result).toEqual([
+        { type: 'program_executed', count: 5 },
+        { type: 'block_dragged', count: 2 },
+        { type: 'toolbox_rendered', count: 2 },
+      ]);
+    });
+  });
+
+  describe('findModifyAttempts (6.5)', () => {
+    it('scopes to challenge_modify_attempt on the given challenge, ordered chronologically per student', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await service.findModifyAttempts('challenge-1');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { challengeId: 'challenge-1', type: 'challenge_modify_attempt' },
+        order: { studentPseudoId: 'ASC', createdAt: 'ASC' },
+      });
+    });
+  });
+
+  describe('findExecutionsWithPrediction (6.5)', () => {
+    it('scopes to program_executed rows whose payload carries a prediction_given field', async () => {
+      const queryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.findExecutionsWithPrediction('challenge-1');
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'program_executed',
+      });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        `event.payload ->> 'prediction_given' IS NOT NULL`,
+      );
+    });
+  });
+
+  describe('findUseCompletions (6.5)', () => {
+    it('scopes to the RD-P copy of challenge_use_completed only, never the RD-C copy (would double-count)', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await service.findUseCompletions('challenge-1');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: {
+          challengeId: 'challenge-1',
+          type: 'challenge_use_completed',
+          category: EventCategory.PRODUCT,
+        },
+        order: { studentPseudoId: 'ASC' },
       });
     });
   });

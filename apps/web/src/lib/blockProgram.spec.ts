@@ -32,6 +32,22 @@ describe('interpretProgram', () => {
     expect(interpretProgram(program)).toEqual([{ kind: 'turn', direction: 'RIGHT' }]);
   });
 
+  it('reads the ANGLE field when present (fase Modify, 3.4)', () => {
+    const program: SerializedBlock = { type: 'turn', fields: { DIR: 'LEFT', ANGLE: 120 } };
+
+    expect(interpretProgram(program)).toEqual([{ kind: 'turn', direction: 'LEFT', angle: 120 }]);
+  });
+
+  it('leaves angle undefined when the block has no ANGLE field (older/pre-Modify programs)', () => {
+    const program: SerializedBlock = { type: 'turn', fields: { DIR: 'RIGHT' } };
+
+    const [action] = interpretProgram(program);
+    expect((action as { angle?: number }).angle).toBeUndefined();
+    // toEqual ignora chaves com valor `undefined`, então o formato "antigo"
+    // (sem a chave `angle` de jeito nenhum) continua batendo.
+    expect(interpretProgram(program)).toEqual([{ kind: 'turn', direction: 'RIGHT' }]);
+  });
+
   it('expands repeat_times into the flattened body, repeated N times', () => {
     const program: SerializedBlock = {
       type: 'repeat_times',

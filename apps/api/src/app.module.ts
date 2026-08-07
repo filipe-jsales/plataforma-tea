@@ -10,7 +10,9 @@ import { EventsModule } from './events/events.module';
 import { HomeModule } from './home/home.module';
 import { IdentityModule } from './identity/identity.module';
 import { IllustrationsModule } from './illustrations/illustrations.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { SchoolsModule } from './schools/schools.module';
+import { SettingsModule } from './settings/settings.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { UsersModule } from './users/users.module';
 
@@ -44,6 +46,8 @@ import { UsersModule } from './users/users.module';
     EventsModule,
     AuthModule,
     HomeModule,
+    SettingsModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -167,6 +167,17 @@ um novo `type` de evento. `challengeId` é nullable (nem todo evento é
 escopado a um desafio) e **é FK real** para `challenges.id`
 (`ON DELETE SET NULL`).
 
+### `platform_settings`
+
+Ver `apps/api/src/settings/entities/platform-setting.entity.ts`. Tabela
+singleton — sempre exatamente 1 linha, nunca por escola/turma/desafio.
+Hoje só `minSampleSizeThreshold` (default 5, o N mínimo abaixo do qual o
+relatório de profundidade por desafio de 6.5 mostra aviso de amostra
+pequena), mas a tabela nasce genérica o suficiente pra acumular outro
+campo de config de plataforma futuro sem precisar de uma tabela nova por
+configuração. A linha é materializada em runtime (`SettingsService.
+getOrCreate`, lazy init na primeira leitura), não semeada na migration.
+
 ### Migrations aplicadas
 
 1. `1785866463111-CreateUsersAndInteractionEvents.ts` — cria `users` e
@@ -235,10 +246,27 @@ escopado a um desafio) e **é FK real** para `challenges.id`
     editor livre). Escrita à mão (só `UPDATE`/`INSERT`, sem mudança de
     schema).
 
-Todas as 12 já foram validadas com `npm run migration:run` contra um Postgres
-real, e `\dt` + `\d <tabela>` conferidos no `psql`. Depois da última, um
-`migration:generate` extra confirmou "No changes in database schema were
-found" — zero diff pendente entre entidades e banco. Os 3 fluxos de login
+As migrations 13–16 (`AddAngleFieldToTurnBlock`, `SeedModifyChallenge`,
+`AlignUseProgramAngleField`, `AddPredictQuestionToUseChallenge` — a fase
+Modify/motor PRIMM, 3.4/3.6) já rodaram contra o banco mas estão
+documentadas em detalhe em `docs/ai/modules/backend.md` ("Fase Modify" e
+"Sequência Use→Modify→Create completa"), não repetidas aqui pra não
+divergir das duas fontes.
+
+17. `1786072013507-CreatePlatformSettings.ts` — cria `platform_settings`
+    (tabela singleton, 1 linha só: `minSampleSizeThreshold` int default 5,
+    `updatedAt`). Gerada com `migration:generate`, sem seed — a linha é
+    materializada em runtime na primeira leitura (`SettingsService.
+    getOrCreate`), não via `INSERT` na própria migration, porque não há
+    `@BeforeInsert` nem valor "certo" pra forçar antes do admin decidir se
+    quer mudar o default (6.5 — configuração de N mínimo pro aviso de
+    amostra pequena no relatório de profundidade por desafio).
+
+Todas as 12 primeiras (e a 17ª) já foram validadas com `npm run
+migration:run` contra um Postgres real, e `\dt` + `\d <tabela>` conferidos
+no `psql`. Depois da última, um `migration:generate` extra confirmou "No
+changes in database schema were found" — zero diff pendente entre entidades
+e banco. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos

@@ -44,4 +44,15 @@ export class ChallengesService {
   findById(id: string): Promise<Challenge | null> {
     return this.challengesRepository.findOne({ where: { id } });
   }
+
+  // Seletor de desafio do relatório de profundidade (6.5) — todo desafio
+  // cadastrado, com o tópico carregado (o admin escolhe "qual desafio" por
+  // título + tópico, nunca por uuid). Ordenado por tópico e depois por
+  // `position`, nunca `createdAt` (mesmo raciocínio de findByTopicIdOrdered).
+  findAllWithTopic(): Promise<Challenge[]> {
+    return this.challengesRepository.find({
+      relations: { topic: true },
+      order: { topicId: 'ASC', position: 'ASC' },
+    });
+  }
 }

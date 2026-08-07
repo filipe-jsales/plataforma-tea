@@ -35,8 +35,16 @@ apps/web/src/
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
 │   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
-├── components/challenge/
-│   └── PixiTurtleWorld.tsx          # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+├── components/
+│   ├── challenge/
+│   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   └── charts/                      # 6.5 — SVG inline, sem lib externa, hue único (--color-primary)
+│       ├── BoxPlot.tsx              # mediana + Q1/Q3 + whiskers min-max
+│       ├── BarChart.tsx             # barras horizontais (histograma OU categórico — mesmo componente)
+│       ├── ScatterPlot.tsx          # 1 ponto = 1 aluno, sem identificador
+│       ├── StatSummary.tsx          # <StatList> (N/média/mediana/dp/quartis em texto) + <SampleSizeNote>
+│       ├── format.ts                # formatNumber() compartilhado
+│       └── charts.css
 ├── routes/
 │   ├── RootRedirect.tsx             # decide login → onboarding → home
 │   ├── RequireAuth.tsx              # guard de sessão/papel
@@ -51,11 +59,20 @@ apps/web/src/
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
 │   ├── challenge/
 │   │   └── ChallengePage.tsx        # /subjects/:topicId e /challenge/:challengeId — ver seção própria
-│   └── home/
-│       ├── HomeRouter.tsx           # 2.1 — dispatch por papel
-│       ├── StudentHome.tsx
-│       ├── TeacherHome.tsx
-│       └── AdminHome.tsx
+│   ├── home/
+│   │   ├── HomeRouter.tsx           # 2.1 — dispatch por papel
+│   │   ├── StudentHome.tsx
+│   │   ├── TeacherHome.tsx
+│   │   └── AdminHome.tsx
+│   └── metrics/
+│       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
+│       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
+│       ├── TeacherMetrics.tsx       # 6.3/6.4 — /teacher/metrics, progresso por turma do professor
+│       ├── TeacherMetrics.css       # sem restrição sensorial — mesmo racional de AdminMetrics.css
+│       ├── ChallengeReport.tsx      # 6.5 — /admin/reports, relatório de profundidade por desafio
+│       ├── ChallengeReport.css
+│       ├── AdminSettings.tsx        # 6.5 — /admin/settings, N mínimo pro aviso de amostra pequena
+│       └── AdminSettings.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -209,13 +226,28 @@ prop/estado inventado no frontend.
 
 ### Fase Use travada — Desafio 1 (3.3)
 
-Quando `challenge.locked` (config tem `program`): workspace nasce com
-`initialJson` = o programa pré-montado (mesmo formato de
-`Blockly.serialization.workspaces.load`), `workspaceConfiguration.readOnly:
-true` e **sem `toolboxConfiguration`** — nenhum bloco arrastável, nenhuma
-paleta visível. Único controle é o botão Executar/Repetir execução (mesmo
-`handleRun` do modo livre — o programa é lido do workspace normalmente,
-só que o aluno não pode alterá-lo).
+Quando `challenge.locked` (`stage === 'use'`, ver "Blocos por desafio" em
+`backend.md` — não é mais `Boolean(program)`, porque a fase `modify` também
+tem `program`): workspace nasce com `initialJson` = o programa pré-montado
+(mesmo formato de `Blockly.serialization.workspaces.load`),
+`workspaceConfiguration.readOnly: true` e **sem `toolboxConfiguration`** —
+nenhum bloco arrastável, nenhuma paleta visível. Único controle é o botão
+Executar/Repetir execução (mesmo `handleRun` do modo livre — o programa é
+lido do workspace normalmente, só que o aluno não pode alterá-lo).
+
+**Motor PRIMM "Predict"** (fechando P-R-I unificados neste desafio, ver
+"Rastreabilidade PRIMM × Use-Modify-Create" em `backend.md`):
+`challenge.predictQuestion` reaproveita o mesmo mecanismo genérico da fase
+`modify` (widget de botões grandes, `primmStage`/`predictAnswer`, ver
+abaixo) — mas só trava o **primeiro** Executar, nunca reaparece nas
+reexecuções seguintes, porque nada reseta `primmStage` de volta pra
+`'predict'` fora do fluxo específico de `modify` (o programa aqui nunca
+muda, então prever de novo a cada rodada não agregaria nada — diferente de
+`modify`, ver abaixo). O comparativo previsão×resultado (`closedPolygonSides`
+contra a previsão) vai direto no `program_executed` daquele desafio, sem
+evento próprio (a fase `modify` é que tem um evento dedicado,
+`challenge_modify_attempt`, porque ali também precisa registrar quais
+valores mudaram).
 
 Depois da 1ª execução (`attempts >= 1`): aparece a pergunta de investigação
 (`challenge.investigationQuestion`, motor PRIMM "Investigate" — placeholder
@@ -225,7 +257,7 @@ mínimo, resposta livre só logada, nunca corrigida) e o botão "Avançar", que:
   segue literalmente a notação "RD-P + RD-C" do backlog da feature, já que
   uma linha de `interaction_events` só tem uma `category`), com
   `attempts_before_proceed`.
-- Navega pra `/challenge/:nextChallengeId` (Desafio 2) — nunca habilitado
+- Navega pra `/challenge/:nextChallengeId` (a fase `modify`, ver abaixo) — nunca habilitado
   antes de `attempts >= 1` (AC4: "aluno não pode avançar sem executar ao
   menos uma vez").
 
@@ -233,9 +265,62 @@ Fase `use` **não avalia sucesso/falha** — o programa vem pronto e sempre
 "funciona" por construção; o feedback reversível (regra não-negociável 4)
 só faz sentido na fase `create`.
 
-### Fase Create livre + botão de Ajuda — Desafio 2 (3.5)
+### Fase Modify (3.4)
 
-Quando `challenge.locked` é `false`: o editor livre de sempre (toolbox
+Reaproveita o mesmo `initialJson`/`program` da fase `use` (`initialJson`
+hoje é derivado só de `challenge.program`, não mais de `challenge.locked`),
+mas com `workspaceConfiguration.readOnly: false` (senão nenhum campo dá pra
+editar) e **ainda sem `toolboxConfiguration`** (`toolboxConfiguration` só é
+montado quando `toolbox.stage === 'create'`) — nenhum bloco novo arrastável,
+`trashcan` também escondido.
+
+`applyModifyFieldLocking(workspace, challenge.editableFields)` roda uma vez
+no `onInject` do Blockly e é o que trava a estrutura sem travar os campos
+configurados:
+
+- todo bloco recebe `block.setMovable(false)` + `block.setDeletable(false)`
+  (a árvore de blocos não muda, só valores dentro dela — AC de 3.4).
+- todo campo (`Blockly.Field`, achado andando `block.inputList[*].fieldRow`)
+  que **não** está em `challenge.editableFields` recebe `field.setEnabled
+  (false)` — visível, mas não editável (nunca "sumiço" de informação).
+- todo campo que **está** na lista recebe `field.setEnabled(true)` e, se for
+  `Blockly.FieldNumber` (é o caso de `TIMES`/`ANGLE`), `field.setConstraints
+  (min, max, undefined)` com os limites de `EditableFieldConfig` — sobrepondo
+  o min/max técnico já embutido na definição do bloco (ver
+  `AddAngleFieldToTurnBlock` em `backend.md`).
+
+**Motor PRIMM "Predict"**: quando `challenge.predictQuestion` existe, o botão
+Executar não aparece até o aluno escolher uma opção — `primmStage: 'predict'
+| 'run'` controla isso, e volta pra `'predict'` depois de toda execução
+(valores podem ter mudado desde a última previsão, então uma previsão nova
+sempre precede o próximo Executar). O widget é um conjunto de botões grandes
+(não um campo numérico livre) com o intervalo do campo editável `TIMES` —
+motor fino (RQ4) e permite comparar a previsão contra o resultado real de
+forma determinística, sem heurística de texto livre.
+
+Em cada Executar (`handleRun`), além do `program_executed` genérico:
+`lib/editableFields.extractEditableFieldValues` lê o valor atual dos campos
+editáveis do bloco recém-serializado, `diffChangedValues` compara contra o
+snapshot inicial (calculado uma vez a partir de `challenge.program`), e
+`turtleWorld.closedPolygonSides(result)` diz quantos lados o traçado fechou
+com (`null` se não fechou) — os três juntos montam o evento
+`challenge_modify_attempt` (RD-P, ver "Eventos desta feature" em
+`backend.md`). A tela mostra uma frase só descritiva ("Você imaginou N
+lados. A figura fechou com M lados.") — nunca "certo/errado" (regra
+não-negociável 4); **sem avaliação de sucesso/fracasso** nesta fase, mesmo
+racional da fase `use`. Botão de Ajuda (abaixo) também não aparece aqui —
+não há forma-alvo escondida pra revelar, o aluno já vê e controla a forma
+diretamente.
+
+O botão "Avançar" (mesmo `challenge-page__investigation`/`handleProceed` da
+fase `use`, condição estendida pra `challenge.locked || isModify`) libera
+depois de `attempts >= 1`, mas **não** loga `challenge_use_completed` — esse
+evento é específico da fase `use`; a fase `modify` já loga cada rodada via
+`challenge_modify_attempt`.
+
+### Fase Create livre + botão de Ajuda (3.5)
+
+Quando `toolbox.stage === 'create'`: o editor livre de sempre (toolbox
 arrastável, feedback de sucesso/tentativa nova sempre reversível — nunca
 "errado"/X vermelho, ver `challenge-page__feedback--retry`) + `challenge.
 completed` (RD-C) só quando a meta é atingida, o mesmo `type` que
@@ -251,15 +336,162 @@ resolvem o desafio, porque ela não sabe o que são blocos. Toca num segundo
 independente da execução do aluno — abrir a Ajuda nunca apaga o traçado que
 o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I).
 
-### Estado intermediário: falta o Desafio 3 (fase Modify)
+### Motor PRIMM: vocabulário de config, não FSM de tela única
 
-Ver "Blocos por desafio" → "Estado intermediário" em `backend.md` e a nota
-de pesquisa em `apps/api/src/challenges/challenge-config.interface.ts`: a
-sequência atual (Desafio 1 `use` → Desafio 2 `create`) pula a etapa
-`modify` que RQ2 (21,74% dos estudos) respalda como parte do ciclo — **não
-tratar como sequência pedagógica completa/validada**. Qualquer desafio novo
-(neste tópico ou em outro) deve seguir Use→Modify→Create e declarar
-`position` explicitamente — ver a regra em `docs/ai/rules/coding-rule.md`.
+Ver "Como desafios futuros adotam PRIMM" em `backend.md` pra tabela completa
+— resumindo do lado do frontend: nenhum dos 5 estágios PRIMM é hardcoded por
+nome de desafio. `ChallengePage` deriva o que mostrar checando presença de
+campo (`challenge.predictQuestion`, `challenge.investigationQuestion`,
+`challenge.editableFields.length`) e `toolbox.stage` (só pra decidir toolbox/
+Ajuda/trashcan, nunca pra decidir se uma pergunta aparece) — nunca
+`if (challenge.title === '...')` nem equivalente. Um desafio novo (deste
+tópico ou de outro, qualquer disciplina) ganha Predict/Investigate só
+preenchendo o campo correspondente no seed; ganha Modify preenchendo
+`editableFields` com os campos do bloco que fazem sentido editar pro
+conceito curricular daquele desafio.
+
+## Painel institucional do admin (`AdminMetrics`, 6.2)
+
+`/admin/metrics` (`RequireAuth roles={['admin']}`), link a partir de
+`AdminHome`: busca `GET /metrics/admin/schools` (card por escola —
+`classroomsCount`/`teachersCount`/`activeStudentsCount`/
+`activeStudentsToday`); clicar num card seleciona a escola e busca
+`GET /metrics/admin/schools/:schoolId/classrooms` (nome da turma + professor
+responsável + alunos ativos). Clicar de novo no mesmo card desmarca (mesmo
+`onClick` alterna `selectedSchoolId`). Nenhum nome de aluno em nenhum
+momento desta tela — é visão institucional (AC de 6.2); nível de aluno
+individual é de uma feature futura (M5 em
+`docs/ai/backlog/metricas-professor-admin.md`).
+
+**Sem as restrições sensoriais do aluno** (`AdminMetrics.css`) — regra
+não-negociável 1 protege a experiência do *aluno*, e `StaffLogin.css` já
+estabelece esse mesmo racional pra telas de professor/admin; esta tela usa
+cor/hierarquia visual mais densa de propósito (cards com borda de destaque,
+sombra, grid de estatísticas). Não depende de `transition`/`animation`
+CSS — o reset global de `sensory-theme.css` (`:root:not([data-motion='full'])
+* { transition-duration: 0.001ms !important }`) hoje se aplica a qualquer
+sessão, inclusive staff, porque `data-motion` só é setado a partir do
+onboarding do aluno; o visual "mais bonito" desta tela vem de
+layout/cor/tipografia, não de movimento, então isso não importa aqui — mas
+vale saber que esse reset existe se uma tela de staff futura quiser
+depender de transição suave de verdade.
+
+## Painel do professor: progresso por turma (`TeacherMetrics`, 6.3/6.4)
+
+`/teacher/metrics` (`RequireAuth roles={['teacher']}`), link a partir de
+`TeacherHome`. Busca `GET /home/teacher` (já existente, 2.1) pra listar as
+turmas do próprio professor — mesmo endpoint que a home já usava, nenhuma
+rota nova só pra listar turmas; a seleção de turma nesta tela nunca deixa o
+professor digitar/injetar um `classroomId` arbitrário na UI (o backend
+ainda valida titularidade de qualquer forma, ver "Painel do professor:
+progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
+propósito).
+
+Selecionar uma turma busca as duas rotas de métrica em paralelo
+(`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
+entre duas abas:
+
+- **"Por aluno" (6.3, aba default)** — uma tabela com 1 linha por aluno
+  matriculado ativo (nome + data de matrícula) e 1 coluna por desafio
+  disponível (título + rótulo do estágio + status + nº de tentativas).
+  Ordenação default é por data de matrícula (a mesma ordem que o backend já
+  devolve); um `<select>` deixa trocar pra ordenação por nome — **nunca**
+  por status/tentativas, não existe essa opção na tela (regra não-negociável
+  5, aplicada ao nível de UI também, não só ao default do backend).
+- **"Turma toda" (6.4)** — 3 cartões de totais (`totalStudents`/
+  `activeStudentsToday`/`helpButtonUsageRate`) e uma barra horizontal
+  segmentada por estágio (`use`/`modify`/`create`), cada segmento com
+  largura proporcional a `studentsCompleted`/`studentsInProgress`/
+  `studentsNotStarted` — largura **estática**, calculada uma vez a partir
+  do dado (`pct = count/total*100`), sem nenhuma transição/animação
+  decorativa. `role="img"` com `aria-label` textual describe a barra pra
+  leitor de tela, já que a informação em si é visual. Nenhum nome de aluno
+  nesta aba (AC de 6.4) — só esta tela existe pra visão agregada;
+  `STATUS_LABEL`/`STAGE_LABEL` (dicionários fixos no componente) são a
+  única "tradução" de vocabulário técnico pra português, sem inferência
+  nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
+  percentual cru — regra não-negociável 7).
+
+**Sem as restrições sensoriais do aluno** (`TeacherMetrics.css`) — mesmo
+racional de `AdminMetrics.css`/`StaffLogin.css`.
+
+## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
+
+`/admin/reports` (`RequireAuth roles={['admin']}`), link a partir de
+`AdminHome`. Busca `GET /metrics/admin/challenges` (seletor — todo desafio
+cadastrado, qualquer tópico) e, ao selecionar um, `GET /metrics/admin/
+challenges/:challengeId` (o relatório completo). "O que um revisor de
+artigo esperaria ver" (AC de 6.5): todo card de estatística mostra
+`<StatList>` (N/média/mediana/desvio/quartis em texto — a alternativa não-
+visual ao gráfico) + `<SampleSizeNote>` (aviso quando `n < report.
+minSampleSizeThreshold`, nunca esconde o número) + o gráfico recomendado.
+
+- **Bloco comum** (todo desafio): `attemptsPerStudent` → `<StatList>` +
+  `<BoxPlot>`; `attemptsHistogram` → `<BarChart>` (buckets fixos `1/2/3/
+  4+`); `timeToFirstExecutionMs` → convertido pra segundos
+  (`statsToSeconds`) antes de renderizar, porque o backend devolve `ms`
+  bruto e nenhum revisor lê "4199994 ms" com facilidade;
+  `eventsByCategory`/`eventsByType` → `<BarChart>` categórico (ordem fixa
+  RD-I/P/C/E/L pro primeiro, ordenado por contagem pro segundo).
+- **`modifyInsights`/`useInsights`** só renderizam quando a chave existe na
+  resposta (`report.modifyInsights &&`, nunca checando `report.stage ===
+  'modify'` no frontend — a mesma regra "nunca decidir por `stage`
+  diretamente" que `ChallengePage` já segue, ver "Motor PRIMM" acima).
+  `<RateCard>` (componente local) é o único jeito que a dualidade
+  agregada×por-aluno da taxa de acerto aparece — dois números e dois `n`
+  lado a lado, nunca fundidos num só.
+- **`attemptsVsMatchRateScatter`** (só `modify`) vira `<ScatterPlot>` com
+  eixos "Tentativas" × "Acerto (%)" — o array já vem sem identificador
+  nenhum do backend, o componente nem saberia expor pseudônimo se
+  quisesse.
+- **Nenhum nome/pseudônimo de aluno aparece nesta tela em lugar nenhum** —
+  testado explicitamente (`ChallengeReport.spec.tsx`, "never shows an
+  individual student name/pseudonym").
+
+### Gráficos (`components/charts/`)
+
+SVG inline, sem biblioteca nova — segue o padrão zero-dependência já
+estabelecido no resto do frontend (Blockly/PixiJS são os únicos motores de
+render externos do projeto, e nenhum dos dois serve pra gráfico
+estatístico). Hue único (`--color-primary`) em toda marca: nenhum destes
+gráficos compara séries categóricas coloridas entre si (é sempre magnitude/
+distribuição de 1 variável), então a paleta categórica de um design system
+de dataviz não se aplica — "sequential = hue único" é o formato certo por
+definição, não uma simplificação.
+
+- **`<BoxPlot>`**: whiskers até min/max direto ("min-max boxplot", não
+  Tukey/1.5×IQR com outlier à parte) — decisão deliberada dado N tipicamente
+  pequeno neste produto. Mostra `N=0 — sem dados` pra distribuição vazia e
+  uma mensagem própria pra `N=1` (desvio/quartis não calculáveis com 1
+  sujeito), nunca uma caixa degenerada.
+- **`<BarChart>`**: barras **horizontais** de propósito — rótulos deste
+  relatório variam de curtos (`"1"`) a longos (`type` de evento, ex.
+  `"toolbox_rendered"`), e horizontal evita rótulo rotacionado/cortado
+  independente do tamanho do texto. Mesmo componente serve histograma
+  (`attemptsHistogram`) e categórico (`eventsByType`, `eventsByCategory`,
+  `mostChangedFieldDistribution`) — a diferença é só o array de entrada.
+- **`<ScatterPlot>`**: 1 ponto = 1 aluno, `fill-opacity` < 1 como único
+  mecanismo de legibilidade contra sobreposição (N pequeno não justifica
+  jitter/clustering).
+- Todo componente checa array vazio/`n=0` primeiro e renderiza
+  `<p className="chart-empty">` em vez de calcular com dado vazio (guarda
+  contra `NaN`/divisão por zero client-side, mesmo racional do backend).
+- Estático, sem `transition`/`animation` — não depende do estado sensorial
+  (área de staff/admin, mesmo racional de `AdminMetrics.css`), mas também
+  não teria porquê de animar um gráfico de pesquisa.
+
+### N mínimo (`AdminSettings`, 6.5)
+
+`/admin/settings` — formulário mínimo de propósito (AC: "não precisa ser
+dedicada, pode ser parte de uma tela geral de Configurações"), só o campo
+`minSampleSizeThreshold` hoje. `GET /admin/settings` pré-preenche o input;
+`PATCH /admin/settings` no submit. Validação client-side (inteiro
+positivo) roda **antes** da checagem HTML5 nativa — o `<input type=
+"number">` não declara `min`/`step`, de propósito: a validação nativa do
+browser bloqueia o evento `submit` inteiro antes do JS rodar (não dispara
+`onSubmit`), o que impediria a mensagem de erro própria do app ("Informe um
+número inteiro positivo.") de aparecer — mesmo padrão de linguagem não-
+punitiva/descritiva já usado em `StudentLogin`.
 
 ## Assets visuais (`assets/illustrations/`)
 
@@ -287,15 +519,10 @@ o padrão esperado em código novo.
 
 ## Próximos passos (fora do escopo já implementado)
 
-- **Desafio 3 (fase Modify)** entre os 2 desafios seed atuais — ver "Estado
-  intermediário" acima e em `backend.md`. A tela já lê `toolbox.stage` e já
-  sabe renderizar `readOnly`/`initialJson` a partir de `program` (usado hoje
-  só pela fase `use`) — uma fase `modify` reaproveitaria exatamente esse
-  mecanismo com `readOnly: false`, só sem toolbox de blocos novos.
-- Ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como estrutura de
-  tela) — a pergunta de investigação do Desafio 1 é um placeholder mínimo do
-  estágio "Investigate" (resposta livre, só logada); Predict/Run como
-  etapas próprias de tela ainda não existem.
+- O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)
+  só cobre o próprio desafio — não existe ainda uma visão agregada (pro
+  aluno ou pro professor) de "quais combinações de TIMES/ANGLE você já
+  tentou", só o log bruto (`challenge_modify_attempt`) por trás.
 - Ingestão de eventos pré-login (`login_screen_viewed`,
   `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
   documentado em `backend.md`.

@@ -11,7 +11,13 @@ export interface SerializedBlock {
   next?: { block?: SerializedBlock };
 }
 
-export type TurtleAction = { kind: 'move' } | { kind: 'turn'; direction: 'LEFT' | 'RIGHT' };
+// `angle` é opcional: o bloco "turn" só ganhou o campo ANGLE na fase Modify
+// (3.4, ver migration AddAngleFieldToTurnBlock) — um `turn` sem esse campo
+// (nenhum programa serializado antigo tinha) cai no default de 90° já
+// aplicado por turtleWorld.runTurtleProgram, sem precisar de um valor aqui.
+export type TurtleAction =
+  | { kind: 'move' }
+  | { kind: 'turn'; direction: 'LEFT' | 'RIGHT'; angle?: number };
 
 // Máximo de repetições somadas — trava simples contra um "repetir 999999
 // vezes" travar a animação/thread; generoso o bastante pra qualquer desafio
@@ -40,7 +46,8 @@ function interpretBlock(block: SerializedBlock): TurtleAction[] {
       return [{ kind: 'move' }];
     case 'turn': {
       const direction = block.fields?.DIR === 'LEFT' ? 'LEFT' : 'RIGHT';
-      return [{ kind: 'turn', direction }];
+      const angle = block.fields?.ANGLE !== undefined ? Number(block.fields.ANGLE) : undefined;
+      return [{ kind: 'turn', direction, angle }];
     }
     case 'repeat_times': {
       const times = Math.max(0, Number(block.fields?.TIMES ?? 0));

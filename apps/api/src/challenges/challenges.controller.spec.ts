@@ -38,12 +38,31 @@ describe('ChallengesController', () => {
     },
   } as unknown as Challenge;
 
-  const createChallenge = {
+  const modifyChallenge = {
     id: 'c2',
+    topicId: 'topic-1',
+    title: 'Monte o quadrado — agora mude!',
+    prompt: 'Mude os números e veja a figura se transformar.',
+    position: 2,
+    config: {
+      stage: 'modify',
+      allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
+      goal: { shape: 'square', sides: 4, turnAngleDeg: 90 },
+      program: { type: 'repeat_times', fields: { TIMES: 4 } },
+      predictQuestion: 'Quantos lados você acha que a figura vai ter?',
+      editableFields: [
+        { blockType: 'repeat_times', fieldName: 'TIMES', label: 'Número de lados', min: 3, max: 8 },
+        { blockType: 'turn', fieldName: 'ANGLE', label: 'Ângulo de giro (°)', min: 30, max: 150 },
+      ],
+    },
+  } as unknown as Challenge;
+
+  const createChallenge = {
+    id: 'c3',
     topicId: 'topic-1',
     title: 'Monte o quadrado — sua vez!',
     prompt: 'Agora é com você.',
-    position: 2,
+    position: 3,
     config: {
       stage: 'create',
       allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
@@ -55,7 +74,7 @@ describe('ChallengesController', () => {
     challengesService = {
       findFirstByTopicId: jest.fn(),
       findById: jest.fn(),
-      findByTopicIdOrdered: jest.fn().mockResolvedValue([useChallenge, createChallenge]),
+      findByTopicIdOrdered: jest.fn().mockResolvedValue([useChallenge, modifyChallenge, createChallenge]),
     } as unknown as jest.Mocked<ChallengesService>;
     blocksService = { findByTypes: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<BlocksService>;
 
@@ -87,6 +106,15 @@ describe('ChallengesController', () => {
       expect(result.investigationQuestion).toBe('Quantas vezes o personagem virou?');
     });
 
+    it('defaults predictQuestion to null and editableFields to [] when the desafio does not declare them', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.predictQuestion).toBeNull();
+      expect(result.editableFields).toEqual([]);
+    });
+
     it('resolves nextChallengeId by walking the position-ordered sequence for the topic', async () => {
       challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
 
@@ -106,11 +134,26 @@ describe('ChallengesController', () => {
     it('returns an unlocked (free-build) challenge with no program, and no next after the last in the sequence', async () => {
       challengesService.findById.mockResolvedValue(createChallenge);
 
-      const result = await controller.getById('c2');
+      const result = await controller.getById('c3');
 
       expect(result.locked).toBe(false);
       expect(result.program).toBeNull();
       expect(result.nextChallengeId).toBeNull();
+    });
+
+    it('returns a modify-stage challenge unlocked (fields editable) even though it has a pre-built program', async () => {
+      challengesService.findById.mockResolvedValue(modifyChallenge);
+
+      const result = await controller.getById('c2');
+
+      expect(result.locked).toBe(false);
+      expect(result.program).toEqual({ type: 'repeat_times', fields: { TIMES: 4 } });
+      expect(result.predictQuestion).toBe('Quantos lados você acha que a figura vai ter?');
+      expect(result.editableFields).toEqual([
+        { blockType: 'repeat_times', fieldName: 'TIMES', label: 'Número de lados', min: 3, max: 8 },
+        { blockType: 'turn', fieldName: 'ANGLE', label: 'Ângulo de giro (°)', min: 30, max: 150 },
+      ]);
+      expect(result.nextChallengeId).toBe('c3');
     });
   });
 

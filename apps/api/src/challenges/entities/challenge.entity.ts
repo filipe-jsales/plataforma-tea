@@ -12,9 +12,11 @@ import { Topic } from '../../subjects/entities/topic.entity';
 // sequência de desafios Use-Modify-Create por tópico (ver
 // docs/ai/modules/backend.md#blocos-por-desafio e a nota de pesquisa em
 // challenge-config.interface.ts) e pra interaction_events.challengeId ser FK
-// real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make como
-// estrutura de tela, não só a paleta Use-Modify-Create) ainda não está
-// modelado — ver regra não-negociável 3 e "Próximos passos" em backend.md.
+// real. O ciclo PRIMM interno (Predict-Run-Investigate-Modify-Make) é
+// modelado como vocabulário de `config` distribuído ao longo da sequência
+// Use-Modify-Create (não uma máquina de 5 estados numa `Challenge` só) — ver
+// a nota de pesquisa "motor PRIMM" em challenge-config.interface.ts e regra
+// não-negociável 3.
 @Entity('challenges')
 export class Challenge {
   @PrimaryGeneratedColumn('uuid')

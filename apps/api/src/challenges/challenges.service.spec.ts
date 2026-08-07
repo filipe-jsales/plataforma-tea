@@ -80,4 +80,17 @@ describe('ChallengesService', () => {
       expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 'c1' } });
     });
   });
+
+  describe('findAllWithTopic', () => {
+    it('loads the topic relation, ordered by topic then position, never createdAt', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await service.findAllWithTopic();
+
+      expect(repository.find).toHaveBeenCalledWith({
+        relations: { topic: true },
+        order: { topicId: 'ASC', position: 'ASC' },
+      });
+    });
+  });
 });
