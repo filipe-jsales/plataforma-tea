@@ -51,11 +51,14 @@ apps/web/src/
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
 │   ├── challenge/
 │   │   └── ChallengePage.tsx        # /subjects/:topicId e /challenge/:challengeId — ver seção própria
-│   └── home/
-│       ├── HomeRouter.tsx           # 2.1 — dispatch por papel
-│       ├── StudentHome.tsx
-│       ├── TeacherHome.tsx
-│       └── AdminHome.tsx
+│   ├── home/
+│   │   ├── HomeRouter.tsx           # 2.1 — dispatch por papel
+│   │   ├── StudentHome.tsx
+│   │   ├── TeacherHome.tsx
+│   │   └── AdminHome.tsx
+│   └── metrics/
+│       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
+│       └── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -332,6 +335,32 @@ tópico ou de outro, qualquer disciplina) ganha Predict/Investigate só
 preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
+
+## Painel institucional do admin (`AdminMetrics`, 6.2)
+
+`/admin/metrics` (`RequireAuth roles={['admin']}`), link a partir de
+`AdminHome`: busca `GET /metrics/admin/schools` (card por escola —
+`classroomsCount`/`teachersCount`/`activeStudentsCount`/
+`activeStudentsToday`); clicar num card seleciona a escola e busca
+`GET /metrics/admin/schools/:schoolId/classrooms` (nome da turma + professor
+responsável + alunos ativos). Clicar de novo no mesmo card desmarca (mesmo
+`onClick` alterna `selectedSchoolId`). Nenhum nome de aluno em nenhum
+momento desta tela — é visão institucional (AC de 6.2); nível de aluno
+individual é de uma feature futura (M5 em
+`docs/ai/backlog/metricas-professor-admin.md`).
+
+**Sem as restrições sensoriais do aluno** (`AdminMetrics.css`) — regra
+não-negociável 1 protege a experiência do *aluno*, e `StaffLogin.css` já
+estabelece esse mesmo racional pra telas de professor/admin; esta tela usa
+cor/hierarquia visual mais densa de propósito (cards com borda de destaque,
+sombra, grid de estatísticas). Não depende de `transition`/`animation`
+CSS — o reset global de `sensory-theme.css` (`:root:not([data-motion='full'])
+* { transition-duration: 0.001ms !important }`) hoje se aplica a qualquer
+sessão, inclusive staff, porque `data-motion` só é setado a partir do
+onboarding do aluno; o visual "mais bonito" desta tela vem de
+layout/cor/tipografia, não de movimento, então isso não importa aqui — mas
+vale saber que esse reset existe se uma tela de staff futura quiser
+depender de transição suave de verdade.
 
 ## Assets visuais (`assets/illustrations/`)
 

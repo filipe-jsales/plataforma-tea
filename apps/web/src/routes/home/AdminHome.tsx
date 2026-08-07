@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import './Home.css';
@@ -25,6 +26,13 @@ export function AdminHome() {
   return (
     <main className="home">
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
+
+      <div className="home__actions">
+        <Link to="/admin/metrics" className="home__action">
+          <span className="home__action-icon">📊</span>
+          Painel institucional (escolas, turmas, professores)
+        </Link>
+      </div>
 
       {data && (
         <div className="home__stats">

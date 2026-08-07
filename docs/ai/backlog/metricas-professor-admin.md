@@ -105,41 +105,40 @@ e gestão pedagógica.
 
 **Prioridade:** Bloqueante — M2–M6 dependem disto.
 
-**Critérios de Aceite:**
-- `countChallengeAttemptsByStudent(studentPseudoId, challengeId)` — conta
-  `program_executed` (RD-P) por par aluno/desafio.
-- `getChallengeStatusByStudent(studentPseudoId, challengeId)` — devolve
-  `'not_started' | 'in_progress' | 'completed'`, derivado de: nenhum
-  `program_executed` → `not_started`; tem `program_executed` mas nenhum
-  evento de conclusão do estágio → `in_progress`; tem evento de conclusão
-  → `completed`. **Gap conhecido:** o estágio `create` tem `challenge.
-  completed` (RD-C) e o `use` tem `challenge_use_completed` (RD-C) como
-  evento de conclusão — o estágio `modify` **não tem** um evento de
-  "concluiu"/"avançou" (decisão deliberada ao implementar 3.4, pra não
-  inventar evento fora do spec original). Antes de M2/M3 mostrarem status
-  "completed" pro `modify`, decidir: (a) tratar "completed" como "clicou
-  Avançar" e adicionar esse evento agora, ou (b) `modify` nunca mostra
-  "completed", só "tentativas: N" (`changed_values`/`result_matched_
-  prediction` da última tentativa). Recomendo (b) pra não reabrir escopo já
-  fechado de 3.4 sem necessidade.
-- `getPrimmStageSummaryByStudent(studentPseudoId, topicId)` — pro tópico,
-  devolve por desafio: `stage`, `status`, `attempts`, e (só quando aplicável)
-  `predictionMatchRate` (média de `result_matched_prediction` dos
-  `challenge_modify_attempt` daquele aluno naquele desafio).
-- `countActiveStudentsSince(pseudoIds, since)` — já existe
-  (`EventsService.countDistinctStudentsActiveSince`), só reexportar/reusar,
-  não duplicar.
-- Toda query aceita uma lista de `studentPseudoId` pré-filtrada pelo
-  chamador (M2/M4 resolvem o escopo — turma, escola — *antes* de chamar
-  `MetricsService`; o serviço em si não sabe o que é "turma do professor
-  X", só agrega o que a lista de pseudônimos manda).
-- Testes: `MetricsService` testado como todo `*.service.ts` do projeto —
-  repositório mockado (`jest.Mocked<Repository<InteractionEvent>>`), sem
-  `TestingModule`/Postgres real (ver "Testes" em `coding-rule.md`).
+**Status: ✅ Implementado** (`apps/api/src/metrics/metrics.service.ts` +
+`apps/api/src/events/events.service.ts`, testado em `metrics.service.spec.ts`
+e `events.service.spec.ts`). Divergências do desenho original abaixo:
 
-**Dados/Eventos usados:** `program_executed` (RD-P), `challenge.completed`
-(RD-C), `challenge_use_completed` (RD-P+RD-C), `challenge_modify_attempt`
-(RD-P), `toolbox_rendered`/`block_dragged`/`challenge.help_viewed` (RD-I).
+- `MetricsService.getChallengeProgressForStudents(pseudoIds, { challengeId,
+  stage, nextChallengeId })` — uma chamada só, devolve `Map<studentPseudoId,
+  { status, attempts }>` pra todo o recorte (não uma chamada por aluno).
+  `attempts` conta `program_executed` (RD-P) via
+  `EventsService.countAttemptsByStudents` (query agrupada, não N+1).
+- **"Concluído" no estágio `modify` (3.4) — decisão tomada: opção C,
+  "derivar, não instrumentar".** Não existe (nem vai existir) um evento
+  `challenge_modify_completed`. Em vez disso, um aluno "saiu" do `modify`
+  quando tem **qualquer evento** no desafio seguinte (`create`) da mesma
+  sequência — calculado na hora da consulta
+  (`EventsService.findStudentsWithEvent(pseudoIds, nextChallengeId)`, sem
+  filtro de `type`), cruzando a ordem já conhecida da sequência Use→Modify→
+  Create. Zero mudança em `ChallengePage.tsx`. Isso não é uma constatação de
+  sucesso/fracasso (regra 4 continua intacta) — é só "o aluno seguiu em
+  frente", e `attempts` continua sendo o dado pedagogicamente mais
+  relevante desta fase (quanto o aluno explorou), não um binário. Quando
+  não há próximo desafio cadastrado (`nextChallengeId: null`), o estágio
+  `modify` nunca resolve como `completed`.
+- `getPrimmStageSummaryByStudent`/`countActiveStudentsSince` standalone
+  **não foram criados** — `countDistinctStudentsActiveSince` já existente
+  em `EventsService` é reusado diretamente por quem precisar (ver M4
+  abaixo), sem precisar de um wrapper em `MetricsService` (esse método não
+  é uma pergunta de "status de desafio", é engajamento geral — escopo
+  diferente do que 6.1 pede).
+- Todo método aceita `pseudoIds: string[]` pré-filtrado pelo chamador —
+  nunca varre a plataforma inteira (AC de 6.1 respeitado).
+
+**Dados/Eventos usados:** `program_executed` (RD-P) e, por estágio,
+`challenge_use_completed` (`use`), `challenge.completed` (`create`), ou
+qualquer evento no desafio seguinte (`modify`, derivado — ver acima).
 
 ---
 
@@ -240,25 +239,42 @@ isso de forma consumível (comparar adoção entre escolas ao longo do tempo).
 
 **Prioridade:** Alta.
 
-**Critérios de Aceite:**
-- `@Roles(Role.ADMIN)` — sem escopo de titularidade (admin vê tudo,
-  regra do próprio pedido).
-- `GET /metrics/admin/schools` → `[{ schoolId, name, classroomsCount,
-  teachersCount, activeStudentsCount, activeStudentsToday }]`.
-- `GET /metrics/admin/schools/:schoolId` → detalha turmas: `[{ classroomId,
-  name, teacherDisplayName, teacherId, activeStudentsCount,
-  activeStudentsToday }]`. `teacherDisplayName` é aceitável aqui (professor
-  não é dado de aluno, não tem a mesma exigência de pseudonimização — já é
-  visível em `GET /auth/*/roster` hoje pro próprio fluxo de login).
-- **Nunca** nome de aluno nesta feature — é views institucional/escola, o
-  nível de aluno é só M5 (e ainda assim pseudonimizado, ver M5).
-- Teste: escola sem turma cadastrada devolve `classroomsCount: 0`, não
-  erro; escola com turma sem professor titular (`teacherId: null`, caso já
-  suportado pelo schema) devolve `teacherDisplayName: null`, não quebra.
+**Status: ✅ Implementado** (`apps/api/src/metrics/metrics-admin.{service,
+controller}.ts`, testado em `metrics-admin.service.spec.ts` +
+`metrics-admin.controller.spec.ts`; tela em
+`apps/web/src/routes/metrics/AdminMetrics.tsx`). Divergências do desenho
+original:
 
-**Dados/Eventos usados:** `SchoolsService` (contagens já existem pra
-`countSchools`/`countClassrooms`, estender pra por-escola), M1 pra
-`activeStudentsToday`/`activeStudentsCount`.
+- `GET /metrics/admin/schools` → `[{ id, name, classroomsCount,
+  teachersCount, activeStudentsCount, activeStudentsToday }]` (campo
+  chamado `id`, não `schoolId` — consistente com o resto da API, ex.
+  `ChallengeDetail.id`).
+- Drill-down é uma rota própria, não o mesmo `:schoolId` da lista:
+  `GET /metrics/admin/schools/:schoolId/classrooms` → `[{ id, name,
+  teacherDisplayName, activeStudentsCount }]`. Sem `activeStudentsToday`
+  por turma nem `teacherId` — não pedido pelo AC original, adiado até
+  haver uma tela que precise (ex.: um link direto pro painel do professor
+  daquela turma).
+- **Não usa `MetricsService` (6.1)** — 6.2 é contagem institucional pura
+  (turmas/professores/alunos ativos), não precisa da pergunta "status de
+  desafio por aluno" que 6.1 resolve; reusa `SchoolsService`/`EventsService`
+  diretamente, mesmo padrão já usado por `HomeService`.
+- `@Roles(Role.ADMIN)` no controller inteiro — sem escopo de titularidade
+  (admin vê tudo).
+- **Nunca** nome de aluno nesta feature — é visão institucional/escola, o
+  nível de aluno é de uma feature futura (M5), e mesmo lá pseudonimizado.
+- Testado: escola sem turma cadastrada devolve `classroomsCount: 0`, sem
+  erro; turma sem professor titular devolve `teacherDisplayName: null`,
+  sem quebrar (frontend mostra "sem professor definido").
+- Tela: card por escola com as 4 métricas, clique seleciona/expande a
+  lista de turmas daquela escola. Sem as restrições sensoriais do aluno
+  (StaffLogin.css já estabelece esse mesmo racional) — visual mais denso/
+  colorido de propósito.
+
+**Dados/Eventos usados:** contagens de `SchoolsService`
+(`findAllSchools`, `countDistinctTeachersBySchool`,
+`findActiveStudentsBySchool`, `countActiveStudentsInClassroom`) +
+`EventsService.countDistinctStudentsActiveSince` (já existente, reusado).
 
 ---
 
@@ -382,3 +398,7 @@ M1 → M4 (mais simples, reusa contagens que já existem) → M2 → M3 → M5 �
 M6. M2/M3 ficam depois de M4 apesar de serem "o pedido do professor" porque
 dependem da decisão de escopo em aberto (turma vs. escola) — melhor destravar
 essa decisão enquanto M4 (que não depende dela) já está em progresso.
+
+**M1 e M4 implementados** (ver "Status: ✅ Implementado" em cada seção
+acima) — escopo do professor (M2/M3) já resolvido também (turmas do
+próprio professor, não a escola inteira), falta só codar M2/M3/M5/M6.

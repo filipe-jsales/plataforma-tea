@@ -1,0 +1,133 @@
+/*
+  Painel institucional do admin (6.2). Diferente das telas do aluno, esta
+  não segue as restrições sensoriais (regra não-negociável 1 protege a
+  experiência do ALUNO — StaffLogin.css já estabelece o mesmo racional pra
+  telas de professor/admin) — por isso usa mais cor/hierarquia visual.
+*/
+
+.admin-metrics {
+  max-width: 1080px;
+  margin: var(--space-4) auto;
+  padding: 0 var(--space-4) var(--space-5);
+}
+
+.admin-metrics__back-link {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+}
+
+.admin-metrics__subtitle {
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.admin-metrics__loading,
+.admin-metrics__empty {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: center;
+  opacity: 0.8;
+}
+
+.admin-metrics__schools {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-metrics__school-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-metrics__school-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.admin-metrics__school-card--selected {
+  border-left-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success);
+}
+
+.admin-metrics__school-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.admin-metrics__school-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.admin-metrics__stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.admin-metrics__stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.admin-metrics__stat-label {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.admin-metrics__detail {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-metrics__classrooms {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.admin-metrics__classroom {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.admin-metrics__classroom-name {
+  font-weight: 600;
+}
+
+.admin-metrics__classroom-teacher--missing {
+  opacity: 0.7;
+}
+
+.admin-metrics__classroom-count {
+  text-align: right;
+  color: var(--color-primary);
+  font-weight: 600;
+}

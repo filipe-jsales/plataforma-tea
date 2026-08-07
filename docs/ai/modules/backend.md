@@ -489,11 +489,14 @@ novos.
   compare `config.program` de desafios adjacentes por `position` dentro do
   mesmo `topicId` evitaria uma divergência silenciosa se um dos dois for
   editado no futuro sem tocar o outro.
-- **Painel de métricas pro professor/admin** (dados agregados/por-aluno de
-  desafios e eventos, hoje só `GET /home/{teacher,admin}` com contagens
-  mínimas) — plano detalhado, dividido em features com critérios de
-  aceite, em `docs/ai/backlog/metricas-professor-admin.md`. Nada disso
-  está implementado ainda.
+- **Painel de métricas pro professor/admin** — plano detalhado, dividido em
+  features com critérios de aceite, em
+  `docs/ai/backlog/metricas-professor-admin.md`. Implementado até agora:
+  motor de status/progresso (6.1, `MetricsService`) e o painel institucional
+  do admin (6.2, `GET /metrics/admin/schools[...]` +
+  `apps/web/src/routes/metrics/AdminMetrics.tsx`). Faltam as métricas do
+  professor por turma/aluno e a profundidade de evento por desafio
+  (M2/M3/M5/M6 no documento).
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

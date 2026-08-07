@@ -50,4 +50,46 @@ export class EventsService {
   ): Promise<number> {
     return this.eventsRepository.count({ where: { studentPseudoId, category, type } });
   }
+
+  // Motor de status/progresso (6.1) — quantas vezes cada aluno do recorte
+  // executou este desafio (`program_executed`, RD-P). Uma query agrupada,
+  // não N+1: `pseudoIds` já vem pré-filtrado pelo chamador (turma/escola),
+  // nunca "todos os alunos" (AC de 6.1).
+  async countAttemptsByStudents(pseudoIds: string[], challengeId: string): Promise<Map<string, number>> {
+    if (pseudoIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.challengeId = :challengeId', { challengeId })
+      .andWhere('event.type = :type', { type: 'program_executed' })
+      .groupBy('event.studentPseudoId')
+      .getRawMany<{ studentPseudoId: string; count: string }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
+  }
+
+  // Motor de status/progresso (6.1) — quais alunos do recorte têm pelo
+  // menos 1 evento nesse desafio, opcionalmente restrito a um `type`. Sem
+  // `type`, é "teve qualquer atividade nesse desafio" — usado pra derivar
+  // "saiu da fase Modify" a partir do primeiro evento no desafio Create
+  // seguinte, sem precisar de um evento de conclusão próprio (ver
+  // MetricsService.getChallengeProgressForStudents).
+  async findStudentsWithEvent(pseudoIds: string[], challengeId: string, type?: string): Promise<Set<string>> {
+    if (pseudoIds.length === 0) {
+      return new Set();
+    }
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.challengeId = :challengeId', { challengeId });
+    if (type) {
+      query.andWhere('event.type = :type', { type });
+    }
+    const rows = await query.getRawMany<{ studentPseudoId: string }>();
+    return new Set(rows.map((row) => row.studentPseudoId));
+  }
 }
