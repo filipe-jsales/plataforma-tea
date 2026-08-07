@@ -29,6 +29,19 @@
   /* Duração/curva de transição — só têm efeito quando data-motion="full". */
   --motion-duration: 180ms;
   --motion-easing: ease-out;
+
+  /*
+    3.10 — tokens de interação compartilhados por todo componente em
+    components/ui/. Área de toque mínima (RQ4 coordenação motora fina,
+    21,74%) e anel de foco visível (nunca removido sem substituto) — um
+    único lugar pra mudar o valor em vez de espalhar "56px"/"3px solid" por
+    CSS de componente.
+  */
+  --hit-area-min: 56px;
+  --hit-gap-min: 8px;
+  --focus-ring-width: 3px;
+  --focus-ring-color: var(--color-primary);
+  --focus-ring-offset: 2px;
 }
 
 /* Alto contraste, opt-in (RF de acessibilidade — rotulagem redundante, nunca só cor). */

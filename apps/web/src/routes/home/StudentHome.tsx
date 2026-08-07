@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { logEvent } from '../../lib/logEvent';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { Button } from '../../components/ui';
 import './Home.css';
 
 interface StudentHomeData {
@@ -38,28 +39,18 @@ export function StudentHome() {
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
-        <button
-          type="button"
-          className="home__action"
+        <Button
+          variant="secondary"
+          icon="▶️"
           onClick={() => navigate('/subjects')}
           disabled={!data}
         >
-          <span className="home__action-icon" aria-hidden="true">
-            ▶️
-          </span>
           Continuar{data?.continueChallenge ? `: ${data.continueChallenge.title}` : ''}
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          className="home__action"
-          onClick={() => setShowProgress((value) => !value)}
-        >
-          <span className="home__action-icon" aria-hidden="true">
-            📈
-          </span>
+        <Button variant="secondary" icon="📈" onClick={() => setShowProgress((value) => !value)}>
           Meu progresso
-        </button>
+        </Button>
       </div>
 
       {showProgress && data && (

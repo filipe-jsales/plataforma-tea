@@ -9,3 +9,15 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// jsdom não implementa ResizeObserver — @radix-ui/react-popper (usado por
+// Tooltip.tsx em components/ui/) mede o elemento ancorado com isso mesmo
+// sem nenhum teste chamar posicionamento explicitamente. Stub mínimo, só
+// pra satisfazer a chamada; nenhum teste depende do callback disparar.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

@@ -186,6 +186,14 @@ decisão a cada feature:
 - Editor de blocos: `blockly` + `react-blockly`. Mundo/personagem que executa
   o código: `pixi.js`, isolado em componente próprio, comunicando por state
   (nunca acoplado diretamente ao DOM do Blockly).
+- Elemento interativo novo na área do aluno (botão, toggle, card
+  selecionável, aba, tooltip, modal) usa `components/ui/` (3.10 — Radix UI
+  headless pros primitivos estruturais, React Aria só onde Radix não cobre,
+  ex.: card clicável) em vez de `<button>`/CSS cru — é o que garante área de
+  toque mínima 56×56, rótulo ícone+texto e foco visível sem cada tela
+  reimplementar isso. Não se aplica a telas de professor/admin (isentas das
+  restrições sensoriais do aluno, ver `StaffLogin.css`/`AdminMetrics.css`
+  em `docs/ai/modules/frontend.md`).
 
 ### Geral
 

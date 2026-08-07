@@ -36,6 +36,17 @@ apps/web/src/
 │   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
+│   ├── ui/                          # 3.10 — sistema de componentes acessíveis, ver seção própria
+│   │   ├── Button.tsx / Button.css
+│   │   ├── ToggleSwitch.tsx / ToggleSwitch.css  # @radix-ui/react-switch
+│   │   ├── Card.tsx / Card.css                  # SelectableCard, react-aria useButton
+│   │   ├── Tabs.tsx / Tabs.css                  # @radix-ui/react-tabs
+│   │   ├── Tooltip.tsx / Tooltip.css            # @radix-ui/react-tooltip
+│   │   ├── Dialog.tsx / Dialog.css              # @radix-ui/react-dialog
+│   │   ├── Heading.tsx / Text.tsx / Typography.css
+│   │   ├── InlineFeedback.tsx / InlineFeedback.css
+│   │   ├── VisuallyHidden.tsx       # re-export de react-aria
+│   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
 │   ├── challenge/
 │   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
 │   └── charts/                      # 6.5 — SVG inline, sem lib externa, hue único (--color-primary)
@@ -137,6 +148,122 @@ primeira renderização.
 `useSensoryProfileStore` (ou os atributos `data-*` do `<html>`, se for
 CSS puro) antes de decidir animar/tocar — nunca assumir que motion/som estão
 ligados.
+
+## Sistema de componentes acessíveis do aluno (`components/ui/`, 3.10)
+
+Base de UI compartilhada pra toda a área do aluno — botões, toggle de
+configuração sensorial, cards de seleção (tópico/desafio), abas, tooltip,
+modal, tipografia e feedback de tentativa. Substitui e absorve o escopo do
+3.10 original (só as áreas de encaixe do Blockly, ver "Paleta restrita"
+acima) — hoje é infraestrutura transversal, não uma tela específica.
+
+### Decisão técnica: Radix UI + React Aria, não uma lib "completa"
+
+**Radix UI** (`@radix-ui/react-switch`, `-tabs`, `-tooltip`, `-dialog`) para
+os primitivos estruturais — é headless (zero estilo/animação própria), o
+que já é exatamente o que a regra não-negociável 1 exige ("nasce desligada
+por padrão"): nenhuma transição de entrada/saída pré-definida pra desligar
+depois, o CSS de cada componente em `components/ui/*.css` é escrito do zero
+sobre a estrutura acessível que a lib garante (role, `aria-*`, teclado).
+
+**React Aria** (`react-aria`, hooks `useButton`/`useFocusRing`/
+`mergeProps`/`VisuallyHidden`) só entra onde Radix não tem primitivo —
+hoje só `Card.tsx` (`SelectableCard`): um cartão clicável não é
+dialog/tooltip/toggle/tabs, e um `<div onClick>` sozinho não ganha teclado
+(Enter/Espaço) nem `role="button"` de graça. `useButton` dá esse
+comportamento completo sem reescrever handler de teclado na mão;
+`useFocusRing` é o que faz o anel de foco aparecer só pra quem navega por
+teclado, nunca "piscar" a cada clique de mouse.
+
+Por que não Chakra/Mantine: ambos vêm com tema e componentes já
+estilizados — produtividade mais rápida, mas o preço é desfazer decisões
+visuais padrão (transição, sombra, easing) em vez de partir de uma tela em
+branco. O projeto já tem CSS Variables + Zustand pro tema sensorial (ver
+seção acima); um headless se encaixa melhor porque Radix/React Aria cuidam
+só de acessibilidade estrutural, o tema sensorial que já existe cuida de
+100% da aparência.
+
+⚠️ Isto é decisão de engenharia, sem respaldo literal no mapeamento
+sistemático (nenhum PS do corpus especifica biblioteca de componente) — a
+rastreabilidade abaixo é com a barreira (RQ4), não com uma recomendação da
+literatura.
+
+### O que cada componente resolve (RQ4)
+
+- **`Button`** (`.ui-button`) — `<button>` nativo estilizado, sem
+  `useButton` (o elemento já tem o comportamento nativo correto). Área de
+  toque mínima `--hit-area-min` (56px, `theme/sensory-theme.css`)
+  independente do tamanho de ícone/texto — coordenação motora fina, RQ4
+  21,74%. `icon` é sempre decorativo (`aria-hidden`) e nunca substitui
+  `children` (o texto) — rotulagem redundante, RQ4 acessibilidade de
+  interface 26,09%. Três variantes (`primary`/`secondary`/`ghost`), todas
+  com `:focus-visible` (nunca `outline: none` sem substituto) e sem
+  `transition`/`animation` própria — quem zera isso globalmente fora de
+  `data-motion='full'` é `sensory-theme.css`, um componente novo nunca
+  reimplementa esse mecanismo.
+- **`ToggleSwitch`** (Radix Switch) — configuração binária (som/animação
+  hoje, contraste é candidato natural). O estado nunca depende só da
+  posição/cor do trilho: `.ui-toggle__state` escreve "Ligado"/"Desligado"
+  em texto ao lado, sempre. O `<label>` externo estende a área de toque pra
+  linha inteira, não só o trilho de 48×28.
+- **`SelectableCard`** (`Card.tsx`, React Aria `useButton`) — tópico/
+  desafio selecionável. Seleção nunca é só borda colorida: mostra
+  "✓ Selecionado" em texto quando `selected`.
+- **`Tabs`** (Radix Tabs) — teclado (setas/Home/End) de graça; candidato
+  pra `TeacherMetrics` (hoje 2 `<button>` soltos alternando estado, ver nota
+  de débito abaixo).
+- **`Tooltip`** (Radix Tooltip) — reforço textual **opcional**, nunca a
+  única fonte do rótulo; o gatilho (`children`) precisa ter nome acessível
+  próprio de qualquer forma (AC "nunca só ícone").
+- **`Dialog`** (Radix Dialog) — nenhuma tela do MVP usa ainda (a Ajuda de
+  3.5 é painel inline, não modal); nasce pronto pro dia que uma tela
+  precisar de confirmação antes de uma ação difícil de reverter.
+- **`Heading`/`Text`** — hierarquia tipográfica presa ao nível semântico
+  (`h1`/`h2`/`h3`), sem prop de tamanho solto que permita um `<h2>` do
+  tamanho de `<h1>`. Sem prop de itálico/uppercase de propósito — nenhum
+  texto da área do aluno usa isso como único indicador de ênfase (AC).
+- **`InlineFeedback`** — feedback de tentativa (regra não-negociável 4):
+  ícone (padrão por `kind`, redundante com a cor) + texto, sempre os dois,
+  nunca só um. `kind="retry"` sai com `role="status"`, pra leitor de tela
+  anunciar sem precisar de recarregar a página.
+
+Todo componente lê os tokens `--hit-area-min`/`--focus-ring-*` de
+`theme/sensory-theme.css` (adicionados nesta feature) em vez de
+valores soltos — um único lugar pra auditar/mudar a área de toque mínima do
+produto inteiro.
+
+### Onde já está em uso vs. débito de migração
+
+Aplicado em telas tocadas por esta feature — `OnboardingSensorial`
+(`ToggleSwitch` + `Button`, substituindo checkbox cru), `SubjectSelector`
+(`SelectableCard` + `Button`, substituindo `<button>` cru) e
+`StudentHome` (`Button` nas 2 ações principais). `TeacherHome`/`AdminHome`
+continuam com `<button className="home__action">` cru de propósito — são
+telas de staff, que já são **isentas** das restrições sensoriais do aluno
+(mesmo racional de `StaffLogin.css`/`AdminMetrics.css`, ver seções
+correspondentes); não faz sentido forçar a área de toque de 56px do aluno
+onde a regra não se aplica.
+
+**Não migrado ainda** (débito reconhecido, não silencioso):
+`ChallengePage.tsx` (botões Executar/Ajuda/Avançar/Predict e o
+`challenge-page__feedback`), `TeacherMetrics.tsx` (as 2 abas manuais) e
+`AdminSettings`/`ChallengeReport` continuam com `<button>`/CSS próprios.
+Critério pra migrar: só quando a tela for tocada por outro motivo (evita
+um PR gigante só de refactor visual sem mudança funcional); `ChallengePage`
+em particular já tem lógica PRIMM densa o bastante pra não misturar com uma
+troca de biblioteca de UI no mesmo commit.
+
+### Testes
+
+Cada componente em `components/ui/` tem `*.spec.tsx` (Vitest +
+`@testing-library/react`) verificando o comportamento que a AC exige, não
+só "renderiza sem erro": ícone nunca substitui o texto (`Button`), estado
+sempre em texto visível (`ToggleSwitch`, `SelectableCard`), foco/teclado
+funcionam (`SelectableCard` via Enter, `ToggleSwitch` via Espaço, `Tabs`
+via clique), `Dialog` fecha com um botão que tem texto "Fechar" visível
+(nunca só `✕`). `src/test/setup.ts` ganhou um stub de `ResizeObserver` —
+jsdom não implementa isso e `@radix-ui/react-popper` (usado por `Tooltip`)
+precisa dele mesmo sem nenhum teste chamar posicionamento explicitamente.
 
 ## Eventos (`logEvent`)
 
@@ -531,3 +658,7 @@ o padrão esperado em código novo.
   expirou (só se existe uma sessão salva).
 - Rate limiting nos 3 endpoints de login (gap do backend, ver
   `backend.md`).
+- Migrar `ChallengePage`/`TeacherMetrics`/`AdminSettings`/`ChallengeReport`
+  pra `components/ui/` (3.10) — débito reconhecido, não bloqueante; migrar
+  quando a tela for tocada por outro motivo, ver "Onde já está em uso vs.
+  débito de migração" acima.

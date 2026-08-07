@@ -1,0 +1,48 @@
+.ui-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: var(--hit-area-min);
+  min-height: 120px;
+  padding: var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: center;
+}
+
+.ui-card--selected {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+.ui-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ui-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ui-card__label {
+  font-size: 1rem;
+}
+
+.ui-card__selected-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* Só aparece pra navegação por teclado (useFocusRing) — clique de mouse não
+   "acende" o anel a cada seleção, mas o foco nunca fica sem indicador
+   quando alguém tabula até aqui. */
+.ui-card--focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

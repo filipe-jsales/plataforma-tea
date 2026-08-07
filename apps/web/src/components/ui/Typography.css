@@ -1,0 +1,52 @@
+.ui-heading {
+  margin: 0 0 var(--space-3);
+  font-weight: 700;
+  /* Sem font-style/text-transform aqui — itálico/caixa alta nunca são o
+     único indicador de ênfase (AC de 3.10). */
+}
+
+.ui-heading--1 {
+  font-size: 1.75rem;
+}
+
+.ui-heading--2 {
+  font-size: 1.4rem;
+}
+
+.ui-heading--3 {
+  font-size: 1.15rem;
+}
+
+.ui-text {
+  margin: 0 0 var(--space-2);
+  line-height: 1.5;
+}
+
+.ui-text--sm {
+  font-size: 0.875rem;
+}
+
+.ui-text--md {
+  font-size: 1rem;
+}
+
+.ui-text--lg {
+  font-size: 1.15rem;
+}
+
+.ui-text--default {
+  color: var(--color-text);
+}
+
+.ui-text--muted {
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.ui-text--warning {
+  color: var(--color-warning);
+}
+
+.ui-text--success {
+  color: var(--color-success);
+}

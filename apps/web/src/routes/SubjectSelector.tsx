@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import { useAuthStore } from '../stores/useAuthStore';
+import { Button, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
 
 interface TopicOption {
@@ -45,32 +46,21 @@ export function SubjectSelector() {
         <ul className="subject-selector__list">
           {topics.map((topic) => (
             <li key={topic.topicId}>
-              <button
-                type="button"
-                className={
-                  'subject-selector__item' +
-                  (selected?.topicId === topic.topicId ? ' subject-selector__item--selected' : '')
-                }
-                onClick={() => setSelected(topic)}
+              <SelectableCard
+                icon="📐"
+                selected={selected?.topicId === topic.topicId}
+                onSelect={() => setSelected(topic)}
               >
-                <span className="subject-selector__icon" aria-hidden="true">
-                  📐
-                </span>
-                <span>{topic.name}</span>
-              </button>
+                {topic.name}
+              </SelectableCard>
             </li>
           ))}
         </ul>
       )}
 
-      <button
-        type="button"
-        className="subject-selector__confirm"
-        onClick={handleConfirm}
-        disabled={!selected}
-      >
+      <Button onClick={handleConfirm} disabled={!selected}>
         Confirmar
-      </button>
+      </Button>
     </main>
   );
 }

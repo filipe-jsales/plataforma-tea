@@ -4,6 +4,7 @@ import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import { useAuthStore, type SessionUser } from '../stores/useAuthStore';
 import { useSensoryProfileStore } from '../stores/useSensoryProfileStore';
+import { Button, ToggleSwitch } from '../components/ui';
 import './OnboardingSensorial.css';
 
 // 2.2 — Onboarding sensorial do aluno. Regra não-negociável 1: tudo nasce
@@ -56,34 +57,26 @@ export function OnboardingSensorial() {
       <p>Você decide como quer usar a plataforma. Pode mudar isso depois.</p>
 
       <div className="onboarding-sensorial__options">
-        <label className="onboarding-sensorial__option">
-          <span className="onboarding-sensorial__icon" aria-hidden="true">
-            🔊
-          </span>
-          <span className="onboarding-sensorial__text">Quer som?</span>
-          <input
-            type="checkbox"
-            checked={soundEnabled}
-            onChange={(event) => setSoundChoice(event.target.checked)}
-          />
-        </label>
+        <ToggleSwitch
+          id="onboarding-sound"
+          icon="🔊"
+          label="Quer som?"
+          checked={soundEnabled}
+          onCheckedChange={setSoundChoice}
+        />
 
-        <label className="onboarding-sensorial__option">
-          <span className="onboarding-sensorial__icon" aria-hidden="true">
-            ✨
-          </span>
-          <span className="onboarding-sensorial__text">Quer animação?</span>
-          <input
-            type="checkbox"
-            checked={animationEnabled}
-            onChange={(event) => setAnimationChoice(event.target.checked)}
-          />
-        </label>
+        <ToggleSwitch
+          id="onboarding-animation"
+          icon="✨"
+          label="Quer animação?"
+          checked={animationEnabled}
+          onCheckedChange={setAnimationChoice}
+        />
       </div>
 
-      <button type="button" onClick={handleConfirm} disabled={saving}>
+      <Button onClick={handleConfirm} disabled={saving}>
         {saving ? 'Salvando…' : 'Continuar'}
-      </button>
+      </Button>
     </main>
   );
 }
