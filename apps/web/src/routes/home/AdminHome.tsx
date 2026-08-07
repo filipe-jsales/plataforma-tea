@@ -34,6 +34,9 @@ export function AdminHome() {
         <LinkButton to="/admin/reports" icon="🔬">
           Relatório de profundidade por desafio
         </LinkButton>
+        <LinkButton to="/admin/export" icon="⬇️" variant="secondary">
+          Exportar dados brutos
+        </LinkButton>
         <LinkButton to="/admin/settings" icon="⚙️" variant="secondary">
           Configurações
         </LinkButton>

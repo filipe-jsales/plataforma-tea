@@ -28,7 +28,10 @@ export class EventsService {
   // ranking individual, só a contagem de alunos com pelo menos 1 evento
   // desde `since`. Se `pseudoIds` vier vazio (turma sem aluno matriculado),
   // não faz sentido montar a query.
-  async countDistinctStudentsActiveSince(pseudoIds: string[], since: Date): Promise<number> {
+  async countDistinctStudentsActiveSince(
+    pseudoIds: string[],
+    since: Date,
+  ): Promise<number> {
     if (pseudoIds.length === 0) {
       return 0;
     }
@@ -48,14 +51,19 @@ export class EventsService {
     category: EventCategory,
     type: string,
   ): Promise<number> {
-    return this.eventsRepository.count({ where: { studentPseudoId, category, type } });
+    return this.eventsRepository.count({
+      where: { studentPseudoId, category, type },
+    });
   }
 
   // Motor de status/progresso (6.1) — quantas vezes cada aluno do recorte
   // executou este desafio (`program_executed`, RD-P). Uma query agrupada,
   // não N+1: `pseudoIds` já vem pré-filtrado pelo chamador (turma/escola),
   // nunca "todos os alunos" (AC de 6.1).
-  async countAttemptsByStudents(pseudoIds: string[], challengeId: string): Promise<Map<string, number>> {
+  async countAttemptsByStudents(
+    pseudoIds: string[],
+    challengeId: string,
+  ): Promise<Map<string, number>> {
     if (pseudoIds.length === 0) {
       return new Map();
     }
@@ -77,7 +85,11 @@ export class EventsService {
   // "saiu da fase Modify" a partir do primeiro evento no desafio Create
   // seguinte, sem precisar de um evento de conclusão próprio (ver
   // MetricsService.getChallengeProgressForStudents).
-  async findStudentsWithEvent(pseudoIds: string[], challengeId: string, type?: string): Promise<Set<string>> {
+  async findStudentsWithEvent(
+    pseudoIds: string[],
+    challengeId: string,
+    type?: string,
+  ): Promise<Set<string>> {
     if (pseudoIds.length === 0) {
       return new Set();
     }
@@ -102,7 +114,9 @@ export class EventsService {
   // Todo aluno que teve QUALQUER evento neste desafio — "N que chegou até
   // ele" (AC de 6.5). População-base do relatório inteiro: as demais
   // consultas abaixo recebem este conjunto como `pseudoIds`.
-  async findDistinctStudentsForChallenge(challengeId: string): Promise<string[]> {
+  async findDistinctStudentsForChallenge(
+    challengeId: string,
+  ): Promise<string[]> {
     const rows = await this.eventsRepository
       .createQueryBuilder('event')
       .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
@@ -117,7 +131,10 @@ export class EventsService {
   // entre os dois é "tempo até a primeira execução" (AC de 6.5), calculada
   // em código por MetricsAdminChallengeService — não em SQL, mesma decisão
   // do resto deste bloco.
-  async findEarliestEventTimestamps(challengeId: string, type?: string): Promise<Map<string, Date>> {
+  async findEarliestEventTimestamps(
+    challengeId: string,
+    type?: string,
+  ): Promise<Map<string, Date>> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
       .select('event.studentPseudoId', 'studentPseudoId')
@@ -127,15 +144,22 @@ export class EventsService {
     if (type) {
       query.andWhere('event.type = :type', { type });
     }
-    const rows = await query.getRawMany<{ studentPseudoId: string; earliest: Date }>();
-    return new Map(rows.map((row) => [row.studentPseudoId, new Date(row.earliest)]));
+    const rows = await query.getRawMany<{
+      studentPseudoId: string;
+      earliest: Date;
+    }>();
+    return new Map(
+      rows.map((row) => [row.studentPseudoId, new Date(row.earliest)]),
+    );
   }
 
   // Contagem bruta por categoria RD-* (AC de 6.5) — preenche as 5
   // categorias mesmo quando uma delas não tem nenhum evento ainda (0
   // explícito, nunca uma chave ausente que o frontend precisaria tratar
   // como "talvez seja 0, talvez não exista").
-  async countEventsByCategoryForChallenge(challengeId: string): Promise<Record<EventCategory, number>> {
+  async countEventsByCategoryForChallenge(
+    challengeId: string,
+  ): Promise<Record<EventCategory, number>> {
     const rows = await this.eventsRepository
       .createQueryBuilder('event')
       .select('event.category', 'category')
@@ -155,7 +179,9 @@ export class EventsService {
   // Contagem bruta por `type` específico (AC de 6.5) — ordenado por
   // contagem desc pra já sair pronto pro gráfico de barras, empate por tipo
   // asc pra saída determinística.
-  async countEventsByTypeForChallenge(challengeId: string): Promise<{ type: string; count: number }[]> {
+  async countEventsByTypeForChallenge(
+    challengeId: string,
+  ): Promise<{ type: string; count: number }[]> {
     const rows = await this.eventsRepository
       .createQueryBuilder('event')
       .select('event.type', 'type')
@@ -186,7 +212,9 @@ export class EventsService {
   // findModifyAttempts). `payload->>'prediction_given' IS NOT NULL` em vez
   // do operador `?` de existência de chave jsonb, pra não arriscar
   // ambiguidade com o parser de parâmetros nomeados do TypeORM.
-  findExecutionsWithPrediction(challengeId: string): Promise<InteractionEvent[]> {
+  findExecutionsWithPrediction(
+    challengeId: string,
+  ): Promise<InteractionEvent[]> {
     return this.eventsRepository
       .createQueryBuilder('event')
       .where('event.challengeId = :challengeId', { challengeId })
@@ -201,8 +229,60 @@ export class EventsService {
   // é só bookkeeping curricular, contá-la junto duplicaria o N).
   findUseCompletions(challengeId: string): Promise<InteractionEvent[]> {
     return this.eventsRepository.find({
-      where: { challengeId, type: 'challenge_use_completed', category: EventCategory.PRODUCT },
+      where: {
+        challengeId,
+        type: 'challenge_use_completed',
+        category: EventCategory.PRODUCT,
+      },
       order: { studentPseudoId: 'ASC' },
     });
+  }
+
+  // 6.6 — exportação de dados brutos pra pesquisa externa. Filtros são
+  // opcionais e combináveis (AND) — quem chama (MetricsAdminExportService)
+  // já garantiu que ao menos um está presente antes de chegar aqui, essa
+  // regra não é responsabilidade da query. `pseudoIds` vem pré-resolvido
+  // (escola → alunos matriculados, ver SchoolsService) — esta função nunca
+  // faz join com `users`/`enrollments` diretamente, pra não arriscar
+  // reintroduzir `displayName` no resultado (regra não-negociável 8: nunca
+  // um join que reintroduza identidade real).
+  //
+  // Pede `pageSize + 1` linhas de propósito: o chamador usa a linha extra
+  // só pra saber se existe mais uma página (`hasMore`), sem precisar de um
+  // segundo `COUNT(*)` — descartada antes de virar resposta.
+  findEventsForExport(
+    filter: {
+      pseudoIds?: string[];
+      challengeId?: string;
+      from?: Date;
+      to?: Date;
+    },
+    page: number,
+    pageSize: number,
+  ): Promise<InteractionEvent[]> {
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .orderBy('event.createdAt', 'ASC')
+      .addOrderBy('event.id', 'ASC');
+    if (filter.pseudoIds) {
+      query.andWhere('event.studentPseudoId IN (:...pseudoIds)', {
+        pseudoIds: filter.pseudoIds,
+      });
+    }
+    if (filter.challengeId) {
+      query.andWhere('event.challengeId = :challengeId', {
+        challengeId: filter.challengeId,
+      });
+    }
+    if (filter.from) {
+      query.andWhere('event.createdAt >= :from', { from: filter.from });
+    }
+    if (filter.to) {
+      query.andWhere('event.createdAt <= :to', { to: filter.to });
+    }
+    return query
+      .skip((page - 1) * pageSize)
+      .take(pageSize + 1)
+      .getMany();
   }
 }

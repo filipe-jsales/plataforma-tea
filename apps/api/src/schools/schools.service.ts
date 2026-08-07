@@ -21,7 +21,10 @@ export class SchoolsService {
   // chamador usa este método hoje, então carregar a relação sempre aqui não
   // quebra nada existente.
   findClassroomsBySchool(schoolId: string): Promise<Classroom[]> {
-    return this.classroomsRepository.find({ where: { schoolId }, relations: { teacher: true } });
+    return this.classroomsRepository.find({
+      where: { schoolId },
+      relations: { teacher: true },
+    });
   }
 
   findActiveEnrollmentsByStudent(studentId: string): Promise<Enrollment[]> {
@@ -97,6 +100,35 @@ export class SchoolsService {
   // aluno/avatar (diferente de `findActiveStudentsInClassroom`, que existe
   // pro roster de login e precisa do aluno inteiro).
   countActiveStudentsInClassroom(classroomId: string): Promise<number> {
-    return this.enrollmentsRepository.count({ where: { classroomId, active: true } });
+    return this.enrollmentsRepository.count({
+      where: { classroomId, active: true },
+    });
+  }
+
+  // 6.6 — valida que a escola do filtro de exportação existe antes de
+  // resolver qualquer pseudônimo (404 claro em vez de simplesmente devolver
+  // um export vazio pra um schoolId inválido/digitado errado).
+  findSchoolById(id: string): Promise<School | null> {
+    return this.schoolsRepository.findOne({ where: { id } });
+  }
+
+  // 6.6 — TODO aluno já matriculado na escola (qualquer turma, matrícula
+  // ativa ou encerrada), não só os ativos — diferente de
+  // `findActiveStudentsBySchool` (6.2, usado pra contagem "hoje"), a
+  // exportação de pesquisa quer o histórico completo da escola: um aluno
+  // que trocou de turma/saiu não deveria sumir dos dados exportáveis. Só
+  // pseudônimo (nunca `displayName`) — é isto que
+  // `MetricsAdminExportService`/`EventsService.findEventsForExport` usa pra
+  // filtrar `interaction_events`, mantendo a pseudonimização mesmo no
+  // export bruto (regra não-negociável 8).
+  async findAllStudentPseudoIdsBySchool(schoolId: string): Promise<string[]> {
+    const rows = await this.enrollmentsRepository
+      .createQueryBuilder('enrollment')
+      .innerJoin('enrollment.classroom', 'classroom')
+      .innerJoin('enrollment.student', 'student')
+      .select('DISTINCT student.pseudonymId', 'pseudonymId')
+      .where('classroom.schoolId = :schoolId', { schoolId })
+      .getRawMany<{ pseudonymId: string }>();
+    return rows.map((row) => row.pseudonymId);
   }
 }

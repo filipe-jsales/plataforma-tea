@@ -30,7 +30,7 @@ apps/web/src/
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
 │   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
-│   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer
+│   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer (+ getRaw, 6.6)
 │   ├── authFlow.ts                  # completeLogin() — login → GET /users/me → setSession
 │   ├── logEvent.ts                  # POST /events centralizado (nunca fetch direto)
 │   ├── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
@@ -91,7 +91,9 @@ apps/web/src/
 │       ├── ChallengeReport.tsx      # 6.5 — /admin/reports, relatório de profundidade por desafio
 │       ├── ChallengeReport.css
 │       ├── AdminSettings.tsx        # 6.5 — /admin/settings, N mínimo pro aviso de amostra pequena
-│       └── AdminSettings.css
+│       ├── AdminSettings.css
+│       ├── AdminExport.tsx          # 6.6 — /admin/export, recorte + download JSON/CSV
+│       └── AdminExport.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -773,6 +775,50 @@ browser bloqueia o evento `submit` inteiro antes do JS rodar (não dispara
 `onSubmit`), o que impediria a mensagem de erro própria do app ("Informe um
 número inteiro positivo.") de aparecer — mesmo padrão de linguagem não-
 punitiva/descritiva já usado em `StudentLogin`.
+
+## Exportação de dados brutos (`AdminExport`, 6.6)
+
+`/admin/export` — o admin escolhe um recorte (escola e/ou desafio via
+`Select` de `components/ui/`, mais um período opcional com dois `<input
+type="date">` nativos) e clica em "Baixar exportação"; a tela nunca mostra
+os dados crus na própria página — o objetivo é analisar FORA da
+plataforma (ver `docs/ai/backlog/metricas-professor-admin.md`, M6), então
+o resultado sempre vira um arquivo baixado, nunca uma tabela em tela.
+
+- **Formato decide o método de `apiClient` usado, não só um parâmetro de
+  query**: `format=json` chama `apiClient.get<ExportResult>` (JSON
+  parseado, `result.rows` vira o conteúdo do arquivo baixado — `JSON.
+  stringify(result.rows, null, 2)`, não a resposta inteira com
+  `page`/`pageSize`); `format=csv` chama `apiClient.getRaw` (texto cru,
+  baixado exatamente como o backend gerou — `lib/apiClient.ts` ganhou esse
+  método nesta feature, especificamente porque `get`/`post`/`patch` sempre
+  fazem `response.json()`, o que quebraria num corpo CSV).
+- **Download client-side via Blob + `<a download>` temporário**
+  (`downloadFile`, local ao componente) — sem endpoint de "gerar link",
+  sem redirecionar a aba; cria o `<a>`, clica, remove, revoga a URL do
+  objeto.
+- **Sentinela `__all__`** pros `Select` de escola/desafio representarem
+  "sem filtro" — Radix Select não aceita `Item` com `value=""` (reservado
+  internamente pra "nada selecionado"), então o "Todas as escolas"/"Todos
+  os desafios" precisa de um valor real que o componente sabe tratar como
+  ausência de filtro antes de montar a query string.
+- **Validação client-side espelha a do backend** (ao menos um filtro;
+  período sempre com as duas datas juntas) — mensagem própria antes de
+  gastar uma chamada de API, mas o backend continua sendo a fonte de
+  verdade (`MetricsAdminExportService`, ver `backend.md`); o card de erro
+  (`InlineFeedback kind="retry"`) mostra a mensagem exata que a API
+  devolve quando a validação passa do lado do cliente mas falha no
+  servidor (ex.: período > 90 dias).
+- **Aviso de `hasMore`**: quando a resposta JSON sinaliza que existem mais
+  linhas além da página atual, a tela soma uma frase ao resumo pedindo pra
+  reduzir o recorte — não existe paginação na UI (sem botão "próxima
+  página") de propósito nesta versão; refinar o filtro é o caminho
+  esperado, não navegar página a página num export de pesquisa.
+- Sem `logEvent` — mesmo racional de `AdminMetrics`/`AdminSettings`
+  (regra "eventos RD-* são escopados ao aluno", ver `backend.md`): esta é
+  uma ação de staff, não gera dado de interação do aluno.
+- `.staff-theme` na raiz, mesmo padrão de todo o resto da área de
+  professor/admin (3.11).
 
 ## Assets visuais (`assets/illustrations/`)
 

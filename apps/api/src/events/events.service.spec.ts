@@ -21,8 +21,12 @@ describe('EventsService', () => {
 
   describe('record', () => {
     it('defaults optional fields (payload, sessionId, challengeId) when absent', async () => {
-      repository.create.mockImplementation((entity) => entity as InteractionEvent);
-      repository.save.mockImplementation(async (entity) => entity as InteractionEvent);
+      repository.create.mockImplementation(
+        (entity) => entity as InteractionEvent,
+      );
+      repository.save.mockImplementation(
+        async (entity) => entity as InteractionEvent,
+      );
 
       await service.record({
         studentPseudoId: 'pseudo-1',
@@ -41,8 +45,12 @@ describe('EventsService', () => {
     });
 
     it('preserves provided optional fields', async () => {
-      repository.create.mockImplementation((entity) => entity as InteractionEvent);
-      repository.save.mockImplementation(async (entity) => entity as InteractionEvent);
+      repository.create.mockImplementation(
+        (entity) => entity as InteractionEvent,
+      );
+      repository.save.mockImplementation(
+        async (entity) => entity as InteractionEvent,
+      );
 
       await service.record({
         studentPseudoId: 'pseudo-1',
@@ -65,7 +73,10 @@ describe('EventsService', () => {
 
   describe('countDistinctStudentsActiveSince', () => {
     it('short-circuits to 0 without querying when pseudoIds is empty', async () => {
-      const result = await service.countDistinctStudentsActiveSince([], new Date());
+      const result = await service.countDistinctStudentsActiveSince(
+        [],
+        new Date(),
+      );
 
       expect(result).toBe(0);
       expect(repository.createQueryBuilder).not.toHaveBeenCalled();
@@ -80,7 +91,10 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countDistinctStudentsActiveSince(['p1', 'p2'], new Date());
+      const result = await service.countDistinctStudentsActiveSince(
+        ['p1', 'p2'],
+        new Date(),
+      );
 
       expect(result).toBe(3);
       expect(queryBuilder.where).toHaveBeenCalledWith(
@@ -98,7 +112,10 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countDistinctStudentsActiveSince(['p1'], new Date());
+      const result = await service.countDistinctStudentsActiveSince(
+        ['p1'],
+        new Date(),
+      );
 
       expect(result).toBe(0);
     });
@@ -140,16 +157,17 @@ describe('EventsService', () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([
-            { studentPseudoId: 'p1', count: '3' },
-            { studentPseudoId: 'p2', count: '1' },
-          ]),
+        getRawMany: jest.fn().mockResolvedValue([
+          { studentPseudoId: 'p1', count: '3' },
+          { studentPseudoId: 'p2', count: '1' },
+        ]),
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countAttemptsByStudents(['p1', 'p2'], 'challenge-1');
+      const result = await service.countAttemptsByStudents(
+        ['p1', 'p2'],
+        'challenge-1',
+      );
 
       expect(result).toEqual(
         new Map([
@@ -157,9 +175,12 @@ describe('EventsService', () => {
           ['p2', 1],
         ]),
       );
-      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.challengeId = :challengeId', {
-        challengeId: 'challenge-1',
-      });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'event.challengeId = :challengeId',
+        {
+          challengeId: 'challenge-1',
+        },
+      );
       expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
         type: 'program_executed',
       });
@@ -172,11 +193,16 @@ describe('EventsService', () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1', count: '2' }]),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ studentPseudoId: 'p1', count: '2' }]),
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countAttemptsByStudents(['p1', 'p2'], 'challenge-1');
+      const result = await service.countAttemptsByStudents(
+        ['p1', 'p2'],
+        'challenge-1',
+      );
 
       expect(result.has('p2')).toBe(false);
     });
@@ -197,11 +223,17 @@ describe('EventsService', () => {
         andWhere: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+          .mockResolvedValue([
+            { studentPseudoId: 'p1' },
+            { studentPseudoId: 'p2' },
+          ]),
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.findStudentsWithEvent(['p1', 'p2', 'p3'], 'challenge-2');
+      const result = await service.findStudentsWithEvent(
+        ['p1', 'p2', 'p3'],
+        'challenge-2',
+      );
 
       expect(result).toEqual(new Set(['p1', 'p2']));
       // Sem `type`: só studentPseudoId + challengeId no andWhere — nunca um
@@ -218,7 +250,11 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      await service.findStudentsWithEvent(['p1'], 'challenge-1', 'challenge_use_completed');
+      await service.findStudentsWithEvent(
+        ['p1'],
+        'challenge-1',
+        'challenge_use_completed',
+      );
 
       expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
         type: 'challenge_use_completed',
@@ -233,16 +269,23 @@ describe('EventsService', () => {
         where: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
-          .mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+          .mockResolvedValue([
+            { studentPseudoId: 'p1' },
+            { studentPseudoId: 'p2' },
+          ]),
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.findDistinctStudentsForChallenge('challenge-1');
+      const result =
+        await service.findDistinctStudentsForChallenge('challenge-1');
 
       expect(result).toEqual(['p1', 'p2']);
-      expect(queryBuilder.where).toHaveBeenCalledWith('event.challengeId = :challengeId', {
-        challengeId: 'challenge-1',
-      });
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'event.challengeId = :challengeId',
+        {
+          challengeId: 'challenge-1',
+        },
+      );
     });
   });
 
@@ -254,9 +297,12 @@ describe('EventsService', () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest
-          .fn()
-          .mockResolvedValue([{ studentPseudoId: 'p1', earliest: new Date('2026-01-01T10:00:00Z') }]),
+        getRawMany: jest.fn().mockResolvedValue([
+          {
+            studentPseudoId: 'p1',
+            earliest: new Date('2026-01-01T10:00:00Z'),
+          },
+        ]),
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
@@ -277,7 +323,10 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      await service.findEarliestEventTimestamps('challenge-1', 'program_executed');
+      await service.findEarliestEventTimestamps(
+        'challenge-1',
+        'program_executed',
+      );
 
       expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
         type: 'program_executed',
@@ -296,7 +345,8 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countEventsByCategoryForChallenge('challenge-1');
+      const result =
+        await service.countEventsByCategoryForChallenge('challenge-1');
 
       expect(result).toEqual({
         'RD-I': 0,
@@ -319,7 +369,8 @@ describe('EventsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
       repository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      const result = await service.countEventsByCategoryForChallenge('challenge-1');
+      const result =
+        await service.countEventsByCategoryForChallenge('challenge-1');
 
       expect(result['RD-P']).toBe(7);
       expect(result['RD-I']).toBe(0);
@@ -399,6 +450,83 @@ describe('EventsService', () => {
         },
         order: { studentPseudoId: 'ASC' },
       });
+    });
+  });
+
+  describe('findEventsForExport (6.6)', () => {
+    function mockQueryBuilder() {
+      const queryBuilder = {
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+      return queryBuilder;
+    }
+
+    it('applies no andWhere when every filter is omitted (caller already guarantees at least one)', async () => {
+      const queryBuilder = mockQueryBuilder();
+
+      await service.findEventsForExport({}, 1, 500);
+
+      expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('filters by pseudoIds, challengeId and a date range together (AND, not OR)', async () => {
+      const queryBuilder = mockQueryBuilder();
+      const from = new Date('2026-01-01T00:00:00.000Z');
+      const to = new Date('2026-01-31T23:59:59.999Z');
+
+      await service.findEventsForExport(
+        { pseudoIds: ['p1', 'p2'], challengeId: 'c1', from, to },
+        1,
+        500,
+      );
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'event.studentPseudoId IN (:...pseudoIds)',
+        {
+          pseudoIds: ['p1', 'p2'],
+        },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'event.challengeId = :challengeId',
+        {
+          challengeId: 'c1',
+        },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'event.createdAt >= :from',
+        { from },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'event.createdAt <= :to',
+        { to },
+      );
+    });
+
+    it('paginates by requesting pageSize + 1 rows, offset by (page - 1) * pageSize', async () => {
+      const queryBuilder = mockQueryBuilder();
+
+      await service.findEventsForExport({ challengeId: 'c1' }, 3, 100);
+
+      expect(queryBuilder.skip).toHaveBeenCalledWith(200);
+      expect(queryBuilder.take).toHaveBeenCalledWith(101);
+    });
+
+    it('orders chronologically, with id as a stable tiebreaker', async () => {
+      const queryBuilder = mockQueryBuilder();
+
+      await service.findEventsForExport({ challengeId: 'c1' }, 1, 500);
+
+      expect(queryBuilder.orderBy).toHaveBeenCalledWith(
+        'event.createdAt',
+        'ASC',
+      );
+      expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('event.id', 'ASC');
     });
   });
 });

@@ -75,15 +75,22 @@ apps/api/src/
 │   ├── settings.controller.ts   # GET/PATCH /admin/settings
 │   ├── settings.service.ts
 │   └── settings.module.ts
+├── audit/
+│   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
+│   ├── audit.service.ts
+│   └── audit.module.ts
 ├── metrics/
 │   ├── statistics.ts             # 6.5 — motor estatístico puro (mean/median/stdDev/quartis/histogramas)
+│   ├── csv.ts                    # 6.6 — serializador CSV puro (RFC 4180), sem lib nova
+│   ├── dto/export-events-query.dto.ts  # 6.6
 │   ├── metrics.service.ts        # 6.1 — motor único de status/progresso por desafio
 │   ├── metrics-admin.service.ts  # 6.2 — visão institucional (escolas/turmas/professores)
 │   ├── metrics-admin-challenge.service.ts  # 6.5 — relatório de profundidade por desafio
-│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...]}
+│   ├── metrics-admin-export.service.ts  # 6.6 — exportação bruta pra pesquisa
+│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...],export}
 │   ├── metrics-teacher.service.ts   # 6.3/6.4 — progresso por turma do professor
 │   ├── metrics-teacher.controller.ts  # GET /metrics/teacher/classrooms/:id/{students,summary}
-│   └── metrics.module.ts
+│   └── metrics.module.ts        # importa AuditModule + ThrottlerModule.forRoot (6.6)
 ├── database/
 │   ├── data-source.ts           # DataSource p/ CLI de migrations (fora do Nest DI)
 │   └── migrations/              # uma migration por mudança de schema
@@ -193,7 +200,9 @@ professor/admin. Por isso:
 Se um caso de uso futuro precisar de telemetria operacional real de
 professor/admin, isso é uma tabela nova (ou um `type`/schema explicitamente
 pensado pra isso), não um forçar de pseudônimo de staff dentro de
-`studentPseudoId`.
+`studentPseudoId` — ver `ExportAuditLog` (`AuditModule`, 6.6) pro primeiro
+caso real disso ("quem exportou o quê, quando"), na seção "Exportação de
+dados brutos pra pesquisa" abaixo.
 
 ## Blocos por desafio (RQ4 — sobrecarga cognitiva/abstração, 39,13%)
 
@@ -543,8 +552,9 @@ com dataset canônico `[1..10]` conferido contra `numpy`). Duas razões:
 mantém a lógica testável sem depender de `PERCENTILE_CONT`/`STDDEV` do
 dialeto do banco, e reproduzível — os quartis usam interpolação linear
 (método R "type 7" / default de `numpy.percentile`) especificamente pra
-que o mesmo `p` aplicado ao mesmo dado bruto (exportável via M6, ainda não
-implementado) reproduza exatamente o número em R/Python.
+que o mesmo `p` aplicado ao mesmo dado bruto (exportável via 6.6, ver
+"Exportação de dados brutos pra pesquisa" abaixo) reproduza exatamente o
+número em R/Python.
 
 `MetricsAdminChallengeService` (`apps/api/src/metrics/
 metrics-admin-challenge.service.ts`) é o orquestrador: busca dado bruto via
@@ -604,6 +614,90 @@ se mostra o aviso de amostra pequena (AC de 6.5). Não vive dentro de
 importa `SettingsModule` pra `MetricsAdminChallengeService` poder ler o
 threshold.
 
+## Exportação de dados brutos pra pesquisa (6.6)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M6,
+"Status: ✅ Implementado"). Diferente de 6.2/6.5 (agregados prontos pra
+virar gráfico), aqui o admin escolhe um recorte (escola e/ou desafio e/ou
+período) e recebe as linhas de `interaction_events` quase cruas — RQ5 por
+completo: é o que efetivamente viabiliza usar o dado coletado desde o MVP
+num artigo/análise fora da plataforma, não só guardar num banco que
+ninguém consulta.
+
+`GET /metrics/admin/export?schoolId=&challengeId=&from=&to=&format=json|csv&page=&pageSize=`
+(`MetricsAdminController.exportEvents`, `@Roles(Role.ADMIN)`) —
+`MetricsAdminExportService` (`apps/api/src/metrics/
+metrics-admin-export.service.ts`) faz toda a validação e orquestração:
+
+- **Ao menos um filtro é obrigatório** (escola, desafio ou período — AC
+  explícita): nenhum dos três presentes é `400 BadRequestException` antes
+  de tocar o banco. Período é sempre os dois extremos juntos (`from` E
+  `to`) — só um dos dois também é `400`, nunca um intervalo aberto.
+- **Limite de 90 dias no período** (`MAX_PERIOD_DAYS`, `to` tratado como
+  fim do dia em UTC): acima disso, `400` com mensagem clara pedindo pra
+  reduzir o intervalo — nunca trunca silenciosamente nem deixa a query
+  correr contra o histórico inteiro (AC explícita, testada em
+  `metrics-admin-export.service.spec.ts`).
+- **Escola resolve pra pseudônimo antes de filtrar eventos**
+  (`SchoolsService.findAllStudentPseudoIdsBySchool`, novo) — TODO aluno já
+  matriculado na escola (qualquer turma, matrícula ativa ou encerrada), não
+  só os ativos de hoje (diferente de `findActiveStudentsBySchool`, 6.2): a
+  exportação de pesquisa quer o histórico completo, um aluno que trocou de
+  turma não deveria sumir do dado exportável. Escola sem nenhum aluno
+  matriculado devolve resultado vazio (não erro) — ainda assim conta como
+  "uma exportação realizada" e é auditada.
+- **Nunca um join que reintroduza `displayName`** (regra não-negociável
+  8, aplicada mesmo pro admin): a linha exportada é exatamente
+  `{ id, studentPseudoId, category, type, payload, sessionId, challengeId,
+  createdAt }` — as colunas de `InteractionEvent`, ponto. Quem precisar
+  cruzar pseudônimo↔turma faz isso numa exportação separada (dado de
+  `enrollments`), nunca na mesma planilha.
+- **Paginação sempre ativa** (`page`/`pageSize`, máximo 500 por página —
+  `ExportEventsQueryDto`) — não é uma rota de "baixar a tabela inteira de
+  uma vez", mesmo pra um recorte por escola/desafio sem período (que
+  sozinho não tem limite de intervalo). `EventsService.findEventsForExport`
+  pede `pageSize + 1` linhas de propósito: a resposta usa a linha extra só
+  pra calcular `hasMore`, sem precisar de um `COUNT(*)` separado.
+- **`format=csv`** monta o corpo via `metrics/csv.ts` (`toCsv`, função pura
+  RFC 4180 — sem lib nova) e escreve `Content-Type`/`Content-Disposition`
+  na mão via `@Res({ passthrough: true })`, porque só este formato precisa
+  de headers diferentes do JSON default do Nest.
+
+### Auditoria (`AuditModule`, `export_audit_logs`)
+
+**Primeiro registro de auditoria de admin/professor do projeto** — não
+existia tabela nenhuma pra "quem fez o quê, quando" antes de 6.6 (ver nota
+em "Padrão: eventos RD-* são escopados ao aluno" acima). Módulo próprio
+(`apps/api/src/audit/`, não dentro de `MetricsModule`) de propósito:
+telemetria de staff é uma preocupação transversal, qualquer feature futura
+de admin/professor que precise do mesmo padrão reaproveita
+`AuditService.recordExport` em vez de inventar a própria tabela.
+`ExportAuditLog` é append-only (mesma filosofia de `interaction_events`,
+nunca `UPDATE`/`DELETE`), com `adminUserId` (FK nullable `ON DELETE SET
+NULL` — defesa em profundidade, hoje não existe endpoint de exclusão de
+usuário), `filters` (jsonb — o recorte exatamente como pedido, strings
+originais do DTO) e `rowCount` (quantas linhas saíram NESTA resposta, não
+o total do recorte). Gravado uma vez por chamada bem-sucedida —
+inclusive quando o resultado é vazio (escola sem aluno), porque a
+exportação em si aconteceu; nunca gravado quando a validação rejeita o
+pedido antes de qualquer query (nenhum filtro, período > 90 dias, escola/
+desafio inexistente).
+
+### Rate limiting (`@nestjs/throttler`)
+
+Primeiro rate limit do projeto (gap geral ainda documentado em "Próximos
+passos" pros 3 endpoints de login) — aqui é pré-requisito, não
+nice-to-have, dado o volume de dado exposto por request (AC explícita:
+"não é uma rota pra baixar a tabela inteira repetidamente sem controle").
+`ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }])` importado em
+`MetricsModule` (`@Global()`, então basta importar uma vez — não precisa
+tocar `AppModule`) — 5 requisições por admin por minuto. `ThrottlerGuard`
+só no método `exportEvents` (`@UseGuards(ThrottlerGuard)` na rota, não na
+classe inteira) — `schools`/`challenges`/`challenges/:id` continuam sem
+limite, só a rota que expõe volume grande de dado por requisição precisa
+disso. Por IP (comportamento default da lib), não por admin autenticado —
+suficiente pro MVP, sem tracker customizado.
+
 ## Banco de dados
 
 Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra
@@ -648,8 +742,10 @@ novos.
   progresso por turma" abaixo) e o relatório de profundidade por desafio do
   admin (6.5, `GET /metrics/admin/challenges[/:challengeId]` +
   `MetricsAdminChallengeService`/`statistics.ts` — ver "Relatório de
-  profundidade por desafio" abaixo). Falta só a exportação bruta pra
-  pesquisa (M6 no documento, exclusivo do admin).
+  profundidade por desafio" abaixo) e a exportação bruta pra pesquisa (6.6,
+  `GET /metrics/admin/export` + `MetricsAdminExportService`/`AuditModule` —
+  ver "Exportação de dados brutos pra pesquisa" abaixo). As 6 features do
+  documento (M1–M6) estão implementadas.
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor
@@ -671,4 +767,8 @@ novos.
   sinal observável, nunca como inferência clínica — regra 7).
 - Rate limiting / bloqueio após N tentativas nos 3 endpoints de login — hoje
   não existe (o `retryCount` do fluxo aluno é só o que o frontend observa e
-  manda no payload, o backend não impõe limite nenhum).
+  manda no payload, o backend não impõe limite nenhum). `@nestjs/throttler`
+  já está instalado e configurado (`ThrottlerModule.forRoot`, ver 6.6) —
+  aplicar `ThrottlerGuard` nas 3 rotas de login seria só repetir o mesmo
+  padrão (`@UseGuards(ThrottlerGuard)` no método), não uma dependência
+  nova.

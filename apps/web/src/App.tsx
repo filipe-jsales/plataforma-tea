@@ -4,6 +4,7 @@ import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
 import { TeacherLogin } from './routes/login/TeacherLogin'
 import { ChallengePage } from './routes/challenge/ChallengePage'
+import { AdminExport } from './routes/metrics/AdminExport'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
 import { AdminSettings } from './routes/metrics/AdminSettings'
 import { ChallengeReport } from './routes/metrics/ChallengeReport'
@@ -91,6 +92,14 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <AdminSettings />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/export"
+        element={
+          <RequireAuth roles={['admin']}>
+            <AdminExport />
           </RequireAuth>
         }
       />

@@ -1,0 +1,58 @@
+/*
+  6.6 — exportação de dados brutos. Área de staff (3.11, `.staff-theme`) —
+  layout de página, botão "Voltar" e dropdowns vêm de `.page` +
+  components/ui/, só o formulário em si fica aqui.
+*/
+
+.admin-export__subtitle {
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.admin-export__form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 480px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-export__period {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.admin-export__date-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.admin-export__date-field input {
+  min-height: var(--hit-area-min);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.admin-export__date-field input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.admin-export__hint {
+  margin: 0;
+  font-size: var(--font-size-small);
+  opacity: 0.75;
+}

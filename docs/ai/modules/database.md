@@ -178,6 +178,21 @@ campo de config de plataforma futuro sem precisar de uma tabela nova por
 configuração. A linha é materializada em runtime (`SettingsService.
 getOrCreate`, lazy init na primeira leitura), não semeada na migration.
 
+### `export_audit_logs`
+
+Ver `apps/api/src/audit/entities/export-audit-log.entity.ts`. Primeira
+tabela de auditoria de admin/professor do projeto (6.6) — deliberadamente
+fora de `interaction_events` (aquela é escopada a aluno, `studentPseudoId
+NOT NULL` de propósito, ver "Padrão: eventos RD-* são escopados ao aluno"
+em `backend.md`). Append-only, mesma filosofia de `interaction_events`
+(nunca `UPDATE`/`DELETE` de um log já gravado). `adminUserId` é FK
+nullable pra `users` (`ON DELETE SET NULL`) — defesa em profundidade, hoje
+não existe endpoint de exclusão de usuário, então esse caminho nunca é
+exercitado na prática. `filters` (jsonb) guarda o recorte exatamente como
+pedido (schoolId/challengeId/from/to/format/page/pageSize); `rowCount` é
+quantas linhas saíram NAQUELA resposta, não o total do recorte. Índice em
+`(adminUserId, createdAt)`, mesmo padrão de `interaction_events`.
+
 ### Migrations aplicadas
 
 1. `1785866463111-CreateUsersAndInteractionEvents.ts` — cria `users` e
@@ -261,12 +276,24 @@ divergir das duas fontes.
     `@BeforeInsert` nem valor "certo" pra forçar antes do admin decidir se
     quer mudar o default (6.5 — configuração de N mínimo pro aviso de
     amostra pequena no relatório de profundidade por desafio).
+18. `1786116183224-CreateExportAuditLogs.ts` — cria `export_audit_logs`
+    (`adminUserId` FK nullable pra `users` `ON DELETE SET NULL`, `filters`
+    jsonb, `rowCount` int, índice em `(adminUserId, createdAt)`). Gerada
+    com `migration:generate`, sem seed — primeira tabela de auditoria de
+    admin/professor do projeto (6.6 — exportação de dados brutos pra
+    pesquisa, ver "Exportação de dados brutos pra pesquisa" em
+    `backend.md`).
 
-Todas as 12 primeiras (e a 17ª) já foram validadas com `npm run
+Todas as 12 primeiras, a 17ª e a 18ª já foram validadas com `npm run
 migration:run` contra um Postgres real, e `\dt` + `\d <tabela>` conferidos
 no `psql`. Depois da última, um `migration:generate` extra confirmou "No
 changes in database schema were found" — zero diff pendente entre entidades
-e banco. Os 3 fluxos de login
+e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
+via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
+rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
+real de `interaction_events`, `export_audit_logs` conferido com uma linha
+por chamada bem-sucedida, e o rate limit (5/min) disparando `429` na 6ª
+chamada em sequência. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos

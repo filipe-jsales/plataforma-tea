@@ -14,6 +14,7 @@ describe('SchoolsService', () => {
     schoolsRepository = {
       count: jest.fn(),
       find: jest.fn(),
+      findOne: jest.fn(),
     } as unknown as jest.Mocked<Repository<School>>;
     classroomsRepository = {
       find: jest.fn(),
@@ -24,9 +25,14 @@ describe('SchoolsService', () => {
     enrollmentsRepository = {
       find: jest.fn(),
       count: jest.fn(),
+      createQueryBuilder: jest.fn(),
     } as unknown as jest.Mocked<Repository<Enrollment>>;
 
-    service = new SchoolsService(schoolsRepository, classroomsRepository, enrollmentsRepository);
+    service = new SchoolsService(
+      schoolsRepository,
+      classroomsRepository,
+      enrollmentsRepository,
+    );
   });
 
   it('findActiveEnrollmentsByStudent filters by student and active=true only', async () => {
@@ -56,7 +62,9 @@ describe('SchoolsService', () => {
 
     await service.findClassroomByJoinCode('AZUL-7');
 
-    expect(classroomsRepository.findOne).toHaveBeenCalledWith({ where: { joinCode: 'AZUL-7' } });
+    expect(classroomsRepository.findOne).toHaveBeenCalledWith({
+      where: { joinCode: 'AZUL-7' },
+    });
   });
 
   it('countSchools and countClassrooms delegate to their repositories', async () => {
@@ -99,10 +107,15 @@ describe('SchoolsService', () => {
       const result = await service.countDistinctTeachersBySchool('school-1');
 
       expect(result).toBe(2);
-      expect(queryBuilder.where).toHaveBeenCalledWith('classroom.schoolId = :schoolId', {
-        schoolId: 'school-1',
-      });
-      expect(queryBuilder.andWhere).toHaveBeenCalledWith('classroom.teacherId IS NOT NULL');
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'classroom.schoolId = :schoolId',
+        {
+          schoolId: 'school-1',
+        },
+      );
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'classroom.teacherId IS NOT NULL',
+      );
     });
 
     it('returns 0 when the query yields no raw row', async () => {
@@ -114,7 +127,9 @@ describe('SchoolsService', () => {
       } as unknown as jest.Mocked<SelectQueryBuilder<Classroom>>;
       classroomsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
 
-      await expect(service.countDistinctTeachersBySchool('school-1')).resolves.toBe(0);
+      await expect(
+        service.countDistinctTeachersBySchool('school-1'),
+      ).resolves.toBe(0);
     });
   });
 
@@ -134,15 +149,67 @@ describe('SchoolsService', () => {
 
     await service.findClassroomById('classroom-1');
 
-    expect(classroomsRepository.findOne).toHaveBeenCalledWith({ where: { id: 'classroom-1' } });
+    expect(classroomsRepository.findOne).toHaveBeenCalledWith({
+      where: { id: 'classroom-1' },
+    });
   });
 
   it('countActiveStudentsInClassroom scopes by classroom and active=true only', async () => {
     enrollmentsRepository.count.mockResolvedValue(7);
 
-    await expect(service.countActiveStudentsInClassroom('classroom-1')).resolves.toBe(7);
+    await expect(
+      service.countActiveStudentsInClassroom('classroom-1'),
+    ).resolves.toBe(7);
     expect(enrollmentsRepository.count).toHaveBeenCalledWith({
       where: { classroomId: 'classroom-1', active: true },
+    });
+  });
+
+  it('findSchoolById looks up a single school by id (6.6)', async () => {
+    schoolsRepository.findOne.mockResolvedValue(null);
+
+    await service.findSchoolById('school-1');
+
+    expect(schoolsRepository.findOne).toHaveBeenCalledWith({
+      where: { id: 'school-1' },
+    });
+  });
+
+  describe('findAllStudentPseudoIdsBySchool (6.6)', () => {
+    it('returns distinct pseudonyms across every enrollment, active or not (unlike findActiveStudentsBySchool)', async () => {
+      const queryBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValue([{ pseudonymId: 'p1' }, { pseudonymId: 'p2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<Enrollment>>;
+      enrollmentsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findAllStudentPseudoIdsBySchool('school-1');
+
+      expect(result).toEqual(['p1', 'p2']);
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'classroom.schoolId = :schoolId',
+        {
+          schoolId: 'school-1',
+        },
+      );
+    });
+
+    it('returns an empty array for a school with no enrollment ever, never an error', async () => {
+      const queryBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<Enrollment>>;
+      enrollmentsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await expect(
+        service.findAllStudentPseudoIdsBySchool('school-1'),
+      ).resolves.toEqual([]);
     });
   });
 });
