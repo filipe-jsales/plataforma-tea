@@ -31,6 +31,15 @@ const challenges = [
 
 const emptyStats = { n: 0, mean: null, median: null, stdDev: null, min: null, max: null, q1: null, q3: null };
 
+// 3.11: o picker deixou de ser um <select> nativo (Select via
+// @radix-ui/react-select, ver components/ui/Select.tsx) — abrir/escolher
+// uma opção agora é clique + clique no item, não mais `selectOptions`.
+async function pickChallenge(titleFragment: string) {
+  const user = userEvent.setup();
+  await user.click(await screen.findByLabelText(/Desafio/));
+  await user.click(await screen.findByRole('option', { name: new RegExp(titleFragment) }));
+}
+
 function baseReport(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     challengeId: 'c3',
@@ -62,6 +71,11 @@ describe('ChallengeReport', () => {
 
     renderPage();
 
+    // 3.11: opções de um Select (Radix) só existem no DOM com o dropdown
+    // aberto — diferente de um <select> nativo, onde as <option> sempre
+    // estão presentes.
+    await userEvent.click(await screen.findByLabelText(/Desafio/));
+
     expect(await screen.findByText(/Monte o quadrado \(Observar \(Use\)\)/)).toBeInTheDocument();
   });
 
@@ -74,8 +88,7 @@ describe('ChallengeReport', () => {
     renderPage();
 
     expect(mockedGet).toHaveBeenCalledTimes(1);
-    const select = await screen.findByLabelText(/Desafio/);
-    await userEvent.selectOptions(select, 'c3');
+    await pickChallenge('sua vez');
 
     expect(await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' })).toBeInTheDocument();
     expect(mockedGet).toHaveBeenCalledWith('/metrics/admin/challenges/c3');
@@ -103,8 +116,7 @@ describe('ChallengeReport', () => {
 
     renderPage();
 
-    const select = await screen.findByLabelText(/Desafio/);
-    await userEvent.selectOptions(select, 'c2');
+    await pickChallenge('agora mude');
 
     expect(await screen.findByRole('heading', { name: 'Estágio Modify' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Estágio Use' })).not.toBeInTheDocument();
@@ -116,8 +128,7 @@ describe('ChallengeReport', () => {
 
     renderPage();
 
-    const select = await screen.findByLabelText(/Desafio/);
-    await userEvent.selectOptions(select, 'c3');
+    await pickChallenge('sua vez');
 
     await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' });
     expect(screen.queryByRole('heading', { name: 'Estágio Modify' })).not.toBeInTheDocument();
@@ -136,8 +147,7 @@ describe('ChallengeReport', () => {
 
     renderPage();
 
-    const select = await screen.findByLabelText(/Desafio/);
-    await userEvent.selectOptions(select, 'c3');
+    await pickChallenge('sua vez');
 
     expect(await screen.findByText(/N=3 — abaixo do mínimo configurado \(5\)/)).toBeInTheDocument();
   });
@@ -148,10 +158,19 @@ describe('ChallengeReport', () => {
 
     renderPage();
 
-    const select = await screen.findByLabelText(/Desafio/);
-    await userEvent.selectOptions(select, 'c3');
+    await pickChallenge('sua vez');
     await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' });
 
     expect(screen.queryByText(/pseudo/i)).not.toBeInTheDocument();
+  });
+
+  it('3.11: "← Voltar" is a real link styled like a button, never a bare text link', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const back = await screen.findByRole('link', { name: /voltar/i });
+    expect(back).toHaveAttribute('href', '/home');
+    expect(back).toHaveClass('ui-button');
   });
 });

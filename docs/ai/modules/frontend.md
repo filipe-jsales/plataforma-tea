@@ -21,7 +21,10 @@ major do React sem antes checar se `react-blockly` já suporta a versão nova.
 
 ```
 apps/web/src/
-├── theme/sensory-theme.css          # CSS vars + prefers-reduced-motion
+├── index.css                        # 3.11 — reset global + escala tipográfica (h1/h2/h3/p crus)
+├── theme/
+│   ├── sensory-theme.css            # CSS vars (tokens) + prefers-reduced-motion — tema base/aluno
+│   └── staff-theme.css              # 3.11 — classe `.staff-theme`: paleta rica + elevação + microanimação
 ├── stores/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
@@ -36,11 +39,16 @@ apps/web/src/
 │   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
-│   ├── ui/                          # 3.10 — sistema de componentes acessíveis, ver seção própria
+│   ├── ui/                          # 3.10/3.11 — sistema de componentes acessíveis, ver seção própria
 │   │   ├── Button.tsx / Button.css
+│   │   ├── LinkButton.tsx           # 3.11 — mesma classe CSS de Button, elemento <Link>
 │   │   ├── ToggleSwitch.tsx / ToggleSwitch.css  # @radix-ui/react-switch
-│   │   ├── Card.tsx / Card.css                  # SelectableCard, react-aria useButton
+│   │   ├── Card.tsx / Card.css                  # SelectableCard (align 'center'|'start', meta), react-aria useButton
 │   │   ├── Tabs.tsx / Tabs.css                  # @radix-ui/react-tabs
+│   │   ├── SegmentedControl.tsx / .css          # 3.11 — @radix-ui/react-toggle-group (type="single")
+│   │   ├── Select.tsx / Select.css              # 3.11 — @radix-ui/react-select
+│   │   ├── Table.tsx / Table.css                # 3.11 — wrapper semântico <table>, zebra/divisor/espaçamento
+│   │   ├── Badge.tsx / Badge.css                # 3.11 — status como componente, não cor inline
 │   │   ├── Tooltip.tsx / Tooltip.css            # @radix-ui/react-tooltip
 │   │   ├── Dialog.tsx / Dialog.css              # @radix-ui/react-dialog
 │   │   ├── Heading.tsx / Text.tsx / Typography.css
@@ -234,24 +242,23 @@ produto inteiro.
 
 ### Onde já está em uso vs. débito de migração
 
-Aplicado em telas tocadas por esta feature — `OnboardingSensorial`
-(`ToggleSwitch` + `Button`, substituindo checkbox cru), `SubjectSelector`
-(`SelectableCard` + `Button`, substituindo `<button>` cru) e
-`StudentHome` (`Button` nas 2 ações principais). `TeacherHome`/`AdminHome`
-continuam com `<button className="home__action">` cru de propósito — são
-telas de staff, que já são **isentas** das restrições sensoriais do aluno
-(mesmo racional de `StaffLogin.css`/`AdminMetrics.css`, ver seções
-correspondentes); não faz sentido forçar a área de toque de 56px do aluno
-onde a regra não se aplica.
+Aplicado em telas tocadas por 3.10 — `OnboardingSensorial` (`ToggleSwitch` +
+`Button`, substituindo checkbox cru), `SubjectSelector` (`SelectableCard` +
+`Button`, substituindo `<button>` cru) e `StudentHome` (`Button` nas 2 ações
+principais). 3.11 estendeu o mesmo barril pra área de staff — ver "Sistema
+de design compartilhado (professor/admin, 3.11)" logo abaixo — `TeacherHome`/
+`AdminHome`/`TeacherMetrics`/`AdminMetrics`/`AdminSettings`/`ChallengeReport`/
+`TeacherLogin`/`AdminLogin` já usam `Button`/`LinkButton`/`SelectableCard`/
+`SegmentedControl`/`Select`/`Table`/`Badge`, só com tema mais rico
+(`.staff-theme`) em vez das restrições sensoriais do aluno.
 
 **Não migrado ainda** (débito reconhecido, não silencioso):
 `ChallengePage.tsx` (botões Executar/Ajuda/Avançar/Predict e o
-`challenge-page__feedback`), `TeacherMetrics.tsx` (as 2 abas manuais) e
-`AdminSettings`/`ChallengeReport` continuam com `<button>`/CSS próprios.
-Critério pra migrar: só quando a tela for tocada por outro motivo (evita
-um PR gigante só de refactor visual sem mudança funcional); `ChallengePage`
-em particular já tem lógica PRIMM densa o bastante pra não misturar com uma
-troca de biblioteca de UI no mesmo commit.
+`challenge-page__feedback`) — critério pra migrar continua o mesmo: só
+quando a tela for tocada por outro motivo (evita um PR gigante só de
+refactor visual sem mudança funcional), e ela já tem lógica PRIMM densa o
+bastante pra não misturar com uma troca de biblioteca de UI no mesmo
+commit.
 
 ### Testes
 
@@ -264,6 +271,147 @@ via clique), `Dialog` fecha com um botão que tem texto "Fechar" visível
 (nunca só `✕`). `src/test/setup.ts` ganhou um stub de `ResizeObserver` —
 jsdom não implementa isso e `@radix-ui/react-popper` (usado por `Tooltip`)
 precisa dele mesmo sem nenhum teste chamar posicionamento explicitamente.
+
+## Sistema de design compartilhado (professor/admin, 3.11)
+
+Camada de tema visual mais rica pra professor/admin, construída sobre a
+MESMA fundação de componente de 3.10 (Radix UI + React Aria,
+`components/ui/`) — nunca uma biblioteca nova. A regra do card: a diferença
+entre módulos é só tema (cor/sombra/movimento), nunca geometria de
+componente — o botão do professor e o botão do aluno nascem do mesmo
+`<Button>`, só com `--color-primary`/`--shadow-card` diferentes.
+
+### A causa raiz que motivou o card
+
+Os bugs dos prints (título/subtítulo sobrepostos, conteúdo preso numa faixa
+estreita e centralizada em qualquer tela, inclusive do aluno) não eram bugs
+pontuais de tela — eram `apps/web/src/index.css` ainda sendo, ao pé da
+letra, o template padrão do `npm create vite` nunca limpo desde o bootstrap
+do projeto: `#root { width: 1126px; text-align: center; border-inline:
+... }` e `h1 { font-size: 56px; margin: 32px 0 }`/`h2 { line-height: 118%
+}` sem nenhuma relação com o design real da plataforma. 3.11 reescreveu
+`index.css` do zero (reset + tokens, ver abaixo) — isso sozinho já resolve
+os dois bugs mais visíveis dos prints, em qualquer módulo.
+
+### Tokens novos em `theme/sensory-theme.css`
+
+- **Escala tipográfica** (`--font-size-h1/h2/h3/body/small`,
+  `--line-height-heading/body`, `--font-weight-heading/body`) — definida
+  uma vez, lida tanto por `index.css` (`<h1>`/`<h2>`/`<h3>`/`<p>` crus,
+  maioria das telas de professor/admin hoje) quanto por
+  `components/ui/Typography.css` (`<Heading>`/`<Text>`, aluno) — as duas
+  formas de título têm a hierarquia idêntica, nunca 2 escalas divergentes.
+  `line-height` proporcional ao tamanho da fonte (nunca um valor fixo) é
+  especificamente o que fecha o bug "sobreposto".
+- **`--page-max-width` (1080px) + classe `.page`** — grid de página
+  compartilhado entre professor e admin (AC "mesmo grid... hoje ambos
+  parecem centralizados sem largura máxima definida"). Substitui o
+  `max-width`/`margin: auto` que `TeacherMetrics.css`/`AdminMetrics.css`/
+  etc. repetiam cada uma na própria folha de estilo. Telas do aluno
+  (`Home`/`SubjectSelector`/`OnboardingSensorial`) continuam com largura
+  mais estreita própria — fluxo single-column, decisão de design, não bug.
+- **`--shadow-card`/`--shadow-card-hover`/`--shadow-modal`** — elevação.
+  `none` por padrão (aluno: `components/ui/Card.css` só usa borda simples);
+  quem dá valor real é `.staff-theme` (ver abaixo). Um componente
+  compartilhado nunca hardcoda `box-shadow` diretamente — sempre lê o
+  token, então o MESMO `Card.css` renderiza plano no aluno e elevado no
+  professor sem nenhum código condicional.
+
+### `theme/staff-theme.css` — a classe `.staff-theme`
+
+Aplicada na raiz de cada tela de staff (`<main className="teacher-metrics
+staff-theme page">`) — nunca no `<html>` inteiro, porque papel de usuário é
+exclusivo por sessão (`User.role`, ver `backend.md`), então não existe
+transição aluno↔staff pra cobrir dentro da mesma árvore. Duas coisas
+acontecem só dentro dela:
+
+1. **Paleta mais rica**: `--color-primary`/`--color-primary-hover`/
+   `--color-accent` mais saturados que os do aluno (permitido — RQ4
+   hipersensibilidade sensorial, 30,43%, é especificamente sobre o aluno) +
+   valor real pra `--shadow-card`/`--shadow-modal`.
+2. **Microanimação permitida**: hover de botão/card com `transition`. Isto
+   só é seguro porque `.staff-theme` é a ÚNICA exceção ao reset "sem
+   transição por padrão" — a regra de `sensory-theme.css`
+   (`:root:not([data-motion='full']) *`) ganhou um `:not(.staff-theme,
+   .staff-theme *)` explícito. Um componente compartilhado (`Button`,
+   `Card`) continua sem declarar a própria `transition` — ela só passa a
+   existir por estar dentro de `.staff-theme`, nunca por o componente saber
+   em qual módulo está. `prefers-reduced-motion` do SO continua valendo
+   pra todo mundo, staff incluído — isso não é uma preferência específica
+   de TEA, é acessibilidade geral, então nunca teve motivo pra ficar de
+   fora do reset.
+
+**Ícone**: nenhuma lib nova — emoji continua sendo o "sistema de ícone"
+compartilhado dos 3 módulos (já era assim desde antes de 3.10/3.11).
+Introduzir um set de ícone SVG dedicado contradiria a proibição explícita
+do card ("não uma biblioteca nova"); decisão registrada aqui, não um
+esquecimento.
+
+### Componentes novos em `components/ui/`
+
+- **`LinkButton`** — a mesma classe CSS de `Button` (`.ui-button`/
+  `.ui-button--*` de `Button.css`) aplicada a um `<Link>` do react-router
+  em vez de um `<button>`. Existe especificamente pro bug "← Voltar sem
+  affordance de botão" dos prints — `<LinkButton to="/home" variant="ghost"
+  icon="←">Voltar</LinkButton>` em vez de um `<Link>` de texto solto. É
+  também o que garante a AC "consistência entre módulos": o botão "Entrar"
+  (`Button`, elemento `<button>`) e "← Voltar" (`LinkButton`, elemento
+  `<a>`) têm exatamente a mesma geometria porque compartilham a mesma
+  classe — só o elemento HTML muda, nunca a forma.
+- **`SegmentedControl`** (`@radix-ui/react-toggle-group`, `type="single"` +
+  `rovingFocus`) — substitui o padrão "2 `<button>` soltos com
+  `aria-selected` calculado à mão e estilos levemente diferentes um do
+  outro" (era assim em `TeacherMetrics` "Por aluno"/"Turma toda"). Root sai
+  `role="radiogroup"`, cada opção `role="radio"` — teclado (setas movem
+  entre opções) vem da lib. `onValueChange` ignora string vazia: clicar de
+  novo na opção já ativa nunca desmarca tudo (sempre existe uma visão
+  ativa).
+- **`Select`** (`@radix-ui/react-select`) — "Ordenar por"/"Desafio" deixam
+  de ser `<select>` nativo sem estilo. `label` sempre visível (nunca só
+  placeholder). Testar: as opções (`role="option"`) só existem no DOM com o
+  dropdown aberto (diferente de `<option>` nativo, sempre presente) — todo
+  teste que troca valor precisa abrir o trigger antes
+  (`userEvent.click(getByLabelText(...))`), ver
+  `ChallengeReport.spec.tsx`/`Select.spec.tsx`.
+- **`Table`/`TableHead`/`TableBody`/`TableRow`/`TableHeaderCell`/
+  `TableCell`** — Radix não tem primitivo de tabela (a semântica correta
+  pra leitor de tela — `<table>`/`<th scope>`/`<td>` — já É headless por
+  natureza); aqui só padronizamos espaçamento/zebra/divisor/peso do
+  cabeçalho (`Table.css`), nunca a semântica. Usado hoje em
+  `TeacherMetrics` (por aluno × desafio) e `AdminMetrics` (turmas de uma
+  escola).
+- **`Badge`** — "Concluído"/"Em andamento"/"Não iniciado" como componente
+  (`variant="success"/"warning"/"neutral"`) em vez de `background-color`
+  inline repetido em cada tela (AC explícita). Reaproveita as MESMAS cores
+  de feedback (`--color-success`/`--color-warning`) que
+  `InlineFeedback.tsx` usa pro aluno — "concluído = verde" significa a
+  mesma coisa nos 3 módulos (feedback positivo pode ser expressivo, regra
+  não-punitiva aplicada ao lado positivo).
+- **`SelectableCard` ganhou `meta`/`align`** — `meta` é o metadado
+  secundário (ex.: "Código: AZUL-1 · 12 alunos ativos"), sempre num nível
+  tipográfico abaixo do título (AC "hierarquia clara... nunca tudo no mesmo
+  nível visual"). `align="start"` (professor/admin — título+meta
+  empilhados à esquerda) convive com o `align="center"` original do aluno
+  (ícone grande em cima, ver `SubjectSelector`) no MESMO componente — só o
+  arranjo do conteúdo muda, a fundação (`useButton`/`useFocusRing`/seleção)
+  é idêntica.
+
+### Telas migradas
+
+`TeacherMetrics` é o card visual desta feature quase inteiro num lugar só —
+"← Voltar" → `LinkButton`; card de turma → `SelectableCard align="start"
+meta=...`; "Por aluno"/"Turma toda" → `SegmentedControl`; "Ordenar por" →
+`Select`; tabela → `Table`; badge de status → `Badge`. `AdminMetrics`
+(cards de escola + tabela de turmas), `AdminSettings` (botão "Salvar"),
+`ChallengeReport` (picker de desafio) e `TeacherHome`/`AdminHome`/
+`TeacherLogin`/`AdminLogin` (`Button`/`LinkButton`) seguem o mesmo padrão,
+com `.staff-theme` na raiz de cada `<main>`. Nenhuma mudança de
+comportamento/endpoint — só troca de camada visual; os testes já existentes
+(`TeacherMetrics.spec.tsx`, `AdminMetrics.spec.tsx`, `AdminSettings.spec.tsx`,
+`ChallengeReport.spec.tsx`) passam sem alteração de asserção de dado, só a
+migração do picker de `ChallengeReport` (native `<select>` →
+`@radix-ui/react-select`) trocou `userEvent.selectOptions` por
+clique+clique nos testes correspondentes.
 
 ## Eventos (`logEvent`)
 
@@ -490,18 +638,17 @@ momento desta tela — é visão institucional (AC de 6.2); nível de aluno
 individual é de uma feature futura (M5 em
 `docs/ai/backlog/metricas-professor-admin.md`).
 
-**Sem as restrições sensoriais do aluno** (`AdminMetrics.css`) — regra
+**Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — regra
 não-negociável 1 protege a experiência do *aluno*, e `StaffLogin.css` já
 estabelece esse mesmo racional pra telas de professor/admin; esta tela usa
-cor/hierarquia visual mais densa de propósito (cards com borda de destaque,
-sombra, grid de estatísticas). Não depende de `transition`/`animation`
-CSS — o reset global de `sensory-theme.css` (`:root:not([data-motion='full'])
-* { transition-duration: 0.001ms !important }`) hoje se aplica a qualquer
-sessão, inclusive staff, porque `data-motion` só é setado a partir do
-onboarding do aluno; o visual "mais bonito" desta tela vem de
-layout/cor/tipografia, não de movimento, então isso não importa aqui — mas
-vale saber que esse reset existe se uma tela de staff futura quiser
-depender de transição suave de verdade.
+cor/hierarquia visual mais densa de propósito. Card de escola é
+`SelectableCard align="start"` (`components/ui/`) com `meta` = grid de
+estatísticas — a sombra (`box-shadow: var(--shadow-card)`) e o hover com
+leve elevação vêm do tema, não de CSS próprio da tela; lista de turmas é
+`Table`. Desde 3.11, `.staff-theme` é a única exceção ao reset global de
+`sensory-theme.css` (`:root:not([data-motion='full']) *`) — o hover do
+card anima de verdade aqui, sem depender do aluno ter ativado animação (ver
+"Sistema de design compartilhado" acima).
 
 ## Painel do professor: progresso por turma (`TeacherMetrics`, 6.3/6.4)
 
@@ -514,15 +661,19 @@ ainda valida titularidade de qualquer forma, ver "Painel do professor:
 progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
 propósito).
 
-Selecionar uma turma busca as duas rotas de métrica em paralelo
+Selecionar uma turma (`SelectableCard align="start"` com `meta` = código +
+alunos ativos, ver 3.11) busca as duas rotas de métrica em paralelo
 (`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
-entre duas abas:
+entre duas visões via `SegmentedControl` (`components/ui/`,
+`@radix-ui/react-toggle-group` — antes de 3.11 era 2 `<button role="tab">`
+com `aria-selected` calculado à mão):
 
-- **"Por aluno" (6.3, aba default)** — uma tabela com 1 linha por aluno
-  matriculado ativo (nome + data de matrícula) e 1 coluna por desafio
-  disponível (título + rótulo do estágio + status + nº de tentativas).
-  Ordenação default é por data de matrícula (a mesma ordem que o backend já
-  devolve); um `<select>` deixa trocar pra ordenação por nome — **nunca**
+- **"Por aluno" (6.3, visão default)** — `Table` (`components/ui/`) com 1
+  linha por aluno matriculado ativo (nome + data de matrícula) e 1 coluna
+  por desafio disponível (título + rótulo do estágio + status como `Badge`
+  + nº de tentativas). Ordenação default é por data de matrícula (a mesma
+  ordem que o backend já devolve); um `Select` (`components/ui/`,
+  `@radix-ui/react-select`) deixa trocar pra ordenação por nome — **nunca**
   por status/tentativas, não existe essa opção na tela (regra não-negociável
   5, aplicada ao nível de UI também, não só ao default do backend).
 - **"Turma toda" (6.4)** — 3 cartões de totais (`totalStudents`/
@@ -539,15 +690,18 @@ entre duas abas:
   nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
   percentual cru — regra não-negociável 7).
 
-**Sem as restrições sensoriais do aluno** (`TeacherMetrics.css`) — mesmo
-racional de `AdminMetrics.css`/`StaffLogin.css`.
+**Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — mesmo
+racional de `AdminMetrics`/`StaffLogin`.
 
 ## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
 
 `/admin/reports` (`RequireAuth roles={['admin']}`), link a partir de
 `AdminHome`. Busca `GET /metrics/admin/challenges` (seletor — todo desafio
-cadastrado, qualquer tópico) e, ao selecionar um, `GET /metrics/admin/
-challenges/:challengeId` (o relatório completo). "O que um revisor de
+cadastrado, qualquer tópico, hoje um `Select` de `components/ui/` — nativo
+`<select>` antes de 3.11, ver `ChallengeReport.spec.tsx` pro padrão de teste
+clique+clique que substituiu `userEvent.selectOptions`) e, ao selecionar
+um, `GET /metrics/admin/challenges/:challengeId` (o relatório completo).
+`.staff-theme` na raiz da tela (3.11). "O que um revisor de
 artigo esperaria ver" (AC de 6.5): todo card de estatística mostra
 `<StatList>` (N/média/mediana/desvio/quartis em texto — a alternativa não-
 visual ao gráfico) + `<SampleSizeNote>` (aviso quando `n < report.
@@ -658,7 +812,9 @@ o padrão esperado em código novo.
   expirou (só se existe uma sessão salva).
 - Rate limiting nos 3 endpoints de login (gap do backend, ver
   `backend.md`).
-- Migrar `ChallengePage`/`TeacherMetrics`/`AdminSettings`/`ChallengeReport`
-  pra `components/ui/` (3.10) — débito reconhecido, não bloqueante; migrar
-  quando a tela for tocada por outro motivo, ver "Onde já está em uso vs.
-  débito de migração" acima.
+- Migrar `ChallengePage` pra `components/ui/` (3.10/3.11 já migraram todo o
+  resto — professor/admin inteiros, ver "Onde já está em uso vs. débito de
+  migração" acima) — débito reconhecido, não bloqueante; migrar quando a
+  tela for tocada por outro motivo.
+- `components/ui/Dialog`/`Tooltip`/`Tabs` seguem sem nenhum uso real em
+  produção (3.10) — infraestrutura pronta, nenhuma tela pediu ainda.

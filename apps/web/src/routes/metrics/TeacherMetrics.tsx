@@ -1,6 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
+import {
+  Badge,
+  LinkButton,
+  Select,
+  SegmentedControl,
+  SelectableCard,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  type BadgeVariant,
+} from '../../components/ui';
 import './TeacherMetrics.css';
 
 type ChallengeStage = 'use' | 'modify' | 'create';
@@ -55,6 +68,26 @@ const STATUS_LABEL: Record<ChallengeStatus, string> = {
   completed: 'Concluído',
 };
 
+// 3.11 — "Concluído" continua verde, "Em andamento" continua o mesmo
+// amarelo de aviso (não-punitivo: cor expressiva no feedback positivo,
+// nunca no negativo) — só o COMPONENTE (Badge) muda, a semântica de cor é a
+// mesma de antes desta feature.
+const STATUS_VARIANT: Record<ChallengeStatus, BadgeVariant> = {
+  not_started: 'neutral',
+  in_progress: 'warning',
+  completed: 'success',
+};
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'enrolledAt', label: 'Data de matrícula' },
+  { value: 'name', label: 'Nome' },
+];
+
+const VIEW_OPTIONS = [
+  { value: 'students', label: 'Por aluno' },
+  { value: 'summary', label: 'Turma toda' },
+];
+
 function sortStudents(students: StudentProgressOverview[], sortKey: SortKey): StudentProgressOverview[] {
   return [...students].sort((a, b) =>
     sortKey === 'name'
@@ -64,9 +97,13 @@ function sortStudents(students: StudentProgressOverview[], sortKey: SortKey): St
 }
 
 // 6.3/6.4 — painel do professor: progresso por aluno da própria turma (6.3)
-// e visão agregada (6.4), reaproveitando o motor 6.1. Área de staff, sem as
-// restrições sensoriais do aluno (mesmo racional de AdminMetrics.css/
-// StaffLogin.css — regra não-negociável 1 protege a experiência do aluno).
+// e visão agregada (6.4), reaproveitando o motor 6.1. Área de staff — tema
+// mais rico que o do aluno (3.11, `.staff-theme`), mas MESMA fundação de
+// componente (Radix/React Aria, ver components/ui/) — regra não-negociável
+// 1 protege a experiência do aluno, não a do professor, e este é o painel
+// que concentra quase todos os bugs visuais reportados nos prints de 3.11
+// (título sobreposto, "← Voltar" sem affordance, card sem elevação, toggle
+// sem componente de verdade, dropdown nativo, tabela sem ritmo).
 export function TeacherMetrics() {
   const [classrooms, setClassrooms] = useState<TeacherClassroomOption[] | null>(null);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | null>(null);
@@ -102,10 +139,10 @@ export function TeacherMetrics() {
   const challengeColumns = sortedStudents?.[0]?.challenges ?? [];
 
   return (
-    <main className="teacher-metrics">
-      <Link to="/home" className="teacher-metrics__back-link">
-        ← Voltar
-      </Link>
+    <main className="teacher-metrics staff-theme page">
+      <LinkButton to="/home" variant="ghost" icon="←">
+        Voltar
+      </LinkButton>
       <h1>Painel da turma</h1>
       <p className="teacher-metrics__subtitle">
         Em que ponto cada aluno está na sequência Use → Modify → Create dos desafios disponíveis.
@@ -120,45 +157,30 @@ export function TeacherMetrics() {
       {classrooms !== null && classrooms.length > 0 && (
         <div className="teacher-metrics__classrooms">
           {classrooms.map((classroom) => (
-            <button
+            <SelectableCard
               key={classroom.id}
-              type="button"
-              className={`teacher-metrics__classroom-card${
-                classroom.id === selectedClassroomId ? ' teacher-metrics__classroom-card--selected' : ''
-              }`}
-              onClick={() =>
+              align="start"
+              icon="📚"
+              selected={classroom.id === selectedClassroomId}
+              onSelect={() =>
                 setSelectedClassroomId(classroom.id === selectedClassroomId ? null : classroom.id)
               }
+              meta={`Código: ${classroom.joinCode} · ${classroom.activeStudentsToday} aluno(s) ativo(s) hoje`}
             >
-              <span className="teacher-metrics__classroom-name">{classroom.name}</span>
-              <span className="teacher-metrics__classroom-meta">Código: {classroom.joinCode}</span>
-            </button>
+              {classroom.name}
+            </SelectableCard>
           ))}
         </div>
       )}
 
       {selectedClassroom && (
         <section className="teacher-metrics__detail">
-          <div className="teacher-metrics__tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'students'}
-              className={`teacher-metrics__tab${view === 'students' ? ' teacher-metrics__tab--active' : ''}`}
-              onClick={() => setView('students')}
-            >
-              Por aluno
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'summary'}
-              className={`teacher-metrics__tab${view === 'summary' ? ' teacher-metrics__tab--active' : ''}`}
-              onClick={() => setView('summary')}
-            >
-              Turma toda
-            </button>
-          </div>
+          <SegmentedControl
+            options={VIEW_OPTIONS}
+            value={view}
+            onValueChange={(next) => setView(next as 'students' | 'summary')}
+            ariaLabel="Visão do painel da turma"
+          />
 
           {view === 'students' && (
             <div className="teacher-metrics__students-view">
@@ -170,55 +192,48 @@ export function TeacherMetrics() {
 
               {students !== null && sortedStudents !== null && students.length > 0 && (
                 <>
-                  <label className="teacher-metrics__sort">
-                    Ordenar por:{' '}
-                    <select
-                      value={sortKey}
-                      onChange={(event) => setSortKey(event.target.value as SortKey)}
-                    >
-                      <option value="enrolledAt">Data de matrícula</option>
-                      <option value="name">Nome</option>
-                    </select>
-                  </label>
+                  <Select
+                    id="teacher-metrics-sort"
+                    label="Ordenar por"
+                    options={SORT_OPTIONS}
+                    value={sortKey}
+                    onValueChange={(next) => setSortKey(next as SortKey)}
+                  />
 
-                  <div className="teacher-metrics__table-wrap">
-                    <table className="teacher-metrics__table">
-                      <thead>
-                        <tr>
-                          <th>Aluno</th>
-                          <th>Matrícula</th>
-                          {challengeColumns.map((challenge) => (
-                            <th key={challenge.challengeId}>
-                              <span>{challenge.title}</span>
-                              <span className="teacher-metrics__stage-tag">
-                                {STAGE_LABEL[challenge.stage]}
-                              </span>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedStudents.map((student) => (
-                          <tr key={student.studentPseudoId}>
-                            <td>{student.displayName}</td>
-                            <td>{new Date(student.enrolledAt).toLocaleDateString('pt-BR')}</td>
-                            {student.challenges.map((challenge) => (
-                              <td key={challenge.challengeId}>
-                                <span
-                                  className={`teacher-metrics__status teacher-metrics__status--${challenge.status}`}
-                                >
-                                  {STATUS_LABEL[challenge.status]}
-                                </span>
-                                <span className="teacher-metrics__attempts">
-                                  {challenge.attempts} tentativa{challenge.attempts === 1 ? '' : 's'}
-                                </span>
-                              </td>
-                            ))}
-                          </tr>
+                  <Table ariaLabel="Progresso por aluno">
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell>Aluno</TableHeaderCell>
+                        <TableHeaderCell>Matrícula</TableHeaderCell>
+                        {challengeColumns.map((challenge) => (
+                          <TableHeaderCell key={challenge.challengeId}>
+                            <span>{challenge.title}</span>
+                            <span className="teacher-metrics__stage-tag">
+                              {STAGE_LABEL[challenge.stage]}
+                            </span>
+                          </TableHeaderCell>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {sortedStudents.map((student) => (
+                        <TableRow key={student.studentPseudoId}>
+                          <TableCell>{student.displayName}</TableCell>
+                          <TableCell>{new Date(student.enrolledAt).toLocaleDateString('pt-BR')}</TableCell>
+                          {student.challenges.map((challenge) => (
+                            <TableCell key={challenge.challengeId}>
+                              <Badge variant={STATUS_VARIANT[challenge.status]}>
+                                {STATUS_LABEL[challenge.status]}
+                              </Badge>
+                              <span className="teacher-metrics__attempts">
+                                {challenge.attempts} tentativa{challenge.attempts === 1 ? '' : 's'}
+                              </span>
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </>
               )}
             </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
+import { Button, LinkButton } from '../../components/ui';
 import './AdminSettings.css';
 
 interface PlatformSettings {
@@ -50,10 +50,10 @@ export function AdminSettings() {
   }
 
   return (
-    <main className="admin-settings">
-      <Link to="/home" className="admin-settings__back-link">
-        ← Voltar
-      </Link>
+    <main className="admin-settings staff-theme page">
+      <LinkButton to="/home" variant="ghost" icon="←">
+        Voltar
+      </LinkButton>
       <h1>Configurações</h1>
 
       {settings === null && <p className="admin-settings__loading">Carregando…</p>}
@@ -72,9 +72,9 @@ export function AdminSettings() {
           </p>
           {error && <p className="admin-settings__error">{error}</p>}
           {savedMessage && <p className="admin-settings__saved">{savedMessage}</p>}
-          <button type="submit" disabled={saving}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          </Button>
         </form>
       )}
     </main>

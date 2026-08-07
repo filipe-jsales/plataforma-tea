@@ -119,4 +119,37 @@ describe('AdminMetrics', () => {
       await screen.findByText('Nenhuma turma cadastrada ainda nesta escola.'),
     ).toBeInTheDocument();
   });
+
+  it('3.11: renders the classroom breakdown as a real table with a header row', async () => {
+    mockedGet.mockResolvedValueOnce([
+      {
+        id: 's1',
+        name: 'Escola Azul',
+        classroomsCount: 1,
+        teachersCount: 1,
+        activeStudentsCount: 5,
+        activeStudentsToday: 2,
+      },
+    ]);
+    mockedGet.mockResolvedValueOnce([
+      { id: 'c1', name: 'Turma A', teacherDisplayName: 'Profa. Ana', activeStudentsCount: 5 },
+    ]);
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Escola Azul'));
+
+    expect(await screen.findByRole('table', { name: 'Turmas de Escola Azul' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Turma' })).toBeInTheDocument();
+  });
+
+  it('3.11: "← Voltar" is a real link styled like a button, never a bare text link', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const back = await screen.findByRole('link', { name: /voltar/i });
+    expect(back).toHaveAttribute('href', '/home');
+    expect(back).toHaveClass('ui-button');
+  });
 });

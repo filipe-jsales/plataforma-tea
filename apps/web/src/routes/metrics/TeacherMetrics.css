@@ -2,20 +2,13 @@
   Painel do professor (6.3/6.4). Área de staff — mesmo racional de
   AdminMetrics.css/StaffLogin.css: a regra não-negociável 1 protege a
   experiência do ALUNO, não a do professor, então esta tela pode usar mais
-  cor/densidade visual.
+  cor/densidade visual (3.11, `.staff-theme` — ver theme/staff-theme.css).
+
+  Layout de página (largura máxima/margem), botão "Voltar", card de turma,
+  toggle de visão, dropdown "Ordenar por", tabela e badge de status vêm de
+  `.page` + components/ui/ (3.11) — só o que é específico DESTA tela fica
+  aqui.
 */
-
-.teacher-metrics {
-  max-width: 1080px;
-  margin: var(--space-4) auto;
-  padding: 0 var(--space-4) var(--space-5);
-}
-
-.teacher-metrics__back-link {
-  display: inline-block;
-  margin-bottom: var(--space-2);
-  color: var(--color-primary);
-}
 
 .teacher-metrics__subtitle {
   margin-bottom: var(--space-4);
@@ -34,38 +27,9 @@
 
 .teacher-metrics__classrooms {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-4);
-}
-
-.teacher-metrics__classroom-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-}
-
-.teacher-metrics__classroom-card--selected {
-  border-left-color: var(--color-success);
-  box-shadow: 0 0 0 2px var(--color-success);
-}
-
-.teacher-metrics__classroom-name {
-  font-weight: 700;
-}
-
-.teacher-metrics__classroom-meta {
-  font-size: 0.85rem;
-  opacity: 0.75;
 }
 
 .teacher-metrics__detail {
@@ -74,59 +38,13 @@
   border-top: 1px solid var(--color-border);
 }
 
-.teacher-metrics__tabs {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+.teacher-metrics__students-view,
+.teacher-metrics__summary-view {
+  margin-top: var(--space-4);
 }
 
-.teacher-metrics__tab {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-}
-
-.teacher-metrics__tab--active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.teacher-metrics__sort {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+.teacher-metrics__students-view .ui-select-field {
   margin-bottom: var(--space-3);
-  font-size: 0.9rem;
-}
-
-.teacher-metrics__table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.teacher-metrics__table {
-  width: 100%;
-  border-collapse: collapse;
-  background: var(--color-surface);
-}
-
-.teacher-metrics__table th,
-.teacher-metrics__table td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.teacher-metrics__table th {
-  background: var(--color-bg);
-  font-size: 0.85rem;
 }
 
 .teacher-metrics__stage-tag {
@@ -134,29 +52,6 @@
   font-size: 0.75rem;
   font-weight: 400;
   opacity: 0.7;
-}
-
-.teacher-metrics__status {
-  display: inline-block;
-  padding: 2px var(--space-2);
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.teacher-metrics__status--not_started {
-  background: var(--color-border);
-  color: var(--color-text);
-}
-
-.teacher-metrics__status--in_progress {
-  background: var(--color-warning);
-  color: #fff;
-}
-
-.teacher-metrics__status--completed {
-  background: var(--color-success);
-  color: #fff;
 }
 
 .teacher-metrics__attempts {
@@ -179,6 +74,7 @@
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 

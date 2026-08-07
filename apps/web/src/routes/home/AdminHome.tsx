@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { LinkButton } from '../../components/ui';
 import './Home.css';
 
 interface AdminHomeData {
@@ -24,22 +24,19 @@ export function AdminHome() {
   if (!user) return null;
 
   return (
-    <main className="home">
+    <main className="home staff-theme">
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
-        <Link to="/admin/metrics" className="home__action">
-          <span className="home__action-icon">📊</span>
+        <LinkButton to="/admin/metrics" icon="📊">
           Painel institucional (escolas, turmas, professores)
-        </Link>
-        <Link to="/admin/reports" className="home__action">
-          <span className="home__action-icon">🔬</span>
+        </LinkButton>
+        <LinkButton to="/admin/reports" icon="🔬">
           Relatório de profundidade por desafio
-        </Link>
-        <Link to="/admin/settings" className="home__action">
-          <span className="home__action-icon">⚙️</span>
+        </LinkButton>
+        <LinkButton to="/admin/settings" icon="⚙️" variant="secondary">
           Configurações
-        </Link>
+        </LinkButton>
       </div>
 
       {data && (

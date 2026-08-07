@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BarChart, type BarDatum } from '../../components/charts/BarChart';
 import { BoxPlot, type DescriptiveStats } from '../../components/charts/BoxPlot';
 import { ScatterPlot } from '../../components/charts/ScatterPlot';
 import { SampleSizeNote, StatList } from '../../components/charts/StatSummary';
 import { formatNumber } from '../../components/charts/format';
 import { apiClient } from '../../lib/apiClient';
+import { LinkButton, Select } from '../../components/ui';
 import './ChallengeReport.css';
 
 type ChallengeStage = 'use' | 'modify' | 'create';
@@ -121,10 +121,10 @@ export function ChallengeReport() {
   }, [selectedChallengeId]);
 
   return (
-    <main className="challenge-report">
-      <Link to="/home" className="challenge-report__back-link">
-        ← Voltar
-      </Link>
+    <main className="challenge-report staff-theme page">
+      <LinkButton to="/home" variant="ghost" icon="←">
+        Voltar
+      </LinkButton>
       <h1>Relatório de profundidade por desafio</h1>
       <p className="challenge-report__subtitle">
         Estatística descritiva completa de como os alunos interagiram com um desafio
@@ -137,21 +137,21 @@ export function ChallengeReport() {
       )}
 
       {challenges !== null && challenges.length > 0 && (
-        <label className="challenge-report__picker">
-          Desafio:{' '}
-          <select
+        <div className="challenge-report__picker">
+          <Select
+            id="challenge-report-picker"
+            label="Desafio"
+            placeholder="Selecione um desafio…"
             value={selectedChallengeId ?? ''}
-            onChange={(event) => setSelectedChallengeId(event.target.value || null)}
-          >
-            <option value="">Selecione um desafio…</option>
-            {challenges.map((challenge) => (
-              <option key={challenge.id} value={challenge.id}>
-                {challenge.topicName} — {challenge.title}
-                {challenge.stage ? ` (${STAGE_LABEL[challenge.stage]})` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
+            onValueChange={(next) => setSelectedChallengeId(next || null)}
+            options={challenges.map((challenge) => ({
+              value: challenge.id,
+              label: `${challenge.topicName} — ${challenge.title}${
+                challenge.stage ? ` (${STAGE_LABEL[challenge.stage]})` : ''
+              }`,
+            }))}
+          />
+        </div>
       )}
 
       {selectedChallengeId && report === null && (

@@ -49,4 +49,23 @@ describe('SelectableCard', () => {
     await userEvent.click(screen.getByRole('button'));
     expect(onSelect).not.toHaveBeenCalled();
   });
+
+  it('renders meta as a secondary line, distinct from the title (3.11 hierarchy)', () => {
+    render(
+      <SelectableCard align="start" meta="Código: AZUL-1 · 12 alunos ativos" onSelect={vi.fn()}>
+        Turma Demo
+      </SelectableCard>,
+    );
+    const title = screen.getByText('Turma Demo');
+    const meta = screen.getByText('Código: AZUL-1 · 12 alunos ativos');
+    expect(title.className).toBe('ui-card__label');
+    expect(meta.className).toBe('ui-card__meta');
+    expect(screen.getByRole('button')).toContainElement(title);
+    expect(screen.getByRole('button')).toContainElement(meta);
+  });
+
+  it('defaults to the centered aluno layout when align is not passed', () => {
+    render(<SelectableCard onSelect={vi.fn()}>Geometria</SelectableCard>);
+    expect(screen.getByRole('button')).toHaveClass('ui-card--align-center');
+  });
 });

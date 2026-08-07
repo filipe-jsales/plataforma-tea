@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { completeLogin } from '../../lib/authFlow';
+import { Button } from '../../components/ui';
 import './StaffLogin.css';
 
 // 1.2.1 — fluxo professor: e-mail + senha, microcópia sem jargão técnico
@@ -28,7 +29,7 @@ export function TeacherLogin() {
   }
 
   return (
-    <main className="staff-login">
+    <main className="staff-login staff-theme">
       <h1>Entrar como professor(a)</h1>
       <form onSubmit={handleSubmit}>
         {error && <p className="staff-login__error">{error}</p>}
@@ -51,9 +52,9 @@ export function TeacherLogin() {
             required
           />
         </label>
-        <button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="staff-login__submit">
           {loading ? 'Entrando…' : 'Entrar'}
-        </button>
+        </Button>
       </form>
     </main>
   );
