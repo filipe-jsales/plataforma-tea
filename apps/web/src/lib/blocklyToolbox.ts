@@ -50,11 +50,23 @@ export function buildToolboxConfiguration(
   } as Blockly.utils.toolbox.ToolboxDefinition;
 }
 
+const BASE_DRAG_RADIUS = 20;
+const BASE_SNAP_RADIUS = 48;
+const BASE_CONNECTING_SNAP_RADIUS = 48;
+
 // AC3: tolerância ampla de encaixe (mitiga coordenação motora fina, RQ4) —
-// valores bem acima do default do Blockly (~20px). Chamar uma vez, antes de
-// injetar o workspace (BlocklyWorkspace injeta no mount).
-export function applyGenerousSnapTolerance(): void {
-  Blockly.config.dragRadius = 20;
-  Blockly.config.snapRadius = 48;
-  Blockly.config.connectingSnapRadius = 48;
+// valores bem acima do default do Blockly (~20px). Chamado uma vez no
+// carregamento do módulo (`tolerancePercent` default 100 — o mesmo
+// comportamento de sempre) e de novo por ChallengePage a cada desafio
+// carregado (`onInject`), com `challenge.snapTolerancePercent` quando o
+// desafio foi criado via template (4.2) — o professor escolhe esse valor
+// no formulário guiado, nunca editando este arquivo. `Blockly.config` é
+// estado global mutável do módulo Blockly (não por-workspace), por isso
+// reaplicar por desafio é o suficiente: não há dois workspaces com
+// tolerâncias diferentes montados ao mesmo tempo nesta tela.
+export function applyGenerousSnapTolerance(tolerancePercent = 100): void {
+  const scale = tolerancePercent / 100;
+  Blockly.config.dragRadius = Math.round(BASE_DRAG_RADIUS * scale);
+  Blockly.config.snapRadius = Math.round(BASE_SNAP_RADIUS * scale);
+  Blockly.config.connectingSnapRadius = Math.round(BASE_CONNECTING_SNAP_RADIUS * scale);
 }

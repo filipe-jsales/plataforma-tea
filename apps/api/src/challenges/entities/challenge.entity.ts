@@ -6,7 +6,9 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { ChallengeTemplate } from '../../challenge-templates/entities/challenge-template.entity';
 import { Topic } from '../../subjects/entities/topic.entity';
+import { User } from '../../users/entities/user.entity';
 
 // Modelagem mínima (título, enunciado, config, ordem) — o suficiente pra uma
 // sequência de desafios Use-Modify-Create por tópico (ver
@@ -51,6 +53,39 @@ export class Challenge {
   // Illustration.position/BlockDefinition.position.
   @Column({ type: 'int' })
   position: number;
+
+  // 4.2 — presente só em desafios criados pelo professor via formulário
+  // guiado (Modo Template); `null` pros desafios curados via seed/migration
+  // (o currículo fixo Use-Modify-Create do MVP). `ON DELETE SET NULL`: se um
+  // template for descatalogado, o desafio já criado continua existindo —
+  // ele guarda seu próprio `config` resolvido, não depende do template pra
+  // funcionar em runtime, só pra reabrir o formulário de edição.
+  @Column({ type: 'uuid', nullable: true })
+  templateId: string | null;
+
+  @ManyToOne(() => ChallengeTemplate, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'templateId' })
+  template: ChallengeTemplate | null;
+
+  // Snapshot dos parâmetros pedagógicos que o professor escolheu (nº de
+  // lados, ângulo, tolerância, blocos habilitados) — persistido no próprio
+  // desafio, nunca descartado depois de gerar `config` (RD-C, RQ5: qual
+  // configuração curricular foi usada por qual turma precisa ser
+  // rastreável). É também a fonte usada pra reabrir o formulário guiado nas
+  // telas de edição/duplicação (nunca um editor bruto de `config`/blocos).
+  @Column({ type: 'jsonb', nullable: true })
+  templateParams: Record<string, unknown> | null;
+
+  // Autoria — só desafios criados via template têm isso preenchido; o
+  // currículo semeado não pertence a nenhum professor específico. `ON
+  // DELETE SET NULL`: mesma defesa em profundidade de ExportAuditLog.
+  // adminUserId (hoje não existe endpoint de exclusão de usuário).
+  @Column({ type: 'uuid', nullable: true })
+  createdByUserId: string | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'createdByUserId' })
+  createdBy: User | null;
 
   @CreateDateColumn()
   createdAt: Date;

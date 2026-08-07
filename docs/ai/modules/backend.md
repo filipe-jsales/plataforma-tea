@@ -53,12 +53,24 @@ apps/api/src/
 │   ├── blocks.service.ts
 │   └── blocks.module.ts
 ├── challenges/
-│   ├── entities/challenge.entity.ts  # config.toolbox — ver seção "Blocos por desafio"
+│   ├── entities/challenge.entity.ts  # config.toolbox + templateId/templateParams/createdByUserId (4.2)
 │   ├── challenge-config.interface.ts  # forma tipada de Challenge.config
 │   ├── block-progression.ts     # valida a regra Use-Modify-Create (AC2)
-│   ├── challenges.service.ts
+│   ├── challenges.service.ts    # + CRUD escopado ao professor autor (4.2)
 │   ├── challenges.controller.ts # GET /challenges/{by-topic/:topicId,:id} — aluno só
 │   └── challenges.module.ts
+├── challenge-templates/         # 4.2 — Modo Template, ver seção própria abaixo
+│   ├── entities/challenge-template.entity.ts  # catálogo curado (tabela, não enum)
+│   ├── challenge-template-parameter.interface.ts  # schema genérico de campo do formulário
+│   ├── handlers/
+│   │   ├── challenge-template-handler.interface.ts
+│   │   ├── regular-polygon.handler.ts  # único template do MVP (geometria)
+│   │   └── template-registry.ts        # key → handler — único ponto que muda por template novo
+│   ├── dto/{template-params,save-template-challenge}.dto.ts
+│   ├── challenge-templates.service.ts       # galeria/formulário/preview/criação
+│   ├── challenge-templates.controller.ts    # GET/POST /challenge-templates...
+│   ├── teacher-challenges.controller.ts     # GET/PATCH/DELETE /teacher/challenges/:id (AC5/AC6)
+│   └── challenge-templates.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
 │   ├── dto/create-event.dto.ts
@@ -259,13 +271,21 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   `block-progression.spec.ts` — não uma trava em runtime por aluno (só faz
   sentido travar por aluno quando existir um desafio `modify`/`create` de
   verdade pra travar contra).
-- **Sem autoria de toolbox pelo professor nesta versão.** O backlog da
-  feature cita "config JSON gerada pelo professor via camada visual" como
-  dependência — decisão explícita (a pedido de quem propôs a feature): em
-  vez de construir essa camada de autoria visual, o conteúdo (`blocks` +
-  `Challenge.config`) é curado via seed/migration, e o professor não
-  programa nada. Não existe hoje "professor escolhe entre desafios" — a
-  sequência de um tópico é fixa (por `position`), a mesma pra todo aluno.
+- **Sem autoria de toolbox LIVRE pelo professor.** O backlog original da
+  feature de blocos cita "config JSON gerada pelo professor via camada
+  visual" como dependência — decisão explícita à época: em vez de construir
+  essa camada, o conteúdo (`blocks` + `Challenge.config`) era curado 100%
+  via seed/migration. **Isso mudou parcialmente em 4.2** (ver seção
+  "Configuração de desafio via formulário guiado — Modo Template" abaixo):
+  o professor agora cria desafio escolhendo um TEMPLATE pré-montado e
+  ajustando parâmetros pedagógicos num formulário — nunca escrevendo/vendo
+  `Challenge.config`, XML ou JSON do Blockly diretamente. A sequência
+  Use→Modify→Create de um tópico (curada via seed) continua fixa e igual
+  pra todo aluno; um desafio criado via template é um desafio adicional,
+  autoral do professor, fora dessa sequência forçada (ver
+  `findByTopicIdOrdered` na seção nova). "Modo Customizado" (liberdade
+  total sobre a estrutura do bloco-alvo, sem template) continua não
+  implementado — fora do escopo de 4.2 por decisão explícita do card.
 
 ### Sequência Use→Modify→Create completa (3.4)
 
@@ -387,10 +407,13 @@ documentada):**
    hoje um teste automatizado que trave essa igualdade se um dos dois
    `program` for editado no futuro sem tocar o outro; ver "Próximos passos".
 2. **Cobertura agregada de PRIMM (checagem "4.7"/campo `primm_stages_covered`
-   de autoria "4.5").** Nenhum dos dois existe nesta base de código —
-   autoria de desafio pelo professor (4.5) foi explicitamente adiada (ver
-   "Sem autoria de toolbox pelo professor nesta versão" acima), e não há
-   verificador agregado de cobertura PRIMM em runtime (4.7). A cobertura
+   de autoria "4.5").** Nenhum dos dois existe nesta base de código — nem
+   um campo `primm_stages_covered` por desafio nem um verificador agregado
+   de cobertura PRIMM em runtime (4.7). Note que "autoria de desafio pelo
+   professor" citada aqui como "4.5" é uma numeração de backlog distinta
+   de "4.2" (Modo Template, ver seção própria acima) — 4.2 implementa
+   CRIAÇÃO de desafio via template, não a checagem de cobertura PRIMM que
+   este item descreve; os dois continuam não implementados. A cobertura
    documentada nesta seção é garantida pela estrutura do seed/config,
    verificável por leitura direta — não por um mecanismo de aviso que
    "fecha sozinho". Quando 4.5/4.7 forem implementados: o valor certo de
@@ -432,6 +455,181 @@ frontend via `lib/editableFields.ts`); `result_matched_prediction` compara a
 previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
 realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
 traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
+
+## Configuração de desafio via formulário guiado — Modo Template (4.2)
+
+RQ4 — barreira institucional/formação docente (17,39%): o professor cria um
+desafio novo escolhendo um **template pré-montado de uma biblioteca
+curada** (hoje 1, geometria: "Desenhar um polígono regular") e ajustando só
+parâmetros pedagógicos expostos como campos de formulário simples (nº de
+lados, ângulo de giro, tolerância de encaixe, paleta de blocos habilitada).
+**Em nenhum momento — galeria, formulário, erro de validação, preview —
+o professor vê/edita XML, JSON ou qualquer estrutura interna do Blockly**
+(regra não-negociável 9). Este card implementa exclusivamente o Modo
+Template; "Modo Customizado" (liberdade total sobre a estrutura do
+bloco-alvo, sem template) é outro card, não implementado.
+
+### Nota de pesquisa: por que dado+handler-por-key, não 100% dado
+
+`ChallengeTemplate` (a linha de catálogo — nome, ícone, descrição,
+`parameterSchema`) segue o mesmo padrão de `blocks`/`subjects` (tabela, não
+enum fixo). Mas VALIDAÇÃO pedagógica ("3 lados com 200° de giro não fecha
+um polígono") e a TRADUÇÃO parâmetros→`Challenge.config` não podem ser
+100% dado sem reinventar uma linguagem de regras genérica — o tipo de
+complexidade que este projeto já decidiu evitar (mesma lógica de "sem
+autoria de toolbox LIVRE pelo professor", ver seção "Blocos por desafio"
+acima). Por isso o desenho tem duas metades:
+
+- **Metadata é dado**, cresce sem deploy: `ChallengeTemplate.parameterSchema`
+  (`challenge-template-parameter.interface.ts`) descreve cada campo do
+  formulário — `type` (`integer | percentage | boolean | blockSelection`),
+  `label`/`icon` (sempre os dois — rotulagem redundante, RQ4), `min`/`max`,
+  `defaultValue`, `visualPreview` (qual miniatura mostrar, ver frontend.md)
+  e, só pra `blockSelection`, `candidateBlockTypes`.
+- **Lógica é uma classe pequena por `key`** — `ChallengeTemplateHandler`
+  (`handlers/challenge-template-handler.interface.ts`): `validateParameters`
+  (linguagem pedagógica, nunca "erro de schema"), `buildChallengeConfig`
+  (a única "tradução" formulário→estrutura interna, feita SÓ aqui) e
+  `buildPreviewGoal` (o suficiente pro preview no Pixi). Registrada em
+  `handlers/template-registry.ts` — **cadastrar um template novo é 1 linha
+  na tabela + 1 classe + 1 entrada no registry; nenhum outro arquivo deste
+  módulo, do `ChallengesModule` ou do frontend muda.** É o que responde
+  literalmente ao pedido de "reutilizável/escalável… sem refazer tudo do
+  zero pra cada novo desafio" — geometria é só o primeiro template, não uma
+  suposição embutida em nenhum service/controller/tela.
+
+### `RegularPolygonTemplateHandler` — único template do MVP
+
+Parâmetros: `sides` (3-12), `turnAngleDeg` (1-359), `snapTolerancePercent`
+(10-100), `enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação
+real, não decorativa:
+
+- **Fechamento geométrico** — `sides × turnAngleDeg` precisa ser múltiplo
+  de 360°; senão, mensagem pedagógica com sugestão de ângulo válido
+  (`360 ÷ sides`) — é literalmente o exemplo do card ("3 lados com 200° não
+  fecha um polígono").
+- **Tolerância de encaixe nunca 0%** (mínimo 10%) — 0% impediria o aluno de
+  encaixar qualquer bloco (RQ4, coordenação motora fina); ver
+  `snapTolerancePercent` abaixo pra como isso vira efeito real no editor,
+  não só um número guardado.
+- **Regra de progressão Use-Modify-Create também vale pro desafio do
+  professor**: `enabledBlockTypes` só pode conter blocos já introduzidos
+  num desafio `stage: 'use'` do MESMO tópico (`ChallengeTemplatesService.
+  getIntroducedBlockTypes`, reaproveitando `ChallengesService.
+  findByTopicIdOrdered`) — um professor não pode habilitar um bloco que o
+  aluno nunca viu introduzido, mesma regra de currículo de
+  `block-progression.ts`, só que verificada em runtime aqui (lá é só
+  checagem de autoria de seed).
+- Sem parâmetro de "ângulos negativos": decisão deliberada, não uma lacuna
+  esquecida — o bloco `turn` (ver "Blocos por desafio" acima) já expõe
+  `DIR` (LEFT/RIGHT) mas não tem hoje um jeito de restringir esse campo
+  por-desafio (diferente de `editableFields`, que é só pra fase `modify`
+  sobre um `program` pré-montado, não pra toolbox livre da fase `create`).
+  Adicionar o toggle sem um jeito real de aplicá-lo seria expor uma
+  configuração que não faz nada — contradiz a persona do projeto (não
+  fabricar parâmetro decorativo). Documentado aqui pra quem for adicionar
+  suporte real no futuro, não implementado como placeholder.
+
+`buildChallengeConfig` sempre produz `stage: 'create'` (editor livre — o
+template não autora Use/Modify, só o desafio de "mão na massa" final) com
+`goal: { shape: 'regular_polygon', sides, turnAngleDeg }` — reaproveita
+100% do motor geométrico já existente (`turtleWorld.ts`:
+`evaluateSquareGoal`/`closedPolygonSides`/`buildGoalPreviewPath`), sem
+nenhuma mudança de engine. `SquareGoalConfig.shape` foi ampliado de
+`'square'` (literal) pra `string` só por causa disso — a matemática de
+fechamento já era genérica por `sides`/`turnAngleDeg` desde sempre.
+
+### `snapTolerancePercent` — parâmetro que afeta o editor de verdade
+
+`Challenge.config` ganhou `snapTolerancePercent?: number`, devolvido em
+`ChallengeDetail.snapTolerancePercent` (`ChallengesController`, `null` pro
+currículo seedado). O frontend (`blocklyToolbox.applyGenerousSnapTolerance`)
+passou a aceitar um percentual e reescala `dragRadius`/`snapRadius`/
+`connectingSnapRadius` a partir dele, reaplicado a cada desafio carregado
+(não só uma vez no load do módulo) — ver frontend.md. Existe
+especificamente pra AC3 não virar teatro: rejeitar "0% de tolerância" no
+formulário só tem sentido pedagógico se um valor válido REALMENTE mudar o
+comportamento do editor pro aluno.
+
+### Autorização e escopo — desafio do professor nunca entra na sequência forçada
+
+`Challenge` ganhou três colunas (`templateId`, `templateParams` jsonb,
+`createdByUserId`) — ver database.md. Duas decisões de escopo, ambas em
+`ChallengesService`:
+
+- **`findByTopicIdOrdered` (a sequência OFICIAL Use→Modify→Create de um
+  tópico, usada por `ChallengesController.getByTopic`/resolução de
+  `nextChallengeId`, e por `MetricsTeacherService`/
+  `MetricsAdminChallengeService`) agora filtra `createdByUserId IS NULL`.**
+  Não existe hoje mecanismo de "atribuir/publicar desafio pra turma" (fora
+  do escopo de 4.2) — seria um risco real inserir automaticamente conteúdo
+  não curado no fluxo obrigatório de TODOS os alunos do tópico só porque um
+  professor criou um desafio novo. Um desafio de professor continua
+  acessível por link direto (`GET /challenges/:id`, sem filtro — a rota de
+  acesso direto do aluno não muda), só não participa do "Avançar"
+  automático nem aparece na sequência forçada. `findMaxPositionInTopic`
+  (nova, sem esse filtro) garante que a `position` de um desafio novo nunca
+  colide com a de outro, currículo ou professor.
+- **`findByIdForOwner(id, teacherId)`** é a checagem de posse usada por
+  toda rota de edição/exclusão (AC5/AC6) — devolve `null` tanto pra desafio
+  inexistente quanto pra desafio de outro professor/do currículo, nunca
+  vazando "existe mas não é seu".
+
+### Endpoints (`ChallengeTemplatesModule`, sempre `@Roles(Role.TEACHER)`)
+
+- `GET /challenge-templates` (AC1, galeria) — `{ id, key, name, description,
+  icon }[]`, nunca o nome técnico do bloco Blockly.
+- `GET /challenge-templates/:id` (AC2, formulário) — `parameterSchema`
+  já resolvido: pra `blockSelection`, `options` vem filtrado pelos blocos
+  já introduzidos no tópico (ver acima) com `label` do catálogo `blocks`
+  (nunca `blockType` cru como rótulo).
+- `POST /challenge-templates/:id/preview` (AC3 + AC4, um endpoint só pras
+  duas coisas) — sempre `200`, nunca lança pra validação pedagógica:
+  `{ valid, errors: [{ parameterKey, message }], goal }` — `goal` só
+  presente quando `valid`. O frontend chama isto tanto pro botão
+  "Visualizar como aluno" quanto como pré-checagem antes de "Salvar" (ver
+  frontend.md) — o mesmo mecanismo de validação nunca diverge entre as duas
+  telas.
+- `POST /challenge-templates/:id/challenges` — cria o desafio
+  (`stage: 'create'`, `position` = máxima do tópico + 1, `templateParams`
+  = os parâmetros exatamente como o professor preencheu). Revalida
+  server-side (defesa em profundidade — a tela sempre chama `/preview`
+  antes) com `400 BadRequestException` cuja mensagem é a junção das
+  mensagens pedagógicas do handler, nunca "erro de validação" genérico.
+- `GET/PATCH/DELETE /teacher/challenges/:id` + `GET /teacher/challenges`
+  (`TeacherChallengesController`, AC5/AC6) — "Meus desafios": mesmos dois
+  campos (título + parâmetros) tanto pra criar quanto editar, nunca
+  `Challenge.config` bruto na resposta. Duplicar (AC6) não é um endpoint
+  próprio — o frontend busca o desafio de origem via `GET
+  /teacher/challenges/:id` e reabre a tela de criação com os mesmos valores
+  pré-preenchidos + `POST .../challenges` com um título novo, nunca clona
+  `config` diretamente.
+
+### RD-C — parâmetros nunca descartados (RQ5)
+
+`Challenge.templateParams` persiste exatamente os parâmetros que o
+professor escolheu (nº de lados, ângulo, tolerância, blocos) — nunca
+descartado depois de virar `config` (a AC de rastreabilidade do card, "RD-C
+… necessários pra RQ5: qual configuração curricular foi usada por qual
+turma"). Diferente de todo outro dado desta feature, isto NÃO vira um
+`interaction_event`: ações de professor/admin não emitem evento RD-* (ver
+"Padrão: eventos RD-* são escopados ao aluno" acima) — a coluna no próprio
+`Challenge` é o mecanismo de persistência aqui, correlacionável depois via
+`interaction_events.challengeId` (já FK real) pra qualquer análise
+longitudinal que precise saber "com que configuração curricular este aluno
+interagiu".
+
+### Testes
+
+`regular-polygon.handler.spec.ts` — a peça com regra de negócio de
+verdade: fechamento geométrico (inclusive o exemplo literal do card),
+tolerância mínima, regra de progressão de blocos, e que `buildChallengeConfig`/
+`buildPreviewGoal` nunca expõem `allowedBlockTypes`/estrutura de blocos no
+preview. `challenge-templates.service.spec.ts` cobre a resolução de
+`blockSelection.options` filtrada, o bloqueio de criação/edição inválida
+sem chamar `ChallengesService`, e a persistência de `templateParams`.
+`challenges.service.spec.ts` ganhou casos pro escopo `createdByUserId IS
+NULL` de `findByTopicIdOrdered` e pro CRUD novo.
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -746,12 +944,25 @@ novos.
   `GET /metrics/admin/export` + `MetricsAdminExportService`/`AuditModule` —
   ver "Exportação de dados brutos pra pesquisa" abaixo). As 6 features do
   documento (M1–M6) estão implementadas.
-- Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
-  blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
-  Se um dia for necessária de verdade: um endpoint pro professor
-  escrever/curar `Challenge.config` (incluindo `program`/`position`) contra
-  um catálogo pequeno de `blocks` pré-existente — continua sem o professor
-  "programar" nada, só compor conteúdo já existente.
+- **Autoria de desafio pelo professor — Modo Template: ✅ implementado**
+  (4.2, ver "Configuração de desafio via formulário guiado" acima). Modo
+  Customizado (liberdade total sobre a estrutura do bloco-alvo, sem
+  template pré-montado) continua não implementado — fora do escopo de 4.2
+  por decisão explícita do próprio card, tratado num card separado se/quando
+  for priorizado.
+- Desafio criado via template ainda não tem mecanismo de "atribuir/publicar
+  pra turma" — hoje é acessível por link direto (`GET /challenges/:id`),
+  mas não aparece em nenhuma home/lista de aluno automaticamente (ver
+  "Autorização e escopo" em 4.2 acima pro racional de por que isso NÃO
+  entra sozinho na sequência forçada do tópico). Quando esse mecanismo for
+  necessário: provavelmente uma tabela de associação
+  challenge↔classroom, não um campo solto em `Challenge`.
+- Um segundo template de geometria (ex.: "Girar até formar um ângulo
+  específico", citado como exemplo no card) validaria de verdade que o
+  registry (`handlers/template-registry.ts`) escala sem tocar
+  service/controller/frontend — hoje só há 1 template implementado
+  (`regular_polygon`), então essa promessa de extensibilidade está
+  verificada pela arquitetura/testes, não por um segundo caso real ainda.
 - Trava em runtime da progressão Use-Modify-Create por aluno (hoje
   `block-progression.ts` só valida a ordem de autoria dos desafios, não
   bloqueia um aluno específico de pular pra `/challenge/:id` de um desafio

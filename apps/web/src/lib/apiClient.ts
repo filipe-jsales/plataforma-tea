@@ -53,6 +53,10 @@ export const apiClient = {
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
+  // 4.2 — exclusão de desafio do professor (AC5: mesma tela de gestão,
+  // nenhuma delas expõe estrutura de blocos). `request` já trata 204 sem
+  // corpo (ver acima), então isto funciona igual pra qualquer DELETE futuro.
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
   // 6.6 — para respostas que não são JSON (ex.: exportação em CSV,
   // `GET /metrics/admin/export?format=csv`) — `get`/`post`/`patch` sempre
   // fazem `response.json()`, o que quebraria num corpo CSV. Mesma

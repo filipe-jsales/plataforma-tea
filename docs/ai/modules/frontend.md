@@ -36,7 +36,9 @@ apps/web/src/
 │   ├── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
 │   ├── blocklyToolbox.ts            # registra blocos + monta toolbox JSON a partir do catálogo
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
-│   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
+│   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
+│   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
+│   └── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
 │   ├── ui/                          # 3.10/3.11 — sistema de componentes acessíveis, ver seção própria
@@ -57,6 +59,12 @@ apps/web/src/
 │   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
 │   ├── challenge/
 │   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   ├── template-form/               # 4.2 — formulário guiado do professor, ver seção própria
+│   │   ├── TemplateChallengeForm.tsx       # form completo — reusado por criar/editar/duplicar
+│   │   ├── TemplateParameterField.tsx      # 1 campo, dispatch só por type/visualPreview
+│   │   ├── PolygonPreviewIcon.tsx          # miniatura "nº de lados" — SVG inline
+│   │   ├── AngleWedgeIcon.tsx              # miniatura "ângulo de giro" — SVG inline
+│   │   └── ToleranceGaugeIcon.tsx          # miniatura "tolerância de encaixe" — SVG inline
 │   └── charts/                      # 6.5 — SVG inline, sem lib externa, hue único (--color-primary)
 │       ├── BoxPlot.tsx              # mediana + Q1/Q3 + whiskers min-max
 │       ├── BarChart.tsx             # barras horizontais (histograma OU categórico — mesmo componente)
@@ -83,6 +91,12 @@ apps/web/src/
 │   │   ├── StudentHome.tsx
 │   │   ├── TeacherHome.tsx
 │   │   └── AdminHome.tsx
+│   ├── teacher/                     # 4.2 — Modo Template, ver seção própria
+│   │   ├── TeacherChallenges.tsx    # /teacher/challenges — "Meus desafios" (AC5)
+│   │   ├── TeacherChallenges.css
+│   │   ├── TeacherChallengeNew.tsx  # /teacher/challenges/new — galeria (AC1) + formulário (AC2)
+│   │   ├── TeacherChallengeEdit.tsx # /teacher/challenges/:id/edit — mesmo formulário, pré-preenchido
+│   │   └── TeacherChallengeNew.css  # compartilhado por New/Edit
 │   └── metrics/
 │       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
 │       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
@@ -439,19 +453,30 @@ prop/estado inventado no frontend.
   código) e monta o toolbox JSON categorizado (`buildToolboxConfiguration`) —
   só os blocos do desafio aparecem, agrupados em abas pequenas e nomeadas
   (AC1/AC5), nunca a paleta padrão do Blockly inteira.
-- `blocklyToolbox.applyGenerousSnapTolerance()` sobe `Blockly.config.
-  snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima do default —
-  tolerância ampla de encaixe (AC3, RQ4 coordenação motora fina). Chamado uma
-  vez no carregamento do módulo, antes de qualquer workspace injetar.
+- `blocklyToolbox.applyGenerousSnapTolerance(tolerancePercent?)` sobe
+  `Blockly.config.snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima
+  do default — tolerância ampla de encaixe (AC3, RQ4 coordenação motora
+  fina). Chamado uma vez no carregamento do módulo (sem argumento, 100% —
+  o comportamento de sempre) e de novo dentro de `onInject`, com
+  `challenge.snapTolerancePercent ?? undefined` (4.2): um desafio criado
+  via template pelo professor pode escolher uma tolerância diferente
+  (nunca 0%, ver backend.md), reaplicada especificamente pra AQUELE
+  desafio — `Blockly.config` é estado global do módulo, não por-workspace,
+  então "reaplicar a cada desafio carregado" é o suficiente (não há dois
+  workspaces com tolerâncias diferentes montados ao mesmo tempo nesta
+  tela).
 - Logging: `toolbox_rendered` (RD-I) uma vez, ao carregar o desafio;
   `block_dragged` (RD-I) a cada solta de bloco (via
   `workspace.addChangeListener` + `Blockly.Events.BlockDrag`, não o
   `onWorkspaceChange` simplificado do `react-blockly`, que não expõe o tipo
   do evento).
-- **Sem autoria de toolbox pelo professor nesta versão** — decisão
-  explícita, ver "Blocos por desafio" em `backend.md`. O professor não
-  escolhe nem programa nada hoje; a sequência de desafios de um tópico é
-  fixa (por `Challenge.position`), a mesma pra todo aluno.
+- **Sem autoria de toolbox LIVRE pelo professor** nesta tela — decisão
+  explícita, ver "Blocos por desafio" em `backend.md`. A sequência de
+  desafios de um tópico continua fixa (por `Challenge.position`), a mesma
+  pra todo aluno. Desde 4.2, o professor cria desafios ADICIONAIS por fora
+  dessa sequência via um formulário guiado por template — nunca editando
+  `ChallengePage`/Blockly diretamente; ver "Configuração de desafio via
+  formulário guiado — Modo Template" abaixo.
 
 ### Mundo de execução 2D desacoplado via store (3.2)
 
@@ -626,6 +651,131 @@ tópico ou de outro, qualquer disciplina) ganha Predict/Investigate só
 preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
+
+## Configuração de desafio via formulário guiado — Modo Template (4.2)
+
+Três telas novas, todas `.staff-theme` (professor), reaproveitando
+`components/ui/` como qualquer outra tela de staff (3.11) — nenhuma delas
+importa Blockly nem monta um `<BlocklyWorkspace>`: o professor nunca vê a
+representação em blocos, nem no formulário, nem no preview, nem num erro.
+
+- **`/teacher/challenges`** (`TeacherChallenges`, AC5) — "Meus desafios":
+  `GET /teacher/challenges`, um item por desafio criado via template
+  (ícone+nome do template, nunca o `key` técnico). Ações: "Editar" e
+  "Duplicar" (`LinkButton` pra `/teacher/challenges/:id/edit` e
+  `/teacher/challenges/new?fromChallengeId=:id`) e "Excluir", que abre um
+  `Dialog` de confirmação (`components/ui/Dialog`, 3.10 — **primeiro uso
+  real desse componente no produto**, existia pronto desde 3.10 esperando
+  "o dia que uma tela precisar de confirmação antes de uma ação difícil de
+  reverter") antes de chamar `DELETE /teacher/challenges/:id`
+  (`apiClient.delete`, novo método no wrapper — só faltava DELETE no
+  conjunto get/post/patch/getRaw que já existia).
+- **`/teacher/challenges/new`** (`TeacherChallengeNew`, AC1/AC2/AC6) — dois
+  passos no mesmo componente: sem `selectedTemplateId`, mostra a GALERIA
+  (`GET /challenge-templates`, um `SelectableCard align="start"` por
+  template — nome+ícone+descrição em português, nunca o blockType); ao
+  selecionar, busca `GET /challenge-templates/:id` (schema já resolvido) e
+  troca pro `TemplateChallengeForm`. Query string `?fromChallengeId=` é o
+  mecanismo de DUPLICAR (AC6): busca `GET /teacher/challenges/:id` do
+  desafio de origem, pré-seleciona o MESMO template e pré-preenche o
+  `TemplateChallengeForm` com os mesmos parâmetros + título sufixado
+  "(cópia)" — nunca clona `Challenge.config` bruto, é literalmente reabrir
+  a tela de criação com um rascunho diferente.
+- **`/teacher/challenges/:id/edit`** (`TeacherChallengeEdit`, AC5) — busca
+  `GET /teacher/challenges/:id` (403/404 vira uma frase, nunca stack
+  trace) + `GET /challenge-templates/:templateId` pro schema, e renderiza
+  o MESMO `TemplateChallengeForm`, `onSubmit` chamando `PATCH
+  /teacher/challenges/:id` em vez de `POST .../challenges`. AC5 —
+  "nenhuma tela de edição expõe estrutura de blocos" é verdade por
+  construção: este componente nunca lê `Challenge.config`, só o que
+  `GET /teacher/challenges/:id` devolve (`title`/`prompt`/`templateKey`/
+  `params`).
+
+### `TemplateChallengeForm` — um componente para criar/editar/duplicar
+
+`components/template-form/TemplateChallengeForm.tsx` é o formulário guiado
+de verdade, parametrizado só por `template` (o `ChallengeTemplateDetail`
+já resolvido) + `initialTitle`/`initialParams` opcionais + `onSubmit` — as
+3 telas acima só decidem QUANDO montá-lo e o que fazer com o resultado,
+nunca reimplementam campo nenhum.
+
+- **Renderização 100% orientada a schema**: um `TemplateParameterField`
+  por entrada de `template.parameterSchema`, dispatch só por
+  `definition.type`/`visualPreview` (`components/template-form/
+  TemplateParameterField.tsx`) — nunca `if (param.key === 'sides')` em
+  lugar nenhum. `integer` vira `<input type="number">`, `percentage` vira
+  um `<input type="range">` com leitura numérica ao lado, `boolean` vira
+  `ToggleSwitch` (`components/ui/`, pronto pra um template futuro que
+  precise — nenhum parâmetro do MVP usa hoje, ver nota "sem parâmetro de
+  ângulos negativos" em backend.md), `blockSelection` vira um
+  `ToggleSwitch` por bloco candidato (reaproveita o mesmo componente de
+  liga/desliga com estado sempre em texto — "Ligado"/"Desligado" — em vez
+  de inventar um checkbox novo). É o mecanismo que cumpre "reutilizável
+  sem refazer pra cada novo desafio": um template de outra disciplina só
+  precisa reusar um `type`/`visualPreview` já suportado pra funcionar
+  aqui sem tocar neste arquivo.
+- **AC2 — exemplo visual inline por campo**: `visualPreview` decide qual
+  miniatura SVG mostrar ao lado do controle — `PolygonPreviewIcon`
+  (`sides`, desenha o polígono com o Nº de lados ATUAL — a prévia É o
+  valor, atualiza a cada mudança, não um par estático "4 vs 6"),
+  `AngleWedgeIcon` (`turnAngleDeg`, um leque cuja abertura é o ângulo —
+  efeito isolado deste campo, independente de `sides`) e
+  `ToleranceGaugeIcon` (`snapTolerancePercent`, barra preenchida
+  proporcionalmente). Todo SVG inline, sem lib nova — mesmo padrão
+  zero-dependência de `components/charts/`. Miniatura é decorativa
+  (`aria-hidden` no wrapper): o valor em si já é anunciado pelo input
+  rotulado (`aria-label`/`htmlFor` = `definition.label`), então a
+  miniatura não duplica informação pra quem usa leitor de tela — só reforça
+  visualmente pra quem enxerga.
+- **AC3 — validação pedagógica inline, um endpoint pras duas coisas**:
+  `runValidation()` chama `POST /challenge-templates/:id/preview` (sempre
+  200, nunca lança) e `errorsByParameterKey` (`lib/templateParameterForm.ts`,
+  função pura testada) indexa `errors` por `parameterKey` — cada
+  `TemplateParameterField` recebe só a mensagem do PRÓPRIO campo, nunca um
+  card de erro solto no topo da tela. Toda mudança em qualquer campo limpa
+  `fieldErrors`/fecha o preview (`handleParamChange`) — nunca deixa uma
+  mensagem de um valor anterior grudada depois que o professor já ajustou
+  o valor.
+- **AC4 — "Visualizar como aluno"**: `handleVisualize()` chama o MESMO
+  `runValidation()`; se inválido, mostra os erros de campo (nunca abre o
+  preview com dado incompleto); se válido, usa `goal` da resposta com
+  `buildGoalPreviewPath` (`lib/turtleWorld.ts`) — **a mesma função pura que
+  o botão de Ajuda do aluno (3.5) já usa pro traçado-alvo** — e
+  `PixiTurtleWorld` (o mesmo componente de mundo do aluno, uma instância de
+  `turtleExecutionStore` própria desta tela). O professor nunca vê um
+  `<BlocklyWorkspace>`: o preview é só a forma final animada, exatamente
+  como a fase Create do aluno mostraria. Animação sempre ligada aqui
+  (`play(points, true)`), independente do próprio perfil sensorial do
+  professor — a tela é uma demonstração de autoria, não a experiência
+  sensorial real de nenhum aluno específico (cada aluno continua vendo o
+  desafio de acordo com o PRÓPRIO perfil quando for jogar de verdade).
+- **Salvar**: `handleSubmit` primeiro exige título não-vazio (mensagem
+  própria, não HTML5 nativo — mesmo racional de `AdminSettings`), depois
+  roda a mesma `runValidation()` antes de chamar `onSubmit({ title, params
+  })` — nunca deixa a criação/edição ir pro backend com uma combinação que
+  a própria tela já sabe que é inválida.
+
+### `lib/templateParameterForm.ts` — funções puras, testadas
+
+`buildInitialParams` (schema → rascunho com os defaults), `coerceParameterValue`
+(string de `<input>` → número/boolean/array, nunca guarda string crua nem
+`NaN`), `errorsByParameterKey`, `toggleBlockType` (liga/desliga 1 bloco na
+lista sem duplicar/perder os outros). Nenhuma conhece "polígono" — são o
+motor genérico por trás de `TemplateParameterField`/`TemplateChallengeForm`.
+
+### Testes
+
+`TemplateParameterField.spec.tsx` (cada `type`/`visualPreview`, rótulo
+ícone+texto, erro inline) e `TemplateChallengeForm.spec.tsx` (bloqueio sem
+título, bloqueio com combinação inválida — erro no campo certo, preview só
+abre quando válido, payload de salvar) são os testes de lógica de decisão
+mais densos desta feature — `Pixi` é mockado nesses dois arquivos (mesmo
+racional do débito "ChallengePage sem RTL ainda" logo abaixo: jsdom não
+roda WebGL/Canvas de verdade, o que importa testar é SE o painel de preview
+aparece, não como o Pixi desenha por dentro). `TeacherChallenges.spec.tsx`/
+`TeacherChallengeNew.spec.tsx`/`TeacherChallengeEdit.spec.tsx` cobrem a
+galeria (AC1), a confirmação antes de excluir, e o fluxo de duplicar
+(AC6) pré-preenchendo o mesmo template+parâmetros.
 
 ## Painel institucional do admin (`AdminMetrics`, 6.2)
 
@@ -862,5 +1012,17 @@ o padrão esperado em código novo.
   resto — professor/admin inteiros, ver "Onde já está em uso vs. débito de
   migração" acima) — débito reconhecido, não bloqueante; migrar quando a
   tela for tocada por outro motivo.
-- `components/ui/Dialog`/`Tooltip`/`Tabs` seguem sem nenhum uso real em
-  produção (3.10) — infraestrutura pronta, nenhuma tela pediu ainda.
+- `components/ui/Tooltip`/`Tabs` seguem sem nenhum uso real em produção
+  (3.10) — infraestrutura pronta, nenhuma tela pediu ainda. `Dialog` saiu
+  dessa lista em 4.2 (confirmação de exclusão em `TeacherChallenges`,
+  primeiro uso real).
+- Desafio criado via template (4.2) não tem tela de "atribuir à turma" —
+  hoje só é alcançável por link direto de `/challenge/:id`; ver gap
+  equivalente em `backend.md` ("Autorização e escopo" / "Próximos
+  passos").
+- `TemplateParameterField` só tem componentes de exemplo visual pros 3
+  `visualPreview` que o template `regular_polygon` usa hoje
+  (`polygonSides`/`angleWedge`/`toleranceGauge`) — um template de outra
+  disciplina que precise de um tipo de miniatura genuinamente novo (não
+  reaproveitável) precisa de 1 componente SVG novo + 1 `case` em
+  `renderVisualPreview`, o resto do formulário continua igual.

@@ -1,0 +1,55 @@
+.teacher-challenges__subtitle {
+  color: var(--color-text-muted, #5a6472);
+  max-width: 40rem;
+}
+
+.teacher-challenges__loading,
+.teacher-challenges__empty {
+  color: var(--color-text-muted, #5a6472);
+}
+
+.teacher-challenges__list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.teacher-challenges__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #d7dbe0);
+  box-shadow: var(--shadow-card, none);
+  flex-wrap: wrap;
+}
+
+.teacher-challenges__item-icon {
+  font-size: 1.75rem;
+}
+
+.teacher-challenges__item-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.teacher-challenges__item-title {
+  font-weight: var(--font-weight-heading, 600);
+}
+
+.teacher-challenges__item-meta {
+  color: var(--color-text-muted, #5a6472);
+  font-size: var(--font-size-small, 0.875rem);
+}
+
+.teacher-challenges__item-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

@@ -66,6 +66,9 @@ interface ChallengeDetail {
   predictQuestion: string | null;
   editableFields: EditableField[];
   nextChallengeId: string | null;
+  // 4.2 — presente só em desafios criados via template pelo professor;
+  // `null` usa o default do editor (aplicado no carregamento do módulo).
+  snapTolerancePercent: number | null;
 }
 
 type Feedback = { kind: 'success' | 'retry'; message: string } | null;
@@ -475,6 +478,12 @@ export function ChallengePage() {
           onInject={(workspace) => {
             workspaceRef.current = workspace;
             workspace.addChangeListener(handleWorkspaceEvent);
+            // 4.2 — reaplica a tolerância de encaixe pra ESTE desafio
+            // específico: default (100%) pro currículo semeado, ou o valor
+            // que o professor escolheu no formulário guiado ao criar um
+            // desafio via template (Blockly.config é estado global, não
+            // por-workspace, ver blocklyToolbox.ts).
+            applyGenerousSnapTolerance(challenge.snapTolerancePercent ?? undefined);
             if (isModify) {
               applyModifyFieldLocking(workspace, challenge.editableFields);
             }

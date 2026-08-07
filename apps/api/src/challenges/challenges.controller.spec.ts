@@ -122,6 +122,14 @@ describe('ChallengesController', () => {
 
       expect(result.nextChallengeId).toBe('c2');
     });
+
+    it('defaults snapTolerancePercent to null for curriculum-seeded challenges (4.2)', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.snapTolerancePercent).toBeNull();
+    });
   });
 
   describe('getById', () => {
@@ -174,6 +182,17 @@ describe('ChallengesController', () => {
     expect(movimento?.blocks.map((b) => b.blockType)).toEqual(['move_forward', 'turn']);
     const controle = result.toolbox.categories.find((c) => c.slug === 'controle');
     expect(controle?.blocks.map((b) => b.blockType)).toEqual(['repeat_times']);
+  });
+
+  it('4.2 — passes through the teacher-chosen snapTolerancePercent for a template-authored challenge', async () => {
+    challengesService.findById.mockResolvedValue({
+      ...createChallenge,
+      config: { ...createChallenge.config, snapTolerancePercent: 60 },
+    } as unknown as Challenge);
+
+    const result = await controller.getById('c3');
+
+    expect(result.snapTolerancePercent).toBe(60);
   });
 
   it('never leaks internal ids beyond what the toolbox needs — only blockType/label/colour/json', async () => {

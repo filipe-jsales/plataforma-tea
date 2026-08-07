@@ -156,6 +156,53 @@ porquê disso ser um estado intermediário, não a sequência final):
 | 1 | Monte o quadrado | `use` (`program` pré-montado + travado) |
 | 2 | Monte o quadrado — sua vez! | `create` (editor livre) |
 
+**4.2 — `templateId`/`templateParams`/`createdByUserId`** (migration
+`CreateChallengeTemplatesAndTeacherAuthoring`): três colunas nullable pra
+desafio criado pelo professor via formulário guiado (Modo Template), nunca
+preenchidas pelo currículo semeado.
+
+- `templateId` — FK nullable pra `challenge_templates.id`, `ON DELETE SET
+  NULL` (se um template for descatalogado, o desafio já criado continua
+  existindo — não depende do template pra funcionar em runtime, só pra
+  reabrir o formulário de edição).
+- `templateParams` (jsonb) — snapshot dos parâmetros pedagógicos que o
+  professor escolheu (nº de lados, ângulo, tolerância, blocos habilitados),
+  persistido junto do desafio, nunca descartado depois de virar `config`
+  (RD-C — RQ5, rastreabilidade de qual configuração curricular foi usada).
+- `createdByUserId` — FK nullable pra `users.id`, `ON DELETE SET NULL`
+  (mesma defesa em profundidade de `ExportAuditLog.adminUserId` — hoje não
+  existe endpoint de exclusão de usuário). `NULL` pro currículo semeado;
+  preenchido sempre que o desafio nasce via
+  `POST /challenge-templates/:id/challenges`.
+
+`ChallengesService.findByTopicIdOrdered` (a sequência OFICIAL Use-Modify-
+Create de um tópico) filtra `createdByUserId IS NULL` desde 4.2 — ver
+"Autorização e escopo" na seção "Configuração de desafio via formulário
+guiado — Modo Template (4.2)" em `backend.md` pro racional completo: um
+desafio de professor nunca entra sozinho na sequência forçada de todos os
+alunos do tópico.
+
+### `challenge_templates`
+
+Ver `apps/api/src/challenge-templates/entities/challenge-template.entity.ts`.
+Catálogo curado (tabela, mesmo padrão de `blocks`/`subjects`/
+`illustrations`) — `key` (`UNIQUE`) resolve o handler de validação/montagem
+de config em `handlers/template-registry.ts` (código, não dado — ver nota
+de pesquisa completa em `challenge-templates.service.ts`/`backend.md`).
+`name`/`description`/`icon` são sempre linguagem pedagógica simples, nunca
+o nome técnico do bloco Blockly (AC1). `parameterSchema` (jsonb) é um array
+de definição de campo — tipado em
+`challenge-template-parameter.interface.ts` — que o frontend renderiza
+genericamente (dispatch só por `type`/`visualPreview`). FK `CASCADE` pra
+`topics` (mesmo raciocínio de `Challenge.topicId`). `position` decide a
+ordem de exibição na galeria (AC1), mesmo raciocínio de
+`Challenge.position`/`BlockDefinition.position` — nunca `createdAt`.
+
+Seed do MVP: 1 template, `regular_polygon` ("Desenhar um polígono
+regular"), pro tópico `angulos_formas`, com 4 parâmetros (`sides`,
+`turnAngleDeg`, `snapTolerancePercent`, `enabledBlockTypes`) — ver migration
+`CreateChallengeTemplatesAndTeacherAuthoring`.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
@@ -283,12 +330,23 @@ divergir das duas fontes.
     admin/professor do projeto (6.6 — exportação de dados brutos pra
     pesquisa, ver "Exportação de dados brutos pra pesquisa" em
     `backend.md`).
+19. `1786125053829-CreateChallengeTemplatesAndTeacherAuthoring.ts` — cria
+    `challenge_templates` (FK `CASCADE` pra `topics`) e adiciona
+    `templateId`/`templateParams`/`createdByUserId` em `challenges` (FKs
+    `ON DELETE SET NULL` pra `challenge_templates`/`users`). Gerada com
+    `migration:generate` + seed manual (só `INSERT`, sem `@BeforeInsert`
+    pra replicar): 1 template `regular_polygon` pro tópico `angulos_formas`
+    (4.2 — Configuração de desafio via formulário guiado, Modo Template;
+    ver "`challenge_templates`" acima e "Configuração de desafio via
+    formulário guiado" em `backend.md`).
 
-Todas as 12 primeiras, a 17ª e a 18ª já foram validadas com `npm run
+Todas as 12 primeiras, a 17ª, a 18ª e a 19ª já foram validadas com `npm run
 migration:run` contra um Postgres real, e `\dt` + `\d <tabela>` conferidos
-no `psql`. Depois da última, um `migration:generate` extra confirmou "No
-changes in database schema were found" — zero diff pendente entre entidades
-e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
+no `psql` (a 19ª foi conferida via cliente `pg` direto — `psql` não estava
+disponível no ambiente que rodou essa migration). Depois da última, um
+`migration:generate` extra confirmou "No changes in database schema were
+found" — zero diff pendente entre entidades e banco. `GET
+/metrics/admin/export` (6.6) também foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
 rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
 real de `interaction_events`, `export_audit_logs` conferido com uma linha

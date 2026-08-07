@@ -1,0 +1,107 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiClient } from '../../lib/apiClient';
+import { TeacherChallengeNew } from './TeacherChallengeNew';
+
+vi.mock('../../lib/apiClient', () => ({
+  apiClient: { get: vi.fn(), post: vi.fn() },
+}));
+
+vi.mock('../../components/challenge/PixiTurtleWorld', () => ({
+  PixiTurtleWorld: () => <div data-testid="pixi-turtle-world-stub" />,
+}));
+
+const mockedGet = vi.mocked(apiClient.get);
+const mockedPost = vi.mocked(apiClient.post);
+
+const templateSummary = {
+  id: 'template-1',
+  key: 'regular_polygon',
+  name: 'Desenhar um polígono regular',
+  description: 'O aluno monta um desenho com o número de lados escolhido por você.',
+  icon: '🔷',
+};
+
+const templateDetail = {
+  ...templateSummary,
+  parameterSchema: [
+    { key: 'sides', label: 'Número de lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+  ],
+};
+
+beforeEach(() => {
+  mockedGet.mockReset();
+  mockedPost.mockReset();
+});
+
+function renderPage(initialEntry = '/teacher/challenges/new') {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/teacher/challenges/new" element={<TeacherChallengeNew />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe('TeacherChallengeNew', () => {
+  it('AC1 — the gallery shows the pedagogical name/description/icon, never the technical template key', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+
+    renderPage();
+
+    expect(await screen.findByText('Desenhar um polígono regular')).toBeInTheDocument();
+    expect(screen.getByText('O aluno monta um desenho com o número de lados escolhido por você.')).toBeInTheDocument();
+    expect(screen.queryByText('regular_polygon')).not.toBeInTheDocument();
+  });
+
+  it('AC2 — selecting a template opens its guided parameter form', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+    mockedGet.mockResolvedValueOnce(templateDetail);
+
+    renderPage();
+    await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+
+    expect(await screen.findByLabelText('Número de lados')).toBeInTheDocument();
+    expect(mockedGet).toHaveBeenCalledWith('/challenge-templates/template-1');
+  });
+
+  it('AC6 — duplicating pre-selects the same template and pre-fills the same parameters, title suffixed "(cópia)"', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+    mockedGet.mockResolvedValueOnce({
+      id: 'c1',
+      title: 'Hexágonos',
+      prompt: 'Monte um desenho com 6 lados.',
+      templateId: 'template-1',
+      templateKey: 'regular_polygon',
+      params: { sides: 6 },
+    });
+    mockedGet.mockResolvedValueOnce(templateDetail);
+
+    renderPage('/teacher/challenges/new?fromChallengeId=c1');
+
+    expect(await screen.findByDisplayValue('Hexágonos (cópia)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Número de lados')).toHaveValue(6);
+  });
+
+  it('creates the challenge against the selected template and never sends raw block structure', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+    mockedGet.mockResolvedValueOnce(templateDetail);
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    mockedPost.mockResolvedValueOnce({ id: 'new-challenge' });
+
+    renderPage();
+    await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+    await userEvent.type(await screen.findByPlaceholderText(/triângulos/i), 'Meu desafio');
+    await userEvent.click(screen.getByRole('button', { name: /^salvar desafio$/i }));
+
+    await waitFor(() =>
+      expect(mockedPost).toHaveBeenCalledWith('/challenge-templates/template-1/challenges', {
+        title: 'Meu desafio',
+        params: { sides: 4 },
+      }),
+    );
+  });
+});

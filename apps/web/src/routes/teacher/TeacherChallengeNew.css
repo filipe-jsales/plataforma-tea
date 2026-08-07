@@ -1,0 +1,11 @@
+.teacher-challenge-new__subtitle {
+  color: var(--color-text-muted, #5a6472);
+  max-width: 40rem;
+}
+
+.teacher-challenge-new__gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}

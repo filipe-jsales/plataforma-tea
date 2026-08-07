@@ -14,6 +14,9 @@ import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
 import { SubjectSelector } from './routes/SubjectSelector'
 import { HomeRouter } from './routes/home/HomeRouter'
+import { TeacherChallenges } from './routes/teacher/TeacherChallenges'
+import { TeacherChallengeNew } from './routes/teacher/TeacherChallengeNew'
+import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
 
 function App() {
   return (
@@ -76,6 +79,30 @@ function App() {
         element={
           <RequireAuth roles={['teacher']}>
             <TeacherMetrics />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/challenges"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallenges />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/challenges/new"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallengeNew />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/challenges/:challengeId/edit"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallengeEdit />
           </RequireAuth>
         }
       />

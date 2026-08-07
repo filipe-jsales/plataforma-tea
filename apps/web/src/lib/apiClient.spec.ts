@@ -99,6 +99,19 @@ describe('apiClient', () => {
     await expect(apiClient.get('/subjects')).rejects.toMatchObject({ message: 'Erro 500' });
   });
 
+  it('4.2 — delete sets the method and still returns undefined for a 204 response', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: () => Promise.reject(new Error('should not be called')),
+    });
+
+    await expect(apiClient.delete('/teacher/challenges/c1')).resolves.toBeUndefined();
+
+    const [, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(options.method).toBe('DELETE');
+  });
+
   describe('getRaw', () => {
     it('returns the response body as text without parsing it as JSON', async () => {
       (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({

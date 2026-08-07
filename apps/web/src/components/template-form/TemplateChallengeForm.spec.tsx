@@ -1,0 +1,142 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiClient } from '../../lib/apiClient';
+import type { ChallengeTemplateDetail } from '../../lib/challengeTemplateTypes';
+import { TemplateChallengeForm } from './TemplateChallengeForm';
+
+vi.mock('../../lib/apiClient', () => ({
+  apiClient: { post: vi.fn() },
+}));
+
+// Pixi.js não roda de verdade em jsdom (sem WebGL/Canvas real) — o mesmo
+// racional de qualquer teste que isola PixiTurtleWorld (ver nota de débito
+// "ChallengePage sem RTL ainda" em docs/ai/modules/frontend.md). O que
+// importa testar aqui é SE o painel de preview aparece, não como o Pixi
+// desenha por dentro.
+vi.mock('../challenge/PixiTurtleWorld', () => ({
+  PixiTurtleWorld: () => <div data-testid="pixi-turtle-world-stub" />,
+}));
+
+const mockedPost = vi.mocked(apiClient.post);
+
+const template: ChallengeTemplateDetail = {
+  id: 'template-1',
+  key: 'regular_polygon',
+  name: 'Desenhar um polígono regular',
+  description: 'descrição',
+  icon: '🔷',
+  parameterSchema: [
+    { key: 'sides', label: 'Número de lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+    { key: 'turnAngleDeg', label: 'Ângulo de giro', icon: '📐', type: 'integer', min: 1, max: 359, defaultValue: 90, visualPreview: 'angleWedge' },
+    { key: 'snapTolerancePercent', label: 'Tolerância de encaixe', icon: '🧲', type: 'percentage', min: 10, max: 100, defaultValue: 60, visualPreview: 'toleranceGauge' },
+    {
+      key: 'enabledBlockTypes',
+      label: 'Blocos disponíveis',
+      icon: '🧩',
+      type: 'blockSelection',
+      defaultValue: ['move_forward', 'turn'],
+      visualPreview: 'none',
+      options: [
+        { value: 'move_forward', label: 'Mover para frente' },
+        { value: 'turn', label: 'Girar' },
+      ],
+    },
+  ],
+};
+
+beforeEach(() => {
+  mockedPost.mockReset();
+});
+
+describe('TemplateChallengeForm', () => {
+  it('seeds every field from the template defaults when no initial params are given', () => {
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    expect(screen.getByLabelText('Número de lados')).toHaveValue(4);
+    expect(screen.getByLabelText('Ângulo de giro')).toHaveValue(90);
+  });
+
+  it('AC5/AC6 — prefills title and params for edit/duplicate, the same form as creation', () => {
+    render(
+      <TemplateChallengeForm
+        template={template}
+        initialTitle="Hexágonos"
+        initialParams={{ sides: 6, turnAngleDeg: 60, snapTolerancePercent: 80, enabledBlockTypes: ['move_forward'] }}
+        submitLabel="Salvar alterações"
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByDisplayValue('Hexágonos')).toBeInTheDocument();
+    expect(screen.getByLabelText('Número de lados')).toHaveValue(6);
+  });
+
+  it('blocks saving and shows a non-technical message when no title was given', async () => {
+    const onSubmit = vi.fn();
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByText('Dê um nome para o desafio antes de salvar.')).toBeInTheDocument();
+    expect(mockedPost).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('AC3 — blocks saving on an invalid combination, showing the pedagogical error under the right field', async () => {
+    mockedPost.mockResolvedValueOnce({
+      valid: false,
+      errors: [{ parameterKey: 'turnAngleDeg', message: 'Com 3 lados e 200° de giro, o desenho não fecha.' }],
+      goal: null,
+    });
+    const onSubmit = vi.fn();
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByText('Com 3 lados e 200° de giro, o desenho não fecha.')).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('saves with the title and current params once validation passes', async () => {
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByRole('button', { name: /salvar desafio/i })).toBeEnabled();
+    expect(onSubmit).toHaveBeenCalledWith({
+      title: 'Meu desafio',
+      params: { sides: 4, turnAngleDeg: 90, snapTolerancePercent: 60, enabledBlockTypes: ['move_forward', 'turn'] },
+    });
+  });
+
+  it('AC4 — "Visualizar como aluno" opens a functional preview in the game engine when parameters are valid', async () => {
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /visualizar como aluno/i }));
+
+    expect(await screen.findByTestId('pixi-turtle-world-stub')).toBeInTheDocument();
+    expect(mockedPost).toHaveBeenCalledWith('/challenge-templates/template-1/preview', {
+      params: { sides: 4, turnAngleDeg: 90, snapTolerancePercent: 60, enabledBlockTypes: ['move_forward', 'turn'] },
+    });
+  });
+
+  it('AC3/AC4 — "Visualizar como aluno" shows the pedagogical error instead of a preview for an invalid combination', async () => {
+    mockedPost.mockResolvedValueOnce({
+      valid: false,
+      errors: [{ parameterKey: 'snapTolerancePercent', message: 'A tolerância de encaixe não pode ficar em 0%.' }],
+      goal: null,
+    });
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /visualizar como aluno/i }));
+
+    expect(await screen.findByText('A tolerância de encaixe não pode ficar em 0%.')).toBeInTheDocument();
+    expect(screen.queryByTestId('pixi-turtle-world-stub')).not.toBeInTheDocument();
+  });
+});
