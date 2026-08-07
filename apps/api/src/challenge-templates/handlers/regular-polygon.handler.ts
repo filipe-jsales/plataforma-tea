@@ -1,0 +1,171 @@
+import type { ChallengeConfig } from '../../challenges/challenge-config.interface';
+import type {
+  ChallengeTemplateHandler,
+  TemplateValidationContext,
+  TemplateValidationError,
+  TemplateValidationResult,
+} from './challenge-template-handler.interface';
+
+export const REGULAR_POLYGON_TEMPLATE_KEY = 'regular_polygon';
+
+const MIN_SIDES = 3;
+const MAX_SIDES = 12;
+const MIN_ANGLE = 1;
+const MAX_ANGLE = 359;
+const MIN_TOLERANCE_PERCENT = 10;
+const MAX_TOLERANCE_PERCENT = 100;
+// Um desenho de polígono não existe sem esses dois blocos — checagem de
+// domínio, não uma regra genérica de "todo template precisa de N blocos"
+// (um template futuro de outra disciplina define os próprios obrigatórios).
+const REQUIRED_BLOCK_TYPES = ['move_forward', 'turn'];
+
+interface RegularPolygonParams {
+  sides: number;
+  turnAngleDeg: number;
+  snapTolerancePercent: number;
+  enabledBlockTypes: string[];
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+// Regular polygon exterior turn: closes exactly when sides × turnAngle é
+// múltiplo de 360°. É a tradução matemática, em linguagem de professor, do
+// exemplo literal do card ("3 lados com ângulo externo de 200° não fecha um
+// polígono" → 3×200=600, não é múltiplo de 360).
+function closesPolygon(sides: number, turnAngleDeg: number): boolean {
+  return (sides * turnAngleDeg) % 360 === 0;
+}
+
+function suggestedAngleForSides(sides: number): number {
+  return Math.round(360 / sides);
+}
+
+// Handler do template "Desenhar um polígono regular" (4.2, MVP de
+// geometria). Único ponto de código específico deste template — a galeria,
+// o formulário genérico e o preview no Pixi são todos reaproveitados do
+// motor comum (ver challenge-templates.service.ts). Um template novo
+// (outro desenho geométrico, ou de outra disciplina no futuro) implementa
+// esta mesma interface e se registra em template-registry.ts, sem tocar em
+// mais nada.
+export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
+  readonly key = REGULAR_POLYGON_TEMPLATE_KEY;
+
+  validateParameters(
+    raw: Record<string, unknown>,
+    context: TemplateValidationContext,
+  ): TemplateValidationResult {
+    const errors: TemplateValidationError[] = [];
+
+    const sides = toFiniteNumber(raw.sides);
+    const turnAngleDeg = toFiniteNumber(raw.turnAngleDeg);
+    const snapTolerancePercent = toFiniteNumber(raw.snapTolerancePercent);
+    const enabledBlockTypes = toStringArray(raw.enabledBlockTypes);
+
+    const validSides = sides !== null && Number.isInteger(sides) && sides >= MIN_SIDES && sides <= MAX_SIDES;
+    if (!validSides) {
+      errors.push({
+        parameterKey: 'sides',
+        message: `Escolha um número de lados entre ${MIN_SIDES} e ${MAX_SIDES}.`,
+      });
+    }
+
+    const validAngleRange =
+      turnAngleDeg !== null && Number.isInteger(turnAngleDeg) && turnAngleDeg >= MIN_ANGLE && turnAngleDeg <= MAX_ANGLE;
+    if (!validAngleRange) {
+      errors.push({
+        parameterKey: 'turnAngleDeg',
+        message: `O ângulo de giro em cada lado precisa estar entre ${MIN_ANGLE}° e ${MAX_ANGLE}°.`,
+      });
+    } else if (validSides && !closesPolygon(sides as number, turnAngleDeg as number)) {
+      // AC3 — exatamente o exemplo do card: combinação matematicamente
+      // impossível, mensagem descritiva com sugestão de valor válido, nunca
+      // "XML inválido"/erro genérico.
+      errors.push({
+        parameterKey: 'turnAngleDeg',
+        message:
+          `Com ${sides} lados e ${turnAngleDeg}° de giro a cada lado, o desenho não fecha — ` +
+          `o traçado não volta ao ponto de partida. Para ${sides} lados, use ` +
+          `${suggestedAngleForSides(sides as number)}° (ou ajuste o número de lados).`,
+      });
+    }
+
+    const validTolerance =
+      snapTolerancePercent !== null &&
+      Number.isInteger(snapTolerancePercent) &&
+      snapTolerancePercent >= MIN_TOLERANCE_PERCENT &&
+      snapTolerancePercent <= MAX_TOLERANCE_PERCENT;
+    if (!validTolerance) {
+      // AC3 — segundo exemplo literal do card ("tolerância de encaixe do
+      // desenho = 0%"): 0% impediria o aluno de encaixar qualquer bloco
+      // (RQ4, coordenação motora fina), por isso o mínimo é 10%, não 0.
+      errors.push({
+        parameterKey: 'snapTolerancePercent',
+        message:
+          'A tolerância de encaixe não pode ficar em 0% — o aluno não conseguiria encaixar os blocos. ' +
+          `Escolha um valor entre ${MIN_TOLERANCE_PERCENT}% e ${MAX_TOLERANCE_PERCENT}% (recomendamos 60%).`,
+      });
+    }
+
+    if (enabledBlockTypes.length === 0) {
+      errors.push({
+        parameterKey: 'enabledBlockTypes',
+        message: 'Selecione ao menos um bloco para este desafio.',
+      });
+    } else {
+      const notIntroduced = enabledBlockTypes.filter(
+        (blockType) => !context.introducedBlockTypes.includes(blockType),
+      );
+      if (notIntroduced.length > 0) {
+        errors.push({
+          parameterKey: 'enabledBlockTypes',
+          message:
+            'Este desafio usa um bloco que os alunos ainda não conhecem — apresente-o primeiro ' +
+            'num desafio de introdução antes de usá-lo aqui.',
+        });
+      }
+      const missingRequired = REQUIRED_BLOCK_TYPES.filter((blockType) => !enabledBlockTypes.includes(blockType));
+      if (missingRequired.length > 0) {
+        errors.push({
+          parameterKey: 'enabledBlockTypes',
+          message: 'Um desafio de polígono precisa dos blocos "Mover para frente" e "Girar" habilitados.',
+        });
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  buildChallengeConfig(raw: Record<string, unknown>): ChallengeConfig {
+    const params = this.readParams(raw);
+    return {
+      stage: 'create',
+      allowedBlockTypes: params.enabledBlockTypes,
+      goal: { shape: 'regular_polygon', sides: params.sides, turnAngleDeg: params.turnAngleDeg },
+      snapTolerancePercent: params.snapTolerancePercent,
+    };
+  }
+
+  buildPreviewGoal(raw: Record<string, unknown>): Record<string, unknown> {
+    const params = this.readParams(raw);
+    return { shape: 'regular_polygon', sides: params.sides, turnAngleDeg: params.turnAngleDeg };
+  }
+
+  // Só chamado depois de validateParameters devolver valid:true (contrato
+  // da interface) — aqui os valores já são garantidamente números/arrays
+  // bem formados, sem precisar revalidar.
+  private readParams(raw: Record<string, unknown>): RegularPolygonParams {
+    return {
+      sides: Number(raw.sides),
+      turnAngleDeg: Number(raw.turnAngleDeg),
+      snapTolerancePercent: Number(raw.snapTolerancePercent),
+      enabledBlockTypes: toStringArray(raw.enabledBlockTypes),
+    };
+  }
+}

@@ -1,0 +1,28 @@
+.ui-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.ui-badge--success {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.ui-badge--warning {
+  background: var(--color-warning);
+  color: #fff;
+}
+
+.ui-badge--neutral {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.ui-badge--info {
+  background: var(--color-primary);
+  color: var(--color-bg);
+}

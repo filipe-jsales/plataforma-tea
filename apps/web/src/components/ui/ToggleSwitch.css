@@ -1,0 +1,77 @@
+.ui-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--hit-area-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.ui-toggle[data-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ui-toggle__icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.ui-toggle__label {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.ui-toggle__control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Redundância textual do estado — nunca só a posição/cor do trilho. */
+.ui-toggle__state {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 4.5em;
+  text-align: right;
+  color: var(--color-text);
+}
+
+.ui-toggle__switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  min-width: 48px;
+  border-radius: 999px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.ui-toggle__switch[data-state='checked'] {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.ui-toggle__thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  transform: translateX(2px);
+  /* A posição desliza; sensory-theme.css já zera transition-duration fora
+     de data-motion='full' — não declaramos duração própria aqui. */
+}
+
+.ui-toggle__thumb[data-state='checked'] {
+  transform: translateX(22px);
+}
+
+.ui-toggle__switch:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

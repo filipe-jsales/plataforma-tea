@@ -139,4 +139,42 @@ describe('TeacherMetrics', () => {
 
     expect(await screen.findByText('Nenhum aluno ativo nesta turma ainda.')).toBeInTheDocument();
   });
+
+  it('3.11: the view switch is a real segmented control (radiogroup), not 2 independent buttons', async () => {
+    mockedGet.mockResolvedValueOnce([classroom]);
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce({
+      totalStudents: 0,
+      activeStudentsToday: 0,
+      byStage: [],
+      helpButtonUsageRate: 0,
+    });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Turma Azul'));
+
+    expect(await screen.findByRole('radiogroup', { name: 'Visão do painel da turma' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Por aluno' })).toHaveAttribute('data-state', 'on');
+  });
+
+  it('3.11: the classroom card shows the join code as a visually distinct meta line, not just a raw button', async () => {
+    mockedGet.mockResolvedValueOnce([classroom]);
+
+    renderPage();
+
+    const title = await screen.findByText('Turma Azul');
+    expect(title).toHaveClass('ui-card__label');
+    expect(await screen.findByText(/Código: AZUL-1/)).toHaveClass('ui-card__meta');
+  });
+
+  it('3.11: "← Voltar" navigates via a real link, styled like a button, never a bare text link', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const back = await screen.findByRole('link', { name: /voltar/i });
+    expect(back).toHaveAttribute('href', '/home');
+    expect(back).toHaveClass('ui-button');
+  });
 });

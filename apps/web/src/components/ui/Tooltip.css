@@ -1,0 +1,16 @@
+.ui-tooltip {
+  max-width: 220px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 0.85rem;
+  /* Sem animation-name/keyframes de entrada — Radix não aplica nenhuma por
+     ser headless; não adicionamos uma aqui de propósito (AC "nasce sem
+     transição/animação de entrada"). */
+}
+
+.ui-tooltip__arrow {
+  fill: var(--color-text);
+}

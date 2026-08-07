@@ -1,0 +1,89 @@
+.template-parameter-field {
+  border: 1px solid var(--color-border, #d7dbe0);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.template-parameter-field[data-invalid='true'] {
+  border-color: var(--color-danger, #c0392b);
+}
+
+.template-parameter-field__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.template-parameter-field__icon {
+  font-size: 1.25rem;
+}
+
+.template-parameter-field__label {
+  font-weight: var(--font-weight-heading, 600);
+}
+
+.template-parameter-field__help {
+  margin: 0;
+  color: var(--color-text-muted, #5a6472);
+  font-size: var(--font-size-small, 0.875rem);
+}
+
+.template-parameter-field__control-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.template-parameter-field__control {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.template-parameter-field__control input[type='number'] {
+  width: 100%;
+  min-height: var(--hit-area-min, 56px);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #d7dbe0);
+  font-size: 1rem;
+}
+
+.template-parameter-field__percentage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.template-parameter-field__percentage input[type='range'] {
+  flex: 1;
+  min-height: var(--hit-area-min, 56px);
+}
+
+.template-parameter-field__percentage-value {
+  min-width: 3.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.template-parameter-field__block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.template-parameter-field__preview {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.template-parameter-field__empty {
+  margin: 0;
+  color: var(--color-text-muted, #5a6472);
+  font-size: var(--font-size-small, 0.875rem);
+}

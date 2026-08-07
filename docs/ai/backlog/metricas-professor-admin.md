@@ -506,6 +506,43 @@ produção.
 **Dados/Eventos usados:** `interaction_events` bruto (sem agregação),
 mais a tabela de auditoria de export (nova).
 
+**Status: ✅ Implementado** (`apps/api/src/metrics/metrics-admin-export.
+service.ts` + `apps/api/src/audit/` + `apps/api/src/metrics/csv.ts`,
+testado em `metrics-admin-export.service.spec.ts`,
+`metrics-admin.controller.spec.ts`, `audit.service.spec.ts`, `csv.spec.ts`
+e nos testes novos de `EventsService`/`SchoolsService`; tela em
+`apps/web/src/routes/metrics/AdminExport.tsx`). Divergências/detalhes do
+desenho original abaixo:
+
+- `GET /metrics/admin/export?schoolId=&challengeId=&from=&to=&format=json|csv&page=&pageSize=`
+  — os 3 filtros do desenho original (`schoolId`/`challengeId`/período) e
+  mais `page`/`pageSize` (paginação sempre ativa, máximo 500/página — ver
+  próximo bullet), não citados no rascunho original mas necessários pra
+  cumprir "não é uma rota de baixar a tabela inteira de uma vez" mesmo num
+  recorte só por escola/desafio sem período.
+- **AC "paginação OU limite de intervalo" virou os DOIS, não um ou
+  outro** — paginação sempre ativa (qualquer filtro) + limite de 90 dias
+  quando período é usado. Um recorte só por escola/desafio (sem período)
+  não tinha, no desenho original, nenhum teto de volume — a paginação
+  cobre esse caso que o "OU" original deixava aberto.
+- **Escola resolve pra TODO aluno já matriculado, não só os ativos hoje**
+  (`SchoolsService.findAllStudentPseudoIdsBySchool`, método novo,
+  diferente do `findActiveStudentsBySchool` que 6.2 já usava) — decisão
+  não explícita no desenho original: pesquisa quer o histórico completo da
+  escola, um aluno que trocou de turma não deveria sumir do dado
+  exportável.
+- **`AuditModule` é módulo próprio** (`apps/api/src/audit/`, não dentro de
+  `MetricsModule`) — telemetria de staff é uma preocupação transversal,
+  reaproveitável por qualquer feature futura de admin/professor que
+  precise do mesmo padrão "quem fez o quê, quando".
+- **Rate limit via `@nestjs/throttler`** (`ThrottlerModule.forRoot`,
+  5 requisições/admin/minuto), só na rota `export` — dependência nova, mas
+  mínima e oficial do ecossistema Nest; primeiro rate limit do projeto
+  (login continua sem, ver "Próximos passos" em `backend.md`).
+- CSV é gerado por uma função pura própria (`metrics/csv.ts`, RFC 4180) —
+  sem lib nova, mesmo raciocínio de `statistics.ts` não depender de
+  `PERCENTILE_CONT` do banco.
+
 ---
 
 ## Ordem de implementação sugerida
@@ -515,6 +552,6 @@ M6. M2/M3 ficam depois de M4 apesar de serem "o pedido do professor" porque
 dependem da decisão de escopo em aberto (turma vs. escola) — melhor destravar
 essa decisão enquanto M4 (que não depende dela) já está em progresso.
 
-**M1, M2, M3, M4 e M5 implementados** (ver "Status: ✅ Implementado" em cada
-seção acima) — falta só M6 (exportação bruta pra pesquisa, exclusivo do
-admin).
+**M1–M6 implementados** (ver "Status: ✅ Implementado" em cada seção
+acima) — este documento está completo; toda feature planejada no painel de
+métricas de professor/admin já existe em produção.

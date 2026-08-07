@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { completeLogin } from '../../lib/authFlow';
+import { Button } from '../../components/ui';
 import './StaffLogin.css';
 
 // 1.2.1 — fluxo admin: e-mail + senha + segundo fator. "otp" nunca aparece
@@ -29,7 +30,7 @@ export function AdminLogin() {
   }
 
   return (
-    <main className="staff-login">
+    <main className="staff-login staff-theme">
       <h1>Entrar como administrador(a)</h1>
       <form onSubmit={handleSubmit}>
         {error && <p className="staff-login__error">{error}</p>}
@@ -63,9 +64,9 @@ export function AdminLogin() {
             required
           />
         </label>
-        <button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="staff-login__submit">
           {loading ? 'Entrando…' : 'Entrar'}
-        </button>
+        </Button>
       </form>
     </main>
   );

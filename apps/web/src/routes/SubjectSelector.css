@@ -13,41 +13,16 @@
   margin-bottom: var(--space-4);
 }
 
-.subject-selector__item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  min-height: 56px;
-  font-size: 1.1rem;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
-  text-align: left;
-}
+/* Card selecionável e botão de confirmação vêm de
+   components/ui/Card (SelectableCard) e components/ui/Button (3.10) —
+   nada de estilo próprio pra isso aqui. */
 
-.subject-selector__item--selected {
-  border-color: var(--color-primary);
-}
-
-.subject-selector__icon {
-  font-size: 1.5rem;
-}
-
-.subject-selector__confirm {
-  font-size: 1.1rem;
-  padding: var(--space-2) var(--space-4);
-  min-height: 48px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-bg);
-  cursor: pointer;
-}
-
-.subject-selector__confirm:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* 4.3 — "Desafios da sua turma", separado visualmente dos módulos
+   curriculares (nunca no mesmo <ul>/fluxo de seleção+confirmação, pra não
+   confundir os dois tipos de navegação — módulo abre uma sequência,
+   desafio da turma abre direto). */
+.subject-selector__classroom-challenges {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border, #d7dbe0);
 }

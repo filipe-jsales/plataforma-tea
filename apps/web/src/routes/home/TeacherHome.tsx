@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { LinkButton } from '../../components/ui';
 import './Home.css';
 
 interface TeacherHomeClassroom {
@@ -25,14 +25,16 @@ export function TeacherHome() {
   if (!user) return null;
 
   return (
-    <main className="home">
+    <main className="home staff-theme">
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
-        <Link to="/teacher/metrics" className="home__action">
-          <span className="home__action-icon">📈</span>
+        <LinkButton to="/teacher/metrics" icon="📈">
           Painel da turma (progresso por aluno)
-        </Link>
+        </LinkButton>
+        <LinkButton to="/teacher/challenges" icon="🧩">
+          Meus desafios
+        </LinkButton>
       </div>
 
       {classrooms && classrooms.length === 0 && <p>Nenhuma turma atribuída ainda.</p>}

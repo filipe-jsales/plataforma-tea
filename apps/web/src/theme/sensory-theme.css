@@ -29,6 +29,62 @@
   /* Duração/curva de transição — só têm efeito quando data-motion="full". */
   --motion-duration: 180ms;
   --motion-easing: ease-out;
+
+  /*
+    3.10 — tokens de interação compartilhados por todo componente em
+    components/ui/. Área de toque mínima (RQ4 coordenação motora fina,
+    21,74%) e anel de foco visível (nunca removido sem substituto) — um
+    único lugar pra mudar o valor em vez de espalhar "56px"/"3px solid" por
+    CSS de componente.
+  */
+  --hit-area-min: 56px;
+  --hit-gap-min: 8px;
+  --focus-ring-width: 3px;
+  --focus-ring-color: var(--color-primary);
+  --focus-ring-offset: 2px;
+
+  /*
+    3.11 — escala tipográfica única dos 3 módulos (aluno/professor/admin).
+    Definida uma vez aqui; index.css (h1/h2/h3/p crus) e
+    components/ui/Typography.css (<Heading>/<Text>) leem os MESMOS tokens —
+    nunca um tamanho/line-height inventado numa tela específica. O bug
+    "título/subtítulo sobrepostos" dos prints de professor/admin era
+    especificamente `line-height` ausente (herdado de um h1 de 56px sem
+    line-height do template Vite nunca limpo, ver index.css) — line-height
+    proporcional ao tamanho da fonte, nunca um valor fixo em px que quebra
+    ao trocar de nível.
+  */
+  --font-size-h1: 1.75rem;
+  --font-size-h2: 1.4rem;
+  --font-size-h3: 1.15rem;
+  --font-size-body: 1rem;
+  --font-size-small: 0.875rem;
+  --line-height-heading: 1.25;
+  --line-height-body: 1.5;
+  --font-weight-heading: 700;
+  --font-weight-body: 400;
+
+  /*
+    3.11 — grid de página compartilhado entre professor e admin (AC "mesmo
+    grid... hoje ambos parecem centralizados sem largura máxima definida").
+    1080px é o valor que TeacherMetrics/AdminMetrics já usavam individualmente
+    antes desta feature — promovido a token único em vez de repetido por
+    tela. Telas do aluno (Home/SubjectSelector/OnboardingSensorial) têm
+    largura mais estreita de propósito — fluxo de single-column, não um bug —
+    e continuam com seu próprio max-width, não usam este token.
+  */
+  --page-max-width: 1080px;
+
+  /*
+    3.11 — elevação. `none` por padrão (aluno: só borda simples, ver
+    components/ui/Card.css) — `.staff-theme` (theme/staff-theme.css) é quem
+    dá valor real a estes tokens. Declarados aqui, não só via fallback do
+    var(), pra deixar explícito que elevação É um token do sistema, não uma
+    sombra inventada numa tela específica.
+  */
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-modal: none;
 }
 
 /* Alto contraste, opt-in (RF de acessibilidade — rotulagem redundante, nunca só cor). */
@@ -46,13 +102,34 @@ body {
 }
 
 /*
+  3.11 — grid de página compartilhado (professor/admin, ver --page-max-width
+  acima). Substitui o `max-width`/`margin: auto` que cada tela de staff
+  repetia no próprio CSS (TeacherMetrics.css/AdminMetrics.css/etc já usavam
+  1080px cada uma, na mão) — um único lugar pra mudar a largura de página do
+  produto inteiro.
+*/
+.page {
+  max-width: var(--page-max-width);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+  padding-block-end: var(--space-5);
+}
+
+/*
   Sem animação por padrão: motion só é habilitado quando o próprio usuário liga
   E o SO não pediu "reduzir movimento". Respeita prefers-reduced-motion sempre,
   mesmo que o aluno tenha ativado animações nas configurações da plataforma.
+
+  3.11: `.staff-theme` (ver theme/staff-theme.css) é a ÚNICA exceção — área
+  de professor/admin não tem a barreira sensorial do aluno (RQ4), então pode
+  ter microanimação (hover de botão, abertura de dropdown) sem depender do
+  opt-in do aluno. A exceção vive aqui, não em staff-theme.css, porque
+  reescrever esta regra de fora (especificidade/ordem de import) seria
+  frágil — um único lugar decide quem fica de fora do reset.
 */
-:root:not([data-motion='full']) *,
-:root:not([data-motion='full']) *::before,
-:root:not([data-motion='full']) *::after {
+:root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *),
+:root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *)::before,
+:root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *)::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;

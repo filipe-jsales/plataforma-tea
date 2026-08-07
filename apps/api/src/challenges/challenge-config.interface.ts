@@ -50,7 +50,13 @@
 export type ChallengeStage = 'use' | 'modify' | 'create';
 
 export interface SquareGoalConfig {
-  shape: 'square';
+  // Ampliado de propósito (4.2 — desafios via template do professor): além
+  // do quadrado seed original ('square'), agora também representa qualquer
+  // polígono regular gerado pelo template `regular_polygon` (ex.: 'regular_
+  // polygon') — a matemática de fechamento (turtleWorld.ts) já era genérica
+  // por sides/turnAngleDeg desde sempre, só o literal de tipo estava restrito
+  // ao caso seed original.
+  shape: string;
   sides: number;
   turnAngleDeg: number;
 }
@@ -113,6 +119,14 @@ export interface ChallengeConfig {
   // renderiza com `readOnly: false`, sem toolbox, blocos não-móveis/não-
   // deletáveis, e só os campos aqui listados aceitando edição.
   editableFields?: EditableFieldConfig[];
+  // 4.2 — tolerância de encaixe (0-100%) escolhida pelo professor num
+  // desafio criado via template (ver challenge-templates/). Ausente em
+  // desafios curados via seed (comportamento default do Blockly, ver
+  // apps/web/src/lib/blocklyToolbox.ts#applyGenerousSnapTolerance). Nunca
+  // 0 — validado como parâmetro pedagógico inválido pelo handler do
+  // template antes de o desafio poder ser salvo (RQ4, coordenação motora
+  // fina).
+  snapTolerancePercent?: number;
 }
 
 export function isChallengeConfig(value: unknown): value is ChallengeConfig {

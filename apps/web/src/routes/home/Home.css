@@ -14,23 +14,8 @@
   gap: var(--space-3);
 }
 
-.home__action {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  min-height: 56px;
-  font-size: 1.1rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  cursor: pointer;
-  text-align: left;
-}
-
-.home__action-icon {
-  font-size: 1.5rem;
-}
+/* Botões de ação vêm de components/ui/LinkButton (3.11) — home__action*
+   foi removido daqui. */
 
 .home__progress-detail {
   margin-top: var(--space-2);
@@ -52,6 +37,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  /* `none` fora de `.staff-theme` — mesmo token de elevação de Card.css
+     (3.11), aplicado aqui direto porque este item de lista não passa pelo
+     SelectableCard (não é selecionável, só informativo). */
+  box-shadow: var(--shadow-card);
 }
 
 .home__list-item-name {
@@ -75,6 +64,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 

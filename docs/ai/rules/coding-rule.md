@@ -186,6 +186,19 @@ decisão a cada feature:
 - Editor de blocos: `blockly` + `react-blockly`. Mundo/personagem que executa
   o código: `pixi.js`, isolado em componente próprio, comunicando por state
   (nunca acoplado diretamente ao DOM do Blockly).
+- Elemento interativo novo em QUALQUER módulo (aluno, professor, admin —
+  botão, link, toggle, card selecionável, aba/segmented control, dropdown,
+  tabela, badge, tooltip, modal) usa `components/ui/` (3.10/3.11 — Radix UI
+  headless pros primitivos estruturais, React Aria só onde Radix não cobre,
+  ex.: card clicável) em vez de `<button>`/`<select>`/CSS cru — é o que
+  garante área de toque mínima 56×56, rótulo ícone+texto e foco visível sem
+  cada tela reimplementar isso. A diferença entre aluno e professor/admin é
+  só TEMA (cor mais rica, elevação, microanimação — classe `.staff-theme`,
+  ver `theme/staff-theme.css`), nunca fundação de componente: nenhuma tela
+  de professor/admin nasce de HTML puro só porque "a regra sensorial não se
+  aplica aqui" — ela ainda usa `components/ui/`, só sem a restrição
+  sensorial do aluno. Ver "Sistema de design compartilhado (professor/
+  admin, 3.11)" em `docs/ai/modules/frontend.md`.
 
 ### Geral
 

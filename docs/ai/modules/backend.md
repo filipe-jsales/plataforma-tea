@@ -53,12 +53,31 @@ apps/api/src/
 │   ├── blocks.service.ts
 │   └── blocks.module.ts
 ├── challenges/
-│   ├── entities/challenge.entity.ts  # config.toolbox — ver seção "Blocos por desafio"
+│   ├── entities/challenge.entity.ts  # config.toolbox + templateId/templateParams/createdByUserId (4.2)
 │   ├── challenge-config.interface.ts  # forma tipada de Challenge.config
 │   ├── block-progression.ts     # valida a regra Use-Modify-Create (AC2)
-│   ├── challenges.service.ts
+│   ├── challenges.service.ts    # + CRUD escopado ao professor autor (4.2)
 │   ├── challenges.controller.ts # GET /challenges/{by-topic/:topicId,:id} — aluno só
 │   └── challenges.module.ts
+├── challenge-templates/         # 4.2 — Modo Template, ver seção própria abaixo
+│   ├── entities/challenge-template.entity.ts  # catálogo curado (tabela, não enum)
+│   ├── challenge-template-parameter.interface.ts  # schema genérico de campo do formulário
+│   ├── handlers/
+│   │   ├── challenge-template-handler.interface.ts
+│   │   ├── regular-polygon.handler.ts  # único template do MVP (geometria)
+│   │   └── template-registry.ts        # key → handler — único ponto que muda por template novo
+│   ├── dto/{template-params,save-template-challenge}.dto.ts
+│   ├── challenge-templates.service.ts       # galeria/formulário/preview/criação
+│   ├── challenge-templates.controller.ts    # GET/POST /challenge-templates...
+│   ├── teacher-challenges.controller.ts     # GET/PATCH/DELETE /teacher/challenges/:id (AC5/AC6)
+│   └── challenge-templates.module.ts
+├── challenge-allocations/       # 4.3 — vínculo desafio↔turma, ver seção própria
+│   ├── entities/challenge-classroom-allocation.entity.ts  # tabela de associação N:N
+│   ├── dto/allocate-challenge.dto.ts
+│   ├── challenge-allocations.service.ts
+│   ├── teacher-challenge-allocations.controller.ts    # /teacher/challenges/:id/allocations
+│   ├── student-classroom-challenges.controller.ts     # /students/me/classroom-challenges
+│   └── challenge-allocations.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
 │   ├── dto/create-event.dto.ts
@@ -75,15 +94,22 @@ apps/api/src/
 │   ├── settings.controller.ts   # GET/PATCH /admin/settings
 │   ├── settings.service.ts
 │   └── settings.module.ts
+├── audit/
+│   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
+│   ├── audit.service.ts
+│   └── audit.module.ts
 ├── metrics/
 │   ├── statistics.ts             # 6.5 — motor estatístico puro (mean/median/stdDev/quartis/histogramas)
+│   ├── csv.ts                    # 6.6 — serializador CSV puro (RFC 4180), sem lib nova
+│   ├── dto/export-events-query.dto.ts  # 6.6
 │   ├── metrics.service.ts        # 6.1 — motor único de status/progresso por desafio
 │   ├── metrics-admin.service.ts  # 6.2 — visão institucional (escolas/turmas/professores)
 │   ├── metrics-admin-challenge.service.ts  # 6.5 — relatório de profundidade por desafio
-│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...]}
+│   ├── metrics-admin-export.service.ts  # 6.6 — exportação bruta pra pesquisa
+│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...],export}
 │   ├── metrics-teacher.service.ts   # 6.3/6.4 — progresso por turma do professor
 │   ├── metrics-teacher.controller.ts  # GET /metrics/teacher/classrooms/:id/{students,summary}
-│   └── metrics.module.ts
+│   └── metrics.module.ts        # importa AuditModule + ThrottlerModule.forRoot (6.6)
 ├── database/
 │   ├── data-source.ts           # DataSource p/ CLI de migrations (fora do Nest DI)
 │   └── migrations/              # uma migration por mudança de schema
@@ -193,7 +219,9 @@ professor/admin. Por isso:
 Se um caso de uso futuro precisar de telemetria operacional real de
 professor/admin, isso é uma tabela nova (ou um `type`/schema explicitamente
 pensado pra isso), não um forçar de pseudônimo de staff dentro de
-`studentPseudoId`.
+`studentPseudoId` — ver `ExportAuditLog` (`AuditModule`, 6.6) pro primeiro
+caso real disso ("quem exportou o quê, quando"), na seção "Exportação de
+dados brutos pra pesquisa" abaixo.
 
 ## Blocos por desafio (RQ4 — sobrecarga cognitiva/abstração, 39,13%)
 
@@ -250,13 +278,21 @@ mesmo `ChallengesController.buildDetailOrThrow`. O mecanismo:
   `block-progression.spec.ts` — não uma trava em runtime por aluno (só faz
   sentido travar por aluno quando existir um desafio `modify`/`create` de
   verdade pra travar contra).
-- **Sem autoria de toolbox pelo professor nesta versão.** O backlog da
-  feature cita "config JSON gerada pelo professor via camada visual" como
-  dependência — decisão explícita (a pedido de quem propôs a feature): em
-  vez de construir essa camada de autoria visual, o conteúdo (`blocks` +
-  `Challenge.config`) é curado via seed/migration, e o professor não
-  programa nada. Não existe hoje "professor escolhe entre desafios" — a
-  sequência de um tópico é fixa (por `position`), a mesma pra todo aluno.
+- **Sem autoria de toolbox LIVRE pelo professor.** O backlog original da
+  feature de blocos cita "config JSON gerada pelo professor via camada
+  visual" como dependência — decisão explícita à época: em vez de construir
+  essa camada, o conteúdo (`blocks` + `Challenge.config`) era curado 100%
+  via seed/migration. **Isso mudou parcialmente em 4.2** (ver seção
+  "Configuração de desafio via formulário guiado — Modo Template" abaixo):
+  o professor agora cria desafio escolhendo um TEMPLATE pré-montado e
+  ajustando parâmetros pedagógicos num formulário — nunca escrevendo/vendo
+  `Challenge.config`, XML ou JSON do Blockly diretamente. A sequência
+  Use→Modify→Create de um tópico (curada via seed) continua fixa e igual
+  pra todo aluno; um desafio criado via template é um desafio adicional,
+  autoral do professor, fora dessa sequência forçada (ver
+  `findByTopicIdOrdered` na seção nova). "Modo Customizado" (liberdade
+  total sobre a estrutura do bloco-alvo, sem template) continua não
+  implementado — fora do escopo de 4.2 por decisão explícita do card.
 
 ### Sequência Use→Modify→Create completa (3.4)
 
@@ -378,10 +414,13 @@ documentada):**
    hoje um teste automatizado que trave essa igualdade se um dos dois
    `program` for editado no futuro sem tocar o outro; ver "Próximos passos".
 2. **Cobertura agregada de PRIMM (checagem "4.7"/campo `primm_stages_covered`
-   de autoria "4.5").** Nenhum dos dois existe nesta base de código —
-   autoria de desafio pelo professor (4.5) foi explicitamente adiada (ver
-   "Sem autoria de toolbox pelo professor nesta versão" acima), e não há
-   verificador agregado de cobertura PRIMM em runtime (4.7). A cobertura
+   de autoria "4.5").** Nenhum dos dois existe nesta base de código — nem
+   um campo `primm_stages_covered` por desafio nem um verificador agregado
+   de cobertura PRIMM em runtime (4.7). Note que "autoria de desafio pelo
+   professor" citada aqui como "4.5" é uma numeração de backlog distinta
+   de "4.2" (Modo Template, ver seção própria acima) — 4.2 implementa
+   CRIAÇÃO de desafio via template, não a checagem de cobertura PRIMM que
+   este item descreve; os dois continuam não implementados. A cobertura
    documentada nesta seção é garantida pela estrutura do seed/config,
    verificável por leitura direta — não por um mecanismo de aviso que
    "fecha sozinho". Quando 4.5/4.7 forem implementados: o valor certo de
@@ -423,6 +462,277 @@ frontend via `lib/editableFields.ts`); `result_matched_prediction` compara a
 previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
 realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
 traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
+
+## Configuração de desafio via formulário guiado — Modo Template (4.2)
+
+RQ4 — barreira institucional/formação docente (17,39%): o professor cria um
+desafio novo escolhendo um **template pré-montado de uma biblioteca
+curada** (hoje 1, geometria: "Desenhar um polígono regular") e ajustando só
+parâmetros pedagógicos expostos como campos de formulário simples (nº de
+lados, ângulo de giro, tolerância de encaixe, paleta de blocos habilitada).
+**Em nenhum momento — galeria, formulário, erro de validação, preview —
+o professor vê/edita XML, JSON ou qualquer estrutura interna do Blockly**
+(regra não-negociável 9). Este card implementa exclusivamente o Modo
+Template; "Modo Customizado" (liberdade total sobre a estrutura do
+bloco-alvo, sem template) é outro card, não implementado.
+
+### Nota de pesquisa: por que dado+handler-por-key, não 100% dado
+
+`ChallengeTemplate` (a linha de catálogo — nome, ícone, descrição,
+`parameterSchema`) segue o mesmo padrão de `blocks`/`subjects` (tabela, não
+enum fixo). Mas VALIDAÇÃO pedagógica ("3 lados com 200° de giro não fecha
+um polígono") e a TRADUÇÃO parâmetros→`Challenge.config` não podem ser
+100% dado sem reinventar uma linguagem de regras genérica — o tipo de
+complexidade que este projeto já decidiu evitar (mesma lógica de "sem
+autoria de toolbox LIVRE pelo professor", ver seção "Blocos por desafio"
+acima). Por isso o desenho tem duas metades:
+
+- **Metadata é dado**, cresce sem deploy: `ChallengeTemplate.parameterSchema`
+  (`challenge-template-parameter.interface.ts`) descreve cada campo do
+  formulário — `type` (`integer | percentage | boolean | blockSelection`),
+  `label`/`icon` (sempre os dois — rotulagem redundante, RQ4), `min`/`max`,
+  `defaultValue`, `visualPreview` (qual miniatura mostrar, ver frontend.md)
+  e, só pra `blockSelection`, `candidateBlockTypes`.
+- **Lógica é uma classe pequena por `key`** — `ChallengeTemplateHandler`
+  (`handlers/challenge-template-handler.interface.ts`): `validateParameters`
+  (linguagem pedagógica, nunca "erro de schema"), `buildChallengeConfig`
+  (a única "tradução" formulário→estrutura interna, feita SÓ aqui) e
+  `buildPreviewGoal` (o suficiente pro preview no Pixi). Registrada em
+  `handlers/template-registry.ts` — **cadastrar um template novo é 1 linha
+  na tabela + 1 classe + 1 entrada no registry; nenhum outro arquivo deste
+  módulo, do `ChallengesModule` ou do frontend muda.** É o que responde
+  literalmente ao pedido de "reutilizável/escalável… sem refazer tudo do
+  zero pra cada novo desafio" — geometria é só o primeiro template, não uma
+  suposição embutida em nenhum service/controller/tela.
+
+### `RegularPolygonTemplateHandler` — único template do MVP
+
+Parâmetros: `sides` (3-12), `turnAngleDeg` (1-359), `snapTolerancePercent`
+(10-100), `enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação
+real, não decorativa:
+
+- **Fechamento geométrico** — `sides × turnAngleDeg` precisa ser múltiplo
+  de 360°; senão, mensagem pedagógica com sugestão de ângulo válido
+  (`360 ÷ sides`) — é literalmente o exemplo do card ("3 lados com 200° não
+  fecha um polígono").
+- **Tolerância de encaixe nunca 0%** (mínimo 10%) — 0% impediria o aluno de
+  encaixar qualquer bloco (RQ4, coordenação motora fina); ver
+  `snapTolerancePercent` abaixo pra como isso vira efeito real no editor,
+  não só um número guardado.
+- **Regra de progressão Use-Modify-Create também vale pro desafio do
+  professor**: `enabledBlockTypes` só pode conter blocos já introduzidos
+  num desafio `stage: 'use'` do MESMO tópico (`ChallengeTemplatesService.
+  getIntroducedBlockTypes`, reaproveitando `ChallengesService.
+  findByTopicIdOrdered`) — um professor não pode habilitar um bloco que o
+  aluno nunca viu introduzido, mesma regra de currículo de
+  `block-progression.ts`, só que verificada em runtime aqui (lá é só
+  checagem de autoria de seed).
+- Sem parâmetro de "ângulos negativos": decisão deliberada, não uma lacuna
+  esquecida — o bloco `turn` (ver "Blocos por desafio" acima) já expõe
+  `DIR` (LEFT/RIGHT) mas não tem hoje um jeito de restringir esse campo
+  por-desafio (diferente de `editableFields`, que é só pra fase `modify`
+  sobre um `program` pré-montado, não pra toolbox livre da fase `create`).
+  Adicionar o toggle sem um jeito real de aplicá-lo seria expor uma
+  configuração que não faz nada — contradiz a persona do projeto (não
+  fabricar parâmetro decorativo). Documentado aqui pra quem for adicionar
+  suporte real no futuro, não implementado como placeholder.
+
+`buildChallengeConfig` sempre produz `stage: 'create'` (editor livre — o
+template não autora Use/Modify, só o desafio de "mão na massa" final) com
+`goal: { shape: 'regular_polygon', sides, turnAngleDeg }` — reaproveita
+100% do motor geométrico já existente (`turtleWorld.ts`:
+`evaluateSquareGoal`/`closedPolygonSides`/`buildGoalPreviewPath`), sem
+nenhuma mudança de engine. `SquareGoalConfig.shape` foi ampliado de
+`'square'` (literal) pra `string` só por causa disso — a matemática de
+fechamento já era genérica por `sides`/`turnAngleDeg` desde sempre.
+
+### `snapTolerancePercent` — parâmetro que afeta o editor de verdade
+
+`Challenge.config` ganhou `snapTolerancePercent?: number`, devolvido em
+`ChallengeDetail.snapTolerancePercent` (`ChallengesController`, `null` pro
+currículo seedado). O frontend (`blocklyToolbox.applyGenerousSnapTolerance`)
+passou a aceitar um percentual e reescala `dragRadius`/`snapRadius`/
+`connectingSnapRadius` a partir dele, reaplicado a cada desafio carregado
+(não só uma vez no load do módulo) — ver frontend.md. Existe
+especificamente pra AC3 não virar teatro: rejeitar "0% de tolerância" no
+formulário só tem sentido pedagógico se um valor válido REALMENTE mudar o
+comportamento do editor pro aluno.
+
+### Autorização e escopo — desafio do professor nunca entra na sequência forçada
+
+`Challenge` ganhou três colunas (`templateId`, `templateParams` jsonb,
+`createdByUserId`) — ver database.md. Duas decisões de escopo, ambas em
+`ChallengesService`:
+
+- **`findByTopicIdOrdered` (a sequência OFICIAL Use→Modify→Create de um
+  tópico, usada por `ChallengesController.getByTopic`/resolução de
+  `nextChallengeId`, e por `MetricsTeacherService`/
+  `MetricsAdminChallengeService`) agora filtra `createdByUserId IS NULL`.**
+  Não existe hoje mecanismo de "atribuir/publicar desafio pra turma" (fora
+  do escopo de 4.2) — seria um risco real inserir automaticamente conteúdo
+  não curado no fluxo obrigatório de TODOS os alunos do tópico só porque um
+  professor criou um desafio novo. Um desafio de professor continua
+  acessível por link direto (`GET /challenges/:id`, sem filtro — a rota de
+  acesso direto do aluno não muda), só não participa do "Avançar"
+  automático nem aparece na sequência forçada. `findMaxPositionInTopic`
+  (nova, sem esse filtro) garante que a `position` de um desafio novo nunca
+  colide com a de outro, currículo ou professor.
+- **`findByIdForOwner(id, teacherId)`** é a checagem de posse usada por
+  toda rota de edição/exclusão (AC5/AC6) — devolve `null` tanto pra desafio
+  inexistente quanto pra desafio de outro professor/do currículo, nunca
+  vazando "existe mas não é seu".
+
+### Endpoints (`ChallengeTemplatesModule`, sempre `@Roles(Role.TEACHER)`)
+
+- `GET /challenge-templates` (AC1, galeria) — `{ id, key, name, description,
+  icon }[]`, nunca o nome técnico do bloco Blockly.
+- `GET /challenge-templates/:id` (AC2, formulário) — `parameterSchema`
+  já resolvido: pra `blockSelection`, `options` vem filtrado pelos blocos
+  já introduzidos no tópico (ver acima) com `label` do catálogo `blocks`
+  (nunca `blockType` cru como rótulo).
+- `POST /challenge-templates/:id/preview` (AC3 + AC4, um endpoint só pras
+  duas coisas) — sempre `200`, nunca lança pra validação pedagógica:
+  `{ valid, errors: [{ parameterKey, message }], goal }` — `goal` só
+  presente quando `valid`. O frontend chama isto tanto pro botão
+  "Visualizar como aluno" quanto como pré-checagem antes de "Salvar" (ver
+  frontend.md) — o mesmo mecanismo de validação nunca diverge entre as duas
+  telas.
+- `POST /challenge-templates/:id/challenges` — cria o desafio
+  (`stage: 'create'`, `position` = máxima do tópico + 1, `templateParams`
+  = os parâmetros exatamente como o professor preencheu). Revalida
+  server-side (defesa em profundidade — a tela sempre chama `/preview`
+  antes) com `400 BadRequestException` cuja mensagem é a junção das
+  mensagens pedagógicas do handler, nunca "erro de validação" genérico.
+- `GET/PATCH/DELETE /teacher/challenges/:id` + `GET /teacher/challenges`
+  (`TeacherChallengesController`, AC5/AC6) — "Meus desafios": mesmos dois
+  campos (título + parâmetros) tanto pra criar quanto editar, nunca
+  `Challenge.config` bruto na resposta. Duplicar (AC6) não é um endpoint
+  próprio — o frontend busca o desafio de origem via `GET
+  /teacher/challenges/:id` e reabre a tela de criação com os mesmos valores
+  pré-preenchidos + `POST .../challenges` com um título novo, nunca clona
+  `config` diretamente.
+
+### RD-C — parâmetros nunca descartados (RQ5)
+
+`Challenge.templateParams` persiste exatamente os parâmetros que o
+professor escolheu (nº de lados, ângulo, tolerância, blocos) — nunca
+descartado depois de virar `config` (a AC de rastreabilidade do card, "RD-C
+… necessários pra RQ5: qual configuração curricular foi usada por qual
+turma"). Diferente de todo outro dado desta feature, isto NÃO vira um
+`interaction_event`: ações de professor/admin não emitem evento RD-* (ver
+"Padrão: eventos RD-* são escopados ao aluno" acima) — a coluna no próprio
+`Challenge` é o mecanismo de persistência aqui, correlacionável depois via
+`interaction_events.challengeId` (já FK real) pra qualquer análise
+longitudinal que precise saber "com que configuração curricular este aluno
+interagiu".
+
+### Testes
+
+`regular-polygon.handler.spec.ts` — a peça com regra de negócio de
+verdade: fechamento geométrico (inclusive o exemplo literal do card),
+tolerância mínima, regra de progressão de blocos, e que `buildChallengeConfig`/
+`buildPreviewGoal` nunca expõem `allowedBlockTypes`/estrutura de blocos no
+preview. `challenge-templates.service.spec.ts` cobre a resolução de
+`blockSelection.options` filtrada, o bloqueio de criação/edição inválida
+sem chamar `ChallengesService`, e a persistência de `templateParams`.
+`challenges.service.spec.ts` ganhou casos pro escopo `createdByUserId IS
+NULL` de `findByTopicIdOrdered` e pro CRUD novo.
+
+## Alocação de desafio a uma turma (4.3)
+
+Um desafio criado via 4.2 nasce só na biblioteca do professor — nenhum
+aluno alcança nada até o professor ALOCAR o desafio a uma turma. Sem essa
+alocação, o desafio existe como rascunho, nunca vaza pra área de nenhum
+aluno (AC3). Feature pequena e cirúrgica: 1 tabela de associação + 2
+controllers, nenhuma mudança nas features de 4.2.
+
+### Schema: `challenge_classroom_allocations`, N:N de propósito
+
+`ChallengeClassroomAllocation` (`challengeId`, `classroomId`,
+`allocatedByUserId`, `allocatedAt`, `UNIQUE(challengeId, classroomId)`) é
+uma tabela de associação clássica — a cardinalidade N:N que a AC6 pede (um
+desafio pode ir a várias turmas, uma turma pode ter vários desafios) é a
+FORMA NATURAL desse desenho, não uma concessão especial pro futuro. O MVP
+só valida 1 turma por desafio na UI/testes (ambiente de teste real: 1
+professor, 1 turma "Turma Demo"/`AZUL-1`, 1 aluno matriculado — conferido
+contra o banco seedado), mas nada no schema impede um professor real
+alocar o mesmo desafio a duas turmas simultaneamente.
+
+O vínculo aluno↔turma (a outra metade da cardinalidade N:N citada na AC6)
+**já existia** antes de 4.3 — é a `Enrollment` (1.5, ver "Modelagem de
+domínio" abaixo e `database.md`): histórico (`active`/`unenrolledAt`),
+schema já N:N-capaz (um aluno pode ter várias matrículas ao longo do
+tempo). 4.3 não mexe nela, só LÊ (`SchoolsService.
+findActiveEnrollmentsByStudent`, já existente) pra resolver a turma ativa
+do aluno. **Nota**: 1.5 (User Story "Vínculo aluno↔turma↔professor",
+telas de matrícula/transferência) continua sem endpoint/UI própria — só o
+MODELO de dado já suporta o histórico; ver "Endpoints CRUD para schools/
+classrooms/enrollments" em "Próximos passos" abaixo, que já apontava esse
+gap antes de 4.3 existir.
+
+### Nota de arquitetura: por que a alocação NÃO vira um `interaction_event`
+
+A AC7 pede "log RD-C: desafio_id, turma_id, professor_id,
+timestamp_alocacao". `interaction_events.studentPseudoId` é `NOT NULL` de
+propósito — o schema RD-* existe pra avaliar Pensamento Computacional do
+ESTUDANTE (RQ5), não telemetria de ação de professor (regra já aplicada a
+login de professor, a `templateParams` de 4.2, e agora aqui — ver "Padrão:
+eventos RD-* são escopados ao aluno" acima). A PRÓPRIA LINHA de
+`ChallengeClassroomAllocation` já contém os 4 campos que a AC pede — é o
+registro em si, não precisa duplicar num evento fake de aluno. RQ5 fica
+igualmente servido: cruzar `interaction_events.challengeId` com
+`challenge_classroom_allocations` responde "qual configuração curricular
+foi usada por qual turma, e desde quando" sem forçar um pseudônimo de
+staff onde o schema não prevê. Mesmo padrão de `templateParams` (4.2) e
+`ExportAuditLog` (6.6).
+
+### Autorização — professor só mexe no que é seu
+
+`ChallengeAllocationsService` checa DUAS posses antes de qualquer
+alocação/desalocação, nunca uma só: `ChallengesService.findByIdForOwner`
+(o desafio é deste professor — mesmo método que 4.2 já usa pra editar/
+excluir) e uma checagem de titularidade de turma (`classroom.teacherId ===
+teacherId`, mesmo racional de `MetricsTeacherService.assertOwnClassroom`,
+reimplementada aqui porque vive em módulo diferente). AC1 — "nunca todas
+as turmas da escola" — é garantido assim: a lista de turmas SELECIONÁVEIS
+na tela do professor vem de `GET /home/teacher` (2.1, já existente, já
+escopado ao professor autenticado — nenhum endpoint novo só pra listar
+"minhas turmas").
+
+### Endpoints
+
+- `GET/POST /teacher/challenges/:challengeId/allocations` +
+  `DELETE .../:classroomId` (`TeacherChallengeAllocationsController`,
+  `@Roles(TEACHER)`) — listar/ligar/desligar o vínculo. `POST` com
+  `classroomId` duplicado devolve `409 ConflictException` (mensagem clara,
+  nunca erro de constraint cru). `DELETE` remove só a linha de associação
+  (AC5) — `Challenge` e qualquer `interaction_events` já registrado
+  continuam intactos, porque nunca dependeram da alocação pra existir.
+- `GET /students/me/classroom-challenges` (`StudentClassroomChallengesController`,
+  `@Roles(STUDENT)`) — a "trilha" de desafios alocados à turma ATIVA do
+  aluno autenticado (AC2/AC3/AC4). Rota própria (`students/me/...`), não
+  `GET /challenges/...`: evita colidir com `ChallengesController` (`GET
+  /challenges/:id`, aluno-só, módulo diferente) — duas rotas dinâmicas
+  competindo pelo mesmo prefixo em módulos diferentes seria frágil de
+  manter correto conforme o projeto cresce.
+
+`ChallengeAllocationsService.findAvailableForStudent` resolve a turma via
+`SchoolsService.findActiveEnrollmentsByStudent` e usa só a PRIMEIRA
+matrícula ativa (MVP: 1 aluno = 1 turma, AC6) — decisão de leitura, não uma
+restrição imposta ao schema (`Enrollment` já suporta N:N, ver acima). Aluno
+sem matrícula ativa devolve lista vazia, nunca erro.
+
+### Testes
+
+`challenge-allocations.service.spec.ts` cobre as duas checagens de posse
+(desafio de outro professor, turma de outro professor — nunca "turma
+qualquer da escola"), o `409` de alocação duplicada, que `deallocate`
+nunca remove o `Challenge` em si, e que `findAvailableForStudent` escopa
+corretamente pela turma ativa e devolve `[]` sem matrícula. Os dois
+controllers (`teacher-challenge-allocations.controller.spec.ts`,
+`student-classroom-challenges.controller.spec.ts`) confirmam que o
+id de professor/aluno usado em toda chamada vem sempre do JWT
+(`req.user.sub`), nunca de um parâmetro manipulável pelo cliente.
 
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
@@ -543,8 +853,9 @@ com dataset canônico `[1..10]` conferido contra `numpy`). Duas razões:
 mantém a lógica testável sem depender de `PERCENTILE_CONT`/`STDDEV` do
 dialeto do banco, e reproduzível — os quartis usam interpolação linear
 (método R "type 7" / default de `numpy.percentile`) especificamente pra
-que o mesmo `p` aplicado ao mesmo dado bruto (exportável via M6, ainda não
-implementado) reproduza exatamente o número em R/Python.
+que o mesmo `p` aplicado ao mesmo dado bruto (exportável via 6.6, ver
+"Exportação de dados brutos pra pesquisa" abaixo) reproduza exatamente o
+número em R/Python.
 
 `MetricsAdminChallengeService` (`apps/api/src/metrics/
 metrics-admin-challenge.service.ts`) é o orquestrador: busca dado bruto via
@@ -604,6 +915,90 @@ se mostra o aviso de amostra pequena (AC de 6.5). Não vive dentro de
 importa `SettingsModule` pra `MetricsAdminChallengeService` poder ler o
 threshold.
 
+## Exportação de dados brutos pra pesquisa (6.6)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M6,
+"Status: ✅ Implementado"). Diferente de 6.2/6.5 (agregados prontos pra
+virar gráfico), aqui o admin escolhe um recorte (escola e/ou desafio e/ou
+período) e recebe as linhas de `interaction_events` quase cruas — RQ5 por
+completo: é o que efetivamente viabiliza usar o dado coletado desde o MVP
+num artigo/análise fora da plataforma, não só guardar num banco que
+ninguém consulta.
+
+`GET /metrics/admin/export?schoolId=&challengeId=&from=&to=&format=json|csv&page=&pageSize=`
+(`MetricsAdminController.exportEvents`, `@Roles(Role.ADMIN)`) —
+`MetricsAdminExportService` (`apps/api/src/metrics/
+metrics-admin-export.service.ts`) faz toda a validação e orquestração:
+
+- **Ao menos um filtro é obrigatório** (escola, desafio ou período — AC
+  explícita): nenhum dos três presentes é `400 BadRequestException` antes
+  de tocar o banco. Período é sempre os dois extremos juntos (`from` E
+  `to`) — só um dos dois também é `400`, nunca um intervalo aberto.
+- **Limite de 90 dias no período** (`MAX_PERIOD_DAYS`, `to` tratado como
+  fim do dia em UTC): acima disso, `400` com mensagem clara pedindo pra
+  reduzir o intervalo — nunca trunca silenciosamente nem deixa a query
+  correr contra o histórico inteiro (AC explícita, testada em
+  `metrics-admin-export.service.spec.ts`).
+- **Escola resolve pra pseudônimo antes de filtrar eventos**
+  (`SchoolsService.findAllStudentPseudoIdsBySchool`, novo) — TODO aluno já
+  matriculado na escola (qualquer turma, matrícula ativa ou encerrada), não
+  só os ativos de hoje (diferente de `findActiveStudentsBySchool`, 6.2): a
+  exportação de pesquisa quer o histórico completo, um aluno que trocou de
+  turma não deveria sumir do dado exportável. Escola sem nenhum aluno
+  matriculado devolve resultado vazio (não erro) — ainda assim conta como
+  "uma exportação realizada" e é auditada.
+- **Nunca um join que reintroduza `displayName`** (regra não-negociável
+  8, aplicada mesmo pro admin): a linha exportada é exatamente
+  `{ id, studentPseudoId, category, type, payload, sessionId, challengeId,
+  createdAt }` — as colunas de `InteractionEvent`, ponto. Quem precisar
+  cruzar pseudônimo↔turma faz isso numa exportação separada (dado de
+  `enrollments`), nunca na mesma planilha.
+- **Paginação sempre ativa** (`page`/`pageSize`, máximo 500 por página —
+  `ExportEventsQueryDto`) — não é uma rota de "baixar a tabela inteira de
+  uma vez", mesmo pra um recorte por escola/desafio sem período (que
+  sozinho não tem limite de intervalo). `EventsService.findEventsForExport`
+  pede `pageSize + 1` linhas de propósito: a resposta usa a linha extra só
+  pra calcular `hasMore`, sem precisar de um `COUNT(*)` separado.
+- **`format=csv`** monta o corpo via `metrics/csv.ts` (`toCsv`, função pura
+  RFC 4180 — sem lib nova) e escreve `Content-Type`/`Content-Disposition`
+  na mão via `@Res({ passthrough: true })`, porque só este formato precisa
+  de headers diferentes do JSON default do Nest.
+
+### Auditoria (`AuditModule`, `export_audit_logs`)
+
+**Primeiro registro de auditoria de admin/professor do projeto** — não
+existia tabela nenhuma pra "quem fez o quê, quando" antes de 6.6 (ver nota
+em "Padrão: eventos RD-* são escopados ao aluno" acima). Módulo próprio
+(`apps/api/src/audit/`, não dentro de `MetricsModule`) de propósito:
+telemetria de staff é uma preocupação transversal, qualquer feature futura
+de admin/professor que precise do mesmo padrão reaproveita
+`AuditService.recordExport` em vez de inventar a própria tabela.
+`ExportAuditLog` é append-only (mesma filosofia de `interaction_events`,
+nunca `UPDATE`/`DELETE`), com `adminUserId` (FK nullable `ON DELETE SET
+NULL` — defesa em profundidade, hoje não existe endpoint de exclusão de
+usuário), `filters` (jsonb — o recorte exatamente como pedido, strings
+originais do DTO) e `rowCount` (quantas linhas saíram NESTA resposta, não
+o total do recorte). Gravado uma vez por chamada bem-sucedida —
+inclusive quando o resultado é vazio (escola sem aluno), porque a
+exportação em si aconteceu; nunca gravado quando a validação rejeita o
+pedido antes de qualquer query (nenhum filtro, período > 90 dias, escola/
+desafio inexistente).
+
+### Rate limiting (`@nestjs/throttler`)
+
+Primeiro rate limit do projeto (gap geral ainda documentado em "Próximos
+passos" pros 3 endpoints de login) — aqui é pré-requisito, não
+nice-to-have, dado o volume de dado exposto por request (AC explícita:
+"não é uma rota pra baixar a tabela inteira repetidamente sem controle").
+`ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }])` importado em
+`MetricsModule` (`@Global()`, então basta importar uma vez — não precisa
+tocar `AppModule`) — 5 requisições por admin por minuto. `ThrottlerGuard`
+só no método `exportEvents` (`@UseGuards(ThrottlerGuard)` na rota, não na
+classe inteira) — `schools`/`challenges`/`challenges/:id` continuam sem
+limite, só a rota que expõe volume grande de dado por requisição precisa
+disso. Por IP (comportamento default da lib), não por admin autenticado —
+suficiente pro MVP, sem tracker customizado.
+
 ## Banco de dados
 
 Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra
@@ -648,27 +1043,50 @@ novos.
   progresso por turma" abaixo) e o relatório de profundidade por desafio do
   admin (6.5, `GET /metrics/admin/challenges[/:challengeId]` +
   `MetricsAdminChallengeService`/`statistics.ts` — ver "Relatório de
-  profundidade por desafio" abaixo). Falta só a exportação bruta pra
-  pesquisa (M6 no documento, exclusivo do admin).
-- Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
-  blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
-  Se um dia for necessária de verdade: um endpoint pro professor
-  escrever/curar `Challenge.config` (incluindo `program`/`position`) contra
-  um catálogo pequeno de `blocks` pré-existente — continua sem o professor
-  "programar" nada, só compor conteúdo já existente.
+  profundidade por desafio" abaixo) e a exportação bruta pra pesquisa (6.6,
+  `GET /metrics/admin/export` + `MetricsAdminExportService`/`AuditModule` —
+  ver "Exportação de dados brutos pra pesquisa" abaixo). As 6 features do
+  documento (M1–M6) estão implementadas.
+- **Autoria de desafio pelo professor — Modo Template: ✅ implementado**
+  (4.2, ver "Configuração de desafio via formulário guiado" acima). Modo
+  Customizado (liberdade total sobre a estrutura do bloco-alvo, sem
+  template pré-montado) continua não implementado — fora do escopo de 4.2
+  por decisão explícita do próprio card, tratado num card separado se/quando
+  for priorizado.
+- **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver
+  "Alocação de desafio a uma turma" acima) — resolve o gap que este bullet
+  descrevia antes (desafio criado via template não tinha como chegar a
+  nenhum aluno automaticamente).
+- Um segundo template de geometria (ex.: "Girar até formar um ângulo
+  específico", citado como exemplo no card) validaria de verdade que o
+  registry (`handlers/template-registry.ts`) escala sem tocar
+  service/controller/frontend — hoje só há 1 template implementado
+  (`regular_polygon`), então essa promessa de extensibilidade está
+  verificada pela arquitetura/testes, não por um segundo caso real ainda.
 - Trava em runtime da progressão Use-Modify-Create por aluno (hoje
   `block-progression.ts` só valida a ordem de autoria dos desafios, não
   bloqueia um aluno específico de pular pra `/challenge/:id` de um desafio
   modify/create sem ter passado pelo use correspondente — a rota não checa
   isso ainda).
-- Endpoints CRUD para `schools`/`classrooms`/`enrollments` (`subjects`/`topics`
-  já têm leitura via `GET /subjects/topics`; escrita continua não exposta —
-  ver regra 9 antes de expor isso ao professor: nada de formulário que
-  exija entender a estrutura de tabelas).
+- **1.5 ("Vínculo aluno↔turma↔professor" — matricular/transferir aluno
+  entre turmas) continua sem endpoint/UI própria.** O MODELO de dado que
+  1.5 pede já existe desde antes de 4.2/4.3 (`Enrollment`: histórico
+  `active`/`unenrolledAt`, `studentPseudoId` estável — ver "Modelagem de
+  domínio" acima e `database.md`) — 4.3 só LÊ essa tabela
+  (`findActiveEnrollmentsByStudent`) pra resolver a turma ativa do aluno,
+  não implementa a escrita. Endpoints CRUD pra `schools`/`classrooms`/
+  `enrollments` (`subjects`/`topics` já têm leitura via `GET
+  /subjects/topics`; escrita continua não exposta em nenhum dos três — ver
+  regra 9 antes de expor isso ao professor: nada de formulário que exija
+  entender a estrutura de tabelas) seguem como o próximo passo real de 1.5.
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como
   sinal observável, nunca como inferência clínica — regra 7).
 - Rate limiting / bloqueio após N tentativas nos 3 endpoints de login — hoje
   não existe (o `retryCount` do fluxo aluno é só o que o frontend observa e
-  manda no payload, o backend não impõe limite nenhum).
+  manda no payload, o backend não impõe limite nenhum). `@nestjs/throttler`
+  já está instalado e configurado (`ThrottlerModule.forRoot`, ver 6.6) —
+  aplicar `ThrottlerGuard` nas 3 rotas de login seria só repetir o mesmo
+  padrão (`@UseGuards(ThrottlerGuard)` no método), não uma dependência
+  nova.

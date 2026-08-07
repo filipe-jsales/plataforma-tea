@@ -1,0 +1,57 @@
+/*
+  3.11 — tema visual de professor/admin. Aplicado via classe `.staff-theme`
+  na raiz de cada tela de staff (ex.: <main className="teacher-metrics
+  staff-theme">) — nunca no <html> inteiro, porque o mesmo usuário nunca
+  transita entre aluno e staff na mesma sessão (papéis são exclusivos, ver
+  User.role em backend.md), então escopar por classe no container da tela
+  é suficiente e mais simples que replicar o mecanismo data-* do
+  useSensoryProfileStore (que é dinâmico/por-configuração, não por-papel).
+
+  A REGRA do card 3.11: a diferença entre módulos é só tema (tokens), nunca
+  fundação de componente — components/ui/Button.tsx, Card.tsx etc. não sabem
+  que este arquivo existe; eles só leem var(--color-primary)/var(--shadow-*)
+  como sempre leram. Trocar de tema é trocar o VALOR do token, nunca o
+  componente.
+*/
+
+.staff-theme {
+  /* Paleta mais rica que a do aluno (que fica presa à paleta sensorial
+     restrita de 3.9/3.10) — mais saturação/contraste, permitido porque
+     professor/admin não têm a barreira de hipersensibilidade sensorial do
+     aluno (RQ4 30,43% é especificamente sobre o aluno). */
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-accent: #7c3aed;
+
+  /* Elevação/sombra — nunca usada nas telas do aluno (Card.css do aluno
+     usa só borda simples); aqui cria hierarquia visual entre "conteúdo" e
+     "contêiner" (AC "card de turma como card com borda + sombra sutil"). */
+  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-card-hover: 0 4px 12px rgba(15, 23, 42, 0.12);
+  --shadow-modal: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+/*
+  Microanimação leve em hover/abertura — permitida aqui porque `.staff-theme`
+  já está isenta do reset "sem transição por padrão" (ver a exceção
+  `:not(.staff-theme, .staff-theme *)` em sensory-theme.css). Um componente
+  compartilhado (Button, SelectableCard) nunca declara a própria duração —
+  ela só passa a existir quando o elemento está dentro de `.staff-theme`.
+*/
+.staff-theme .ui-button,
+.staff-theme .ui-card {
+  transition:
+    transform var(--motion-duration) var(--motion-easing),
+    box-shadow var(--motion-duration) var(--motion-easing),
+    background var(--motion-duration) var(--motion-easing);
+}
+
+.staff-theme .ui-button--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.staff-theme .ui-card:not(.ui-card--disabled):hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}

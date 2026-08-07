@@ -21,23 +21,51 @@ major do React sem antes checar se `react-blockly` já suporta a versão nova.
 
 ```
 apps/web/src/
-├── theme/sensory-theme.css          # CSS vars + prefers-reduced-motion
+├── index.css                        # 3.11 — reset global + escala tipográfica (h1/h2/h3/p crus)
+├── theme/
+│   ├── sensory-theme.css            # CSS vars (tokens) + prefers-reduced-motion — tema base/aluno
+│   └── staff-theme.css              # 3.11 — classe `.staff-theme`: paleta rica + elevação + microanimação
 ├── stores/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
 │   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
-│   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer
+│   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer (+ getRaw, 6.6)
 │   ├── authFlow.ts                  # completeLogin() — login → GET /users/me → setSession
 │   ├── logEvent.ts                  # POST /events centralizado (nunca fetch direto)
 │   ├── illustrationAssets.ts        # assetRef (banco) → arquivo SVG estático
 │   ├── blocklyToolbox.ts            # registra blocos + monta toolbox JSON a partir do catálogo
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
-│   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
+│   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
+│   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
+│   ├── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   └── challengeAllocationTypes.ts  # 4.3 — mesma forma que a API de challenge-allocations devolve
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
+│   ├── ui/                          # 3.10/3.11 — sistema de componentes acessíveis, ver seção própria
+│   │   ├── Button.tsx / Button.css
+│   │   ├── LinkButton.tsx           # 3.11 — mesma classe CSS de Button, elemento <Link>
+│   │   ├── ToggleSwitch.tsx / ToggleSwitch.css  # @radix-ui/react-switch
+│   │   ├── Card.tsx / Card.css                  # SelectableCard (align 'center'|'start', meta), react-aria useButton
+│   │   ├── Tabs.tsx / Tabs.css                  # @radix-ui/react-tabs
+│   │   ├── SegmentedControl.tsx / .css          # 3.11 — @radix-ui/react-toggle-group (type="single")
+│   │   ├── Select.tsx / Select.css              # 3.11 — @radix-ui/react-select
+│   │   ├── Table.tsx / Table.css                # 3.11 — wrapper semântico <table>, zebra/divisor/espaçamento
+│   │   ├── Badge.tsx / Badge.css                # 3.11 — status como componente, não cor inline
+│   │   ├── Tooltip.tsx / Tooltip.css            # @radix-ui/react-tooltip
+│   │   ├── Dialog.tsx / Dialog.css              # @radix-ui/react-dialog
+│   │   ├── Heading.tsx / Text.tsx / Typography.css
+│   │   ├── InlineFeedback.tsx / InlineFeedback.css
+│   │   ├── VisuallyHidden.tsx       # re-export de react-aria
+│   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
 │   ├── challenge/
 │   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   ├── template-form/               # 4.2 — formulário guiado do professor, ver seção própria
+│   │   ├── TemplateChallengeForm.tsx       # form completo — reusado por criar/editar/duplicar
+│   │   ├── TemplateParameterField.tsx      # 1 campo, dispatch só por type/visualPreview
+│   │   ├── PolygonPreviewIcon.tsx          # miniatura "nº de lados" — SVG inline
+│   │   ├── AngleWedgeIcon.tsx              # miniatura "ângulo de giro" — SVG inline
+│   │   └── ToleranceGaugeIcon.tsx          # miniatura "tolerância de encaixe" — SVG inline
 │   └── charts/                      # 6.5 — SVG inline, sem lib externa, hue único (--color-primary)
 │       ├── BoxPlot.tsx              # mediana + Q1/Q3 + whiskers min-max
 │       ├── BarChart.tsx             # barras horizontais (histograma OU categórico — mesmo componente)
@@ -64,6 +92,13 @@ apps/web/src/
 │   │   ├── StudentHome.tsx
 │   │   ├── TeacherHome.tsx
 │   │   └── AdminHome.tsx
+│   ├── teacher/                     # 4.2/4.3 — Modo Template + alocação, ver seções próprias
+│   │   ├── TeacherChallenges.tsx    # /teacher/challenges — "Meus desafios" (4.2 AC5) + alocar (4.3)
+│   │   ├── TeacherChallenges.css
+│   │   ├── TeacherChallengeNew.tsx  # /teacher/challenges/new — galeria (AC1) + formulário (AC2)
+│   │   ├── TeacherChallengeEdit.tsx # /teacher/challenges/:id/edit — mesmo formulário, pré-preenchido
+│   │   ├── TeacherChallengeNew.css  # compartilhado por New/Edit
+│   │   └── AllocationDialog.tsx     # 4.3 — liga/desliga o desafio em cada turma do professor
 │   └── metrics/
 │       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
 │       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
@@ -72,7 +107,9 @@ apps/web/src/
 │       ├── ChallengeReport.tsx      # 6.5 — /admin/reports, relatório de profundidade por desafio
 │       ├── ChallengeReport.css
 │       ├── AdminSettings.tsx        # 6.5 — /admin/settings, N mínimo pro aviso de amostra pequena
-│       └── AdminSettings.css
+│       ├── AdminSettings.css
+│       ├── AdminExport.tsx          # 6.6 — /admin/export, recorte + download JSON/CSV
+│       └── AdminExport.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -138,6 +175,262 @@ primeira renderização.
 CSS puro) antes de decidir animar/tocar — nunca assumir que motion/som estão
 ligados.
 
+## Sistema de componentes acessíveis do aluno (`components/ui/`, 3.10)
+
+Base de UI compartilhada pra toda a área do aluno — botões, toggle de
+configuração sensorial, cards de seleção (tópico/desafio), abas, tooltip,
+modal, tipografia e feedback de tentativa. Substitui e absorve o escopo do
+3.10 original (só as áreas de encaixe do Blockly, ver "Paleta restrita"
+acima) — hoje é infraestrutura transversal, não uma tela específica.
+
+### Decisão técnica: Radix UI + React Aria, não uma lib "completa"
+
+**Radix UI** (`@radix-ui/react-switch`, `-tabs`, `-tooltip`, `-dialog`) para
+os primitivos estruturais — é headless (zero estilo/animação própria), o
+que já é exatamente o que a regra não-negociável 1 exige ("nasce desligada
+por padrão"): nenhuma transição de entrada/saída pré-definida pra desligar
+depois, o CSS de cada componente em `components/ui/*.css` é escrito do zero
+sobre a estrutura acessível que a lib garante (role, `aria-*`, teclado).
+
+**React Aria** (`react-aria`, hooks `useButton`/`useFocusRing`/
+`mergeProps`/`VisuallyHidden`) só entra onde Radix não tem primitivo —
+hoje só `Card.tsx` (`SelectableCard`): um cartão clicável não é
+dialog/tooltip/toggle/tabs, e um `<div onClick>` sozinho não ganha teclado
+(Enter/Espaço) nem `role="button"` de graça. `useButton` dá esse
+comportamento completo sem reescrever handler de teclado na mão;
+`useFocusRing` é o que faz o anel de foco aparecer só pra quem navega por
+teclado, nunca "piscar" a cada clique de mouse.
+
+Por que não Chakra/Mantine: ambos vêm com tema e componentes já
+estilizados — produtividade mais rápida, mas o preço é desfazer decisões
+visuais padrão (transição, sombra, easing) em vez de partir de uma tela em
+branco. O projeto já tem CSS Variables + Zustand pro tema sensorial (ver
+seção acima); um headless se encaixa melhor porque Radix/React Aria cuidam
+só de acessibilidade estrutural, o tema sensorial que já existe cuida de
+100% da aparência.
+
+⚠️ Isto é decisão de engenharia, sem respaldo literal no mapeamento
+sistemático (nenhum PS do corpus especifica biblioteca de componente) — a
+rastreabilidade abaixo é com a barreira (RQ4), não com uma recomendação da
+literatura.
+
+### O que cada componente resolve (RQ4)
+
+- **`Button`** (`.ui-button`) — `<button>` nativo estilizado, sem
+  `useButton` (o elemento já tem o comportamento nativo correto). Área de
+  toque mínima `--hit-area-min` (56px, `theme/sensory-theme.css`)
+  independente do tamanho de ícone/texto — coordenação motora fina, RQ4
+  21,74%. `icon` é sempre decorativo (`aria-hidden`) e nunca substitui
+  `children` (o texto) — rotulagem redundante, RQ4 acessibilidade de
+  interface 26,09%. Três variantes (`primary`/`secondary`/`ghost`), todas
+  com `:focus-visible` (nunca `outline: none` sem substituto) e sem
+  `transition`/`animation` própria — quem zera isso globalmente fora de
+  `data-motion='full'` é `sensory-theme.css`, um componente novo nunca
+  reimplementa esse mecanismo.
+- **`ToggleSwitch`** (Radix Switch) — configuração binária (som/animação
+  hoje, contraste é candidato natural). O estado nunca depende só da
+  posição/cor do trilho: `.ui-toggle__state` escreve "Ligado"/"Desligado"
+  em texto ao lado, sempre. O `<label>` externo estende a área de toque pra
+  linha inteira, não só o trilho de 48×28.
+- **`SelectableCard`** (`Card.tsx`, React Aria `useButton`) — tópico/
+  desafio selecionável. Seleção nunca é só borda colorida: mostra
+  "✓ Selecionado" em texto quando `selected`.
+- **`Tabs`** (Radix Tabs) — teclado (setas/Home/End) de graça; candidato
+  pra `TeacherMetrics` (hoje 2 `<button>` soltos alternando estado, ver nota
+  de débito abaixo).
+- **`Tooltip`** (Radix Tooltip) — reforço textual **opcional**, nunca a
+  única fonte do rótulo; o gatilho (`children`) precisa ter nome acessível
+  próprio de qualquer forma (AC "nunca só ícone").
+- **`Dialog`** (Radix Dialog) — nenhuma tela do MVP usa ainda (a Ajuda de
+  3.5 é painel inline, não modal); nasce pronto pro dia que uma tela
+  precisar de confirmação antes de uma ação difícil de reverter.
+- **`Heading`/`Text`** — hierarquia tipográfica presa ao nível semântico
+  (`h1`/`h2`/`h3`), sem prop de tamanho solto que permita um `<h2>` do
+  tamanho de `<h1>`. Sem prop de itálico/uppercase de propósito — nenhum
+  texto da área do aluno usa isso como único indicador de ênfase (AC).
+- **`InlineFeedback`** — feedback de tentativa (regra não-negociável 4):
+  ícone (padrão por `kind`, redundante com a cor) + texto, sempre os dois,
+  nunca só um. `kind="retry"` sai com `role="status"`, pra leitor de tela
+  anunciar sem precisar de recarregar a página.
+
+Todo componente lê os tokens `--hit-area-min`/`--focus-ring-*` de
+`theme/sensory-theme.css` (adicionados nesta feature) em vez de
+valores soltos — um único lugar pra auditar/mudar a área de toque mínima do
+produto inteiro.
+
+### Onde já está em uso vs. débito de migração
+
+Aplicado em telas tocadas por 3.10 — `OnboardingSensorial` (`ToggleSwitch` +
+`Button`, substituindo checkbox cru), `SubjectSelector` (`SelectableCard` +
+`Button`, substituindo `<button>` cru) e `StudentHome` (`Button` nas 2 ações
+principais). 3.11 estendeu o mesmo barril pra área de staff — ver "Sistema
+de design compartilhado (professor/admin, 3.11)" logo abaixo — `TeacherHome`/
+`AdminHome`/`TeacherMetrics`/`AdminMetrics`/`AdminSettings`/`ChallengeReport`/
+`TeacherLogin`/`AdminLogin` já usam `Button`/`LinkButton`/`SelectableCard`/
+`SegmentedControl`/`Select`/`Table`/`Badge`, só com tema mais rico
+(`.staff-theme`) em vez das restrições sensoriais do aluno.
+
+**Não migrado ainda** (débito reconhecido, não silencioso):
+`ChallengePage.tsx` (botões Executar/Ajuda/Avançar/Predict e o
+`challenge-page__feedback`) — critério pra migrar continua o mesmo: só
+quando a tela for tocada por outro motivo (evita um PR gigante só de
+refactor visual sem mudança funcional), e ela já tem lógica PRIMM densa o
+bastante pra não misturar com uma troca de biblioteca de UI no mesmo
+commit.
+
+### Testes
+
+Cada componente em `components/ui/` tem `*.spec.tsx` (Vitest +
+`@testing-library/react`) verificando o comportamento que a AC exige, não
+só "renderiza sem erro": ícone nunca substitui o texto (`Button`), estado
+sempre em texto visível (`ToggleSwitch`, `SelectableCard`), foco/teclado
+funcionam (`SelectableCard` via Enter, `ToggleSwitch` via Espaço, `Tabs`
+via clique), `Dialog` fecha com um botão que tem texto "Fechar" visível
+(nunca só `✕`). `src/test/setup.ts` ganhou um stub de `ResizeObserver` —
+jsdom não implementa isso e `@radix-ui/react-popper` (usado por `Tooltip`)
+precisa dele mesmo sem nenhum teste chamar posicionamento explicitamente.
+
+## Sistema de design compartilhado (professor/admin, 3.11)
+
+Camada de tema visual mais rica pra professor/admin, construída sobre a
+MESMA fundação de componente de 3.10 (Radix UI + React Aria,
+`components/ui/`) — nunca uma biblioteca nova. A regra do card: a diferença
+entre módulos é só tema (cor/sombra/movimento), nunca geometria de
+componente — o botão do professor e o botão do aluno nascem do mesmo
+`<Button>`, só com `--color-primary`/`--shadow-card` diferentes.
+
+### A causa raiz que motivou o card
+
+Os bugs dos prints (título/subtítulo sobrepostos, conteúdo preso numa faixa
+estreita e centralizada em qualquer tela, inclusive do aluno) não eram bugs
+pontuais de tela — eram `apps/web/src/index.css` ainda sendo, ao pé da
+letra, o template padrão do `npm create vite` nunca limpo desde o bootstrap
+do projeto: `#root { width: 1126px; text-align: center; border-inline:
+... }` e `h1 { font-size: 56px; margin: 32px 0 }`/`h2 { line-height: 118%
+}` sem nenhuma relação com o design real da plataforma. 3.11 reescreveu
+`index.css` do zero (reset + tokens, ver abaixo) — isso sozinho já resolve
+os dois bugs mais visíveis dos prints, em qualquer módulo.
+
+### Tokens novos em `theme/sensory-theme.css`
+
+- **Escala tipográfica** (`--font-size-h1/h2/h3/body/small`,
+  `--line-height-heading/body`, `--font-weight-heading/body`) — definida
+  uma vez, lida tanto por `index.css` (`<h1>`/`<h2>`/`<h3>`/`<p>` crus,
+  maioria das telas de professor/admin hoje) quanto por
+  `components/ui/Typography.css` (`<Heading>`/`<Text>`, aluno) — as duas
+  formas de título têm a hierarquia idêntica, nunca 2 escalas divergentes.
+  `line-height` proporcional ao tamanho da fonte (nunca um valor fixo) é
+  especificamente o que fecha o bug "sobreposto".
+- **`--page-max-width` (1080px) + classe `.page`** — grid de página
+  compartilhado entre professor e admin (AC "mesmo grid... hoje ambos
+  parecem centralizados sem largura máxima definida"). Substitui o
+  `max-width`/`margin: auto` que `TeacherMetrics.css`/`AdminMetrics.css`/
+  etc. repetiam cada uma na própria folha de estilo. Telas do aluno
+  (`Home`/`SubjectSelector`/`OnboardingSensorial`) continuam com largura
+  mais estreita própria — fluxo single-column, decisão de design, não bug.
+- **`--shadow-card`/`--shadow-card-hover`/`--shadow-modal`** — elevação.
+  `none` por padrão (aluno: `components/ui/Card.css` só usa borda simples);
+  quem dá valor real é `.staff-theme` (ver abaixo). Um componente
+  compartilhado nunca hardcoda `box-shadow` diretamente — sempre lê o
+  token, então o MESMO `Card.css` renderiza plano no aluno e elevado no
+  professor sem nenhum código condicional.
+
+### `theme/staff-theme.css` — a classe `.staff-theme`
+
+Aplicada na raiz de cada tela de staff (`<main className="teacher-metrics
+staff-theme page">`) — nunca no `<html>` inteiro, porque papel de usuário é
+exclusivo por sessão (`User.role`, ver `backend.md`), então não existe
+transição aluno↔staff pra cobrir dentro da mesma árvore. Duas coisas
+acontecem só dentro dela:
+
+1. **Paleta mais rica**: `--color-primary`/`--color-primary-hover`/
+   `--color-accent` mais saturados que os do aluno (permitido — RQ4
+   hipersensibilidade sensorial, 30,43%, é especificamente sobre o aluno) +
+   valor real pra `--shadow-card`/`--shadow-modal`.
+2. **Microanimação permitida**: hover de botão/card com `transition`. Isto
+   só é seguro porque `.staff-theme` é a ÚNICA exceção ao reset "sem
+   transição por padrão" — a regra de `sensory-theme.css`
+   (`:root:not([data-motion='full']) *`) ganhou um `:not(.staff-theme,
+   .staff-theme *)` explícito. Um componente compartilhado (`Button`,
+   `Card`) continua sem declarar a própria `transition` — ela só passa a
+   existir por estar dentro de `.staff-theme`, nunca por o componente saber
+   em qual módulo está. `prefers-reduced-motion` do SO continua valendo
+   pra todo mundo, staff incluído — isso não é uma preferência específica
+   de TEA, é acessibilidade geral, então nunca teve motivo pra ficar de
+   fora do reset.
+
+**Ícone**: nenhuma lib nova — emoji continua sendo o "sistema de ícone"
+compartilhado dos 3 módulos (já era assim desde antes de 3.10/3.11).
+Introduzir um set de ícone SVG dedicado contradiria a proibição explícita
+do card ("não uma biblioteca nova"); decisão registrada aqui, não um
+esquecimento.
+
+### Componentes novos em `components/ui/`
+
+- **`LinkButton`** — a mesma classe CSS de `Button` (`.ui-button`/
+  `.ui-button--*` de `Button.css`) aplicada a um `<Link>` do react-router
+  em vez de um `<button>`. Existe especificamente pro bug "← Voltar sem
+  affordance de botão" dos prints — `<LinkButton to="/home" variant="ghost"
+  icon="←">Voltar</LinkButton>` em vez de um `<Link>` de texto solto. É
+  também o que garante a AC "consistência entre módulos": o botão "Entrar"
+  (`Button`, elemento `<button>`) e "← Voltar" (`LinkButton`, elemento
+  `<a>`) têm exatamente a mesma geometria porque compartilham a mesma
+  classe — só o elemento HTML muda, nunca a forma.
+- **`SegmentedControl`** (`@radix-ui/react-toggle-group`, `type="single"` +
+  `rovingFocus`) — substitui o padrão "2 `<button>` soltos com
+  `aria-selected` calculado à mão e estilos levemente diferentes um do
+  outro" (era assim em `TeacherMetrics` "Por aluno"/"Turma toda"). Root sai
+  `role="radiogroup"`, cada opção `role="radio"` — teclado (setas movem
+  entre opções) vem da lib. `onValueChange` ignora string vazia: clicar de
+  novo na opção já ativa nunca desmarca tudo (sempre existe uma visão
+  ativa).
+- **`Select`** (`@radix-ui/react-select`) — "Ordenar por"/"Desafio" deixam
+  de ser `<select>` nativo sem estilo. `label` sempre visível (nunca só
+  placeholder). Testar: as opções (`role="option"`) só existem no DOM com o
+  dropdown aberto (diferente de `<option>` nativo, sempre presente) — todo
+  teste que troca valor precisa abrir o trigger antes
+  (`userEvent.click(getByLabelText(...))`), ver
+  `ChallengeReport.spec.tsx`/`Select.spec.tsx`.
+- **`Table`/`TableHead`/`TableBody`/`TableRow`/`TableHeaderCell`/
+  `TableCell`** — Radix não tem primitivo de tabela (a semântica correta
+  pra leitor de tela — `<table>`/`<th scope>`/`<td>` — já É headless por
+  natureza); aqui só padronizamos espaçamento/zebra/divisor/peso do
+  cabeçalho (`Table.css`), nunca a semântica. Usado hoje em
+  `TeacherMetrics` (por aluno × desafio) e `AdminMetrics` (turmas de uma
+  escola).
+- **`Badge`** — "Concluído"/"Em andamento"/"Não iniciado" como componente
+  (`variant="success"/"warning"/"neutral"`) em vez de `background-color`
+  inline repetido em cada tela (AC explícita). Reaproveita as MESMAS cores
+  de feedback (`--color-success`/`--color-warning`) que
+  `InlineFeedback.tsx` usa pro aluno — "concluído = verde" significa a
+  mesma coisa nos 3 módulos (feedback positivo pode ser expressivo, regra
+  não-punitiva aplicada ao lado positivo).
+- **`SelectableCard` ganhou `meta`/`align`** — `meta` é o metadado
+  secundário (ex.: "Código: AZUL-1 · 12 alunos ativos"), sempre num nível
+  tipográfico abaixo do título (AC "hierarquia clara... nunca tudo no mesmo
+  nível visual"). `align="start"` (professor/admin — título+meta
+  empilhados à esquerda) convive com o `align="center"` original do aluno
+  (ícone grande em cima, ver `SubjectSelector`) no MESMO componente — só o
+  arranjo do conteúdo muda, a fundação (`useButton`/`useFocusRing`/seleção)
+  é idêntica.
+
+### Telas migradas
+
+`TeacherMetrics` é o card visual desta feature quase inteiro num lugar só —
+"← Voltar" → `LinkButton`; card de turma → `SelectableCard align="start"
+meta=...`; "Por aluno"/"Turma toda" → `SegmentedControl`; "Ordenar por" →
+`Select`; tabela → `Table`; badge de status → `Badge`. `AdminMetrics`
+(cards de escola + tabela de turmas), `AdminSettings` (botão "Salvar"),
+`ChallengeReport` (picker de desafio) e `TeacherHome`/`AdminHome`/
+`TeacherLogin`/`AdminLogin` (`Button`/`LinkButton`) seguem o mesmo padrão,
+com `.staff-theme` na raiz de cada `<main>`. Nenhuma mudança de
+comportamento/endpoint — só troca de camada visual; os testes já existentes
+(`TeacherMetrics.spec.tsx`, `AdminMetrics.spec.tsx`, `AdminSettings.spec.tsx`,
+`ChallengeReport.spec.tsx`) passam sem alteração de asserção de dado, só a
+migração do picker de `ChallengeReport` (native `<select>` →
+`@radix-ui/react-select`) trocou `userEvent.selectOptions` por
+clique+clique nos testes correspondentes.
+
 ## Eventos (`logEvent`)
 
 Wrapper fino sobre `POST /events` — nunca chamar `fetch` direto pra logging.
@@ -162,19 +455,30 @@ prop/estado inventado no frontend.
   código) e monta o toolbox JSON categorizado (`buildToolboxConfiguration`) —
   só os blocos do desafio aparecem, agrupados em abas pequenas e nomeadas
   (AC1/AC5), nunca a paleta padrão do Blockly inteira.
-- `blocklyToolbox.applyGenerousSnapTolerance()` sobe `Blockly.config.
-  snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima do default —
-  tolerância ampla de encaixe (AC3, RQ4 coordenação motora fina). Chamado uma
-  vez no carregamento do módulo, antes de qualquer workspace injetar.
+- `blocklyToolbox.applyGenerousSnapTolerance(tolerancePercent?)` sobe
+  `Blockly.config.snapRadius`/`connectingSnapRadius`/`dragRadius` bem acima
+  do default — tolerância ampla de encaixe (AC3, RQ4 coordenação motora
+  fina). Chamado uma vez no carregamento do módulo (sem argumento, 100% —
+  o comportamento de sempre) e de novo dentro de `onInject`, com
+  `challenge.snapTolerancePercent ?? undefined` (4.2): um desafio criado
+  via template pelo professor pode escolher uma tolerância diferente
+  (nunca 0%, ver backend.md), reaplicada especificamente pra AQUELE
+  desafio — `Blockly.config` é estado global do módulo, não por-workspace,
+  então "reaplicar a cada desafio carregado" é o suficiente (não há dois
+  workspaces com tolerâncias diferentes montados ao mesmo tempo nesta
+  tela).
 - Logging: `toolbox_rendered` (RD-I) uma vez, ao carregar o desafio;
   `block_dragged` (RD-I) a cada solta de bloco (via
   `workspace.addChangeListener` + `Blockly.Events.BlockDrag`, não o
   `onWorkspaceChange` simplificado do `react-blockly`, que não expõe o tipo
   do evento).
-- **Sem autoria de toolbox pelo professor nesta versão** — decisão
-  explícita, ver "Blocos por desafio" em `backend.md`. O professor não
-  escolhe nem programa nada hoje; a sequência de desafios de um tópico é
-  fixa (por `Challenge.position`), a mesma pra todo aluno.
+- **Sem autoria de toolbox LIVRE pelo professor** nesta tela — decisão
+  explícita, ver "Blocos por desafio" em `backend.md`. A sequência de
+  desafios de um tópico continua fixa (por `Challenge.position`), a mesma
+  pra todo aluno. Desde 4.2, o professor cria desafios ADICIONAIS por fora
+  dessa sequência via um formulário guiado por template — nunca editando
+  `ChallengePage`/Blockly diretamente; ver "Configuração de desafio via
+  formulário guiado — Modo Template" abaixo.
 
 ### Mundo de execução 2D desacoplado via store (3.2)
 
@@ -350,6 +654,182 @@ preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
 
+## Configuração de desafio via formulário guiado — Modo Template (4.2)
+
+Três telas novas, todas `.staff-theme` (professor), reaproveitando
+`components/ui/` como qualquer outra tela de staff (3.11) — nenhuma delas
+importa Blockly nem monta um `<BlocklyWorkspace>`: o professor nunca vê a
+representação em blocos, nem no formulário, nem no preview, nem num erro.
+
+- **`/teacher/challenges`** (`TeacherChallenges`, AC5) — "Meus desafios":
+  `GET /teacher/challenges`, um item por desafio criado via template
+  (ícone+nome do template, nunca o `key` técnico). Ações: "Editar" e
+  "Duplicar" (`LinkButton` pra `/teacher/challenges/:id/edit` e
+  `/teacher/challenges/new?fromChallengeId=:id`) e "Excluir", que abre um
+  `Dialog` de confirmação (`components/ui/Dialog`, 3.10 — **primeiro uso
+  real desse componente no produto**, existia pronto desde 3.10 esperando
+  "o dia que uma tela precisar de confirmação antes de uma ação difícil de
+  reverter") antes de chamar `DELETE /teacher/challenges/:id`
+  (`apiClient.delete`, novo método no wrapper — só faltava DELETE no
+  conjunto get/post/patch/getRaw que já existia).
+- **`/teacher/challenges/new`** (`TeacherChallengeNew`, AC1/AC2/AC6) — dois
+  passos no mesmo componente: sem `selectedTemplateId`, mostra a GALERIA
+  (`GET /challenge-templates`, um `SelectableCard align="start"` por
+  template — nome+ícone+descrição em português, nunca o blockType); ao
+  selecionar, busca `GET /challenge-templates/:id` (schema já resolvido) e
+  troca pro `TemplateChallengeForm`. Query string `?fromChallengeId=` é o
+  mecanismo de DUPLICAR (AC6): busca `GET /teacher/challenges/:id` do
+  desafio de origem, pré-seleciona o MESMO template e pré-preenche o
+  `TemplateChallengeForm` com os mesmos parâmetros + título sufixado
+  "(cópia)" — nunca clona `Challenge.config` bruto, é literalmente reabrir
+  a tela de criação com um rascunho diferente.
+- **`/teacher/challenges/:id/edit`** (`TeacherChallengeEdit`, AC5) — busca
+  `GET /teacher/challenges/:id` (403/404 vira uma frase, nunca stack
+  trace) + `GET /challenge-templates/:templateId` pro schema, e renderiza
+  o MESMO `TemplateChallengeForm`, `onSubmit` chamando `PATCH
+  /teacher/challenges/:id` em vez de `POST .../challenges`. AC5 —
+  "nenhuma tela de edição expõe estrutura de blocos" é verdade por
+  construção: este componente nunca lê `Challenge.config`, só o que
+  `GET /teacher/challenges/:id` devolve (`title`/`prompt`/`templateKey`/
+  `params`).
+
+### `TemplateChallengeForm` — um componente para criar/editar/duplicar
+
+`components/template-form/TemplateChallengeForm.tsx` é o formulário guiado
+de verdade, parametrizado só por `template` (o `ChallengeTemplateDetail`
+já resolvido) + `initialTitle`/`initialParams` opcionais + `onSubmit` — as
+3 telas acima só decidem QUANDO montá-lo e o que fazer com o resultado,
+nunca reimplementam campo nenhum.
+
+- **Renderização 100% orientada a schema**: um `TemplateParameterField`
+  por entrada de `template.parameterSchema`, dispatch só por
+  `definition.type`/`visualPreview` (`components/template-form/
+  TemplateParameterField.tsx`) — nunca `if (param.key === 'sides')` em
+  lugar nenhum. `integer` vira `<input type="number">`, `percentage` vira
+  um `<input type="range">` com leitura numérica ao lado, `boolean` vira
+  `ToggleSwitch` (`components/ui/`, pronto pra um template futuro que
+  precise — nenhum parâmetro do MVP usa hoje, ver nota "sem parâmetro de
+  ângulos negativos" em backend.md), `blockSelection` vira um
+  `ToggleSwitch` por bloco candidato (reaproveita o mesmo componente de
+  liga/desliga com estado sempre em texto — "Ligado"/"Desligado" — em vez
+  de inventar um checkbox novo). É o mecanismo que cumpre "reutilizável
+  sem refazer pra cada novo desafio": um template de outra disciplina só
+  precisa reusar um `type`/`visualPreview` já suportado pra funcionar
+  aqui sem tocar neste arquivo.
+- **AC2 — exemplo visual inline por campo**: `visualPreview` decide qual
+  miniatura SVG mostrar ao lado do controle — `PolygonPreviewIcon`
+  (`sides`, desenha o polígono com o Nº de lados ATUAL — a prévia É o
+  valor, atualiza a cada mudança, não um par estático "4 vs 6"),
+  `AngleWedgeIcon` (`turnAngleDeg`, um leque cuja abertura é o ângulo —
+  efeito isolado deste campo, independente de `sides`) e
+  `ToleranceGaugeIcon` (`snapTolerancePercent`, barra preenchida
+  proporcionalmente). Todo SVG inline, sem lib nova — mesmo padrão
+  zero-dependência de `components/charts/`. Miniatura é decorativa
+  (`aria-hidden` no wrapper): o valor em si já é anunciado pelo input
+  rotulado (`aria-label`/`htmlFor` = `definition.label`), então a
+  miniatura não duplica informação pra quem usa leitor de tela — só reforça
+  visualmente pra quem enxerga.
+- **AC3 — validação pedagógica inline, um endpoint pras duas coisas**:
+  `runValidation()` chama `POST /challenge-templates/:id/preview` (sempre
+  200, nunca lança) e `errorsByParameterKey` (`lib/templateParameterForm.ts`,
+  função pura testada) indexa `errors` por `parameterKey` — cada
+  `TemplateParameterField` recebe só a mensagem do PRÓPRIO campo, nunca um
+  card de erro solto no topo da tela. Toda mudança em qualquer campo limpa
+  `fieldErrors`/fecha o preview (`handleParamChange`) — nunca deixa uma
+  mensagem de um valor anterior grudada depois que o professor já ajustou
+  o valor.
+- **AC4 — "Visualizar como aluno"**: `handleVisualize()` chama o MESMO
+  `runValidation()`; se inválido, mostra os erros de campo (nunca abre o
+  preview com dado incompleto); se válido, usa `goal` da resposta com
+  `buildGoalPreviewPath` (`lib/turtleWorld.ts`) — **a mesma função pura que
+  o botão de Ajuda do aluno (3.5) já usa pro traçado-alvo** — e
+  `PixiTurtleWorld` (o mesmo componente de mundo do aluno, uma instância de
+  `turtleExecutionStore` própria desta tela). O professor nunca vê um
+  `<BlocklyWorkspace>`: o preview é só a forma final animada, exatamente
+  como a fase Create do aluno mostraria. Animação sempre ligada aqui
+  (`play(points, true)`), independente do próprio perfil sensorial do
+  professor — a tela é uma demonstração de autoria, não a experiência
+  sensorial real de nenhum aluno específico (cada aluno continua vendo o
+  desafio de acordo com o PRÓPRIO perfil quando for jogar de verdade).
+- **Salvar**: `handleSubmit` primeiro exige título não-vazio (mensagem
+  própria, não HTML5 nativo — mesmo racional de `AdminSettings`), depois
+  roda a mesma `runValidation()` antes de chamar `onSubmit({ title, params
+  })` — nunca deixa a criação/edição ir pro backend com uma combinação que
+  a própria tela já sabe que é inválida.
+
+### `lib/templateParameterForm.ts` — funções puras, testadas
+
+`buildInitialParams` (schema → rascunho com os defaults), `coerceParameterValue`
+(string de `<input>` → número/boolean/array, nunca guarda string crua nem
+`NaN`), `errorsByParameterKey`, `toggleBlockType` (liga/desliga 1 bloco na
+lista sem duplicar/perder os outros). Nenhuma conhece "polígono" — são o
+motor genérico por trás de `TemplateParameterField`/`TemplateChallengeForm`.
+
+### Testes
+
+`TemplateParameterField.spec.tsx` (cada `type`/`visualPreview`, rótulo
+ícone+texto, erro inline) e `TemplateChallengeForm.spec.tsx` (bloqueio sem
+título, bloqueio com combinação inválida — erro no campo certo, preview só
+abre quando válido, payload de salvar) são os testes de lógica de decisão
+mais densos desta feature — `Pixi` é mockado nesses dois arquivos (mesmo
+racional do débito "ChallengePage sem RTL ainda" logo abaixo: jsdom não
+roda WebGL/Canvas de verdade, o que importa testar é SE o painel de preview
+aparece, não como o Pixi desenha por dentro). `TeacherChallenges.spec.tsx`/
+`TeacherChallengeNew.spec.tsx`/`TeacherChallengeEdit.spec.tsx` cobrem a
+galeria (AC1), a confirmação antes de excluir, e o fluxo de duplicar
+(AC6) pré-preenchendo o mesmo template+parâmetros.
+
+## Alocação de desafio a uma turma (4.3)
+
+Duas metades pequenas, uma em cada área — nenhuma tela nova além de um
+`Dialog` na área do professor e uma seção a mais numa tela já existente do
+aluno.
+
+### Lado professor — `AllocationDialog` (dentro de `TeacherChallenges`)
+
+Botão "🏫 Alocar à turma" em cada item de `TeacherChallenges` (a lista "Meus
+desafios", 4.2 AC5) abre `AllocationDialog` (`components/ui/Dialog` —
+**segundo uso real** do componente, depois da confirmação de exclusão de
+4.2). Ao abrir, busca em paralelo `GET /home/teacher` (2.1, já existente —
+reaproveitado pra listar as turmas do professor, nenhum endpoint novo só
+pra isso) e `GET /teacher/challenges/:id/allocations` (quais já estão
+ligadas), e renderiza um `ToggleSwitch` por turma. **Sem botão "Salvar"
+separado** (AC2 "sem exigir nenhuma ação adicional"): cada toggle chama
+`POST`/`DELETE` na hora (`handleToggle`), com o próprio toggle desabilitado
+enquanto a chamada está em andamento — evita duplo-clique disparar duas
+requisições pra mesma turma.
+
+### Lado aluno — "Desafios da sua turma" (dentro de `SubjectSelector`)
+
+`SubjectSelector` (2.3, "Onde você quer entrar?") ganhou uma segunda
+seção, visualmente separada da lista de módulos curriculares (`<section>`
+própria, nunca no mesmo `<ul>`/fluxo de seleção+confirmação — módulo abre
+uma sequência Use-Modify-Create, desafio de turma abre direto num
+`LinkButton` pra `/challenge/:id`, são duas navegações de natureza
+diferente). Busca `GET /students/me/classroom-challenges` em paralelo com
+`GET /subjects/topics`; a seção inteira só renderiza quando a lista vem
+não-vazia (AC3 — nenhum aluno vê uma seção vazia "Desafios da sua turma:
+nenhum"; ela simplesmente não existe até haver algo alocado).
+
+Esta é a tela que hoje cumpre "a trilha" do aluno citada no card: o mesmo
+lugar de sempre onde o aluno decide o que fazer a seguir, agora com uma
+segunda fonte de conteúdo (módulos curriculares fixos + desafios que o
+próprio professor alocou), sem inventar uma tela nova só pra isso.
+
+### Testes
+
+`AllocationDialog.spec.tsx` cobre: lista só as turmas do professor
+(reaproveitando `/home/teacher`), reflete o estado atual de cada toggle,
+liga/desliga chama o endpoint certo com o `classroomId` certo, e mensagem
+não-técnica quando o professor não tem nenhuma turma ainda.
+`SubjectSelector.spec.tsx` (não existia antes de 4.3 — primeira spec desta
+tela) cobre: módulos curriculares continuam renderizando, a seção de
+desafios da turma nunca aparece vazia, um desafio alocado vira link direto
+pro `/challenge/:id` certo, e a confirmação explícita antes de entrar num
+módulo continua exigida (AC2 de 2.3, não regrediu com a mudança).
+`TeacherChallenges.spec.tsx` ganhou um caso confirmando que "Alocar à
+turma" abre o diálogo certo pro desafio certo.
+
 ## Painel institucional do admin (`AdminMetrics`, 6.2)
 
 `/admin/metrics` (`RequireAuth roles={['admin']}`), link a partir de
@@ -363,18 +843,17 @@ momento desta tela — é visão institucional (AC de 6.2); nível de aluno
 individual é de uma feature futura (M5 em
 `docs/ai/backlog/metricas-professor-admin.md`).
 
-**Sem as restrições sensoriais do aluno** (`AdminMetrics.css`) — regra
+**Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — regra
 não-negociável 1 protege a experiência do *aluno*, e `StaffLogin.css` já
 estabelece esse mesmo racional pra telas de professor/admin; esta tela usa
-cor/hierarquia visual mais densa de propósito (cards com borda de destaque,
-sombra, grid de estatísticas). Não depende de `transition`/`animation`
-CSS — o reset global de `sensory-theme.css` (`:root:not([data-motion='full'])
-* { transition-duration: 0.001ms !important }`) hoje se aplica a qualquer
-sessão, inclusive staff, porque `data-motion` só é setado a partir do
-onboarding do aluno; o visual "mais bonito" desta tela vem de
-layout/cor/tipografia, não de movimento, então isso não importa aqui — mas
-vale saber que esse reset existe se uma tela de staff futura quiser
-depender de transição suave de verdade.
+cor/hierarquia visual mais densa de propósito. Card de escola é
+`SelectableCard align="start"` (`components/ui/`) com `meta` = grid de
+estatísticas — a sombra (`box-shadow: var(--shadow-card)`) e o hover com
+leve elevação vêm do tema, não de CSS próprio da tela; lista de turmas é
+`Table`. Desde 3.11, `.staff-theme` é a única exceção ao reset global de
+`sensory-theme.css` (`:root:not([data-motion='full']) *`) — o hover do
+card anima de verdade aqui, sem depender do aluno ter ativado animação (ver
+"Sistema de design compartilhado" acima).
 
 ## Painel do professor: progresso por turma (`TeacherMetrics`, 6.3/6.4)
 
@@ -387,15 +866,19 @@ ainda valida titularidade de qualquer forma, ver "Painel do professor:
 progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
 propósito).
 
-Selecionar uma turma busca as duas rotas de métrica em paralelo
+Selecionar uma turma (`SelectableCard align="start"` com `meta` = código +
+alunos ativos, ver 3.11) busca as duas rotas de métrica em paralelo
 (`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
-entre duas abas:
+entre duas visões via `SegmentedControl` (`components/ui/`,
+`@radix-ui/react-toggle-group` — antes de 3.11 era 2 `<button role="tab">`
+com `aria-selected` calculado à mão):
 
-- **"Por aluno" (6.3, aba default)** — uma tabela com 1 linha por aluno
-  matriculado ativo (nome + data de matrícula) e 1 coluna por desafio
-  disponível (título + rótulo do estágio + status + nº de tentativas).
-  Ordenação default é por data de matrícula (a mesma ordem que o backend já
-  devolve); um `<select>` deixa trocar pra ordenação por nome — **nunca**
+- **"Por aluno" (6.3, visão default)** — `Table` (`components/ui/`) com 1
+  linha por aluno matriculado ativo (nome + data de matrícula) e 1 coluna
+  por desafio disponível (título + rótulo do estágio + status como `Badge`
+  + nº de tentativas). Ordenação default é por data de matrícula (a mesma
+  ordem que o backend já devolve); um `Select` (`components/ui/`,
+  `@radix-ui/react-select`) deixa trocar pra ordenação por nome — **nunca**
   por status/tentativas, não existe essa opção na tela (regra não-negociável
   5, aplicada ao nível de UI também, não só ao default do backend).
 - **"Turma toda" (6.4)** — 3 cartões de totais (`totalStudents`/
@@ -412,15 +895,18 @@ entre duas abas:
   nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
   percentual cru — regra não-negociável 7).
 
-**Sem as restrições sensoriais do aluno** (`TeacherMetrics.css`) — mesmo
-racional de `AdminMetrics.css`/`StaffLogin.css`.
+**Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — mesmo
+racional de `AdminMetrics`/`StaffLogin`.
 
 ## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
 
 `/admin/reports` (`RequireAuth roles={['admin']}`), link a partir de
 `AdminHome`. Busca `GET /metrics/admin/challenges` (seletor — todo desafio
-cadastrado, qualquer tópico) e, ao selecionar um, `GET /metrics/admin/
-challenges/:challengeId` (o relatório completo). "O que um revisor de
+cadastrado, qualquer tópico, hoje um `Select` de `components/ui/` — nativo
+`<select>` antes de 3.11, ver `ChallengeReport.spec.tsx` pro padrão de teste
+clique+clique que substituiu `userEvent.selectOptions`) e, ao selecionar
+um, `GET /metrics/admin/challenges/:challengeId` (o relatório completo).
+`.staff-theme` na raiz da tela (3.11). "O que um revisor de
 artigo esperaria ver" (AC de 6.5): todo card de estatística mostra
 `<StatList>` (N/média/mediana/desvio/quartis em texto — a alternativa não-
 visual ao gráfico) + `<SampleSizeNote>` (aviso quando `n < report.
@@ -493,6 +979,50 @@ browser bloqueia o evento `submit` inteiro antes do JS rodar (não dispara
 número inteiro positivo.") de aparecer — mesmo padrão de linguagem não-
 punitiva/descritiva já usado em `StudentLogin`.
 
+## Exportação de dados brutos (`AdminExport`, 6.6)
+
+`/admin/export` — o admin escolhe um recorte (escola e/ou desafio via
+`Select` de `components/ui/`, mais um período opcional com dois `<input
+type="date">` nativos) e clica em "Baixar exportação"; a tela nunca mostra
+os dados crus na própria página — o objetivo é analisar FORA da
+plataforma (ver `docs/ai/backlog/metricas-professor-admin.md`, M6), então
+o resultado sempre vira um arquivo baixado, nunca uma tabela em tela.
+
+- **Formato decide o método de `apiClient` usado, não só um parâmetro de
+  query**: `format=json` chama `apiClient.get<ExportResult>` (JSON
+  parseado, `result.rows` vira o conteúdo do arquivo baixado — `JSON.
+  stringify(result.rows, null, 2)`, não a resposta inteira com
+  `page`/`pageSize`); `format=csv` chama `apiClient.getRaw` (texto cru,
+  baixado exatamente como o backend gerou — `lib/apiClient.ts` ganhou esse
+  método nesta feature, especificamente porque `get`/`post`/`patch` sempre
+  fazem `response.json()`, o que quebraria num corpo CSV).
+- **Download client-side via Blob + `<a download>` temporário**
+  (`downloadFile`, local ao componente) — sem endpoint de "gerar link",
+  sem redirecionar a aba; cria o `<a>`, clica, remove, revoga a URL do
+  objeto.
+- **Sentinela `__all__`** pros `Select` de escola/desafio representarem
+  "sem filtro" — Radix Select não aceita `Item` com `value=""` (reservado
+  internamente pra "nada selecionado"), então o "Todas as escolas"/"Todos
+  os desafios" precisa de um valor real que o componente sabe tratar como
+  ausência de filtro antes de montar a query string.
+- **Validação client-side espelha a do backend** (ao menos um filtro;
+  período sempre com as duas datas juntas) — mensagem própria antes de
+  gastar uma chamada de API, mas o backend continua sendo a fonte de
+  verdade (`MetricsAdminExportService`, ver `backend.md`); o card de erro
+  (`InlineFeedback kind="retry"`) mostra a mensagem exata que a API
+  devolve quando a validação passa do lado do cliente mas falha no
+  servidor (ex.: período > 90 dias).
+- **Aviso de `hasMore`**: quando a resposta JSON sinaliza que existem mais
+  linhas além da página atual, a tela soma uma frase ao resumo pedindo pra
+  reduzir o recorte — não existe paginação na UI (sem botão "próxima
+  página") de propósito nesta versão; refinar o filtro é o caminho
+  esperado, não navegar página a página num export de pesquisa.
+- Sem `logEvent` — mesmo racional de `AdminMetrics`/`AdminSettings`
+  (regra "eventos RD-* são escopados ao aluno", ver `backend.md`): esta é
+  uma ação de staff, não gera dado de interação do aluno.
+- `.staff-theme` na raiz, mesmo padrão de todo o resto da área de
+  professor/admin (3.11).
+
 ## Assets visuais (`assets/illustrations/`)
 
 Os 8 SVGs (4 avatares + 4 imagens de login) foram **desenhados
@@ -531,3 +1061,20 @@ o padrão esperado em código novo.
   expirou (só se existe uma sessão salva).
 - Rate limiting nos 3 endpoints de login (gap do backend, ver
   `backend.md`).
+- Migrar `ChallengePage` pra `components/ui/` (3.10/3.11 já migraram todo o
+  resto — professor/admin inteiros, ver "Onde já está em uso vs. débito de
+  migração" acima) — débito reconhecido, não bloqueante; migrar quando a
+  tela for tocada por outro motivo.
+- `components/ui/Tooltip`/`Tabs` seguem sem nenhum uso real em produção
+  (3.10) — infraestrutura pronta, nenhuma tela pediu ainda. `Dialog` saiu
+  dessa lista em 4.2 (confirmação de exclusão em `TeacherChallenges`,
+  primeiro uso real).
+- **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver seção
+  própria acima) — `AllocationDialog` na área do professor + "Desafios da
+  sua turma" em `SubjectSelector`.
+- `TemplateParameterField` só tem componentes de exemplo visual pros 3
+  `visualPreview` que o template `regular_polygon` usa hoje
+  (`polygonSides`/`angleWedge`/`toleranceGauge`) — um template de outra
+  disciplina que precise de um tipo de miniatura genuinamente novo (não
+  reaproveitável) precisa de 1 componente SVG novo + 1 `case` em
+  `renderVisualPreview`, o resto do formulário continua igual.

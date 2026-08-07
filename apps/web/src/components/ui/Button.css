@@ -1,0 +1,65 @@
+/*
+  3.10 — botão base. Área de toque mínima e foco visível são o contrato não
+  negociável (ver tokens em theme/sensory-theme.css); a cor de cada variant
+  é a única coisa que muda entre primary/secondary/ghost.
+*/
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  /* Sem transition/animation aqui de propósito — data-motion controla isso
+     globalmente (sensory-theme.css); um componente novo nunca declara a
+     própria curva de animação por fora desse mecanismo. */
+}
+
+.ui-button + .ui-button {
+  margin-inline-start: var(--hit-gap-min);
+}
+
+.ui-button__icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.ui-button__label {
+  white-space: nowrap;
+}
+
+.ui-button--primary {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-bg);
+}
+
+.ui-button--secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.ui-button--ghost {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.ui-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Indicador de foco visível — nunca `outline: none` sem isto no lugar. */
+.ui-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

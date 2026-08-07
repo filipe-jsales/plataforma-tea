@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
+import {
+  LinkButton,
+  SelectableCard,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from '../../components/ui';
 import './AdminMetrics.css';
 
 interface SchoolOverview {
@@ -21,10 +30,9 @@ interface ClassroomOverview {
 
 // 6.2 — painel institucional do admin: escolas → turmas → professor
 // responsável, sem nenhum dado de aluno individual (AC de 6.2). Área
-// exclusiva de staff (admin) — sem as restrições sensoriais do aluno (regra
-// não-negociável 1 é sobre a experiência do aluno; StaffLogin já estabelece
-// esse mesmo racional), por isso o visual aqui é mais denso/colorido do que
-// as telas do aluno.
+// exclusiva de staff (admin) — tema mais rico que o do aluno (3.11,
+// `.staff-theme`), mesma fundação de componente (Radix/React Aria, ver
+// components/ui/).
 export function AdminMetrics() {
   const [schools, setSchools] = useState<SchoolOverview[] | null>(null);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
@@ -48,10 +56,10 @@ export function AdminMetrics() {
   const selectedSchool = schools?.find((school) => school.id === selectedSchoolId) ?? null;
 
   return (
-    <main className="admin-metrics">
-      <Link to="/home" className="admin-metrics__back-link">
-        ← Voltar
-      </Link>
+    <main className="admin-metrics staff-theme page">
+      <LinkButton to="/home" variant="ghost" icon="←">
+        Voltar
+      </LinkButton>
       <h1>Painel institucional</h1>
       <p className="admin-metrics__subtitle">
         Como cada escola está usando a plataforma — turmas, professores e alunos ativos.
@@ -66,22 +74,23 @@ export function AdminMetrics() {
       {schools !== null && schools.length > 0 && (
         <div className="admin-metrics__schools">
           {schools.map((school) => (
-            <button
+            <SelectableCard
               key={school.id}
-              type="button"
-              className={`admin-metrics__school-card${
-                school.id === selectedSchoolId ? ' admin-metrics__school-card--selected' : ''
-              }`}
-              onClick={() => setSelectedSchoolId(school.id === selectedSchoolId ? null : school.id)}
+              align="start"
+              icon="🏫"
+              selected={school.id === selectedSchoolId}
+              onSelect={() => setSelectedSchoolId(school.id === selectedSchoolId ? null : school.id)}
+              meta={
+                <span className="admin-metrics__school-stats">
+                  <SchoolStat value={school.classroomsCount} label="turmas" />
+                  <SchoolStat value={school.teachersCount} label="professores" />
+                  <SchoolStat value={school.activeStudentsCount} label="alunos ativos" />
+                  <SchoolStat value={school.activeStudentsToday} label="ativos hoje" />
+                </span>
+              }
             >
-              <span className="admin-metrics__school-name">{school.name}</span>
-              <span className="admin-metrics__school-stats">
-                <SchoolStat value={school.classroomsCount} label="turmas" />
-                <SchoolStat value={school.teachersCount} label="professores" />
-                <SchoolStat value={school.activeStudentsCount} label="alunos ativos" />
-                <SchoolStat value={school.activeStudentsToday} label="ativos hoje" />
-              </span>
-            </button>
+              {school.name}
+            </SelectableCard>
           ))}
         </div>
       )}
@@ -97,25 +106,34 @@ export function AdminMetrics() {
           )}
 
           {classrooms !== null && classrooms.length > 0 && (
-            <ul className="admin-metrics__classrooms">
-              {classrooms.map((classroom) => (
-                <li key={classroom.id} className="admin-metrics__classroom">
-                  <span className="admin-metrics__classroom-name">{classroom.name}</span>
-                  <span className="admin-metrics__classroom-teacher">
-                    {classroom.teacherDisplayName ?? (
-                      <em className="admin-metrics__classroom-teacher--missing">
-                        sem professor definido
-                      </em>
-                    )}
-                  </span>
-                  <span className="admin-metrics__classroom-count">
-                    {classroom.activeStudentsCount} aluno
-                    {classroom.activeStudentsCount === 1 ? '' : 's'} ativo
-                    {classroom.activeStudentsCount === 1 ? '' : 's'}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Table ariaLabel={`Turmas de ${selectedSchool.name}`}>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Turma</TableHeaderCell>
+                  <TableHeaderCell>Professor(a)</TableHeaderCell>
+                  <TableHeaderCell>Alunos ativos</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {classrooms.map((classroom) => (
+                  <TableRow key={classroom.id}>
+                    <TableCell>{classroom.name}</TableCell>
+                    <TableCell>
+                      {classroom.teacherDisplayName ?? (
+                        <em className="admin-metrics__classroom-teacher--missing">
+                          sem professor definido
+                        </em>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {classroom.activeStudentsCount} aluno
+                      {classroom.activeStudentsCount === 1 ? '' : 's'} ativo
+                      {classroom.activeStudentsCount === 1 ? '' : 's'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </section>
       )}

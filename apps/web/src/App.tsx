@@ -4,6 +4,7 @@ import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
 import { TeacherLogin } from './routes/login/TeacherLogin'
 import { ChallengePage } from './routes/challenge/ChallengePage'
+import { AdminExport } from './routes/metrics/AdminExport'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
 import { AdminSettings } from './routes/metrics/AdminSettings'
 import { ChallengeReport } from './routes/metrics/ChallengeReport'
@@ -13,6 +14,9 @@ import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
 import { SubjectSelector } from './routes/SubjectSelector'
 import { HomeRouter } from './routes/home/HomeRouter'
+import { TeacherChallenges } from './routes/teacher/TeacherChallenges'
+import { TeacherChallengeNew } from './routes/teacher/TeacherChallengeNew'
+import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
 
 function App() {
   return (
@@ -79,6 +83,30 @@ function App() {
         }
       />
       <Route
+        path="/teacher/challenges"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallenges />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/challenges/new"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallengeNew />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/challenges/:challengeId/edit"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherChallengeEdit />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/admin/reports"
         element={
           <RequireAuth roles={['admin']}>
@@ -91,6 +119,14 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <AdminSettings />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/export"
+        element={
+          <RequireAuth roles={['admin']}>
+            <AdminExport />
           </RequireAuth>
         }
       />

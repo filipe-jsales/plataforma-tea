@@ -156,6 +156,73 @@ porquê disso ser um estado intermediário, não a sequência final):
 | 1 | Monte o quadrado | `use` (`program` pré-montado + travado) |
 | 2 | Monte o quadrado — sua vez! | `create` (editor livre) |
 
+**4.2 — `templateId`/`templateParams`/`createdByUserId`** (migration
+`CreateChallengeTemplatesAndTeacherAuthoring`): três colunas nullable pra
+desafio criado pelo professor via formulário guiado (Modo Template), nunca
+preenchidas pelo currículo semeado.
+
+- `templateId` — FK nullable pra `challenge_templates.id`, `ON DELETE SET
+  NULL` (se um template for descatalogado, o desafio já criado continua
+  existindo — não depende do template pra funcionar em runtime, só pra
+  reabrir o formulário de edição).
+- `templateParams` (jsonb) — snapshot dos parâmetros pedagógicos que o
+  professor escolheu (nº de lados, ângulo, tolerância, blocos habilitados),
+  persistido junto do desafio, nunca descartado depois de virar `config`
+  (RD-C — RQ5, rastreabilidade de qual configuração curricular foi usada).
+- `createdByUserId` — FK nullable pra `users.id`, `ON DELETE SET NULL`
+  (mesma defesa em profundidade de `ExportAuditLog.adminUserId` — hoje não
+  existe endpoint de exclusão de usuário). `NULL` pro currículo semeado;
+  preenchido sempre que o desafio nasce via
+  `POST /challenge-templates/:id/challenges`.
+
+`ChallengesService.findByTopicIdOrdered` (a sequência OFICIAL Use-Modify-
+Create de um tópico) filtra `createdByUserId IS NULL` desde 4.2 — ver
+"Autorização e escopo" na seção "Configuração de desafio via formulário
+guiado — Modo Template (4.2)" em `backend.md` pro racional completo: um
+desafio de professor nunca entra sozinho na sequência forçada de todos os
+alunos do tópico.
+
+### `challenge_templates`
+
+Ver `apps/api/src/challenge-templates/entities/challenge-template.entity.ts`.
+Catálogo curado (tabela, mesmo padrão de `blocks`/`subjects`/
+`illustrations`) — `key` (`UNIQUE`) resolve o handler de validação/montagem
+de config em `handlers/template-registry.ts` (código, não dado — ver nota
+de pesquisa completa em `challenge-templates.service.ts`/`backend.md`).
+`name`/`description`/`icon` são sempre linguagem pedagógica simples, nunca
+o nome técnico do bloco Blockly (AC1). `parameterSchema` (jsonb) é um array
+de definição de campo — tipado em
+`challenge-template-parameter.interface.ts` — que o frontend renderiza
+genericamente (dispatch só por `type`/`visualPreview`). FK `CASCADE` pra
+`topics` (mesmo raciocínio de `Challenge.topicId`). `position` decide a
+ordem de exibição na galeria (AC1), mesmo raciocínio de
+`Challenge.position`/`BlockDefinition.position` — nunca `createdAt`.
+
+Seed do MVP: 1 template, `regular_polygon` ("Desenhar um polígono
+regular"), pro tópico `angulos_formas`, com 4 parâmetros (`sides`,
+`turnAngleDeg`, `snapTolerancePercent`, `enabledBlockTypes`) — ver migration
+`CreateChallengeTemplatesAndTeacherAuthoring`.
+
+### `challenge_classroom_allocations`
+
+Ver
+`apps/api/src/challenge-allocations/entities/challenge-classroom-allocation.entity.ts`.
+Tabela de associação N:N entre `challenges` e `classrooms` (4.3 —
+Alocação de desafio a uma turma): `UNIQUE(challengeId, classroomId)`
+impede duplicar o mesmo vínculo; FKs `CASCADE` pra `challenges`/
+`classrooms` (se um dos dois for removido, o vínculo não faz sentido
+sozinho — nada de linha órfã); `allocatedByUserId` FK nullable pra
+`users`, `ON DELETE SET NULL` (mesma defesa em profundidade de
+`ExportAuditLog.adminUserId`). Sem seed — o ambiente de teste (1 professor,
+1 turma `AZUL-1`, 1 aluno) já existe desde `AddLoginMechanisms`; a
+alocação em si é sempre uma ação do professor via `POST /teacher/
+challenges/:id/allocations`, nunca semeada.
+
+Esta é a linha que serve de log RD-C-equivalente da alocação (AC7 do card:
+`desafio_id`/`turma_id`/`professor_id`/`timestamp_alocacao`) — nunca um
+`interaction_events` com pseudônimo de professor forjado; ver "Nota de
+arquitetura" na seção 4.3 de `docs/ai/modules/backend.md`.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
@@ -177,6 +244,21 @@ pequena), mas a tabela nasce genérica o suficiente pra acumular outro
 campo de config de plataforma futuro sem precisar de uma tabela nova por
 configuração. A linha é materializada em runtime (`SettingsService.
 getOrCreate`, lazy init na primeira leitura), não semeada na migration.
+
+### `export_audit_logs`
+
+Ver `apps/api/src/audit/entities/export-audit-log.entity.ts`. Primeira
+tabela de auditoria de admin/professor do projeto (6.6) — deliberadamente
+fora de `interaction_events` (aquela é escopada a aluno, `studentPseudoId
+NOT NULL` de propósito, ver "Padrão: eventos RD-* são escopados ao aluno"
+em `backend.md`). Append-only, mesma filosofia de `interaction_events`
+(nunca `UPDATE`/`DELETE` de um log já gravado). `adminUserId` é FK
+nullable pra `users` (`ON DELETE SET NULL`) — defesa em profundidade, hoje
+não existe endpoint de exclusão de usuário, então esse caminho nunca é
+exercitado na prática. `filters` (jsonb) guarda o recorte exatamente como
+pedido (schoolId/challengeId/from/to/format/page/pageSize); `rowCount` é
+quantas linhas saíram NAQUELA resposta, não o total do recorte. Índice em
+`(adminUserId, createdAt)`, mesmo padrão de `interaction_events`.
 
 ### Migrations aplicadas
 
@@ -261,12 +343,42 @@ divergir das duas fontes.
     `@BeforeInsert` nem valor "certo" pra forçar antes do admin decidir se
     quer mudar o default (6.5 — configuração de N mínimo pro aviso de
     amostra pequena no relatório de profundidade por desafio).
+18. `1786116183224-CreateExportAuditLogs.ts` — cria `export_audit_logs`
+    (`adminUserId` FK nullable pra `users` `ON DELETE SET NULL`, `filters`
+    jsonb, `rowCount` int, índice em `(adminUserId, createdAt)`). Gerada
+    com `migration:generate`, sem seed — primeira tabela de auditoria de
+    admin/professor do projeto (6.6 — exportação de dados brutos pra
+    pesquisa, ver "Exportação de dados brutos pra pesquisa" em
+    `backend.md`).
+19. `1786125053829-CreateChallengeTemplatesAndTeacherAuthoring.ts` — cria
+    `challenge_templates` (FK `CASCADE` pra `topics`) e adiciona
+    `templateId`/`templateParams`/`createdByUserId` em `challenges` (FKs
+    `ON DELETE SET NULL` pra `challenge_templates`/`users`). Gerada com
+    `migration:generate` + seed manual (só `INSERT`, sem `@BeforeInsert`
+    pra replicar): 1 template `regular_polygon` pro tópico `angulos_formas`
+    (4.2 — Configuração de desafio via formulário guiado, Modo Template;
+    ver "`challenge_templates`" acima e "Configuração de desafio via
+    formulário guiado" em `backend.md`).
+20. `1786128131517-CreateChallengeClassroomAllocations.ts` — cria
+    `challenge_classroom_allocations` (índice único `(challengeId,
+    classroomId)`; FKs `CASCADE` pra `challenges`/`classrooms`,
+    `allocatedByUserId` `ON DELETE SET NULL` pra `users`). Gerada com
+    `migration:generate`, sem seed (4.3 — Alocação de desafio a uma turma;
+    ver "`challenge_classroom_allocations`" acima e "Alocação de desafio a
+    uma turma" em `backend.md`).
 
-Todas as 12 primeiras (e a 17ª) já foram validadas com `npm run
-migration:run` contra um Postgres real, e `\dt` + `\d <tabela>` conferidos
-no `psql`. Depois da última, um `migration:generate` extra confirmou "No
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª e a 20ª já foram validadas com
+`npm run migration:run` contra um Postgres real, e `\dt` + `\d <tabela>`
+conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente `pg`
+direto — `psql` não estava disponível no ambiente que rodou essas
+migrations). Depois da última, um `migration:generate` extra confirmou "No
 changes in database schema were found" — zero diff pendente entre entidades
-e banco. Os 3 fluxos de login
+e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
+via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
+rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
+real de `interaction_events`, `export_audit_logs` conferido com uma linha
+por chamada bem-sucedida, e o rate limit (5/min) disparando `429` na 6ª
+chamada em sequência. Os 3 fluxos de login
 (`/auth/student/login`, `/auth/teacher/login`, `/auth/admin/login`) foram
 testados ponta a ponta via `curl` contra essas contas semeadas — sucesso e
 falha (senha/OTP/sequência errados) ambos verificados, e os eventos

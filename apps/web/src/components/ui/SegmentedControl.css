@@ -1,0 +1,41 @@
+.ui-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ui-segmented__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: var(--hit-area-min);
+  min-height: calc(var(--hit-area-min) - 8px);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Estado ativo nunca é só cor de fundo — o peso/cor de texto também muda
+   (redundância visual), e `aria-checked`/data-state já contam o estado pra
+   quem usa leitor de tela. */
+.ui-segmented__item[data-state='on'] {
+  background: var(--color-primary);
+  color: var(--color-bg);
+}
+
+.ui-segmented__item:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.ui-segmented__icon {
+  font-size: 1.1em;
+}

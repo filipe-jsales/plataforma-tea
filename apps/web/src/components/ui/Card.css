@@ -1,0 +1,90 @@
+.ui-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: var(--hit-area-min);
+  min-height: 120px;
+  padding: var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  /* `none` fora de `.staff-theme` (token default em sensory-theme.css) —
+     elevação é um diferencial do tema de staff, não da fundação do
+     componente (ver theme/staff-theme.css). */
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  text-align: center;
+}
+
+.ui-card--selected {
+  border-color: var(--color-primary);
+  background: var(--color-bg);
+}
+
+.ui-card--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ui-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ui-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-card__label {
+  font-size: var(--font-size-body);
+}
+
+/* 3.11 — metadado (código da turma, contagem de alunos) sempre num nível
+   tipográfico abaixo do título — AC "hierarquia clara... não tudo no mesmo
+   nível visual". */
+.ui-card__meta {
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-body);
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.ui-card__selected-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* 3.11 — variante "start" (professor/admin): título+meta empilhados à
+   esquerda, ícone (se houver) alinhado ao topo do texto, card mais baixo
+   que o tile centralizado do aluno (que precisa de espaço pro ícone
+   grande). Mesma fundação (useButton/seleção/foco) do 'center'. */
+.ui-card--align-start {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: var(--hit-area-min);
+  text-align: left;
+}
+
+.ui-card--align-start .ui-card__icon {
+  font-size: 1.5rem;
+}
+
+.ui-card--align-start .ui-card__label {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-heading);
+}
+
+/* Só aparece pra navegação por teclado (useFocusRing) — clique de mouse não
+   "acende" o anel a cada seleção, mas o foco nunca fica sem indicador
+   quando alguém tabula até aqui. */
+.ui-card--focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

@@ -44,6 +44,10 @@ interface ChallengeDetail {
   // Próximo desafio da sequência Use-Modify-Create deste tópico (por
   // `position`), null se este for o último cadastrado até agora.
   nextChallengeId: string | null;
+  // 4.2 — tolerância de encaixe escolhida pelo professor num desafio criado
+  // via template; `null` usa o default do editor (ver
+  // apps/web/src/lib/blocklyToolbox.ts#applyGenerousSnapTolerance).
+  snapTolerancePercent: number | null;
 }
 
 // Aluno só — rota alimenta o editor de blocos do desafio já atribuído. Não
@@ -116,6 +120,7 @@ export class ChallengesController {
       predictQuestion: challenge.config.predictQuestion ?? null,
       editableFields: challenge.config.editableFields ?? [],
       nextChallengeId: next?.id ?? null,
+      snapTolerancePercent: challenge.config.snapTolerancePercent ?? null,
     };
   }
 

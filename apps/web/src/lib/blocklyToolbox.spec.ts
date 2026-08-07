@@ -1,6 +1,7 @@
 import * as Blockly from 'blockly/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  applyGenerousSnapTolerance,
   buildToolboxConfiguration,
   registerBlockDefinitions,
   type ToolboxCategory,
@@ -94,5 +95,31 @@ describe('registerBlockDefinitions', () => {
     registerBlockDefinitions(categories);
 
     expect(() => registerBlockDefinitions(categories)).not.toThrow();
+  });
+});
+
+describe('applyGenerousSnapTolerance', () => {
+  it('defaults to 100% — the same generous tolerance every curriculum challenge already had', () => {
+    applyGenerousSnapTolerance();
+
+    expect(Blockly.config.dragRadius).toBe(20);
+    expect(Blockly.config.snapRadius).toBe(48);
+    expect(Blockly.config.connectingSnapRadius).toBe(48);
+  });
+
+  it('4.2 — scales tolerance down proportionally for a teacher-chosen percent below 100', () => {
+    applyGenerousSnapTolerance(60);
+
+    expect(Blockly.config.dragRadius).toBe(12);
+    expect(Blockly.config.snapRadius).toBe(29);
+    expect(Blockly.config.connectingSnapRadius).toBe(29);
+  });
+
+  it('never collapses to zero tolerance even at the lowest valid percent (10%)', () => {
+    applyGenerousSnapTolerance(10);
+
+    expect(Blockly.config.dragRadius).toBeGreaterThan(0);
+    expect(Blockly.config.snapRadius).toBeGreaterThan(0);
+    expect(Blockly.config.connectingSnapRadius).toBeGreaterThan(0);
   });
 });

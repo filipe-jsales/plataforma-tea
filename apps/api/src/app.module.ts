@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BlocksModule } from './blocks/blocks.module';
 import { ChallengesModule } from './challenges/challenges.module';
+import { ChallengeTemplatesModule } from './challenge-templates/challenge-templates.module';
+import { ChallengeAllocationsModule } from './challenge-allocations/challenge-allocations.module';
 import { EventsModule } from './events/events.module';
 import { HomeModule } from './home/home.module';
 import { IdentityModule } from './identity/identity.module';
@@ -43,6 +45,8 @@ import { UsersModule } from './users/users.module';
     SchoolsModule,
     BlocksModule,
     ChallengesModule,
+    ChallengeTemplatesModule,
+    ChallengeAllocationsModule,
     EventsModule,
     AuthModule,
     HomeModule,

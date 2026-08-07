@@ -62,4 +62,14 @@ describe('AdminSettings', () => {
     expect(await screen.findByText('Informe um número inteiro positivo.')).toBeInTheDocument();
     expect(mockedPatch).not.toHaveBeenCalled();
   });
+
+  it('3.11: "← Voltar" is a real link styled like a button, never a bare text link', async () => {
+    mockedGet.mockResolvedValueOnce({ id: 's1', minSampleSizeThreshold: 5, updatedAt: '2026-01-01' });
+
+    renderPage();
+
+    const back = await screen.findByRole('link', { name: /voltar/i });
+    expect(back).toHaveAttribute('href', '/home');
+    expect(back).toHaveClass('ui-button');
+  });
 });

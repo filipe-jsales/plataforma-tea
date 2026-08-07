@@ -1,0 +1,60 @@
+/*
+  3.11 — tamanho/peso/line-height vêm de theme/sensory-theme.css
+  (--font-size-N, --line-height-N, --font-weight-N), a MESMA escala que
+  index.css aplica a <h1>/<h2>/<h3>/<p> crus — uma tela que usa <Heading>/
+  <Text> e uma que ainda usa tag HTML crua têm a hierarquia idêntica, nunca
+  2 escalas divergentes no projeto.
+*/
+.ui-heading {
+  margin: 0 0 var(--space-3);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-heading);
+  /* Sem font-style/text-transform aqui — itálico/caixa alta nunca são o
+     único indicador de ênfase (AC de 3.10). */
+}
+
+.ui-heading--1 {
+  font-size: var(--font-size-h1);
+}
+
+.ui-heading--2 {
+  font-size: var(--font-size-h2);
+}
+
+.ui-heading--3 {
+  font-size: var(--font-size-h3);
+}
+
+.ui-text {
+  margin: 0 0 var(--space-2);
+  line-height: var(--line-height-body);
+}
+
+.ui-text--sm {
+  font-size: var(--font-size-small);
+}
+
+.ui-text--md {
+  font-size: var(--font-size-body);
+}
+
+.ui-text--lg {
+  font-size: 1.15rem;
+}
+
+.ui-text--default {
+  color: var(--color-text);
+}
+
+.ui-text--muted {
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.ui-text--warning {
+  color: var(--color-warning);
+}
+
+.ui-text--success {
+  color: var(--color-success);
+}
