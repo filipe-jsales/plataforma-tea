@@ -69,6 +69,21 @@ apps/api/src/
 │   ├── home.service.ts          # agregações por papel — nunca dado individual pro admin
 │   ├── home.controller.ts       # GET /home/{student,teacher,admin}
 │   └── home.module.ts
+├── settings/
+│   ├── entities/platform-setting.entity.ts  # tabela singleton (1 linha), N mínimo (6.5)
+│   ├── dto/update-settings.dto.ts
+│   ├── settings.controller.ts   # GET/PATCH /admin/settings
+│   ├── settings.service.ts
+│   └── settings.module.ts
+├── metrics/
+│   ├── statistics.ts             # 6.5 — motor estatístico puro (mean/median/stdDev/quartis/histogramas)
+│   ├── metrics.service.ts        # 6.1 — motor único de status/progresso por desafio
+│   ├── metrics-admin.service.ts  # 6.2 — visão institucional (escolas/turmas/professores)
+│   ├── metrics-admin-challenge.service.ts  # 6.5 — relatório de profundidade por desafio
+│   ├── metrics-admin.controller.ts  # GET /metrics/admin/{schools[...],challenges[...]}
+│   ├── metrics-teacher.service.ts   # 6.3/6.4 — progresso por turma do professor
+│   ├── metrics-teacher.controller.ts  # GET /metrics/teacher/classrooms/:id/{students,summary}
+│   └── metrics.module.ts
 ├── database/
 │   ├── data-source.ts           # DataSource p/ CLI de migrations (fora do Nest DI)
 │   └── migrations/              # uma migration por mudança de schema
@@ -509,6 +524,86 @@ observável nunca vira inferência na resposta da API).
 6.3 devolve os alunos ordenados por `enrolledAt` ascendente por padrão — a
 tela permite alternar pra ordenação por nome, nunca por status/tentativas.
 
+## Relatório de profundidade por desafio (6.5)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M5,
+"Status: ✅ Implementado" — a especificação real acabou bem mais rica que o
+rascunho original do documento, ver a nota lá). `GET /metrics/admin/
+challenges` (seletor — todo desafio cadastrado, qualquer tópico) e
+`GET /metrics/admin/challenges/:challengeId` (o relatório), ambas
+`@Roles(Role.ADMIN)`, sem escopo de turma/escola — é a plataforma inteira
+(visão de pesquisa do admin), nunca nome de aluno em lugar nenhum da
+resposta.
+
+**Decisão técnica não-negociável desta feature: todo cálculo estatístico
+(média, mediana, desvio padrão, quartis, histograma) é feito em código, a
+partir de valores brutos por aluno, nunca em SQL agregado**
+(`apps/api/src/metrics/statistics.ts` — funções puras, sem I/O, 28 testes
+com dataset canônico `[1..10]` conferido contra `numpy`). Duas razões:
+mantém a lógica testável sem depender de `PERCENTILE_CONT`/`STDDEV` do
+dialeto do banco, e reproduzível — os quartis usam interpolação linear
+(método R "type 7" / default de `numpy.percentile`) especificamente pra
+que o mesmo `p` aplicado ao mesmo dado bruto (exportável via M6, ainda não
+implementado) reproduza exatamente o número em R/Python.
+
+`MetricsAdminChallengeService` (`apps/api/src/metrics/
+metrics-admin-challenge.service.ts`) é o orquestrador: busca dado bruto via
+métodos novos de `EventsService` (`findDistinctStudentsForChallenge`,
+`findEarliestEventTimestamps`, `countEventsByCategoryForChallenge`,
+`countEventsByTypeForChallenge`, `findModifyAttempts`,
+`findExecutionsWithPrediction`, `findUseCompletions` — todos escopados só
+por `challengeId`, sem `pseudoIds` pré-filtrado, porque aqui a população é
+"todo aluno que já teve algum evento neste desafio", não uma turma) e
+delega todo cálculo a `statistics.ts`. Reaproveita o motor 6.1
+(`MetricsService.getChallengeProgressForStudents`) pra status/tentativas
+por aluno — mesma fonte que 6.3/6.4, nenhuma query de status duplicada.
+
+Pontos de desenho que valem registrar:
+
+- **Histograma de tentativas (`1`/`2`/`3`/`4+`) exclui alunos com 0
+  tentativas** — não existe bucket "0" no AC, e forçar um aluno que nunca
+  executou pro bucket "1" misrepresentaria o dado. `attemptsPerStudent`
+  (estatística descritiva) continua incluindo o zero — cada card carrega
+  seu próprio N implícito, podem divergir entre si de propósito.
+- **Desvio padrão é sempre amostral** (denominador n-1) e `null` (nunca 0)
+  quando N&lt;2 — indefinido matematicamente nesse caso, não um "sem
+  variação".
+- **Taxa de acerto de previsão nunca funde agregada com por-aluno**: a
+  primeira (`aggregate`) é sobre TENTATIVAS (todas juntas, de todos os
+  alunos), a segunda (`perStudent`) é sobre ALUNOS (média das taxas
+  individuais) — os dois `n` reportados são propositalmente diferentes.
+  `attemptsVsMatchRateScatter` (só no estágio `modify`) é 1 ponto por aluno,
+  sem nenhum identificador (nem pseudônimo) — o gráfico não precisa disso.
+- **"Tentativas até a previsão bater" (estágio `modify`) só conta alunos
+  que eventualmente bateram** — quem nunca bateu fica de fora dessa
+  distribuição específica (o `n` do card já comunica isso), não é forçado a
+  `null`/infinito nem contado como 0.
+- **`useCompletions`/`attemptsBeforeProceed` usa só a cópia RD-P de
+  `challenge_use_completed`** (a que carrega `attempts_before_proceed`/
+  `investigation_answer`) — a cópia RD-C é bookkeeping curricular duplicado,
+  contar as duas dobraria o N (ver "Eventos desta feature" acima, onde esse
+  evento é logado 2× por "Avançar").
+- **Estágio `create` não tem `modifyInsights` nem `useInsights`** — chave
+  ausente da resposta (não `null` forçado), a própria forma do JSON já
+  comunica o estágio (AC de 6.5: "ausência comunica o estágio").
+- **RD-E nunca interpretado** — só `eventsByCategory['RD-E']`, um número
+  puro, em qualquer parte da resposta (regra não-negociável 7 — o princípio
+  vale pro admin tanto quanto pro professor, mais dado bruto não é mais
+  interpretação).
+
+### N mínimo configurável (`SettingsModule`)
+
+`apps/api/src/settings/` — `PlatformSetting` é uma tabela singleton (1
+linha só, `getOrCreate` materializa o default na primeira leitura se
+ninguém alterou nada ainda) com `minSampleSizeThreshold` (default 5).
+`GET/PATCH /admin/settings`, admin only. Puramente de apresentação — mudar
+o valor nunca recalcula dado histórico nem afeta a resposta de
+`/metrics/admin/challenges/:challengeId` além de fazer o frontend decidir
+se mostra o aviso de amostra pequena (AC de 6.5). Não vive dentro de
+`MetricsModule` — é config de plataforma, não métrica; `MetricsModule`
+importa `SettingsModule` pra `MetricsAdminChallengeService` poder ler o
+threshold.
+
 ## Banco de dados
 
 Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra
@@ -547,12 +642,14 @@ novos.
   `docs/ai/backlog/metricas-professor-admin.md`. Implementado até agora:
   motor de status/progresso (6.1, `MetricsService`), o painel institucional
   do admin (6.2, `GET /metrics/admin/schools[...]` +
-  `apps/web/src/routes/metrics/AdminMetrics.tsx`) e o painel do professor
+  `apps/web/src/routes/metrics/AdminMetrics.tsx`), o painel do professor
   por turma (6.3/6.4, `GET /metrics/teacher/classrooms/:classroomId/
   {students,summary}` + `MetricsTeacherService` — ver "Painel do professor:
-  progresso por turma" abaixo). Falta só a profundidade de evento por
-  desafio e a exportação bruta, ambos exclusivos do admin (M5/M6 no
-  documento).
+  progresso por turma" abaixo) e o relatório de profundidade por desafio do
+  admin (6.5, `GET /metrics/admin/challenges[/:challengeId]` +
+  `MetricsAdminChallengeService`/`statistics.ts` — ver "Relatório de
+  profundidade por desafio" abaixo). Falta só a exportação bruta pra
+  pesquisa (M6 no documento, exclusivo do admin).
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

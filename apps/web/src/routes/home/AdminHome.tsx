@@ -32,6 +32,14 @@ export function AdminHome() {
           <span className="home__action-icon">📊</span>
           Painel institucional (escolas, turmas, professores)
         </Link>
+        <Link to="/admin/reports" className="home__action">
+          <span className="home__action-icon">🔬</span>
+          Relatório de profundidade por desafio
+        </Link>
+        <Link to="/admin/settings" className="home__action">
+          <span className="home__action-icon">⚙️</span>
+          Configurações
+        </Link>
       </div>
 
       {data && (

@@ -35,8 +35,16 @@ apps/web/src/
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
 │   └── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
-├── components/challenge/
-│   └── PixiTurtleWorld.tsx          # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+├── components/
+│   ├── challenge/
+│   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   └── charts/                      # 6.5 — SVG inline, sem lib externa, hue único (--color-primary)
+│       ├── BoxPlot.tsx              # mediana + Q1/Q3 + whiskers min-max
+│       ├── BarChart.tsx             # barras horizontais (histograma OU categórico — mesmo componente)
+│       ├── ScatterPlot.tsx          # 1 ponto = 1 aluno, sem identificador
+│       ├── StatSummary.tsx          # <StatList> (N/média/mediana/dp/quartis em texto) + <SampleSizeNote>
+│       ├── format.ts                # formatNumber() compartilhado
+│       └── charts.css
 ├── routes/
 │   ├── RootRedirect.tsx             # decide login → onboarding → home
 │   ├── RequireAuth.tsx              # guard de sessão/papel
@@ -60,7 +68,11 @@ apps/web/src/
 │       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
 │       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
 │       ├── TeacherMetrics.tsx       # 6.3/6.4 — /teacher/metrics, progresso por turma do professor
-│       └── TeacherMetrics.css       # sem restrição sensorial — mesmo racional de AdminMetrics.css
+│       ├── TeacherMetrics.css       # sem restrição sensorial — mesmo racional de AdminMetrics.css
+│       ├── ChallengeReport.tsx      # 6.5 — /admin/reports, relatório de profundidade por desafio
+│       ├── ChallengeReport.css
+│       ├── AdminSettings.tsx        # 6.5 — /admin/settings, N mínimo pro aviso de amostra pequena
+│       └── AdminSettings.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -402,6 +414,84 @@ entre duas abas:
 
 **Sem as restrições sensoriais do aluno** (`TeacherMetrics.css`) — mesmo
 racional de `AdminMetrics.css`/`StaffLogin.css`.
+
+## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
+
+`/admin/reports` (`RequireAuth roles={['admin']}`), link a partir de
+`AdminHome`. Busca `GET /metrics/admin/challenges` (seletor — todo desafio
+cadastrado, qualquer tópico) e, ao selecionar um, `GET /metrics/admin/
+challenges/:challengeId` (o relatório completo). "O que um revisor de
+artigo esperaria ver" (AC de 6.5): todo card de estatística mostra
+`<StatList>` (N/média/mediana/desvio/quartis em texto — a alternativa não-
+visual ao gráfico) + `<SampleSizeNote>` (aviso quando `n < report.
+minSampleSizeThreshold`, nunca esconde o número) + o gráfico recomendado.
+
+- **Bloco comum** (todo desafio): `attemptsPerStudent` → `<StatList>` +
+  `<BoxPlot>`; `attemptsHistogram` → `<BarChart>` (buckets fixos `1/2/3/
+  4+`); `timeToFirstExecutionMs` → convertido pra segundos
+  (`statsToSeconds`) antes de renderizar, porque o backend devolve `ms`
+  bruto e nenhum revisor lê "4199994 ms" com facilidade;
+  `eventsByCategory`/`eventsByType` → `<BarChart>` categórico (ordem fixa
+  RD-I/P/C/E/L pro primeiro, ordenado por contagem pro segundo).
+- **`modifyInsights`/`useInsights`** só renderizam quando a chave existe na
+  resposta (`report.modifyInsights &&`, nunca checando `report.stage ===
+  'modify'` no frontend — a mesma regra "nunca decidir por `stage`
+  diretamente" que `ChallengePage` já segue, ver "Motor PRIMM" acima).
+  `<RateCard>` (componente local) é o único jeito que a dualidade
+  agregada×por-aluno da taxa de acerto aparece — dois números e dois `n`
+  lado a lado, nunca fundidos num só.
+- **`attemptsVsMatchRateScatter`** (só `modify`) vira `<ScatterPlot>` com
+  eixos "Tentativas" × "Acerto (%)" — o array já vem sem identificador
+  nenhum do backend, o componente nem saberia expor pseudônimo se
+  quisesse.
+- **Nenhum nome/pseudônimo de aluno aparece nesta tela em lugar nenhum** —
+  testado explicitamente (`ChallengeReport.spec.tsx`, "never shows an
+  individual student name/pseudonym").
+
+### Gráficos (`components/charts/`)
+
+SVG inline, sem biblioteca nova — segue o padrão zero-dependência já
+estabelecido no resto do frontend (Blockly/PixiJS são os únicos motores de
+render externos do projeto, e nenhum dos dois serve pra gráfico
+estatístico). Hue único (`--color-primary`) em toda marca: nenhum destes
+gráficos compara séries categóricas coloridas entre si (é sempre magnitude/
+distribuição de 1 variável), então a paleta categórica de um design system
+de dataviz não se aplica — "sequential = hue único" é o formato certo por
+definição, não uma simplificação.
+
+- **`<BoxPlot>`**: whiskers até min/max direto ("min-max boxplot", não
+  Tukey/1.5×IQR com outlier à parte) — decisão deliberada dado N tipicamente
+  pequeno neste produto. Mostra `N=0 — sem dados` pra distribuição vazia e
+  uma mensagem própria pra `N=1` (desvio/quartis não calculáveis com 1
+  sujeito), nunca uma caixa degenerada.
+- **`<BarChart>`**: barras **horizontais** de propósito — rótulos deste
+  relatório variam de curtos (`"1"`) a longos (`type` de evento, ex.
+  `"toolbox_rendered"`), e horizontal evita rótulo rotacionado/cortado
+  independente do tamanho do texto. Mesmo componente serve histograma
+  (`attemptsHistogram`) e categórico (`eventsByType`, `eventsByCategory`,
+  `mostChangedFieldDistribution`) — a diferença é só o array de entrada.
+- **`<ScatterPlot>`**: 1 ponto = 1 aluno, `fill-opacity` < 1 como único
+  mecanismo de legibilidade contra sobreposição (N pequeno não justifica
+  jitter/clustering).
+- Todo componente checa array vazio/`n=0` primeiro e renderiza
+  `<p className="chart-empty">` em vez de calcular com dado vazio (guarda
+  contra `NaN`/divisão por zero client-side, mesmo racional do backend).
+- Estático, sem `transition`/`animation` — não depende do estado sensorial
+  (área de staff/admin, mesmo racional de `AdminMetrics.css`), mas também
+  não teria porquê de animar um gráfico de pesquisa.
+
+### N mínimo (`AdminSettings`, 6.5)
+
+`/admin/settings` — formulário mínimo de propósito (AC: "não precisa ser
+dedicada, pode ser parte de uma tela geral de Configurações"), só o campo
+`minSampleSizeThreshold` hoje. `GET /admin/settings` pré-preenche o input;
+`PATCH /admin/settings` no submit. Validação client-side (inteiro
+positivo) roda **antes** da checagem HTML5 nativa — o `<input type=
+"number">` não declara `min`/`step`, de propósito: a validação nativa do
+browser bloqueia o evento `submit` inteiro antes do JS rodar (não dispara
+`onSubmit`), o que impediria a mensagem de erro própria do app ("Informe um
+número inteiro positivo.") de aparecer — mesmo padrão de linguagem não-
+punitiva/descritiva já usado em `StudentLogin`.
 
 ## Assets visuais (`assets/illustrations/`)
 

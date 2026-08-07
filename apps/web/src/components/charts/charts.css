@@ -1,0 +1,119 @@
+/*
+  Gráficos do relatório de profundidade (6.5). Um hue só (--color-primary) em
+  toda marca — nenhum destes gráficos compara séries categóricas coloridas
+  entre si (é sempre "magnitude de uma variável", nunca "identidade de N
+  séries"), então a paleta categórica validada não se aplica aqui (ver
+  dataviz skill, "choosing-a-form": sequential = hue único é o default
+  seguro). SVG estático, sem transition/animation — não depende do estado
+  sensorial (esta é uma tela de staff/admin, mesmo racional de
+  AdminMetrics.css), mas mesmo assim não anima por não ter porquê.
+*/
+
+.chart-empty {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.chart-bar__label {
+  font-size: 0.8rem;
+  fill: var(--color-text);
+}
+
+.chart-bar__track {
+  fill: var(--color-border);
+  opacity: 0.5;
+}
+
+.chart-bar__fill {
+  fill: var(--color-primary);
+}
+
+.chart-bar__value {
+  font-size: 0.8rem;
+  fill: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-box__whisker,
+.chart-box__cap {
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+.chart-box__box {
+  fill: var(--color-primary);
+  fill-opacity: 0.25;
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.chart-box__median {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+}
+
+.chart-box__tick {
+  font-size: 0.75rem;
+  fill: var(--color-text);
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-box__tick--median {
+  font-weight: 700;
+  opacity: 1;
+}
+
+.chart-scatter__axis {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.chart-scatter__axis-label {
+  font-size: 0.75rem;
+  fill: var(--color-text);
+  opacity: 0.75;
+}
+
+.chart-scatter__point {
+  fill: var(--color-primary);
+  fill-opacity: 0.7;
+  stroke: var(--color-bg);
+  stroke-width: 2;
+}
+
+.sample-size-note {
+  margin-top: var(--space-1);
+  font-size: 0.78rem;
+  color: var(--color-warning);
+}
+
+.stat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+
+.stat-list--empty {
+  opacity: 0.75;
+  font-size: 0.85rem;
+}
+
+.stat-list__item dt {
+  font-size: 0.72rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.stat-list__item dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

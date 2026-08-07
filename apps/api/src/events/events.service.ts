@@ -92,4 +92,117 @@ export class EventsService {
     const rows = await query.getRawMany<{ studentPseudoId: string }>();
     return new Set(rows.map((row) => row.studentPseudoId));
   }
+
+  // Relatório de profundidade por desafio (6.5) — daqui pra baixo, sem
+  // `pseudoIds` pré-filtrado de propósito: é a plataforma inteira (visão de
+  // pesquisa do admin), não escopado a turma/escola. Nunca vaza
+  // displayName — só pseudônimo, contagem e payload já estruturado, mesmo
+  // padrão do resto do módulo.
+
+  // Todo aluno que teve QUALQUER evento neste desafio — "N que chegou até
+  // ele" (AC de 6.5). População-base do relatório inteiro: as demais
+  // consultas abaixo recebem este conjunto como `pseudoIds`.
+  async findDistinctStudentsForChallenge(challengeId: string): Promise<string[]> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
+      .where('event.challengeId = :challengeId', { challengeId })
+      .getRawMany<{ studentPseudoId: string }>();
+    return rows.map((row) => row.studentPseudoId);
+  }
+
+  // Primeiro timestamp por aluno neste desafio — sem `type`, é "quando o
+  // aluno chegou" (ex.: toolbox_rendered ao carregar a tela); com `type`,
+  // "quando o aluno fez X pela 1ª vez" (ex.: program_executed). A diferença
+  // entre os dois é "tempo até a primeira execução" (AC de 6.5), calculada
+  // em código por MetricsAdminChallengeService — não em SQL, mesma decisão
+  // do resto deste bloco.
+  async findEarliestEventTimestamps(challengeId: string, type?: string): Promise<Map<string, Date>> {
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('MIN(event.createdAt)', 'earliest')
+      .where('event.challengeId = :challengeId', { challengeId })
+      .groupBy('event.studentPseudoId');
+    if (type) {
+      query.andWhere('event.type = :type', { type });
+    }
+    const rows = await query.getRawMany<{ studentPseudoId: string; earliest: Date }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, new Date(row.earliest)]));
+  }
+
+  // Contagem bruta por categoria RD-* (AC de 6.5) — preenche as 5
+  // categorias mesmo quando uma delas não tem nenhum evento ainda (0
+  // explícito, nunca uma chave ausente que o frontend precisaria tratar
+  // como "talvez seja 0, talvez não exista").
+  async countEventsByCategoryForChallenge(challengeId: string): Promise<Record<EventCategory, number>> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.category', 'category')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.challengeId = :challengeId', { challengeId })
+      .groupBy('event.category')
+      .getRawMany<{ category: EventCategory; count: string }>();
+    const result = Object.fromEntries(
+      Object.values(EventCategory).map((category) => [category, 0]),
+    ) as Record<EventCategory, number>;
+    for (const row of rows) {
+      result[row.category] = Number(row.count);
+    }
+    return result;
+  }
+
+  // Contagem bruta por `type` específico (AC de 6.5) — ordenado por
+  // contagem desc pra já sair pronto pro gráfico de barras, empate por tipo
+  // asc pra saída determinística.
+  async countEventsByTypeForChallenge(challengeId: string): Promise<{ type: string; count: number }[]> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.type', 'type')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.challengeId = :challengeId', { challengeId })
+      .groupBy('event.type')
+      .getRawMany<{ type: string; count: string }>();
+    return rows
+      .map((row) => ({ type: row.type, count: Number(row.count) }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+  }
+
+  // Linhas brutas de `challenge_modify_attempt` (payload incluso), em ordem
+  // cronológica por aluno — quem interpreta `changed_values`/
+  // `prediction_given`/`result_matched_prediction` é
+  // MetricsAdminChallengeService (decisão técnica de 6.5: cálculo em
+  // código, não em SQL agregado).
+  findModifyAttempts(challengeId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { challengeId, type: 'challenge_modify_attempt' },
+      order: { studentPseudoId: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  // Linhas brutas de `program_executed` que carregam campos de previsão
+  // (`prediction_given`/`result_matched_prediction`) — só a fase `use` loga
+  // isso (a fase `modify` tem `challenge_modify_attempt` própria, ver
+  // findModifyAttempts). `payload->>'prediction_given' IS NOT NULL` em vez
+  // do operador `?` de existência de chave jsonb, pra não arriscar
+  // ambiguidade com o parser de parâmetros nomeados do TypeORM.
+  findExecutionsWithPrediction(challengeId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository
+      .createQueryBuilder('event')
+      .where('event.challengeId = :challengeId', { challengeId })
+      .andWhere('event.type = :type', { type: 'program_executed' })
+      .andWhere(`event.payload ->> 'prediction_given' IS NOT NULL`)
+      .orderBy('event.studentPseudoId', 'ASC')
+      .getMany();
+  }
+
+  // Linhas brutas de `challenge_use_completed`, só a cópia RD-P (a que
+  // carrega `attempts_before_proceed`/`investigation_answer` — a cópia RD-C
+  // é só bookkeeping curricular, contá-la junto duplicaria o N).
+  findUseCompletions(challengeId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { challengeId, type: 'challenge_use_completed', category: EventCategory.PRODUCT },
+      order: { studentPseudoId: 'ASC' },
+    });
+  }
 }

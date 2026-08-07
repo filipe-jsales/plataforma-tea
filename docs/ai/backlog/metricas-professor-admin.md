@@ -351,36 +351,103 @@ efetivamente passaram por Predict/Run/Investigate/Modify/Make.
 (resumo do desafio primeiro, distribuição por-aluno depois) se o time achar
 grande demais pra uma entrega só.
 
-**Critérios de Aceite:**
-- `@Roles(Role.ADMIN)`.
-- Resposta mínima: `{ challengeId, title, stage, totalAttempts,
-  studentsReached, studentsCompleted, eventsByCategory: { 'RD-I': n,
-  'RD-P': n, 'RD-C': n, 'RD-E': n, 'RD-L': n }, eventsByType: [{ type,
-  count }] }` — o "aprofundado sobre eventos" do pedido é literalmente isto:
-  contagem por `type` controlado (`toolbox_rendered`, `block_dragged`,
-  `program_executed`, etc.), não só por categoria.
-- **Se `stage: 'modify'`:** bloco adicional `modifyInsights: {
-  averageAttemptsBeforeMatch, predictionMatchRate, mostChangedField:
-  'TIMES' | 'ANGLE' | null }` — derivado de `challenge_modify_attempt.
-  payload.changed_values`/`result_matched_prediction`. Isto é dado que só
-  existe por causa da instrumentação de 3.4 — é o exemplo mais concreto de
-  "dado pra pesquisa que a feature já gera, só falta expor".
-- **Se `stage: 'use'`:** bloco `investigateInsights: { answersLogged,
-  averageAttemptsBeforeProceed, predictionMatchRate }` —
-  `predictionMatchRate` vem de `program_executed.payload.
-  result_matched_prediction` (motor PRIMM "Predict" também mora em 3.3, ver
-  "Duas decisões confirmadas" acima — só a 1ª execução de cada aluno carrega
-  esses campos, o resto é `program_executed` "puro"). Nunca o *texto* da
-  resposta de investigação exposto em agregado sem contexto de pesquisa
-  formal (é resposta livre de criança, tratar com o mesmo cuidado de
-  qualquer dado qualitativo — se um dia precisar do texto puro, isso é o
-  `M6` [exportação], não este resumo).
-- RD-E aparece só como contagem (`eventsByCategory['RD-E']`) — nunca
-  interpretado ("X eventos RD-E" é o máximo, nunca "X sinais de
-  sobrecarga").
-- Teste: desafio sem nenhum evento ainda devolve zeros em tudo, nunca erro;
-  desafio `create` sem `modifyInsights`/`investigateInsights` (campos
-  ausentes, não `null` forçado — a forma da resposta já diz o estágio).
+**Critérios de Aceite:** substituídos por uma especificação bem mais
+detalhada quando a feature foi de fato implementada (renumerada "6.5" no
+pedido original) — ver "Status: ✅ Implementado" abaixo pro AC completo
+realmente construído (estatística descritiva completa — média, mediana,
+desvio padrão, quartis — em vez de só média, mais taxa agregada×por-aluno,
+distribuição de campo alterado, scatter tentativas×acerto, e configuração
+de N mínimo). O rascunho original acima (`averageAttemptsBeforeMatch`,
+`investigateInsights`, etc.) não reflete a resposta real da API — mantido
+só como histórico de como a feature começou a ser pedida.
+
+**Status: ✅ Implementado** (`apps/api/src/metrics/{statistics,
+metrics-admin-challenge.service,metrics-admin-challenge.service.spec}.ts`
++ rota em `metrics-admin.controller.ts`; `apps/api/src/settings/` pro N
+mínimo configurável; tela em
+`apps/web/src/routes/metrics/{ChallengeReport,AdminSettings}.tsx` +
+`apps/web/src/components/charts/`). Forma final da resposta de
+`GET /metrics/admin/challenges/:challengeId`:
+
+```
+{
+  challengeId, title, stage, minSampleSizeThreshold,
+  studentsReached, studentsCompleted,
+  attemptsPerStudent: DescriptiveStats,       // n/mean/median/stdDev/min/max/q1/q3
+  attemptsHistogram: [{ label: '1'|'2'|'3'|'4+', count }],
+  timeToFirstExecutionMs: DescriptiveStats,
+  eventsByCategory: { 'RD-I': n, 'RD-P': n, 'RD-C': n, 'RD-E': n, 'RD-L': n },
+  eventsByType: [{ label: type, count }],
+  modifyInsights?: {                          // só quando stage: 'modify'
+    attemptsUntilMatch: DescriptiveStats,
+    predictionMatchRate: { aggregate, perStudent, perStudentHistogram },
+    mostChangedFieldDistribution: [{ label, count }],
+    attemptsVsMatchRateScatter: [{ attempts, matchRatePercent }],
+  },
+  useInsights?: {                             // só quando stage: 'use'
+    attemptsBeforeProceed: DescriptiveStats,
+    predictionMatchRate: { aggregate, perStudent, perStudentHistogram },
+    investigationResponses: { n },
+  },
+}
+```
+
+Decisões/divergências relevantes:
+
+- **Todo cálculo estatístico é código puro, não SQL agregado**
+  (`apps/api/src/metrics/statistics.ts`, zero I/O, 28 testes com dataset
+  canônico `[1..10]` conferido contra numpy) — decisão técnica confirmada a
+  pedido de quem propôs a feature, mantém a lógica testável sem depender de
+  `PERCENTILE_CONT`/`STDDEV` do Postgres.
+- **Quartis por interpolação linear** (método R "type 7" / default de
+  `numpy.percentile`) — escolhido especificamente pra reproduzir o mesmo
+  número em R/Python a partir do export bruto (6.6), não um método
+  arbitrário.
+- **Desvio padrão é sempre amostral** (denominador n-1), `null` (nunca 0)
+  quando N&lt;2 — matematicamente indefinido nesse caso.
+- **Histograma de tentativas exclui alunos com 0 tentativas** — o AC pede
+  buckets exatos `1/2/3/4+`, sem bucket "0"; um aluno que chegou ao desafio
+  mas nunca executou entra em `attemptsPerStudent` (que inclui o zero) mas
+  não no histograma. Cada card carrega seu próprio N implícito.
+- **Boxplot é "min-max"**, não Tukey/1.5×IQR com outliers à parte — decisão
+  deliberada dado N tipicamente pequeno neste produto (turma/desafio, não
+  milhares de sujeitos), onde a regra de outlier de Tukey tende a marcar o
+  próprio min/max sem agregar leitura nova.
+- **Taxa de acerto de previsão sempre em duas formas nunca fundidas**:
+  `aggregate` (todas as tentativas com previsão, de todos os alunos, juntas)
+  e `perStudent` (média/desvio das taxas individuais) — os dois `n` são
+  diferentes de propósito (nº de tentativas vs. nº de alunos) e reportados
+  separados.
+- **`attemptsVsMatchRateScatter` não expõe pseudônimo** — cada ponto é só
+  `{ attempts, matchRatePercent }`, sem nenhum identificador (nem
+  pseudonimizado) porque o gráfico não precisa disso pra ser lido.
+- **N mínimo configurável** (`apps/api/src/settings/`, tabela singleton
+  `platform_settings`, default 5): `GET/PATCH /admin/settings`. Puramente
+  de apresentação — mudar o valor nunca recalcula dado histórico, só decide
+  quando `SampleSizeNote` (frontend) mostra o aviso. Tela em
+  `AdminSettings.tsx`, linkada de `AdminHome`.
+- **Seletor de desafio** (`GET /metrics/admin/challenges`,
+  `ChallengesService.findAllWithTopic`) — todo desafio cadastrado, qualquer
+  tópico, pro admin escolher por título+tópico (nunca por uuid).
+- **Gráficos são SVG inline sem biblioteca nova** (`apps/web/src/
+  components/charts/`: `BoxPlot`, `BarChart`, `ScatterPlot`) — hue único
+  (`--color-primary`) em toda marca, porque nenhum destes gráficos compara
+  séries categóricas coloridas entre si (é sempre magnitude/distribuição de
+  1 variável, nunca identidade de N séries) — a paleta categórica validada
+  do skill de dataviz não se aplica aqui por não haver múltiplas séries
+  competindo por cor.
+- **`RD-E` nunca interpretado** — só `eventsByCategory['RD-E']`, um número,
+  em qualquer gráfico/texto desta tela (regra não-negociável 7).
+- Teste: desafio sem nenhum evento devolve N=0/nulls em tudo (nunca
+  erro/NaN); desafio `create` sem `modifyInsights` nem `useInsights` (chave
+  ausente da resposta, não `null` forçado — AC explícito: "ausência
+  comunica o estágio").
+- Verificado ponta a ponta contra o Postgres real via `curl` com a conta
+  admin demo, nos 3 desafios seed (`use`/`modify`/`create` de
+  `angulos_formas`) — números cruzados manualmente contra `eventsByType`
+  (ex.: `attemptsBeforeProceed.n` bate com a metade da contagem de
+  `challenge_use_completed`, já que esse tipo é logado 2× por "Avançar", uma
+  vez RD-P uma vez RD-C, e só a cópia RD-P entra nesta estatística).
 
 **Dados/Eventos usados:** todos os RD-* emitidos por `ChallengePage` (ver
 lista em "Contexto" acima) — esta é a feature que consome o vocabulário de
@@ -448,6 +515,6 @@ M6. M2/M3 ficam depois de M4 apesar de serem "o pedido do professor" porque
 dependem da decisão de escopo em aberto (turma vs. escola) — melhor destravar
 essa decisão enquanto M4 (que não depende dela) já está em progresso.
 
-**M1, M2, M3 e M4 implementados** (ver "Status: ✅ Implementado" em cada
-seção acima) — falta só M5/M6 (profundidade por desafio/evento e
-exportação bruta, ambos exclusivos do admin).
+**M1, M2, M3, M4 e M5 implementados** (ver "Status: ✅ Implementado" em cada
+seção acima) — falta só M6 (exportação bruta pra pesquisa, exclusivo do
+admin).
