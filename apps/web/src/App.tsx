@@ -5,6 +5,7 @@ import { StudentLogin } from './routes/login/StudentLogin'
 import { TeacherLogin } from './routes/login/TeacherLogin'
 import { ChallengePage } from './routes/challenge/ChallengePage'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
+import { TeacherMetrics } from './routes/metrics/TeacherMetrics'
 import { OnboardingSensorial } from './routes/OnboardingSensorial'
 import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
@@ -64,6 +65,14 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <AdminMetrics />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/metrics"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherMetrics />
           </RequireAuth>
         }
       />

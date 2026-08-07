@@ -35,6 +35,13 @@ export class SchoolsService {
     return this.classroomsRepository.findOne({ where: { joinCode } });
   }
 
+  // Painel do professor (6.3/6.4) — resolve a turma pra checar titularidade
+  // (classroom.teacherId === professor autenticado) antes de qualquer query
+  // de métrica. Sem relations: quem chama só precisa do teacherId.
+  findClassroomById(id: string): Promise<Classroom | null> {
+    return this.classroomsRepository.findOne({ where: { id } });
+  }
+
   // Roster de alunos ativos da turma — passo "seleção de avatar" do login.
   // Só devolve o suficiente para reconhecimento visual (avatar + nome de
   // exibição); nunca e-mail, pseudônimo ou qualquer dado de reversão.

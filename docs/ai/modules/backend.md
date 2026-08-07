@@ -379,10 +379,16 @@ documentada):**
 
 Além de `toolbox_rendered`/`block_dragged` (3.1, RD-I), `program_executed`
 (3.2, RD-P — `block_sequence_json` é o programa serializado, o mesmo formato
-de `program`) e `challenge_use_completed` (3.3 — logado duas vezes, uma
+de `program`), `challenge_use_completed` (3.3 — logado duas vezes, uma
 `RD-P` e uma `RD-C`, seguindo literalmente a notação "RD-P + RD-C" do
 backlog da feature, já que uma linha de `interaction_events` só tem uma
-`category`).
+`category`) e `challenge.help_viewed` (3.5, RD-I — clique no botão de Ajuda
+da fase `create`, sem payload além do `challengeId`; ver
+`ChallengePage.handleHelp` no frontend). Este último é o dado por trás de
+`helpButtonUsageRate` no painel do professor (6.4, ver "Painel do professor:
+progresso por turma" abaixo) — a única leitura agregada que existe hoje
+sobre esse evento; não há tela ainda que mostre o clique individual (isso
+seria M5, profundidade por desafio, no backlog do admin).
 
 `program_executed` ganha dois campos opcionais — `prediction_given`/
 `result_matched_prediction` — só quando o desafio pede previsão (motor
@@ -456,6 +462,53 @@ nunca texto livre vindo direto do frontend sem validação.
 `challengeId` já é FK real para `challenges.id` (`ON DELETE SET NULL`,
 nullable — nem todo evento é escopado a um desafio, ex.: login).
 
+## Painel do professor: progresso por turma (6.3/6.4)
+
+Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M2/M3,
+"Status: ✅ Implementado" em cada seção). `MetricsTeacherModule`
+(`apps/api/src/metrics/metrics-teacher.{service,controller}.ts`) expõe duas
+rotas — sempre `@Roles(Role.TEACHER)`, sempre escopadas pelas turmas onde o
+professor autenticado é `Classroom.teacherId`, nunca a escola inteira:
+
+- `GET /metrics/teacher/classrooms/:classroomId/students` (6.3) — progresso
+  de cada aluno matriculado ativo da turma, desafio a desafio, em toda a
+  sequência Use→Modify→Create de todo tópico cadastrado (não só o tópico
+  "atual" — o MVP só tem `angulos_formas`, mas o serviço já percorre
+  `SubjectsService.findAllTopics()` × `ChallengesService.
+  findByTopicIdOrdered`, mantendo cada sequência de tópico independente
+  pra `nextChallengeId` nunca vazar de um tópico pro outro).
+- `GET /metrics/teacher/classrooms/:classroomId/summary` (6.4) — a mesma
+  base de dado agregada por estágio (`byStage: [{ stage, studentsCompleted,
+  studentsInProgress, studentsNotStarted }]`), mais `activeStudentsToday` e
+  `helpButtonUsageRate` — nunca um nome de aluno nesta rota (AC de 6.4: o
+  detalhe individual é sempre a rota de 6.3).
+
+Ambas as rotas reusam o motor 6.1 (`MetricsService.
+getChallengeProgressForStudents`) — nenhuma query nova de status/tentativas
+é escrita aqui, só a orquestração "quais desafios existem" +
+"quais alunos estão matriculados" em cima do motor já existente.
+
+**Titularidade de turma, checada antes de qualquer query de aluno**
+(`MetricsTeacherService.assertOwnClassroom`, chamado no início dos dois
+métodos públicos do serviço): turma inexistente → `404 NotFoundException`;
+turma de outro professor (mesma escola ou não) → `403 ForbiddenException`.
+É o primeiro lugar do backend que implementa a autorização "só o professor
+*daquela* turma" citada como gap em `PATCH /users/:id/sensory-profile` (ver
+"Perfil sensorial persistente e Home por papel" acima) — aquele endpoint
+continua sem essa checagem fina, não foi retroativamente alinhado por esta
+feature.
+
+**`helpButtonUsageRate` (6.4)** conta, entre os alunos ativos da turma,
+quantos têm ao menos um evento `challenge.help_viewed` (RD-I, ver "Eventos
+desta feature" acima) em qualquer desafio `stage: 'create'` da sequência —
+arredondado com `Math.round`, exposto como número puro (`42`, não `0.42` /
+"42% de dificuldade"), seguindo a regra não-negociável 7 (RD-E/sinal
+observável nunca vira inferência na resposta da API).
+
+**Ordenação nunca é por desempenho** (regra não-negociável 5): a rota de
+6.3 devolve os alunos ordenados por `enrolledAt` ascendente por padrão — a
+tela permite alternar pra ordenação por nome, nunca por status/tentativas.
+
 ## Banco de dados
 
 Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra
@@ -492,11 +545,14 @@ novos.
 - **Painel de métricas pro professor/admin** — plano detalhado, dividido em
   features com critérios de aceite, em
   `docs/ai/backlog/metricas-professor-admin.md`. Implementado até agora:
-  motor de status/progresso (6.1, `MetricsService`) e o painel institucional
+  motor de status/progresso (6.1, `MetricsService`), o painel institucional
   do admin (6.2, `GET /metrics/admin/schools[...]` +
-  `apps/web/src/routes/metrics/AdminMetrics.tsx`). Faltam as métricas do
-  professor por turma/aluno e a profundidade de evento por desafio
-  (M2/M3/M5/M6 no documento).
+  `apps/web/src/routes/metrics/AdminMetrics.tsx`) e o painel do professor
+  por turma (6.3/6.4, `GET /metrics/teacher/classrooms/:classroomId/
+  {students,summary}` + `MetricsTeacherService` — ver "Painel do professor:
+  progresso por turma" abaixo). Falta só a profundidade de evento por
+  desafio e a exportação bruta, ambos exclusivos do admin (M5/M6 no
+  documento).
 - Autoria de toolbox pelo professor (a "4.2" citada no backlog da feature de
   blocos) — abstraída de propósito nesta versão, ver "Blocos por desafio".
   Se um dia for necessária de verdade: um endpoint pro professor

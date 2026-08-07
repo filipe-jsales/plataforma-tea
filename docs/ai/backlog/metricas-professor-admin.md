@@ -184,6 +184,32 @@ do próprio uso da plataforma.
 **Dados/Eventos usados:** os de M1, escopados pelos `pseudoIds` da turma
 (via `SchoolsService.findActiveStudentsInClassroom`).
 
+**Status: ✅ Implementado** (`apps/api/src/metrics/metrics-teacher.{service,
+controller}.ts`, testado em `metrics-teacher.service.spec.ts` +
+`metrics-teacher.controller.spec.ts`; tela em
+`apps/web/src/routes/metrics/TeacherMetrics.tsx`, aba "Por aluno"). Divergências
+do desenho original abaixo:
+
+- `GET /metrics/teacher/classrooms/:classroomId/students` devolve, por
+  aluno, **todo desafio disponível de todo tópico** (não só o tópico
+  "atual") — a sequência é reconstruída percorrendo
+  `SubjectsService.findAllTopics()` × `ChallengesService.findByTopicIdOrdered`,
+  cada tópico mantendo seu próprio `nextChallengeId` (nunca misturando a
+  sequência de um tópico com a de outro). MVP tem 1 tópico só, então na
+  prática hoje é "os 3 desafios do ciclo Use→Modify→Create de
+  `angulos_formas`", mas o serviço já suporta N tópicos sem mudança.
+- `classroom.teacherId !== req.user.sub` → `403 ForbiddenException`; turma
+  inexistente → `404 NotFoundException` (checado nesta ordem, antes de
+  qualquer query de aluno/evento) — cobre literalmente o AC "mesmo
+  manipulando a URL".
+- Um desafio cujo `config` ainda não passou por `isChallengeConfig` (seed
+  incompleto) é **omitido** da lista de desafios do aluno, em vez de
+  quebrar a resposta — mesmo tratamento que `ChallengesController` já dava
+  a esse estado.
+- Ordenação default implementada como `enrolledAt` ascendente no backend;
+  a tela permite alternar pra "Nome" (`localeCompare('pt-BR')`) — as duas
+  únicas opções oferecidas, nunca por status/tentativas.
+
 ---
 
 ## M3 — Métricas do professor: visão agregada da turma
@@ -218,6 +244,29 @@ autorização, mesma fonte de dado, só a agregação muda).
 
 **Dados/Eventos usados:** os de M1, mais `challenge.help_viewed` (RD-I) pra
 `helpButtonUsageRate`.
+
+**Status: ✅ Implementado** (`MetricsTeacherService.getClassroomSummary`,
+mesmo arquivo/testes de M2; tela em `TeacherMetrics.tsx`, aba "Turma
+toda"). Divergências do desenho original abaixo:
+
+- `byStage` é sempre as 3 entradas `use`/`modify`/`create` nesta ordem, uma
+  por estágio — nunca uma por desafio individual. Quando (no futuro) mais
+  de um tópico tiver, digamos, dois desafios `stage: 'use'`, os dois somam
+  no mesmo bucket `use` (contagem de alunos, não de desafios) — decisão
+  implícita no formato do AC original (`byStage` chaveado por `stage`, não
+  por `challengeId`).
+- `helpButtonUsageRate` conta, entre os alunos matriculados ativos da
+  turma, quantos têm `challenge.help_viewed` em **qualquer** desafio
+  `stage: 'create'` da sequência (união entre desafios `create` de tópicos
+  diferentes, se houver mais de um) — arredondado pra inteiro
+  (`Math.round`), nunca decimal cru.
+- Turma sem nenhum aluno matriculado ativo → devolve `{ totalStudents: 0,
+  activeStudentsToday: 0, byStage: [zeros nos 3 estágios],
+  helpButtonUsageRate: 0 }` sem nenhuma query de evento (curto-circuito
+  antes de dividir por zero).
+- Tela: card de totais + 3 barras horizontais (uma por estágio, segmentada
+  concluído/em andamento/não iniciado, `role="img"` com resumo textual
+  acessível) — nunca tabela de números, seguindo o AC literalmente.
 
 ---
 
@@ -399,6 +448,6 @@ M6. M2/M3 ficam depois de M4 apesar de serem "o pedido do professor" porque
 dependem da decisão de escopo em aberto (turma vs. escola) — melhor destravar
 essa decisão enquanto M4 (que não depende dela) já está em progresso.
 
-**M1 e M4 implementados** (ver "Status: ✅ Implementado" em cada seção
-acima) — escopo do professor (M2/M3) já resolvido também (turmas do
-próprio professor, não a escola inteira), falta só codar M2/M3/M5/M6.
+**M1, M2, M3 e M4 implementados** (ver "Status: ✅ Implementado" em cada
+seção acima) — falta só M5/M6 (profundidade por desafio/evento e
+exportação bruta, ambos exclusivos do admin).

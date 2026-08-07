@@ -129,6 +129,14 @@ describe('SchoolsService', () => {
     });
   });
 
+  it('findClassroomById looks up a single classroom by id, no relations', async () => {
+    classroomsRepository.findOne.mockResolvedValue(null);
+
+    await service.findClassroomById('classroom-1');
+
+    expect(classroomsRepository.findOne).toHaveBeenCalledWith({ where: { id: 'classroom-1' } });
+  });
+
   it('countActiveStudentsInClassroom scopes by classroom and active=true only', async () => {
     enrollmentsRepository.count.mockResolvedValue(7);
 

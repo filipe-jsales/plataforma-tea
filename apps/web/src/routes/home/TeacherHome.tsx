@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import './Home.css';
@@ -26,6 +27,13 @@ export function TeacherHome() {
   return (
     <main className="home">
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
+
+      <div className="home__actions">
+        <Link to="/teacher/metrics" className="home__action">
+          <span className="home__action-icon">📈</span>
+          Painel da turma (progresso por aluno)
+        </Link>
+      </div>
 
       {classrooms && classrooms.length === 0 && <p>Nenhuma turma atribuída ainda.</p>}
 

@@ -58,7 +58,9 @@ apps/web/src/
 │   │   └── AdminHome.tsx
 │   └── metrics/
 │       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
-│       └── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
+│       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
+│       ├── TeacherMetrics.tsx       # 6.3/6.4 — /teacher/metrics, progresso por turma do professor
+│       └── TeacherMetrics.css       # sem restrição sensorial — mesmo racional de AdminMetrics.css
 ├── App.tsx                          # <Routes> raiz
 └── main.tsx                         # BrowserRouter + hidrata tema a partir da sessão persistida
 ```
@@ -361,6 +363,45 @@ onboarding do aluno; o visual "mais bonito" desta tela vem de
 layout/cor/tipografia, não de movimento, então isso não importa aqui — mas
 vale saber que esse reset existe se uma tela de staff futura quiser
 depender de transição suave de verdade.
+
+## Painel do professor: progresso por turma (`TeacherMetrics`, 6.3/6.4)
+
+`/teacher/metrics` (`RequireAuth roles={['teacher']}`), link a partir de
+`TeacherHome`. Busca `GET /home/teacher` (já existente, 2.1) pra listar as
+turmas do próprio professor — mesmo endpoint que a home já usava, nenhuma
+rota nova só pra listar turmas; a seleção de turma nesta tela nunca deixa o
+professor digitar/injetar um `classroomId` arbitrário na UI (o backend
+ainda valida titularidade de qualquer forma, ver "Painel do professor:
+progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
+propósito).
+
+Selecionar uma turma busca as duas rotas de métrica em paralelo
+(`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
+entre duas abas:
+
+- **"Por aluno" (6.3, aba default)** — uma tabela com 1 linha por aluno
+  matriculado ativo (nome + data de matrícula) e 1 coluna por desafio
+  disponível (título + rótulo do estágio + status + nº de tentativas).
+  Ordenação default é por data de matrícula (a mesma ordem que o backend já
+  devolve); um `<select>` deixa trocar pra ordenação por nome — **nunca**
+  por status/tentativas, não existe essa opção na tela (regra não-negociável
+  5, aplicada ao nível de UI também, não só ao default do backend).
+- **"Turma toda" (6.4)** — 3 cartões de totais (`totalStudents`/
+  `activeStudentsToday`/`helpButtonUsageRate`) e uma barra horizontal
+  segmentada por estágio (`use`/`modify`/`create`), cada segmento com
+  largura proporcional a `studentsCompleted`/`studentsInProgress`/
+  `studentsNotStarted` — largura **estática**, calculada uma vez a partir
+  do dado (`pct = count/total*100`), sem nenhuma transição/animação
+  decorativa. `role="img"` com `aria-label` textual describe a barra pra
+  leitor de tela, já que a informação em si é visual. Nenhum nome de aluno
+  nesta aba (AC de 6.4) — só esta tela existe pra visão agregada;
+  `STATUS_LABEL`/`STAGE_LABEL` (dicionários fixos no componente) são a
+  única "tradução" de vocabulário técnico pra português, sem inferência
+  nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
+  percentual cru — regra não-negociável 7).
+
+**Sem as restrições sensoriais do aluno** (`TeacherMetrics.css`) — mesmo
+racional de `AdminMetrics.css`/`StaffLogin.css`.
 
 ## Assets visuais (`assets/illustrations/`)
 
