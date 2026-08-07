@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/apiClient';
 import type { TeacherChallengeSummary } from '../../lib/challengeTemplateTypes';
 import { Button, Dialog, LinkButton } from '../../components/ui';
+import { AllocationDialog } from './AllocationDialog';
 import './TeacherChallenges.css';
 
 // 4.2 (AC5) — "Meus desafios": lista só os desafios que O PRÓPRIO professor
-// criou via template. Nenhuma ação aqui (editar/duplicar/excluir) expõe
-// `Challenge.config`/estrutura de blocos — editar e duplicar reabrem
+// criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
+// expõe `Challenge.config`/estrutura de blocos — editar e duplicar reabrem
 // exatamente o mesmo formulário guiado da criação (ver TeacherChallengeForm
-// route), nunca um editor bruto.
+// route), nunca um editor bruto. "Alocar à turma" (4.3) é o que decide se
+// o desafio chega a algum aluno — sem alocação, o desafio fica só aqui,
+// nunca vaza pra área de nenhum aluno (AC3 de 4.3).
 export function TeacherChallenges() {
   const [challenges, setChallenges] = useState<TeacherChallengeSummary[] | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [allocatingChallenge, setAllocatingChallenge] = useState<TeacherChallengeSummary | null>(null);
 
   function reload() {
     setChallenges(null);
@@ -63,6 +67,9 @@ export function TeacherChallenges() {
                 <span className="teacher-challenges__item-meta">Template: {challenge.templateName}</span>
               </span>
               <span className="teacher-challenges__item-actions">
+                <Button variant="secondary" icon="🏫" onClick={() => setAllocatingChallenge(challenge)}>
+                  Alocar à turma
+                </Button>
                 <LinkButton to={`/teacher/challenges/${challenge.id}/edit`} variant="secondary" icon="✏️">
                   Editar
                 </LinkButton>
@@ -100,6 +107,15 @@ export function TeacherChallenges() {
           {deleting ? 'Excluindo…' : 'Excluir mesmo assim'}
         </Button>
       </Dialog>
+
+      {allocatingChallenge && (
+        <AllocationDialog
+          challengeId={allocatingChallenge.id}
+          challengeTitle={allocatingChallenge.title}
+          open={allocatingChallenge !== null}
+          onOpenChange={(open) => !open && setAllocatingChallenge(null)}
+        />
+      )}
     </main>
   );
 }

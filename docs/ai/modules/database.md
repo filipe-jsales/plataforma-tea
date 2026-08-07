@@ -203,6 +203,26 @@ regular"), pro tópico `angulos_formas`, com 4 parâmetros (`sides`,
 `turnAngleDeg`, `snapTolerancePercent`, `enabledBlockTypes`) — ver migration
 `CreateChallengeTemplatesAndTeacherAuthoring`.
 
+### `challenge_classroom_allocations`
+
+Ver
+`apps/api/src/challenge-allocations/entities/challenge-classroom-allocation.entity.ts`.
+Tabela de associação N:N entre `challenges` e `classrooms` (4.3 —
+Alocação de desafio a uma turma): `UNIQUE(challengeId, classroomId)`
+impede duplicar o mesmo vínculo; FKs `CASCADE` pra `challenges`/
+`classrooms` (se um dos dois for removido, o vínculo não faz sentido
+sozinho — nada de linha órfã); `allocatedByUserId` FK nullable pra
+`users`, `ON DELETE SET NULL` (mesma defesa em profundidade de
+`ExportAuditLog.adminUserId`). Sem seed — o ambiente de teste (1 professor,
+1 turma `AZUL-1`, 1 aluno) já existe desde `AddLoginMechanisms`; a
+alocação em si é sempre uma ação do professor via `POST /teacher/
+challenges/:id/allocations`, nunca semeada.
+
+Esta é a linha que serve de log RD-C-equivalente da alocação (AC7 do card:
+`desafio_id`/`turma_id`/`professor_id`/`timestamp_alocacao`) — nunca um
+`interaction_events` com pseudônimo de professor forjado; ver "Nota de
+arquitetura" na seção 4.3 de `docs/ai/modules/backend.md`.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
@@ -339,14 +359,21 @@ divergir das duas fontes.
     (4.2 — Configuração de desafio via formulário guiado, Modo Template;
     ver "`challenge_templates`" acima e "Configuração de desafio via
     formulário guiado" em `backend.md`).
+20. `1786128131517-CreateChallengeClassroomAllocations.ts` — cria
+    `challenge_classroom_allocations` (índice único `(challengeId,
+    classroomId)`; FKs `CASCADE` pra `challenges`/`classrooms`,
+    `allocatedByUserId` `ON DELETE SET NULL` pra `users`). Gerada com
+    `migration:generate`, sem seed (4.3 — Alocação de desafio a uma turma;
+    ver "`challenge_classroom_allocations`" acima e "Alocação de desafio a
+    uma turma" em `backend.md`).
 
-Todas as 12 primeiras, a 17ª, a 18ª e a 19ª já foram validadas com `npm run
-migration:run` contra um Postgres real, e `\dt` + `\d <tabela>` conferidos
-no `psql` (a 19ª foi conferida via cliente `pg` direto — `psql` não estava
-disponível no ambiente que rodou essa migration). Depois da última, um
-`migration:generate` extra confirmou "No changes in database schema were
-found" — zero diff pendente entre entidades e banco. `GET
-/metrics/admin/export` (6.6) também foi testado ponta a ponta
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª e a 20ª já foram validadas com
+`npm run migration:run` contra um Postgres real, e `\dt` + `\d <tabela>`
+conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente `pg`
+direto — `psql` não estava disponível no ambiente que rodou essas
+migrations). Depois da última, um `migration:generate` extra confirmou "No
+changes in database schema were found" — zero diff pendente entre entidades
+e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
 rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
 real de `interaction_events`, `export_audit_logs` conferido com uma linha

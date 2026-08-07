@@ -71,6 +71,13 @@ apps/api/src/
 │   ├── challenge-templates.controller.ts    # GET/POST /challenge-templates...
 │   ├── teacher-challenges.controller.ts     # GET/PATCH/DELETE /teacher/challenges/:id (AC5/AC6)
 │   └── challenge-templates.module.ts
+├── challenge-allocations/       # 4.3 — vínculo desafio↔turma, ver seção própria
+│   ├── entities/challenge-classroom-allocation.entity.ts  # tabela de associação N:N
+│   ├── dto/allocate-challenge.dto.ts
+│   ├── challenge-allocations.service.ts
+│   ├── teacher-challenge-allocations.controller.ts    # /teacher/challenges/:id/allocations
+│   ├── student-classroom-challenges.controller.ts     # /students/me/classroom-challenges
+│   └── challenge-allocations.module.ts
 ├── events/
 │   ├── entities/interaction-event.entity.ts  # tabela append-only
 │   ├── dto/create-event.dto.ts
@@ -631,6 +638,102 @@ sem chamar `ChallengesService`, e a persistência de `templateParams`.
 `challenges.service.spec.ts` ganhou casos pro escopo `createdByUserId IS
 NULL` de `findByTopicIdOrdered` e pro CRUD novo.
 
+## Alocação de desafio a uma turma (4.3)
+
+Um desafio criado via 4.2 nasce só na biblioteca do professor — nenhum
+aluno alcança nada até o professor ALOCAR o desafio a uma turma. Sem essa
+alocação, o desafio existe como rascunho, nunca vaza pra área de nenhum
+aluno (AC3). Feature pequena e cirúrgica: 1 tabela de associação + 2
+controllers, nenhuma mudança nas features de 4.2.
+
+### Schema: `challenge_classroom_allocations`, N:N de propósito
+
+`ChallengeClassroomAllocation` (`challengeId`, `classroomId`,
+`allocatedByUserId`, `allocatedAt`, `UNIQUE(challengeId, classroomId)`) é
+uma tabela de associação clássica — a cardinalidade N:N que a AC6 pede (um
+desafio pode ir a várias turmas, uma turma pode ter vários desafios) é a
+FORMA NATURAL desse desenho, não uma concessão especial pro futuro. O MVP
+só valida 1 turma por desafio na UI/testes (ambiente de teste real: 1
+professor, 1 turma "Turma Demo"/`AZUL-1`, 1 aluno matriculado — conferido
+contra o banco seedado), mas nada no schema impede um professor real
+alocar o mesmo desafio a duas turmas simultaneamente.
+
+O vínculo aluno↔turma (a outra metade da cardinalidade N:N citada na AC6)
+**já existia** antes de 4.3 — é a `Enrollment` (1.5, ver "Modelagem de
+domínio" abaixo e `database.md`): histórico (`active`/`unenrolledAt`),
+schema já N:N-capaz (um aluno pode ter várias matrículas ao longo do
+tempo). 4.3 não mexe nela, só LÊ (`SchoolsService.
+findActiveEnrollmentsByStudent`, já existente) pra resolver a turma ativa
+do aluno. **Nota**: 1.5 (User Story "Vínculo aluno↔turma↔professor",
+telas de matrícula/transferência) continua sem endpoint/UI própria — só o
+MODELO de dado já suporta o histórico; ver "Endpoints CRUD para schools/
+classrooms/enrollments" em "Próximos passos" abaixo, que já apontava esse
+gap antes de 4.3 existir.
+
+### Nota de arquitetura: por que a alocação NÃO vira um `interaction_event`
+
+A AC7 pede "log RD-C: desafio_id, turma_id, professor_id,
+timestamp_alocacao". `interaction_events.studentPseudoId` é `NOT NULL` de
+propósito — o schema RD-* existe pra avaliar Pensamento Computacional do
+ESTUDANTE (RQ5), não telemetria de ação de professor (regra já aplicada a
+login de professor, a `templateParams` de 4.2, e agora aqui — ver "Padrão:
+eventos RD-* são escopados ao aluno" acima). A PRÓPRIA LINHA de
+`ChallengeClassroomAllocation` já contém os 4 campos que a AC pede — é o
+registro em si, não precisa duplicar num evento fake de aluno. RQ5 fica
+igualmente servido: cruzar `interaction_events.challengeId` com
+`challenge_classroom_allocations` responde "qual configuração curricular
+foi usada por qual turma, e desde quando" sem forçar um pseudônimo de
+staff onde o schema não prevê. Mesmo padrão de `templateParams` (4.2) e
+`ExportAuditLog` (6.6).
+
+### Autorização — professor só mexe no que é seu
+
+`ChallengeAllocationsService` checa DUAS posses antes de qualquer
+alocação/desalocação, nunca uma só: `ChallengesService.findByIdForOwner`
+(o desafio é deste professor — mesmo método que 4.2 já usa pra editar/
+excluir) e uma checagem de titularidade de turma (`classroom.teacherId ===
+teacherId`, mesmo racional de `MetricsTeacherService.assertOwnClassroom`,
+reimplementada aqui porque vive em módulo diferente). AC1 — "nunca todas
+as turmas da escola" — é garantido assim: a lista de turmas SELECIONÁVEIS
+na tela do professor vem de `GET /home/teacher` (2.1, já existente, já
+escopado ao professor autenticado — nenhum endpoint novo só pra listar
+"minhas turmas").
+
+### Endpoints
+
+- `GET/POST /teacher/challenges/:challengeId/allocations` +
+  `DELETE .../:classroomId` (`TeacherChallengeAllocationsController`,
+  `@Roles(TEACHER)`) — listar/ligar/desligar o vínculo. `POST` com
+  `classroomId` duplicado devolve `409 ConflictException` (mensagem clara,
+  nunca erro de constraint cru). `DELETE` remove só a linha de associação
+  (AC5) — `Challenge` e qualquer `interaction_events` já registrado
+  continuam intactos, porque nunca dependeram da alocação pra existir.
+- `GET /students/me/classroom-challenges` (`StudentClassroomChallengesController`,
+  `@Roles(STUDENT)`) — a "trilha" de desafios alocados à turma ATIVA do
+  aluno autenticado (AC2/AC3/AC4). Rota própria (`students/me/...`), não
+  `GET /challenges/...`: evita colidir com `ChallengesController` (`GET
+  /challenges/:id`, aluno-só, módulo diferente) — duas rotas dinâmicas
+  competindo pelo mesmo prefixo em módulos diferentes seria frágil de
+  manter correto conforme o projeto cresce.
+
+`ChallengeAllocationsService.findAvailableForStudent` resolve a turma via
+`SchoolsService.findActiveEnrollmentsByStudent` e usa só a PRIMEIRA
+matrícula ativa (MVP: 1 aluno = 1 turma, AC6) — decisão de leitura, não uma
+restrição imposta ao schema (`Enrollment` já suporta N:N, ver acima). Aluno
+sem matrícula ativa devolve lista vazia, nunca erro.
+
+### Testes
+
+`challenge-allocations.service.spec.ts` cobre as duas checagens de posse
+(desafio de outro professor, turma de outro professor — nunca "turma
+qualquer da escola"), o `409` de alocação duplicada, que `deallocate`
+nunca remove o `Challenge` em si, e que `findAvailableForStudent` escopa
+corretamente pela turma ativa e devolve `[]` sem matrícula. Os dois
+controllers (`teacher-challenge-allocations.controller.spec.ts`,
+`student-classroom-challenges.controller.spec.ts`) confirmam que o
+id de professor/aluno usado em toda chamada vem sempre do JWT
+(`req.user.sub`), nunca de um parâmetro manipulável pelo cliente.
+
 ## Modelagem de domínio (usuários, disciplinas, escola/turma)
 
 - **`users` é uma tabela única com `role`** (`student | teacher | admin`),
@@ -950,13 +1053,10 @@ novos.
   template pré-montado) continua não implementado — fora do escopo de 4.2
   por decisão explícita do próprio card, tratado num card separado se/quando
   for priorizado.
-- Desafio criado via template ainda não tem mecanismo de "atribuir/publicar
-  pra turma" — hoje é acessível por link direto (`GET /challenges/:id`),
-  mas não aparece em nenhuma home/lista de aluno automaticamente (ver
-  "Autorização e escopo" em 4.2 acima pro racional de por que isso NÃO
-  entra sozinho na sequência forçada do tópico). Quando esse mecanismo for
-  necessário: provavelmente uma tabela de associação
-  challenge↔classroom, não um campo solto em `Challenge`.
+- **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver
+  "Alocação de desafio a uma turma" acima) — resolve o gap que este bullet
+  descrevia antes (desafio criado via template não tinha como chegar a
+  nenhum aluno automaticamente).
 - Um segundo template de geometria (ex.: "Girar até formar um ângulo
   específico", citado como exemplo no card) validaria de verdade que o
   registry (`handlers/template-registry.ts`) escala sem tocar
@@ -968,10 +1068,17 @@ novos.
   bloqueia um aluno específico de pular pra `/challenge/:id` de um desafio
   modify/create sem ter passado pelo use correspondente — a rota não checa
   isso ainda).
-- Endpoints CRUD para `schools`/`classrooms`/`enrollments` (`subjects`/`topics`
-  já têm leitura via `GET /subjects/topics`; escrita continua não exposta —
-  ver regra 9 antes de expor isso ao professor: nada de formulário que
-  exija entender a estrutura de tabelas).
+- **1.5 ("Vínculo aluno↔turma↔professor" — matricular/transferir aluno
+  entre turmas) continua sem endpoint/UI própria.** O MODELO de dado que
+  1.5 pede já existe desde antes de 4.2/4.3 (`Enrollment`: histórico
+  `active`/`unenrolledAt`, `studentPseudoId` estável — ver "Modelagem de
+  domínio" acima e `database.md`) — 4.3 só LÊ essa tabela
+  (`findActiveEnrollmentsByStudent`) pra resolver a turma ativa do aluno,
+  não implementa a escrita. Endpoints CRUD pra `schools`/`classrooms`/
+  `enrollments` (`subjects`/`topics` já têm leitura via `GET
+  /subjects/topics`; escrita continua não exposta em nenhum dos três — ver
+  regra 9 antes de expor isso ao professor: nada de formulário que exija
+  entender a estrutura de tabelas) seguem como o próximo passo real de 1.5.
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como

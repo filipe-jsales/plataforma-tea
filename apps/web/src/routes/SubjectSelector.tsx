@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
+import type { AvailableChallengeForStudent } from '../lib/challengeAllocationTypes';
 import { useAuthStore } from '../stores/useAuthStore';
-import { Button, SelectableCard } from '../components/ui';
+import { Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
 
 interface TopicOption {
@@ -15,14 +16,23 @@ interface TopicOption {
 // 2.3 — seletor de matéria/módulo. Componente genérico pra N itens (AC1);
 // com 1 item só, ainda exige confirmação explícita — não pula sozinho
 // (AC2, previsibilidade/TEACCH).
+//
+// 4.3 — esta tela também é onde "a trilha" do aluno vive: além dos módulos
+// curriculares (sequência fixa Use-Modify-Create), lista os desafios que o
+// PRÓPRIO professor alocou explicitamente à turma do aluno
+// (`GET /students/me/classroom-challenges`). Um desafio nunca aparece aqui
+// sem alocação explícita (AC3 de 4.3) — a lista vem vazia, nunca um erro,
+// quando não há nada alocado.
 export function SubjectSelector() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [topics, setTopics] = useState<TopicOption[] | null>(null);
   const [selected, setSelected] = useState<TopicOption | null>(null);
+  const [classroomChallenges, setClassroomChallenges] = useState<AvailableChallengeForStudent[] | null>(null);
 
   useEffect(() => {
     apiClient.get<TopicOption[]>('/subjects/topics').then(setTopics);
+    apiClient.get<AvailableChallengeForStudent[]>('/students/me/classroom-challenges').then(setClassroomChallenges);
   }, []);
 
   if (!user) return null;
@@ -61,6 +71,21 @@ export function SubjectSelector() {
       <Button onClick={handleConfirm} disabled={!selected}>
         Confirmar
       </Button>
+
+      {classroomChallenges && classroomChallenges.length > 0 && (
+        <section className="subject-selector__classroom-challenges">
+          <h2>Desafios da sua turma</h2>
+          <ul className="subject-selector__list">
+            {classroomChallenges.map((challenge) => (
+              <li key={challenge.id}>
+                <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon="🧩">
+                  {challenge.title}
+                </LinkButton>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

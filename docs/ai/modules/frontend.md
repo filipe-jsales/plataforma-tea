@@ -38,7 +38,8 @@ apps/web/src/
 │   ├── blockProgram.ts              # interpreta o workspace serializado → lista de ações
 │   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 │   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
-│   └── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   ├── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   └── challengeAllocationTypes.ts  # 4.3 — mesma forma que a API de challenge-allocations devolve
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
 │   ├── ui/                          # 3.10/3.11 — sistema de componentes acessíveis, ver seção própria
@@ -91,12 +92,13 @@ apps/web/src/
 │   │   ├── StudentHome.tsx
 │   │   ├── TeacherHome.tsx
 │   │   └── AdminHome.tsx
-│   ├── teacher/                     # 4.2 — Modo Template, ver seção própria
-│   │   ├── TeacherChallenges.tsx    # /teacher/challenges — "Meus desafios" (AC5)
+│   ├── teacher/                     # 4.2/4.3 — Modo Template + alocação, ver seções próprias
+│   │   ├── TeacherChallenges.tsx    # /teacher/challenges — "Meus desafios" (4.2 AC5) + alocar (4.3)
 │   │   ├── TeacherChallenges.css
 │   │   ├── TeacherChallengeNew.tsx  # /teacher/challenges/new — galeria (AC1) + formulário (AC2)
 │   │   ├── TeacherChallengeEdit.tsx # /teacher/challenges/:id/edit — mesmo formulário, pré-preenchido
-│   │   └── TeacherChallengeNew.css  # compartilhado por New/Edit
+│   │   ├── TeacherChallengeNew.css  # compartilhado por New/Edit
+│   │   └── AllocationDialog.tsx     # 4.3 — liga/desliga o desafio em cada turma do professor
 │   └── metrics/
 │       ├── AdminMetrics.tsx         # 6.2 — /admin/metrics, painel institucional do admin
 │       ├── AdminMetrics.css         # sem restrição sensorial — mesmo racional de StaffLogin.css
@@ -777,6 +779,57 @@ aparece, não como o Pixi desenha por dentro). `TeacherChallenges.spec.tsx`/
 galeria (AC1), a confirmação antes de excluir, e o fluxo de duplicar
 (AC6) pré-preenchendo o mesmo template+parâmetros.
 
+## Alocação de desafio a uma turma (4.3)
+
+Duas metades pequenas, uma em cada área — nenhuma tela nova além de um
+`Dialog` na área do professor e uma seção a mais numa tela já existente do
+aluno.
+
+### Lado professor — `AllocationDialog` (dentro de `TeacherChallenges`)
+
+Botão "🏫 Alocar à turma" em cada item de `TeacherChallenges` (a lista "Meus
+desafios", 4.2 AC5) abre `AllocationDialog` (`components/ui/Dialog` —
+**segundo uso real** do componente, depois da confirmação de exclusão de
+4.2). Ao abrir, busca em paralelo `GET /home/teacher` (2.1, já existente —
+reaproveitado pra listar as turmas do professor, nenhum endpoint novo só
+pra isso) e `GET /teacher/challenges/:id/allocations` (quais já estão
+ligadas), e renderiza um `ToggleSwitch` por turma. **Sem botão "Salvar"
+separado** (AC2 "sem exigir nenhuma ação adicional"): cada toggle chama
+`POST`/`DELETE` na hora (`handleToggle`), com o próprio toggle desabilitado
+enquanto a chamada está em andamento — evita duplo-clique disparar duas
+requisições pra mesma turma.
+
+### Lado aluno — "Desafios da sua turma" (dentro de `SubjectSelector`)
+
+`SubjectSelector` (2.3, "Onde você quer entrar?") ganhou uma segunda
+seção, visualmente separada da lista de módulos curriculares (`<section>`
+própria, nunca no mesmo `<ul>`/fluxo de seleção+confirmação — módulo abre
+uma sequência Use-Modify-Create, desafio de turma abre direto num
+`LinkButton` pra `/challenge/:id`, são duas navegações de natureza
+diferente). Busca `GET /students/me/classroom-challenges` em paralelo com
+`GET /subjects/topics`; a seção inteira só renderiza quando a lista vem
+não-vazia (AC3 — nenhum aluno vê uma seção vazia "Desafios da sua turma:
+nenhum"; ela simplesmente não existe até haver algo alocado).
+
+Esta é a tela que hoje cumpre "a trilha" do aluno citada no card: o mesmo
+lugar de sempre onde o aluno decide o que fazer a seguir, agora com uma
+segunda fonte de conteúdo (módulos curriculares fixos + desafios que o
+próprio professor alocou), sem inventar uma tela nova só pra isso.
+
+### Testes
+
+`AllocationDialog.spec.tsx` cobre: lista só as turmas do professor
+(reaproveitando `/home/teacher`), reflete o estado atual de cada toggle,
+liga/desliga chama o endpoint certo com o `classroomId` certo, e mensagem
+não-técnica quando o professor não tem nenhuma turma ainda.
+`SubjectSelector.spec.tsx` (não existia antes de 4.3 — primeira spec desta
+tela) cobre: módulos curriculares continuam renderizando, a seção de
+desafios da turma nunca aparece vazia, um desafio alocado vira link direto
+pro `/challenge/:id` certo, e a confirmação explícita antes de entrar num
+módulo continua exigida (AC2 de 2.3, não regrediu com a mudança).
+`TeacherChallenges.spec.tsx` ganhou um caso confirmando que "Alocar à
+turma" abre o diálogo certo pro desafio certo.
+
 ## Painel institucional do admin (`AdminMetrics`, 6.2)
 
 `/admin/metrics` (`RequireAuth roles={['admin']}`), link a partir de
@@ -1016,10 +1069,9 @@ o padrão esperado em código novo.
   (3.10) — infraestrutura pronta, nenhuma tela pediu ainda. `Dialog` saiu
   dessa lista em 4.2 (confirmação de exclusão em `TeacherChallenges`,
   primeiro uso real).
-- Desafio criado via template (4.2) não tem tela de "atribuir à turma" —
-  hoje só é alcançável por link direto de `/challenge/:id`; ver gap
-  equivalente em `backend.md` ("Autorização e escopo" / "Próximos
-  passos").
+- **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver seção
+  própria acima) — `AllocationDialog` na área do professor + "Desafios da
+  sua turma" em `SubjectSelector`.
 - `TemplateParameterField` só tem componentes de exemplo visual pros 3
   `visualPreview` que o template `regular_polygon` usa hoje
   (`polygonSides`/`angleWedge`/`toleranceGauge`) — um template de outra

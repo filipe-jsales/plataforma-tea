@@ -16,3 +16,13 @@
 /* Card selecionável e botão de confirmação vêm de
    components/ui/Card (SelectableCard) e components/ui/Button (3.10) —
    nada de estilo próprio pra isso aqui. */
+
+/* 4.3 — "Desafios da sua turma", separado visualmente dos módulos
+   curriculares (nunca no mesmo <ul>/fluxo de seleção+confirmação, pra não
+   confundir os dois tipos de navegação — módulo abre uma sequência,
+   desafio da turma abre direto). */
+.subject-selector__classroom-challenges {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border, #d7dbe0);
+}
