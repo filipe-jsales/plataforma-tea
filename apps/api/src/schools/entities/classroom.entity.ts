@@ -8,15 +8,18 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { SoftDeletableEntity } from '../../common/entities/soft-deletable.entity';
 import { User } from '../../users/entities/user.entity';
 import { generateJoinCode } from '../join-code';
 import { School } from './school.entity';
 
 // Turma. O professor titular pode ser reatribuído a qualquer momento (UPDATE
 // simples, sem migration) — nada na modelagem amarra aluno a um professor
-// fixo, ver Enrollment.
+// fixo, ver Enrollment. Estende SoftDeletableEntity (B1): arquivar uma turma
+// preserva matrículas/alocações históricas, só some das listagens padrão
+// (inclusive do login por `joinCode` — ver nota em SchoolsService).
 @Entity('classrooms')
-export class Classroom {
+export class Classroom extends SoftDeletableEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

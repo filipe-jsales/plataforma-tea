@@ -801,11 +801,13 @@ domínio" abaixo e `database.md`): histórico (`active`/`unenrolledAt`),
 schema já N:N-capaz (um aluno pode ter várias matrículas ao longo do
 tempo). 4.3 não mexe nela, só LÊ (`SchoolsService.
 findActiveEnrollmentsByStudent`, já existente) pra resolver a turma ativa
-do aluno. **Nota**: 1.5 (User Story "Vínculo aluno↔turma↔professor",
-telas de matrícula/transferência) continua sem endpoint/UI própria — só o
-MODELO de dado já suporta o histórico; ver "Endpoints CRUD para schools/
-classrooms/enrollments" em "Próximos passos" abaixo, que já apontava esse
-gap antes de 4.3 existir.
+do aluno. **Nota histórica**: à época da implementação de 4.3, 1.5 (User
+Story "Vínculo aluno↔turma↔professor", telas de matrícula/transferência)
+ainda não tinha endpoint/UI própria — só o MODELO de dado já suportava o
+histórico. Isso mudou nas duas sessões seguintes: `EnrollmentsModule`
+("Matrícula/transferência de turma (1.5)" abaixo) e o CRUD administrativo
+de `schools`/`classrooms` ("Gestão de escolas e turmas (admin)" abaixo)
+fecharam os dois gaps.
 
 ### Nota de arquitetura: por que a alocação NÃO vira um `interaction_event`
 
@@ -1303,17 +1305,203 @@ professor → `set-password` → login; criar aluno → duplicar nome (alerta,
 não erro) → login do aluno com a credencial gerada; desativar aluno →
 login rejeitado; listar/filtrar `GET /admin/users`.
 
+## B1 — Soft delete como infraestrutura transversal
+
+`SoftDeletableEntity` (`apps/api/src/common/entities/soft-deletable.entity.ts`)
+é uma classe abstrata (`deletedAt: Date | null` via `@DeleteDateColumn()` +
+`deletedByUserId: string | null`) que qualquer entidade nova que representa
+dado de aluno/turma/alocação/desafio deve estender, em vez de inventar a
+própria coluna a cada feature. `School`/`Classroom` são os dois primeiros
+casos reais (ver "Gestão de escolas e turmas" logo abaixo).
+
+### Por que `@DeleteDateColumn`, não uma coluna `deletedAt` comum
+
+O TypeORM já resolve as duas partes mais chatas de reimplementar à mão
+(verificado lendo o código-fonte do TypeORM instalado —
+`QueryBuilder.js`/`SelectQueryBuilder.js` — não só a documentação):
+
+- Toda query `select` padrão (`find`/`findOne`/`count`, e QUALQUER
+  `createQueryBuilder` — inclusive um JOIN pra uma entidade soft-deletable,
+  seja manual ou via `relations: {...}` de um `find()`) ganha `deletedAt IS
+  NULL` automaticamente, a menos que `withDeleted: true` (repository) ou
+  `.withDeleted()` (query builder) seja passado explicitamente.
+- `repository.update(id, { deletedAt: ..., deletedByUserId: ... })` — usado
+  no lugar do `softDelete()`/`restore()` prontos do TypeORM, que não deixam
+  setar `deletedByUserId` no mesmo UPDATE — NÃO é filtrado por `deletedAt
+  IS NULL` (esse filtro automático só existe pra `select`, nunca pra
+  `update`/`delete`). É o que permite reativar um registro já desativado
+  sem um caminho especial: `findOne`+`save` já sairia filtrado pelo próprio
+  `deletedAt` que se está tentando limpar.
+
+### Cuidado: `createQueryBuilder` manual sobre uma entidade já soft-deletable
+
+Na maioria dos casos o filtro automático em JOIN é o comportamento CERTO
+(ex.: `findActiveStudentsBySchool` já queria só turma ativa, de graça). A
+exceção real encontrada nesta sessão foi
+`SchoolsService.findAllStudentPseudoIdsBySchool` (6.6, export de
+pesquisa): depois de `Classroom` ganhar `deletedAt`, o join
+`enrollment→classroom` passou a excluir silenciosamente o histórico de
+alunos de uma turma arquivada — corrigido com `.withDeleted()` explícito
+nesse queryBuilder, o único lugar do código que de propósito quer o
+histórico completo (arquivada ou não), mesmo racional que já o fazia
+incluir matrícula encerrada. Qualquer `createQueryBuilder` NOVO sobre
+`Classroom`/`School` precisa da mesma pergunta: "este caso quer só o ativo
+(comportamento padrão, não precisa fazer nada) ou o histórico completo
+(`.withDeleted()` explícito)?"
+
+### O "quem" da exclusão — sem tabela de auditoria nova
+
+`deletedByUserId` (uuid solto, sem FK/relation formal — mesma defesa em
+profundidade de `ExportAuditLog.adminUserId`/`AdminActionLog.actorUserId`;
+a entidade base também não conhece `User`, o que obrigaria todo soft
+deletable a importar `UsersModule` só por causa de uma auditoria) já
+responde "quem/quando excluiu" direto na própria linha — mesmo racional já
+documentado pra `ChallengeClassroomAllocation` ("a própria linha já contém
+os campos que a AC pede"). Não foi criada uma tabela de auditoria genérica
+tipo `AdminActionLog` pra isso: aquela é especificamente sobre CRUD de
+USUÁRIO (1.4, `targetUserId`/`targetRole` obrigatórios), não encaixa em
+"admin desativou uma escola" sem forçar campos que não fazem sentido ali.
+
+### Escopo desta sessão: `School`/`Classroom`, não `Challenge`/alocação ainda
+
+O card original de B1 cita "aluno, turma, alocação e desafio" como escopo
+final, mas a própria AC5 do card antecipa que a conversão do hard delete
+de `Challenge` (`TeacherChallengesController.removeMine`, card #42) fica
+pra QUANDO #42 for reaberto — "a mudança nele é restrita a trocar hard
+delete por soft delete usando a infraestrutura aqui criada [...] sem
+reinventar". Por isso `Challenge`/`ChallengeClassroomAllocation` NÃO
+ganharam `deletedAt` nesta sessão — nenhum fluxo de exclusão deles estava
+sendo tocado, e adicionar a coluna sem um fluxo que a use seria expor
+schema morto. `SoftDeletableEntity` já está pronta pra quando isso
+acontecer: estender a classe + 1 migration, sem reabrir a decisão de
+design.
+
+### Testes
+
+`schools.service.spec.ts` cobre o par completo — `setSchoolActive`/
+`setClassroomActive` gravando via `update` direto (nunca `findOne`+`save`,
+ver acima) e a correção de `.withDeleted()` em
+`findAllStudentPseudoIdsBySchool`.
+
+## Gestão de escolas e turmas (admin)
+
+CRUD administrativo sobre `School` (container multi-tenant) e `Classroom`
+(turma como container) — User Story: "Como admin, quero cadastrar e
+gerenciar escolas e suas turmas, para que múltiplas escolas operem na
+mesma plataforma de forma isolada." O vínculo aluno↔turma em si (matrícula)
+já tinha endpoint próprio desde 1.5 (`EnrollmentsModule`, ver acima) — esta
+feature cobre só os dois containers que faltavam (fecha o gap que "Próximos
+passos" apontava desde antes de 4.3 existir).
+
+### Admin é global, não escopado por escola
+
+Decisão explícita (perguntada ao usuário durante a sessão que implementou
+isto, dado o tamanho da mudança): o admin desta plataforma continua
+ÚNICO/GLOBAL — vê e gerencia TODAS as escolas, mesmo desenho já usado por
+`MetricsAdminService` (6.2, painel institucional cross-escola). A AC
+original do card ("um admin de uma escola não visualiza dados de outra
+escola") descreveria um admin ESCOPADO por escola — implementar isso de
+verdade exigiria `schoolId` no usuário admin, mudança no payload do JWT e
+re-escopar TODOS os endpoints de admin já existentes (metrics-admin,
+admin-users, audit, settings), com risco real de regressão no painel
+institucional que já funciona. O isolamento cross-escola que existe de
+verdade nesta plataforma é o do PROFESSOR, já naturalmente escopado via
+`Classroom.teacherId` — não revisitado aqui.
+
+### `SchoolsAdminService`/`SchoolsAdminController` — mesma forma de 1.4
+
+`SchoolsAdminService` (`apps/api/src/schools/schools-admin.service.ts`) é a
+camada de validação/formato de resposta sobre `SchoolsService` (que ganhou
+os métodos de escrita crus — `createSchool`/`updateSchool`/
+`setSchoolActive`/`createClassroom`/`updateClassroom`/`setClassroomActive`
+— mesmo racional de `UsersService` vs `AdminUsersService`, 1.4).
+`SchoolsAdminController`, `@Controller('admin')` + `@Roles(Role.ADMIN)`:
+
+- `GET/POST /admin/schools`, `GET/PATCH /admin/schools/:id`, `PATCH
+  /admin/schools/:id/status` (desativar/reativar — B1, nunca hard delete).
+- `GET/POST /admin/schools/:schoolId/classrooms`, `PATCH
+  /admin/classrooms/:id`, `PATCH /admin/classrooms/:id/status`.
+
+Nenhum endpoint DELETE — mesma decisão já tomada em 1.4 pro CRUD de
+usuários ("nunca hard delete", AC explícita).
+
+### Validações reais, não decorativas
+
+- **`name` é o único campo obrigatório de escola** (`externalId`, ex.:
+  código INEP, é opcional — AC "sem campos obrigatórios que exijam
+  conhecimento técnico"). `externalId` é `UNIQUE` no banco mas nullable
+  (Postgres permite múltiplos `NULL`, mesmo padrão de `User.email`); string
+  vazia enviada pelo formulário vira `null` no service
+  (`normalizeExternalId`), nunca persiste whitespace.
+- **Escola desativada não recebe turma nova** —
+  `SchoolsAdminService.createClassroom` resolve a escola via
+  `SchoolsService.findSchoolById` (o método "padrão", já filtrado por
+  `deletedAt IS NULL` automaticamente pelo TypeORM) e rejeita com
+  `NotFoundException` se ela não existir OU estiver desativada — mas
+  EDITAR uma escola já desativada continua permitido
+  (`findSchoolByIdIncludingInactive`, `withDeleted: true`): corrigir o
+  nome antes de reativar não deveria exigir reativar primeiro.
+- **`teacherId` (opcional, tanto em criar quanto editar turma) precisa
+  apontar pra um usuário `role=teacher` de verdade** —
+  `resolveTeacherOrThrow` (`UsersService.findById` + checagem de `role`)
+  rejeita com `BadRequestException` senão; mesma classe de invariante já
+  documentada em `Classroom.teacherId` ("FK não valida isso no banco", ver
+  "Modelagem de domínio" abaixo) — agora validada no primeiro endpoint que
+  realmente escreve nesse campo.
+- **Desvincular o professor é `teacherId: null` explícito, distinto de
+  campo omitido** — `UpdateClassroomDto.teacherId?: string | null`;
+  `@IsOptional()` sozinho já cobre os dois casos (ignora os demais
+  validadores quando o valor é `null` OU `undefined`, verificado no
+  código-fonte do `class-validator` instalado — não precisou de
+  `@ValidateIf` extra). No frontend, o `<Select>` (Radix) não aceita
+  `value=""` como item real (reservado pro estado de placeholder) — o
+  formulário usa um sentinel não-vazio (`'none'`) convertido pra
+  `null`/omitido só na hora de montar o corpo da requisição.
+- **Sem cascata automática "desativar escola → desativar turmas".**
+  Decisão deliberada, não uma lacuna: a AC pedia só "não apagar dados
+  históricos", nunca "desativar turmas junto". Efeito prático: uma turma
+  de uma escola desativada continua com login por `joinCode` funcionando
+  até ser desativada individualmente — se isso for indesejado no futuro, é
+  uma decisão de produto nova, não implementada por suposição aqui.
+
+### Sem endpoint de criação de turma pelo professor
+
+O User Story original é "CRUD administrativo" — só o admin cria/edita
+escola e turma aqui (`@Roles(Role.ADMIN)`). O AC "professor só cria turma
+dentro de uma escola à qual está vinculado" descreveria um fluxo de
+autoatendimento do PROFESSOR que não existe nesta plataforma hoje (não há
+`schoolId` no usuário professor — o único jeito de saber a escola de um
+professor é indiretamente, via `Classroom.teacherId` de uma turma que ele
+JÁ tem) — implementar isso seria uma feature nova e maior (autoatendimento
+de turma pelo professor), fora do escopo de "CRUD administrativo" que o
+card pediu. Documentado aqui pra não ser perdido, não implementado como
+placeholder.
+
+### Testes
+
+`schools.service.spec.ts` cobre os métodos de escrita crus (inclusive o
+`update` direto pra soft delete/restore, ver B1 acima).
+`schools-admin.service.spec.ts` cobre a camada de validação: rejeição de
+`teacherId` que não é professor, bloqueio de turma nova em escola
+desativada, `NotFoundException` em cada `get*`/`update*` quando o registro
+não existe, e a distinção `null`/`undefined` de `teacherId` no update
+(`null` explícito nunca dispara lookup em `UsersService`). Frontend:
+`AdminSchools.spec.tsx`/`AdminSchoolClassrooms.spec.tsx` (Vitest + Testing
+Library) cobrem listagem/criação/edição/desativação e o bloqueio de "Criar
+turma" quando a escola está desativada.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Transporte de e-mail de verdade pro link de definição de senha de 1.4
   (hoje devolvido na resposta da API, ver "Gap conhecido" acima) — decisão
   de infraestrutura (provedor SMTP/transacional), não implementada.
-- CRUD de `schools`/`classrooms` (criar escola, criar turma, atribuir
-  professor titular) continua sem endpoint — 1.5 implementou só a
-  ESCRITA de `enrollments` (matrícula/transferência); a tela de "Adicionar
-  aluno" (1.2) e a de matrícula (1.5) dependem de uma turma já existir
-  (hoje só via seed). Sem isso, um admin não tem como abrir uma escola/
-  turma nova pela UI ainda.
+- **CRUD de `schools`/`classrooms`: ✅ implementado** ("Gestão de escolas e
+  turmas (admin)" acima, `SchoolsAdminController`/`SchoolsAdminService`) —
+  resolve o gap que este bullet descrevia antes: admin agora cria/edita
+  escola e turma (inclusive atribuir/reatribuir professor titular) pela UI,
+  sem depender de seed. Escopo restante fora desta feature (não
+  implementado, ver "Sem endpoint de criação de turma pelo professor"
+  acima): autoatendimento do PROFESSOR criando turma na própria escola.
 - `POST /teacher/students`/`GET /admin/users` cobrem a criação/gestão —
   falta a mesma teste de autorização "admin" no FRONTEND: a tela de
   "Adicionar aluno" (`TeacherAddStudent.tsx`) só resolve a turma via `GET
@@ -1380,8 +1568,8 @@ login rejeitado; listar/filtrar `GET /admin/users`.
   entre turmas): ✅ implementado** (`EnrollmentsModule`, ver "Matrícula/
   transferência de turma (1.5)" acima) — resolve o gap que este bullet
   descrevia antes. `schools`/`classrooms` (criar escola, criar turma,
-  atribuir professor titular) continuam sem endpoint próprio — só
-  `enrollments` ganhou escrita; ver "Próximos passos" logo acima.
+  atribuir professor titular): **✅ também implementado** desde então, ver
+  "Gestão de escolas e turmas (admin)" acima.
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como

@@ -15,11 +15,17 @@ describe('SchoolsService', () => {
       count: jest.fn(),
       find: jest.fn(),
       findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      update: jest.fn(),
     } as unknown as jest.Mocked<Repository<School>>;
     classroomsRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
       count: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      update: jest.fn(),
       createQueryBuilder: jest.fn(),
     } as unknown as jest.Mocked<Repository<Classroom>>;
     enrollmentsRepository = {
@@ -182,6 +188,7 @@ describe('SchoolsService', () => {
     it('returns distinct pseudonyms across every enrollment, active or not (unlike findActiveStudentsBySchool)', async () => {
       const queryBuilder = {
         innerJoin: jest.fn().mockReturnThis(),
+        withDeleted: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getRawMany: jest
@@ -199,11 +206,16 @@ describe('SchoolsService', () => {
           schoolId: 'school-1',
         },
       );
+      // B1 — `classroom` (joined above) agora tem `deletedAt`; sem
+      // `.withDeleted()` o INNER JOIN filtraria turma arquivada, cortando o
+      // histórico dela deste export de pesquisa (ver comentário no service).
+      expect(queryBuilder.withDeleted).toHaveBeenCalled();
     });
 
     it('returns an empty array for a school with no enrollment ever, never an error', async () => {
       const queryBuilder = {
         innerJoin: jest.fn().mockReturnThis(),
+        withDeleted: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([]),
@@ -312,6 +324,155 @@ describe('SchoolsService', () => {
 
       expect(classroomsRepository.find).toHaveBeenCalledWith({
         where: { schoolId: 'school-1' },
+        order: { name: 'ASC' },
+      });
+    });
+  });
+
+  describe('CRUD administrativo — escolas (B1: soft delete via deletedAt)', () => {
+    it('createSchool persists name and externalId as given', async () => {
+      const created = { id: 's1' } as School;
+      schoolsRepository.create.mockReturnValue(created);
+      schoolsRepository.save.mockResolvedValue(created);
+
+      await service.createSchool({
+        name: 'Escola Nova',
+        externalId: 'INEP123',
+      });
+
+      expect(schoolsRepository.create).toHaveBeenCalledWith({
+        name: 'Escola Nova',
+        externalId: 'INEP123',
+      });
+    });
+
+    it('findSchoolByIdIncludingInactive passes withDeleted:true (edit a deactivated school without reactivating first)', async () => {
+      schoolsRepository.findOne.mockResolvedValue(null);
+
+      await service.findSchoolByIdIncludingInactive('school-1');
+
+      expect(schoolsRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'school-1' },
+        withDeleted: true,
+      });
+    });
+
+    it('updateSchool returns null when the school does not exist', async () => {
+      schoolsRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateSchool('missing', { name: 'X' }),
+      ).resolves.toBeNull();
+    });
+
+    it('updateSchool only overwrites fields explicitly provided', async () => {
+      const school = { id: 's1', name: 'Old', externalId: 'OLD' } as School;
+      schoolsRepository.findOne.mockResolvedValue(school);
+      schoolsRepository.save.mockImplementation(async (s) => s as School);
+
+      const result = await service.updateSchool('s1', { name: 'New' });
+
+      expect(result).toEqual({ id: 's1', name: 'New', externalId: 'OLD' });
+    });
+
+    it('setSchoolActive(false) stamps deletedAt/deletedByUserId via a direct update (never findOne+save, which would already be deletedAt-filtered)', async () => {
+      schoolsRepository.update.mockResolvedValue(undefined as never);
+      schoolsRepository.findOne.mockResolvedValue({ id: 's1' } as School);
+
+      await service.setSchoolActive('s1', false, 'admin-1');
+
+      expect(schoolsRepository.update).toHaveBeenCalledWith('s1', {
+        deletedAt: expect.any(Date),
+        deletedByUserId: 'admin-1',
+      });
+    });
+
+    it('setSchoolActive(true) clears deletedAt/deletedByUserId (restore)', async () => {
+      schoolsRepository.update.mockResolvedValue(undefined as never);
+      schoolsRepository.findOne.mockResolvedValue({ id: 's1' } as School);
+
+      await service.setSchoolActive('s1', true, 'admin-1');
+
+      expect(schoolsRepository.update).toHaveBeenCalledWith('s1', {
+        deletedAt: null,
+        deletedByUserId: null,
+      });
+    });
+
+    it('findAllSchoolsIncludingInactive includes deactivated schools (withDeleted:true)', async () => {
+      schoolsRepository.find.mockResolvedValue([]);
+
+      await service.findAllSchoolsIncludingInactive();
+
+      expect(schoolsRepository.find).toHaveBeenCalledWith({
+        withDeleted: true,
+        order: { name: 'ASC' },
+      });
+    });
+  });
+
+  describe('CRUD administrativo — turmas (B1: soft delete via deletedAt)', () => {
+    it('createClassroom persists schoolId/name/teacherId', async () => {
+      const created = { id: 'c1' } as Classroom;
+      classroomsRepository.create.mockReturnValue(created);
+      classroomsRepository.save.mockResolvedValue(created);
+
+      await service.createClassroom({
+        schoolId: 'school-1',
+        name: 'Turma A',
+        teacherId: null,
+      });
+
+      expect(classroomsRepository.create).toHaveBeenCalledWith({
+        schoolId: 'school-1',
+        name: 'Turma A',
+        teacherId: null,
+      });
+    });
+
+    it('updateClassroom returns null when the classroom does not exist', async () => {
+      classroomsRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateClassroom('missing', { name: 'X' }),
+      ).resolves.toBeNull();
+    });
+
+    it('updateClassroom can clear teacherId explicitly (unassign)', async () => {
+      const classroom = {
+        id: 'c1',
+        name: 'Turma A',
+        teacherId: 't1',
+      } as Classroom;
+      classroomsRepository.findOne.mockResolvedValue(classroom);
+      classroomsRepository.save.mockImplementation(async (c) => c as Classroom);
+
+      const result = await service.updateClassroom('c1', { teacherId: null });
+
+      expect(result?.teacherId).toBeNull();
+    });
+
+    it('setClassroomActive(false) stamps deletedAt/deletedByUserId via direct update', async () => {
+      classroomsRepository.update.mockResolvedValue(undefined as never);
+      classroomsRepository.findOne.mockResolvedValue({ id: 'c1' } as Classroom);
+
+      await service.setClassroomActive('c1', false, 'admin-1');
+
+      expect(classroomsRepository.update).toHaveBeenCalledWith('c1', {
+        deletedAt: expect.any(Date),
+        deletedByUserId: 'admin-1',
+      });
+    });
+
+    it('findClassroomsBySchoolIncludingInactive loads the teacher relation and includes archived classrooms', async () => {
+      classroomsRepository.find.mockResolvedValue([]);
+
+      await service.findClassroomsBySchoolIncludingInactive('school-1');
+
+      expect(classroomsRepository.find).toHaveBeenCalledWith({
+        where: { schoolId: 'school-1' },
+        relations: { teacher: true },
+        withDeleted: true,
         order: { name: 'ASC' },
       });
     });

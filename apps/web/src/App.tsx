@@ -1,4 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
+import { AdminSchoolClassrooms } from './routes/admin/AdminSchoolClassrooms'
+import { AdminSchools } from './routes/admin/AdminSchools'
 import { AdminUsers } from './routes/admin/AdminUsers'
 import { AdminLogin } from './routes/login/AdminLogin'
 import { RoleSelect } from './routes/login/RoleSelect'
@@ -138,6 +140,22 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <AdminUsers />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/schools"
+        element={
+          <RequireAuth roles={['admin']}>
+            <AdminSchools />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/schools/:schoolId/classrooms"
+        element={
+          <RequireAuth roles={['admin']}>
+            <AdminSchoolClassrooms />
           </RequireAuth>
         }
       />

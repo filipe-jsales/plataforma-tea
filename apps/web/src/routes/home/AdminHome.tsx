@@ -31,6 +31,9 @@ export function AdminHome() {
         <LinkButton to="/admin/users" icon="👤">
           Usuários
         </LinkButton>
+        <LinkButton to="/admin/schools" icon="🏫">
+          Escolas e turmas
+        </LinkButton>
         <LinkButton to="/admin/metrics" icon="📊">
           Painel institucional (escolas, turmas, professores)
         </LinkButton>

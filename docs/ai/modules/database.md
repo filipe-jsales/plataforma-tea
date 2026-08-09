@@ -108,8 +108,9 @@ Ver `apps/api/src/schools/entities/`. `classrooms.teacherId` (FK → `users`,
 `unenrolledAt`, nunca `DELETE` de uma matrícula encerrada), para um aluno
 poder trocar de turma/professor sem perder o rastro anterior. Nenhuma FK
 valida `role` no banco (ex.: nada impede um `teacherId` apontar para um user
-com `role=student`) — é invariante de aplicação, a validar na camada de
-serviço quando os endpoints existirem.
+com `role=student`) — é invariante de aplicação, validada na camada de
+serviço desde que o CRUD administrativo (`SchoolsAdminService`) existe (ver
+"Gestão de escolas e turmas (admin)" em `backend.md`).
 
 `classrooms.joinCode` (ex.: `"AZUL-1"`) é gerado por `@BeforeInsert`
 (`generateJoinCode()`, palavra de uma lista curta + dígito — ver
@@ -119,6 +120,19 @@ garante isso, e uma colisão rara faria o `INSERT` falhar. Aceitável no MVP
 dado o volume esperado; se turmas simultâneas crescerem muito, aumentar o
 espaço de códigos (mais palavras, mais dígitos) antes de qualquer outra
 mudança.
+
+**B1 — `schools.deletedAt`/`deletedByUserId`, `classrooms.deletedAt`/
+`deletedByUserId`, `schools.externalId`** (migration
+`AddSchoolAdminCrudAndSoftDelete`): as duas entidades passaram a estender
+`SoftDeletableEntity` (`apps/api/src/common/entities/soft-deletable.entity.ts`
+— `deletedAt` via `@DeleteDateColumn()`, `deletedByUserId` uuid solto sem
+FK) — ver "B1 — Soft delete como infraestrutura transversal" em
+`backend.md` pro racional completo (por que `@DeleteDateColumn` em vez de
+uma coluna comum, o cuidado com `createQueryBuilder` manual, por que
+`Challenge`/`ChallengeClassroomAllocation` ainda não ganharam a mesma
+coluna). `schools.externalId` (nullable, `UNIQUE` — Postgres permite
+múltiplos `NULL`, mesmo padrão de `User.email`) é o identificador externo
+opcional (ex.: código INEP) do CRUD administrativo de escola.
 
 ### `illustrations`
 
@@ -417,16 +431,25 @@ divergir das duas fontes.
     critério de sucesso configurável" em `backend.md`). `down` remove só
     esse elemento do array jsonb (`jsonb_agg` filtrado), nunca apaga a
     linha do template inteira.
+23. `1786316595440-AddSchoolAdminCrudAndSoftDelete.ts` — adiciona
+    `deletedAt`/`deletedByUserId` em `schools` e `classrooms` (B1 — soft
+    delete via `SoftDeletableEntity`) e `externalId` (nullable, `UNIQUE`)
+    em `schools` (CRUD administrativo de escola). Gerada com
+    `migration:generate`, sem seed — as contas/turmas demo já existentes
+    ficam com `deletedAt`/`externalId` nulos (ativas por padrão). Ver "B1 —
+    Soft delete como infraestrutura transversal" e "Gestão de escolas e
+    turmas (admin)" em `backend.md`.
 
-Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª e a 22ª já foram
-validadas com `npm run migration:run` contra um Postgres real (a 21ª e a
-22ª também conferidas via `curl` ponta a ponta contra as contas demo — ver
-"Testes" nas seções 1.2/1.4/1.5 e 3.7 de `backend.md`), e `\dt` + `\d
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª e a 23ª já
+foram validadas com `npm run migration:run` contra um Postgres real (a 21ª
+e a 22ª também conferidas via `curl` ponta a ponta contra as contas demo —
+ver "Testes" nas seções 1.2/1.4/1.5 e 3.7 de `backend.md`), e `\dt` + `\d
 <tabela>` conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente
 `pg` direto — `psql` não estava disponível no ambiente que rodou essas
-migrations). Depois da 20ª, um `migration:generate` extra confirmou "No
-changes in database schema were found" — zero diff pendente entre entidades
-e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
+migrations). Depois da 20ª e de novo depois da 23ª, um `migration:generate`
+extra confirmou "No changes in database schema were found" — zero diff
+pendente entre entidades e banco. `GET /metrics/admin/export` (6.6) também
+foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
 rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
 real de `interaction_events`, `export_audit_logs` conferido com uma linha
