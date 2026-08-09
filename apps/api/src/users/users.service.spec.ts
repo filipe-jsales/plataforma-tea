@@ -10,8 +10,11 @@ describe('UsersService', () => {
   beforeEach(() => {
     repository = {
       findOne: jest.fn(),
+      findAndCount: jest.fn(),
       count: jest.fn(),
+      create: jest.fn(),
       save: jest.fn(),
+      update: jest.fn(),
     } as unknown as jest.Mocked<Repository<User>>;
 
     service = new UsersService(repository);
@@ -77,6 +80,171 @@ describe('UsersService', () => {
       });
 
       expect(result?.sensoryOnboardingCompletedAt).toBe(originalDate);
+    });
+  });
+
+  describe('findPaginated', () => {
+    it('filters by role and active only when provided', async () => {
+      repository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findPaginated({
+        role: Role.TEACHER,
+        active: true,
+        page: 2,
+        pageSize: 10,
+      });
+
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        where: { role: Role.TEACHER, active: true },
+        order: { createdAt: 'DESC' },
+        skip: 10,
+        take: 10,
+      });
+    });
+
+    it('omits the where filters entirely when role/active are not passed', async () => {
+      repository.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findPaginated({ page: 1, pageSize: 20 });
+
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        where: {},
+        order: { createdAt: 'DESC' },
+        skip: 0,
+        take: 20,
+      });
+    });
+  });
+
+  describe('createStaffUser', () => {
+    it('never sets a passwordHash, and generates a password-setup token with an expiry', async () => {
+      repository.create.mockImplementation((input) => input as User);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      const result = await service.createStaffUser({
+        displayName: 'Prof. Ana',
+        email: 'ana@escola.com',
+        role: Role.TEACHER,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayName: 'Prof. Ana',
+          email: 'ana@escola.com',
+          role: Role.TEACHER,
+          totpSecret: null,
+        }),
+      );
+      const createArg = repository.create.mock.calls[0][0] as User;
+      expect(typeof createArg.passwordSetupToken).toBe('string');
+      expect(createArg.passwordSetupTokenExpiresAt!.getTime()).toBeGreaterThan(
+        Date.now(),
+      );
+      expect(result).not.toHaveProperty('passwordHash');
+    });
+
+    it('persists the given totpSecret for role=admin', async () => {
+      repository.create.mockImplementation((input) => input as User);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      await service.createStaffUser({
+        displayName: 'Admin Ana',
+        email: 'admin-ana@escola.com',
+        role: Role.ADMIN,
+        totpSecret: 'SECRETVALUE',
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ totpSecret: 'SECRETVALUE' }),
+      );
+    });
+  });
+
+  describe('createStudent', () => {
+    it('creates the user with role=student and the resolved credential, never an email/password', async () => {
+      repository.create.mockImplementation((input) => input as User);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      const result = await service.createStudent({
+        displayName: 'Aluno Teste',
+        avatarId: 'avatar-1',
+        loginImageSequence: ['img-1', 'img-2', 'img-3'],
+      });
+
+      expect(repository.create).toHaveBeenCalledWith({
+        displayName: 'Aluno Teste',
+        role: Role.STUDENT,
+        avatarId: 'avatar-1',
+        loginImageSequence: ['img-1', 'img-2', 'img-3'],
+      });
+      expect(result.role).toBe(Role.STUDENT);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('returns null without saving when the user does not exist', async () => {
+      repository.findOne.mockResolvedValue(null);
+
+      const result = await service.updateProfile('missing', {
+        displayName: 'Novo nome',
+      });
+
+      expect(result).toBeNull();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('never touches avatarId/loginImageSequence — student credential is out of scope (flow 1.3)', async () => {
+      const user = {
+        id: 'user-1',
+        displayName: 'Antigo',
+        email: 'old@escola.com',
+        role: Role.TEACHER,
+        avatarId: 'avatar-1',
+      } as User;
+      repository.findOne.mockResolvedValue(user);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      const result = await service.updateProfile('user-1', {
+        displayName: 'Novo nome',
+        email: 'new@escola.com',
+      });
+
+      expect(result?.displayName).toBe('Novo nome');
+      expect(result?.email).toBe('new@escola.com');
+      expect(result?.avatarId).toBe('avatar-1');
+    });
+  });
+
+  describe('setActive', () => {
+    it('returns null without saving when the user does not exist', async () => {
+      repository.findOne.mockResolvedValue(null);
+
+      const result = await service.setActive('missing', false);
+
+      expect(result).toBeNull();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('flips active and persists it (blocks login immediately per AuthService)', async () => {
+      const user = { id: 'user-1', active: true } as User;
+      repository.findOne.mockResolvedValue(user);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      const result = await service.setActive('user-1', false);
+
+      expect(result?.active).toBe(false);
+    });
+  });
+
+  describe('setPasswordHash', () => {
+    it('clears the setup token when the password is set', async () => {
+      await service.setPasswordHash('user-1', 'hashed-value');
+
+      expect(repository.update).toHaveBeenCalledWith('user-1', {
+        passwordHash: 'hashed-value',
+        passwordSetupToken: null,
+        passwordSetupTokenExpiresAt: null,
+      });
     });
   });
 });

@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import type { ChallengeFeedbackMessages } from '../../challenges/challenge-config.interface';
 
 // Corpo de POST /challenge-templates/:id/challenges e
 // PATCH /teacher/challenges/:id — os mesmos dois campos "de professor"
@@ -19,4 +20,12 @@ export class SaveTemplateChallengeDto {
 
   @IsObject()
   params: Record<string, unknown>;
+
+  // 3.7 (AC4) — opcional: forma validada de verdade (comprimento + ausência
+  // de linguagem punitiva) em ChallengeTemplatesService, não aqui — este
+  // decorator só garante a FORMA do payload (objeto, não string/array
+  // solto), mesmo racional de `params` acima.
+  @IsOptional()
+  @IsObject()
+  feedbackMessages?: ChallengeFeedbackMessages;
 }

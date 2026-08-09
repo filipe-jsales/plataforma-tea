@@ -1,0 +1,23 @@
+.admin-schools__subtitle {
+  color: var(--color-text-muted, #5a6472);
+  max-width: 42rem;
+}
+
+.admin-schools__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.admin-schools__empty {
+  color: var(--color-text-muted, #5a6472);
+}
+
+.admin-schools__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 320px;
+}

@@ -59,6 +59,28 @@ export interface SquareGoalConfig {
   shape: string;
   sides: number;
   turnAngleDeg: number;
+  // 7.4 (AC3) — tolerância de margem de erro (em pixels) pra considerar que
+  // o traçado do aluno "fechou a forma", mitigando imprecisão de
+  // coordenação motora fina (RQ4) na montagem/execução dos blocos. Ausente
+  // em desafios curados via seed (usa o default de
+  // apps/web/src/lib/turtleWorld.ts#CLOSE_TOLERANCE_PX); escolhida pelo
+  // professor num desafio criado via template — mesmo racional de
+  // `snapTolerancePercent` abaixo, mas um conceito DIFERENTE: aquele é
+  // tolerância de encaixe de bloco no editor, este é tolerância de
+  // fechamento geométrico do traçado desenhado.
+  closureTolerancePx?: number;
+}
+
+// 3.7 (AC4) — mensagens de feedback configuráveis pelo professor por
+// desafio, com um conjunto de mensagens-padrão sugeridas quando ausente
+// (ver DEFAULT_FEEDBACK_MESSAGES em feedback-messages.ts). Só se aplica a
+// desafios `stage: 'create'` — `use` nunca avalia sucesso/fracasso (o
+// programa vem pronto), e `modify` compõe a própria reflexão dinamicamente
+// a partir do resultado da execução, nunca um texto estático (ver
+// ChallengePage.tsx).
+export interface ChallengeFeedbackMessages {
+  retry?: string;
+  success?: string;
 }
 
 // Um campo numérico do `program` pré-montado que o aluno pode editar na fase
@@ -127,6 +149,8 @@ export interface ChallengeConfig {
   // template antes de o desafio poder ser salvo (RQ4, coordenação motora
   // fina).
   snapTolerancePercent?: number;
+  // 3.7 (AC4) — ver ChallengeFeedbackMessages acima.
+  feedbackMessages?: ChallengeFeedbackMessages;
 }
 
 export function isChallengeConfig(value: unknown): value is ChallengeConfig {

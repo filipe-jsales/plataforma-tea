@@ -131,6 +131,17 @@ describe('closedPolygonSides', () => {
   it('returns null for a no-op program instead of treating the trivial start==end as a closed shape', () => {
     expect(closedPolygonSides(runTurtleProgram([]))).toBeNull();
   });
+
+  it('7.4 (AC3) — respects a configured closure tolerance override, same as evaluateSquareGoal', () => {
+    const result = runTurtleProgram(squareProgram, { stepLength: 60, turnDeg: 90 });
+    result.points[result.points.length - 1] = {
+      x: result.points[result.points.length - 1].x + 15,
+      y: result.points[result.points.length - 1].y,
+    };
+
+    expect(closedPolygonSides(result)).toBeNull();
+    expect(closedPolygonSides(result, 20)).toBe(4);
+  });
 });
 
 describe('evaluateSquareGoal', () => {
@@ -188,6 +199,19 @@ describe('evaluateSquareGoal', () => {
     expect(last.y).toBeCloseTo(0);
     expect(result.finalHeadingDeg).not.toBe(0);
     expect(evaluateSquareGoal(result, goal).success).toBe(false);
+  });
+
+  it('7.4 (AC3) — accepts a wider gap when a larger closure tolerance is configured for the challenge', () => {
+    const result = runTurtleProgram(squareProgram, { stepLength: 60, turnDeg: 90 });
+    // Afasta o ponto final o suficiente pra falhar com o default (5px), mas
+    // ainda dentro de uma tolerância maior escolhida pelo professor.
+    result.points[result.points.length - 1] = {
+      x: result.points[result.points.length - 1].x + 15,
+      y: result.points[result.points.length - 1].y,
+    };
+
+    expect(evaluateSquareGoal(result, goal)).toEqual({ success: false });
+    expect(evaluateSquareGoal(result, goal, 20)).toEqual({ success: true });
   });
 });
 

@@ -28,6 +28,12 @@ export function AdminHome() {
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
+        <LinkButton to="/admin/users" icon="👤">
+          Usuários
+        </LinkButton>
+        <LinkButton to="/admin/schools" icon="🏫">
+          Escolas e turmas
+        </LinkButton>
         <LinkButton to="/admin/metrics" icon="📊">
           Painel institucional (escolas, turmas, professores)
         </LinkButton>

@@ -15,6 +15,8 @@ import { IllustrationsModule } from './illustrations/illustrations.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { SchoolsModule } from './schools/schools.module';
 import { SettingsModule } from './settings/settings.module';
+import { StudentAccountsModule } from './student-accounts/student-accounts.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { UsersModule } from './users/users.module';
 
@@ -52,6 +54,8 @@ import { UsersModule } from './users/users.module';
     HomeModule,
     SettingsModule,
     MetricsModule,
+    StudentAccountsModule,
+    EnrollmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

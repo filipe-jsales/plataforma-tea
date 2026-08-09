@@ -12,10 +12,12 @@ apps/api/src/
 │   ├── role.enum.ts             # student | teacher | admin
 │   └── event-category.enum.ts   # RD-I | RD-P | RD-C | RD-E | RD-L
 ├── users/
-│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado), role, perfil sensorial...
-│   ├── dto/update-sensory-profile.dto.ts
+│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado), role, active (1.4), perfil sensorial...
+│   ├── dto/{update-sensory-profile,create-staff-user,update-staff-user,update-user-status,list-users-query}.dto.ts
 │   ├── users.controller.ts      # GET /users/me, PATCH /users/:id/sensory-profile
 │   ├── users.service.ts
+│   ├── admin-users.controller.ts  # 1.4 — GET/POST/PATCH /admin/users[...]
+│   ├── admin-users.service.ts
 │   └── users.module.ts
 ├── identity/
 │   ├── entities/student-identity-reversal.entity.ts  # pseudônimo → id real
@@ -46,8 +48,18 @@ apps/api/src/
 │   ├── entities/school.entity.ts
 │   ├── entities/classroom.entity.ts   # turma; teacherId reatribuível, sem vínculo fixo
 │   ├── entities/enrollment.entity.ts  # matrícula aluno↔turma, histórico (active/unenrolledAt)
-│   ├── schools.service.ts
+│   ├── schools.service.ts       # + createEnrollment/endEnrollment/duplicate-check (1.2/1.5)
 │   └── schools.module.ts
+├── student-accounts/            # 1.2 — criação de conta de aluno, ver seção própria
+│   ├── dto/create-student-account.dto.ts
+│   ├── student-accounts.service.ts
+│   ├── student-accounts.controller.ts  # POST /teacher/students
+│   └── student-accounts.module.ts
+├── enrollments/                 # 1.5 — matrícula/transferência, ver seção própria
+│   ├── dto/transfer-student.dto.ts
+│   ├── enrollments.service.ts
+│   ├── enrollments.controller.ts  # POST /teacher/students/:id/enrollments + GET /teacher/classrooms/:id/students
+│   └── enrollments.module.ts
 ├── blocks/
 │   ├── entities/block-definition.entity.ts  # catálogo de blocos Blockly (tabela, não enum)
 │   ├── blocks.service.ts
@@ -96,6 +108,7 @@ apps/api/src/
 │   └── settings.module.ts
 ├── audit/
 │   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
+│   ├── entities/admin-action-log.entity.ts  # 1.4 — append-only, CRUD de usuário (quem/quando/o quê)
 │   ├── audit.service.ts
 │   └── audit.module.ts
 ├── metrics/
@@ -463,6 +476,72 @@ previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
 realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
 traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
 
+## Feedback de erro não-punitivo (3.7)
+
+Regra não-negociável 4 (nunca "errado"/X vermelho/comparação entre alunos)
+já estava implementada no texto fixo de `ChallengePage.tsx` desde o MVP —
+o que faltava era (AC4) deixar essas mensagens **configuráveis pelo
+professor por desafio, com um conjunto de mensagens-padrão sugeridas**.
+
+`ChallengeConfig.feedbackMessages?: { retry?: string; success?: string }`
+(`challenge-config.interface.ts`) — só se aplica a desafios `stage:
+'create'` (`use` nunca avalia sucesso/falha; `modify` compõe a própria
+reflexão dinamicamente, nunca um texto estático, ver "Blocos por desafio"
+acima). `apps/api/src/challenges/feedback-messages.ts` concentra:
+
+- **`DEFAULT_FEEDBACK_MESSAGES`** — literalmente as strings que já
+  estavam hardcoded em `ChallengePage.tsx` antes desta feature
+  ("Quase lá — quer tentar de novo?"/"Você montou o desafio! ✅"). Um
+  desafio sem `feedbackMessages` (todo currículo semeado) continua se
+  comportando exatamente igual — o frontend resolve o default (ver
+  `lib/feedbackMessages.ts`, frontend.md), o backend só passa `null`
+  adiante quando ausente (mesmo padrão de `snapTolerancePercent`).
+- **`validateFeedbackMessages`** — rejeita mensagem customizada com
+  linguagem punitiva (`"errad"`, `"errou"`, `"falh"`, `"incorret"`, busca
+  simples por substring, não um filtro de linguagem genérico) ou maior que
+  200 caracteres. Chamada por `ChallengeTemplatesService.
+  validateAndBuildConfig` (ver "Configuração de desafio via formulário
+  guiado" abaixo) junto com a validação pedagógica do handler do template
+  — um professor não consegue salvar "Isso está errado, tente de novo."
+  como mensagem de retry, a regra não-negociável 4 é aplicada na ORIGEM,
+  não só confiada à tela.
+- **`sanitizeFeedbackMessages`** — trim + descarta campo vazio (nunca
+  persiste string vazia; o formulário de edição precisa distinguir "sem
+  valor" de "professor apagou o texto", ver frontend.md).
+
+`ChallengesController` devolve `feedbackMessages: ChallengeFeedbackMessages
+| null` em `ChallengeDetail` (`null` pro currículo semeado, mesmo padrão de
+`snapTolerancePercent`/`editableFields`). Configurado pelo professor via
+`SaveTemplateChallengeDto.feedbackMessages` (opcional, `POST
+/challenge-templates/:id/challenges` e `PATCH /teacher/challenges/:id`) —
+ver "Endpoints" na seção 4.2 abaixo. `TeacherChallengeDetail.feedbackMessages`
+(nunca `undefined`, `{}` quando o professor nunca customizou) alimenta o
+formulário de edição com o que já foi salvo.
+
+### `feedback_shown` (RD-I) — evento escopado ao aluno
+
+Emitido pelo frontend (`ChallengePage.tsx`) toda vez que um feedback é
+exibido — Use/Create (`evaluation.success` decide `feedback_type`) e
+Modify (`actualSides !== null` decide, já que ali não há meta fixa) —
+`{ challenge_id, feedback_type: 'neutral' | 'success', stage, timestamp }`.
+Cabe em `interaction_events` sem ressalva (diferente do racional de
+`AdminActionLog`/`ExportAuditLog` documentado alhures): é literalmente
+sobre a experiência do PRÓPRIO aluno vendo feedback, o caso central que o
+schema RD-I existe pra cobrir — nenhuma decisão de arquitetura nova aqui.
+
+### Testes
+
+`feedback-messages.spec.ts` (backend, função pura) cobre a lista de
+palavras punitivas, o limite de tamanho, o sanitize de string vazia/
+whitespace, e que os próprios defaults sugeridos passam na validação (não
+seria bom sugerir por padrão uma mensagem que o próprio validador
+rejeitaria). `ChallengeTemplatesService`/`ChallengesController` ganharam
+casos cobrindo o merge de `feedbackMessages` no `config`, a rejeição de
+mensagem punitiva tanto na criação quanto na edição, e o passthrough pro
+aluno. Do lado do frontend, `lib/feedbackMessages.spec.ts` (resolução de
+default) e `ChallengePage.spec.tsx` (primeiro teste de componente desta
+tela — ver frontend.md) cobrem o comportamento visível.
+
 ## Configuração de desafio via formulário guiado — Modo Template (4.2)
 
 RQ4 — barreira institucional/formação docente (17,39%): o professor cria um
@@ -508,8 +587,9 @@ acima). Por isso o desenho tem duas metades:
 ### `RegularPolygonTemplateHandler` — único template do MVP
 
 Parâmetros: `sides` (3-12), `turnAngleDeg` (1-359), `snapTolerancePercent`
-(10-100), `enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação
-real, não decorativa:
+(10-100), `closureTolerancePx` (1-40, 7.4 AC3 — ver seção própria abaixo),
+`enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação real, não
+decorativa:
 
 - **Fechamento geométrico** — `sides × turnAngleDeg` precisa ser múltiplo
   de 360°; senão, mensagem pedagógica com sugestão de ângulo válido
@@ -539,12 +619,13 @@ real, não decorativa:
 
 `buildChallengeConfig` sempre produz `stage: 'create'` (editor livre — o
 template não autora Use/Modify, só o desafio de "mão na massa" final) com
-`goal: { shape: 'regular_polygon', sides, turnAngleDeg }` — reaproveita
-100% do motor geométrico já existente (`turtleWorld.ts`:
+`goal: { shape: 'regular_polygon', sides, turnAngleDeg, closureTolerancePx }`
+— reaproveita 100% do motor geométrico já existente (`turtleWorld.ts`:
 `evaluateSquareGoal`/`closedPolygonSides`/`buildGoalPreviewPath`), sem
-nenhuma mudança de engine. `SquareGoalConfig.shape` foi ampliado de
-`'square'` (literal) pra `string` só por causa disso — a matemática de
-fechamento já era genérica por `sides`/`turnAngleDeg` desde sempre.
+nenhuma mudança de engine além de aceitar a tolerância como parâmetro (ver
+seção 7.4 abaixo). `SquareGoalConfig.shape` foi ampliado de `'square'`
+(literal) pra `string` só por causa disso — a matemática de fechamento já
+era genérica por `sides`/`turnAngleDeg` desde sempre.
 
 ### `snapTolerancePercent` — parâmetro que afeta o editor de verdade
 
@@ -557,6 +638,59 @@ passou a aceitar um percentual e reescala `dragRadius`/`snapRadius`/
 especificamente pra AC3 não virar teatro: rejeitar "0% de tolerância" no
 formulário só tem sentido pedagógico se um valor válido REALMENTE mudar o
 comportamento do editor pro aluno.
+
+### `closureTolerancePx` — critério de sucesso configurável (7.4, AC3)
+
+`SquareGoalConfig.closureTolerancePx?: number` (`challenge-config.interface.ts`)
+é a margem de erro, em pixels, que `evaluateSquareGoal`/`closedPolygonSides`
+(frontend, `lib/turtleWorld.ts`) usam pra decidir "o traçado fechou a
+forma" — RQ4, mitigar imprecisão de coordenação motora fina na execução
+dos blocos, mesmo racional de `snapTolerancePercent`, mas um conceito
+DIFERENTE: aquele é tolerância de ENCAIXE de bloco no editor, este é
+tolerância de FECHAMENTO GEOMÉTRICO do traçado desenhado. Ausente
+(currículo semeado) usa o default do motor (`CLOSE_TOLERANCE_PX = 5`);
+escolhido pelo professor num desafio criado via template — validado no
+handler (`MIN/MAX_CLOSURE_TOLERANCE_PX = 1/40`, nunca 0 pelo mesmo motivo
+de `snapTolerancePercent` nunca 0%) e propagado no `goal` (`ChallengesController`
+devolve `goal` por inteiro, sem campo novo — `closureTolerancePx` chega ao
+frontend "de graça").
+
+Isto é a peça que faltava do card 7.4 ("Critério de sucesso suporta
+tolerância... necessário para mitigar imprecisão de coordenação motora
+fina"). O resto do card já estava coberto por 4.2 antes mesmo deste
+trabalho começar — ver "Seletores visuais pré-definidos" logo abaixo.
+
+### Seletores visuais pré-definidos e preview (7.4, AC1/AC2/AC4) — já cobertos por 4.2
+
+O card pede "seletores visuais pré-definidos (nº de lados, ângulo final,
+figura fechada?) em vez de expressões/código" (AC1) e "testar o critério
+de sucesso imediatamente usando o modo de pré-visualização (4.6) antes de
+publicar" (AC4) — **os dois já eram verdade antes desta sessão**, via o
+formulário guiado de 4.2 (`parameterSchema`/`TemplateParameterField`,
+`POST /challenge-templates/:id/preview`, ver seções acima). Nenhuma
+mudança de código foi necessária pra essas duas ACs — só documentar a
+correspondência:
+
+- "Número de lados"/"Ângulo final" → os parâmetros `sides`/`turnAngleDeg`
+  do template, exatamente como pedido.
+- "Figura fechada?" não existe como toggle independente pro polígono
+  regular — é GARANTIDO pela validação geométrica (`sides × turnAngleDeg`
+  múltiplo de 360°), não um critério configurável à parte. Um template
+  futuro cujo critério de fechamento não seja implícito por construção
+  precisaria de um seletor próprio; não fabricado aqui sem caso de uso.
+- "Modo de pré-visualização" → `POST .../preview`, já cobre "valida os
+  parâmetros" (AC3 de 4.2) e "mostra a forma-alvo animada" (AC4 de 4.2) —
+  a mesma coisa que 7.4-AC4 pede, sob outro número no backlog original.
+- AC2 de 7.4 (min/max configurável por campo editável, fase Modify,
+  validado no client antes da execução) — **já implementado como
+  capacidade de dado** desde antes de 4.2: `EditableFieldConfig.min/max`
+  (ver "Blocos por desafio" acima) é aplicado via `Blockly.FieldNumber.
+  setConstraints` no client. O que NÃO existe é uma tela onde o professor
+  autora um desafio `stage: 'modify'` via template (`RegularPolygonTemplateHandler.
+  buildChallengeConfig` sempre produz `stage: 'create'`) — mesma decisão já
+  documentada de "sem autoria de toolbox LIVRE pelo professor", nunca
+  revisitada nesta sessão por ser um escopo bem maior (autoria de fase
+  Modify inteira) que o card não pedia explicitamente.
 
 ### Autorização e escopo — desafio do professor nunca entra na sequência forçada
 
@@ -603,6 +737,9 @@ comportamento do editor pro aluno.
   server-side (defesa em profundidade — a tela sempre chama `/preview`
   antes) com `400 BadRequestException` cuja mensagem é a junção das
   mensagens pedagógicas do handler, nunca "erro de validação" genérico.
+  Aceita `feedbackMessages` opcional (3.7, AC4) — validado (linguagem
+  punitiva/tamanho, ver `feedback-messages.ts`) e mesclado no `config`
+  antes de persistir, mesma revalidação server-side de propósito.
 - `GET/PATCH/DELETE /teacher/challenges/:id` + `GET /teacher/challenges`
   (`TeacherChallengesController`, AC5/AC6) — "Meus desafios": mesmos dois
   campos (título + parâmetros) tanto pra criar quanto editar, nunca
@@ -664,11 +801,13 @@ domínio" abaixo e `database.md`): histórico (`active`/`unenrolledAt`),
 schema já N:N-capaz (um aluno pode ter várias matrículas ao longo do
 tempo). 4.3 não mexe nela, só LÊ (`SchoolsService.
 findActiveEnrollmentsByStudent`, já existente) pra resolver a turma ativa
-do aluno. **Nota**: 1.5 (User Story "Vínculo aluno↔turma↔professor",
-telas de matrícula/transferência) continua sem endpoint/UI própria — só o
-MODELO de dado já suporta o histórico; ver "Endpoints CRUD para schools/
-classrooms/enrollments" em "Próximos passos" abaixo, que já apontava esse
-gap antes de 4.3 existir.
+do aluno. **Nota histórica**: à época da implementação de 4.3, 1.5 (User
+Story "Vínculo aluno↔turma↔professor", telas de matrícula/transferência)
+ainda não tinha endpoint/UI própria — só o MODELO de dado já suportava o
+histórico. Isso mudou nas duas sessões seguintes: `EnrollmentsModule`
+("Matrícula/transferência de turma (1.5)" abaixo) e o CRUD administrativo
+de `schools`/`classrooms` ("Gestão de escolas e turmas (admin)" abaixo)
+fecharam os dois gaps.
 
 ### Nota de arquitetura: por que a alocação NÃO vira um `interaction_event`
 
@@ -1014,10 +1153,367 @@ apps/api`, ou `npm run test:api` na raiz). Todo `*.service.ts` tem um
 "Testes" em `docs/ai/rules/coding-rule.md` para o padrão esperado em módulos
 novos.
 
+## Gestão de contas — criação de aluno, CRUD de usuários, matrícula (1.2/1.4/1.5)
+
+Três features de gestão de conta, implementadas juntas por dependerem do
+mesmo alicerce (`users.active`, ver abaixo). Cobrem o que "Próximos passos"
+citava como gap (`POST /auth/register`, CRUD de `enrollments`) — resolvido
+por três endpoints com escopo próprio, não um registro genérico.
+
+### `users.active` + link de definição de senha (suporte a 1.4)
+
+Migration `AddUserStatusAndAdminActionLogs` acrescenta `users.active`
+(boolean, default `true`) e `users.passwordSetupToken` +
+`passwordSetupTokenExpiresAt` (uuid/timestamp, nullable). `AuthService`
+passa a checar `active` nas três rotas de login (`assertPassword` pro fluxo
+professor/admin, checagem equivalente em `loginStudent`) — desativar um
+usuário bloqueia login no próximo request, mesma mensagem genérica de
+credencial inválida (nunca "conta desativada", pra não vazar existência da
+conta). `POST /auth/set-password` (sem guard — a conta recém-criada ainda
+não tem senha) consome o token via `UsersService.findByPasswordSetupToken`/
+`setPasswordHash`.
+
+**Gap conhecido: transporte de e-mail.** A AC de 1.4 pede "sistema envia
+e-mail de definição de senha". Não existe integração de e-mail (SMTP/
+provedor) neste projeto — `AdminUsersService.create` devolve o token/link
+diretamente na resposta HTTP (uma vez só, nunca de novo em `GET
+/admin/users`) e a tela do admin (`apps/web/src/routes/admin/AdminUsers.tsx`)
+mostra pra copiar/repassar manualmente. Resolver isso de verdade é
+integrar um provedor de e-mail — não implementado de propósito (decisão de
+infraestrutura fora do escopo desta sessão, não um bug).
+
+### CRUD de usuários — admin (1.4)
+
+`UsersModule` ganhou `AdminUsersController`/`AdminUsersService`
+(`@Roles(Role.ADMIN)`, prefixo `admin/users`):
+
+- `GET /admin/users?role=&active=&page=&pageSize=` — lista paginada.
+- `POST /admin/users` — cria professor/admin (`displayName`/`email`/`role`,
+  nunca senha). `role=admin` gera `totpSecret` (`otplib.generateSecret`) +
+  devolve `totpOtpauthUri` (`otplib.generateURI`) — mesmo mecanismo de
+  segundo fator já usado em `AuthService.loginAdmin`, só que gerado aqui em
+  vez de semeado.
+- `PATCH /admin/users/:id` — edita `displayName`/`email`/`role`. Bloqueia
+  `email` em usuário `role=student` (`BadRequestException` — aluno não tem
+  e-mail) e só aceita `role` como `teacher`/`admin` (nunca rebaixa/promove
+  de/pra `student` por aqui — mudar o papel de um aluno pra staff ou
+  vice-versa não é uma "edição cadastral", precisaria de fluxo próprio).
+- `PATCH /admin/users/:id/status` — `{ active }`, soft delete (AC: "nunca
+  hard delete na interface do MVP"). Sem `DELETE` nesta classe de
+  propósito.
+
+Toda `create`/`edit`/`activate`/`deactivate` grava um `AdminActionLog`
+(`AuditService.recordUserAction`) — ver "Por que `AdminActionLog`, não um
+`interaction_event`" abaixo.
+
+### Criação de conta de aluno pelo professor/admin (1.2)
+
+`StudentAccountsModule` (`POST /teacher/students`, `@Roles(TEACHER, ADMIN)`)
+— o aluno nunca cria a própria conta. `StudentAccountsService.create`:
+
+1. Resolve a turma (`SchoolsService.findClassroomById`) e autoriza:
+   professor só na própria turma (`classroom.teacherId === actor.id`,
+   mesmo padrão de `ChallengeAllocationsService.assertOwnClassroom`),
+   admin sem restrição.
+2. `SchoolsService.hasActiveStudentWithNameInClassroom` — checagem
+   case/trim-insensitive pro alerta de duplicado (AC: "não bloqueante,
+   não erro fatal" — a conta é criada de qualquer forma, o response só
+   carrega `duplicateWarning: true`).
+3. Resolve o avatar — o escolhido pelo professor (validado contra o
+   catálogo `blocks`... catálogo `illustrations`, kind `avatar`) ou um
+   sorteio (`IllustrationsService.pickRandomAvatar`) se nenhum for
+   informado.
+4. Sorteia a sequência de login — `IllustrationsService.
+   pickRandomLoginImageSequence` (3 `Illustration(kind=login_image)`
+   distintas, ordem aleatória) — **reaproveita 100% o mecanismo de login
+   por sequência de imagens já implementado em 1.1**
+   (`AuthService.loginStudent`), a decisão de "PIN vs. imagem-senha"
+   citada como dependência do card já estava resolvida a favor de
+   imagem-senha antes desta feature existir.
+5. `UsersService.createStudent` + `SchoolsService.createEnrollment` — nunca
+   deriva a credencial de `displayName` (AC: "nome em texto livre nunca é
+   usado como parte da credencial").
+
+Resposta: `{ student, classroom, credential: { avatar, loginImages },
+duplicateWarning }` — vira a tela imprimível do professor
+(`apps/web/src/routes/teacher/TeacherAddStudent.tsx`, `window.print()`
+filtrando só o cartão de credencial via CSS `@media print`).
+
+### Matrícula/transferência de turma (1.5)
+
+`EnrollmentsModule` — dois controllers (`EnrollmentsController` em
+`teacher/students/:studentId/enrollments`, `ClassroomRosterController` em
+`teacher/classrooms/:classroomId/students`; prefixos deliberadamente
+distintos dos de 1.2, mesmo racional de
+`StudentClassroomChallengesController` vs `ChallengesController`).
+
+`EnrollmentsService.transfer` cobre matrícula E transferência com o MESMO
+método — só existe "tem vínculo anterior" ou não:
+
+- Sem vínculo ativo anterior → só cria (AC1).
+- Com vínculo ativo anterior → encerra (`SchoolsService.endEnrollment`,
+  `active: false` + `unenrolledAt`, nunca `DELETE`) e cria o novo (AC2).
+  Autorização checada nos DOIS lados (turma de origem e destino) quando o
+  ator é professor — não pode puxar aluno de turma alheia nem empurrar pra
+  turma alheia; admin sem essa restrição.
+- Mesma turma origem=destino → `409 ConflictException` (evita um "não-
+  evento" silencioso).
+- Nunca duas turmas ativas simultaneamente (AC5) — garantido por
+  construção: o método sempre encerra a anterior antes de criar a nova,
+  nunca acumula.
+
+`student_pseudo_id` nunca muda nessa operação — `Enrollment` só referencia
+`studentId`/`classroomId`, o `User.pseudonymId` do aluno é o mesmo antes e
+depois (era esse o requisito real da AC "permanece idêntico").
+
+### Por que `AdminActionLog`, não um `interaction_event`
+
+Duas das três features acima geram evento — mas em tabelas diferentes, e a
+diferença não é arbitrária:
+
+- **`student_account_created` (RD-I) e `class_enrollment_changed` (RD-L)
+  vão pra `interaction_events`.** Apesar de a AÇÃO ser de professor/admin,
+  o EVENTO é sobre um aluno específico que passa a existir com
+  `studentPseudoId` real — mesmo raciocínio de `login_attempt` (o aluno é
+  o sujeito do dado, não quem apertou o botão). `student_account_created`
+  carrega `{ created_by_role, class_id }`; `class_enrollment_changed`
+  carrega `{ previous_class_id, new_class_id }` — ambos com o
+  `studentPseudoId` do aluno afetado.
+- **`user_admin_action` (CRUD de 1.4) vira `AdminActionLog`, não
+  `interaction_events`.** Diferente dos dois acima, a maioria das chamadas
+  de 1.4 não tem NENHUM aluno envolvido (criar/editar/desativar um
+  professor não tem `studentPseudoId` nenhum pra carregar) —
+  `interaction_events.studentPseudoId` é `NOT NULL` de propósito (ver
+  "Padrão: eventos RD-* são escopados ao aluno" acima). Mesmo padrão já
+  estabelecido por `ChallengeClassroomAllocation` (4.3) e `ExportAuditLog`
+  (6.6): telemetria de ação de STAFF sobre outro registro (não sobre "a
+  experiência de um aluno") ganha tabela própria. `AdminActionLog`
+  (`apps/api/src/audit/entities/admin-action-log.entity.ts`) segue a MESMA
+  forma de `ExportAuditLog` (append-only, `actorUserId`/`targetUserId`
+  nullable + `ON DELETE SET NULL`) — `AuditModule` agora exporta os dois.
+
+### Testes
+
+`admin-users.service.spec.ts`, `student-accounts.service.spec.ts`,
+`enrollments.service.spec.ts` (mocks de repositório/serviço colaborador,
+mesmo padrão do resto do projeto) — cobrem as três checagens de
+autorização (professor só na própria turma, admin sem restrição), o
+alerta de duplicado não-bloqueante, o bloqueio de login pra `active:
+false`, e que a credencial gerada nunca deriva do nome digitado. Validado
+ponta a ponta via `curl` contra o Postgres local com as contas demo: criar
+professor → `set-password` → login; criar aluno → duplicar nome (alerta,
+não erro) → login do aluno com a credencial gerada; desativar aluno →
+login rejeitado; listar/filtrar `GET /admin/users`.
+
+## B1 — Soft delete como infraestrutura transversal
+
+`SoftDeletableEntity` (`apps/api/src/common/entities/soft-deletable.entity.ts`)
+é uma classe abstrata (`deletedAt: Date | null` via `@DeleteDateColumn()` +
+`deletedByUserId: string | null`) que qualquer entidade nova que representa
+dado de aluno/turma/alocação/desafio deve estender, em vez de inventar a
+própria coluna a cada feature. `School`/`Classroom` são os dois primeiros
+casos reais (ver "Gestão de escolas e turmas" logo abaixo).
+
+### Por que `@DeleteDateColumn`, não uma coluna `deletedAt` comum
+
+O TypeORM já resolve as duas partes mais chatas de reimplementar à mão
+(verificado lendo o código-fonte do TypeORM instalado —
+`QueryBuilder.js`/`SelectQueryBuilder.js` — não só a documentação):
+
+- Toda query `select` padrão (`find`/`findOne`/`count`, e QUALQUER
+  `createQueryBuilder` — inclusive um JOIN pra uma entidade soft-deletable,
+  seja manual ou via `relations: {...}` de um `find()`) ganha `deletedAt IS
+  NULL` automaticamente, a menos que `withDeleted: true` (repository) ou
+  `.withDeleted()` (query builder) seja passado explicitamente.
+- `repository.update(id, { deletedAt: ..., deletedByUserId: ... })` — usado
+  no lugar do `softDelete()`/`restore()` prontos do TypeORM, que não deixam
+  setar `deletedByUserId` no mesmo UPDATE — NÃO é filtrado por `deletedAt
+  IS NULL` (esse filtro automático só existe pra `select`, nunca pra
+  `update`/`delete`). É o que permite reativar um registro já desativado
+  sem um caminho especial: `findOne`+`save` já sairia filtrado pelo próprio
+  `deletedAt` que se está tentando limpar.
+
+### Cuidado: `createQueryBuilder` manual sobre uma entidade já soft-deletable
+
+Na maioria dos casos o filtro automático em JOIN é o comportamento CERTO
+(ex.: `findActiveStudentsBySchool` já queria só turma ativa, de graça). A
+exceção real encontrada nesta sessão foi
+`SchoolsService.findAllStudentPseudoIdsBySchool` (6.6, export de
+pesquisa): depois de `Classroom` ganhar `deletedAt`, o join
+`enrollment→classroom` passou a excluir silenciosamente o histórico de
+alunos de uma turma arquivada — corrigido com `.withDeleted()` explícito
+nesse queryBuilder, o único lugar do código que de propósito quer o
+histórico completo (arquivada ou não), mesmo racional que já o fazia
+incluir matrícula encerrada. Qualquer `createQueryBuilder` NOVO sobre
+`Classroom`/`School` precisa da mesma pergunta: "este caso quer só o ativo
+(comportamento padrão, não precisa fazer nada) ou o histórico completo
+(`.withDeleted()` explícito)?"
+
+### O "quem" da exclusão — sem tabela de auditoria nova
+
+`deletedByUserId` (uuid solto, sem FK/relation formal — mesma defesa em
+profundidade de `ExportAuditLog.adminUserId`/`AdminActionLog.actorUserId`;
+a entidade base também não conhece `User`, o que obrigaria todo soft
+deletable a importar `UsersModule` só por causa de uma auditoria) já
+responde "quem/quando excluiu" direto na própria linha — mesmo racional já
+documentado pra `ChallengeClassroomAllocation` ("a própria linha já contém
+os campos que a AC pede"). Não foi criada uma tabela de auditoria genérica
+tipo `AdminActionLog` pra isso: aquela é especificamente sobre CRUD de
+USUÁRIO (1.4, `targetUserId`/`targetRole` obrigatórios), não encaixa em
+"admin desativou uma escola" sem forçar campos que não fazem sentido ali.
+
+### Escopo desta sessão: `School`/`Classroom`, não `Challenge`/alocação ainda
+
+O card original de B1 cita "aluno, turma, alocação e desafio" como escopo
+final, mas a própria AC5 do card antecipa que a conversão do hard delete
+de `Challenge` (`TeacherChallengesController.removeMine`, card #42) fica
+pra QUANDO #42 for reaberto — "a mudança nele é restrita a trocar hard
+delete por soft delete usando a infraestrutura aqui criada [...] sem
+reinventar". Por isso `Challenge`/`ChallengeClassroomAllocation` NÃO
+ganharam `deletedAt` nesta sessão — nenhum fluxo de exclusão deles estava
+sendo tocado, e adicionar a coluna sem um fluxo que a use seria expor
+schema morto. `SoftDeletableEntity` já está pronta pra quando isso
+acontecer: estender a classe + 1 migration, sem reabrir a decisão de
+design.
+
+### Testes
+
+`schools.service.spec.ts` cobre o par completo — `setSchoolActive`/
+`setClassroomActive` gravando via `update` direto (nunca `findOne`+`save`,
+ver acima) e a correção de `.withDeleted()` em
+`findAllStudentPseudoIdsBySchool`.
+
+## Gestão de escolas e turmas (admin)
+
+CRUD administrativo sobre `School` (container multi-tenant) e `Classroom`
+(turma como container) — User Story: "Como admin, quero cadastrar e
+gerenciar escolas e suas turmas, para que múltiplas escolas operem na
+mesma plataforma de forma isolada." O vínculo aluno↔turma em si (matrícula)
+já tinha endpoint próprio desde 1.5 (`EnrollmentsModule`, ver acima) — esta
+feature cobre só os dois containers que faltavam (fecha o gap que "Próximos
+passos" apontava desde antes de 4.3 existir).
+
+### Admin é global, não escopado por escola
+
+Decisão explícita (perguntada ao usuário durante a sessão que implementou
+isto, dado o tamanho da mudança): o admin desta plataforma continua
+ÚNICO/GLOBAL — vê e gerencia TODAS as escolas, mesmo desenho já usado por
+`MetricsAdminService` (6.2, painel institucional cross-escola). A AC
+original do card ("um admin de uma escola não visualiza dados de outra
+escola") descreveria um admin ESCOPADO por escola — implementar isso de
+verdade exigiria `schoolId` no usuário admin, mudança no payload do JWT e
+re-escopar TODOS os endpoints de admin já existentes (metrics-admin,
+admin-users, audit, settings), com risco real de regressão no painel
+institucional que já funciona. O isolamento cross-escola que existe de
+verdade nesta plataforma é o do PROFESSOR, já naturalmente escopado via
+`Classroom.teacherId` — não revisitado aqui.
+
+### `SchoolsAdminService`/`SchoolsAdminController` — mesma forma de 1.4
+
+`SchoolsAdminService` (`apps/api/src/schools/schools-admin.service.ts`) é a
+camada de validação/formato de resposta sobre `SchoolsService` (que ganhou
+os métodos de escrita crus — `createSchool`/`updateSchool`/
+`setSchoolActive`/`createClassroom`/`updateClassroom`/`setClassroomActive`
+— mesmo racional de `UsersService` vs `AdminUsersService`, 1.4).
+`SchoolsAdminController`, `@Controller('admin')` + `@Roles(Role.ADMIN)`:
+
+- `GET/POST /admin/schools`, `GET/PATCH /admin/schools/:id`, `PATCH
+  /admin/schools/:id/status` (desativar/reativar — B1, nunca hard delete).
+- `GET/POST /admin/schools/:schoolId/classrooms`, `PATCH
+  /admin/classrooms/:id`, `PATCH /admin/classrooms/:id/status`.
+
+Nenhum endpoint DELETE — mesma decisão já tomada em 1.4 pro CRUD de
+usuários ("nunca hard delete", AC explícita).
+
+### Validações reais, não decorativas
+
+- **`name` é o único campo obrigatório de escola** (`externalId`, ex.:
+  código INEP, é opcional — AC "sem campos obrigatórios que exijam
+  conhecimento técnico"). `externalId` é `UNIQUE` no banco mas nullable
+  (Postgres permite múltiplos `NULL`, mesmo padrão de `User.email`); string
+  vazia enviada pelo formulário vira `null` no service
+  (`normalizeExternalId`), nunca persiste whitespace.
+- **Escola desativada não recebe turma nova** —
+  `SchoolsAdminService.createClassroom` resolve a escola via
+  `SchoolsService.findSchoolById` (o método "padrão", já filtrado por
+  `deletedAt IS NULL` automaticamente pelo TypeORM) e rejeita com
+  `NotFoundException` se ela não existir OU estiver desativada — mas
+  EDITAR uma escola já desativada continua permitido
+  (`findSchoolByIdIncludingInactive`, `withDeleted: true`): corrigir o
+  nome antes de reativar não deveria exigir reativar primeiro.
+- **`teacherId` (opcional, tanto em criar quanto editar turma) precisa
+  apontar pra um usuário `role=teacher` de verdade** —
+  `resolveTeacherOrThrow` (`UsersService.findById` + checagem de `role`)
+  rejeita com `BadRequestException` senão; mesma classe de invariante já
+  documentada em `Classroom.teacherId` ("FK não valida isso no banco", ver
+  "Modelagem de domínio" abaixo) — agora validada no primeiro endpoint que
+  realmente escreve nesse campo.
+- **Desvincular o professor é `teacherId: null` explícito, distinto de
+  campo omitido** — `UpdateClassroomDto.teacherId?: string | null`;
+  `@IsOptional()` sozinho já cobre os dois casos (ignora os demais
+  validadores quando o valor é `null` OU `undefined`, verificado no
+  código-fonte do `class-validator` instalado — não precisou de
+  `@ValidateIf` extra). No frontend, o `<Select>` (Radix) não aceita
+  `value=""` como item real (reservado pro estado de placeholder) — o
+  formulário usa um sentinel não-vazio (`'none'`) convertido pra
+  `null`/omitido só na hora de montar o corpo da requisição.
+- **Sem cascata automática "desativar escola → desativar turmas".**
+  Decisão deliberada, não uma lacuna: a AC pedia só "não apagar dados
+  históricos", nunca "desativar turmas junto". Efeito prático: uma turma
+  de uma escola desativada continua com login por `joinCode` funcionando
+  até ser desativada individualmente — se isso for indesejado no futuro, é
+  uma decisão de produto nova, não implementada por suposição aqui.
+
+### Sem endpoint de criação de turma pelo professor
+
+O User Story original é "CRUD administrativo" — só o admin cria/edita
+escola e turma aqui (`@Roles(Role.ADMIN)`). O AC "professor só cria turma
+dentro de uma escola à qual está vinculado" descreveria um fluxo de
+autoatendimento do PROFESSOR que não existe nesta plataforma hoje (não há
+`schoolId` no usuário professor — o único jeito de saber a escola de um
+professor é indiretamente, via `Classroom.teacherId` de uma turma que ele
+JÁ tem) — implementar isso seria uma feature nova e maior (autoatendimento
+de turma pelo professor), fora do escopo de "CRUD administrativo" que o
+card pediu. Documentado aqui pra não ser perdido, não implementado como
+placeholder.
+
+### Testes
+
+`schools.service.spec.ts` cobre os métodos de escrita crus (inclusive o
+`update` direto pra soft delete/restore, ver B1 acima).
+`schools-admin.service.spec.ts` cobre a camada de validação: rejeição de
+`teacherId` que não é professor, bloqueio de turma nova em escola
+desativada, `NotFoundException` em cada `get*`/`update*` quando o registro
+não existe, e a distinção `null`/`undefined` de `teacherId` no update
+(`null` explícito nunca dispara lookup em `UsersService`). Frontend:
+`AdminSchools.spec.tsx`/`AdminSchoolClassrooms.spec.tsx` (Vitest + Testing
+Library) cobrem listagem/criação/edição/desativação e o bloqueio de "Criar
+turma" quando a escola está desativada.
+
 ## Próximos passos (fora do escopo já implementado)
 
-- `POST /auth/register` — hoje só existe seed via migration; não há como
-  criar aluno/professor/admin em runtime ainda.
+- Transporte de e-mail de verdade pro link de definição de senha de 1.4
+  (hoje devolvido na resposta da API, ver "Gap conhecido" acima) — decisão
+  de infraestrutura (provedor SMTP/transacional), não implementada.
+- **CRUD de `schools`/`classrooms`: ✅ implementado** ("Gestão de escolas e
+  turmas (admin)" acima, `SchoolsAdminController`/`SchoolsAdminService`) —
+  resolve o gap que este bullet descrevia antes: admin agora cria/edita
+  escola e turma (inclusive atribuir/reatribuir professor titular) pela UI,
+  sem depender de seed. Escopo restante fora desta feature (não
+  implementado, ver "Sem endpoint de criação de turma pelo professor"
+  acima): autoatendimento do PROFESSOR criando turma na própria escola.
+- `POST /teacher/students`/`GET /admin/users` cobrem a criação/gestão —
+  falta a mesma teste de autorização "admin" no FRONTEND: a tela de
+  "Adicionar aluno" (`TeacherAddStudent.tsx`) só resolve a turma via `GET
+  /home/teacher` (escopado a professor); um admin que acesse a rota
+  autenticado como admin vê a lista de turmas vazia (backend já aceita
+  `role=admin` sem restrição de turma, só falta o seletor de escola/turma
+  no frontend pro admin usar de verdade).
+- Segundo fator (TOTP) de um admin criado via 1.4 é devolvido só como
+  `otpauthUri` em texto — sem QR code renderizado na tela (precisaria de
+  uma lib de geração de QR, não adicionada de propósito nesta sessão,
+  mesmo racional de "não fabricar dependência nova sem necessidade
+  concreta").
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
 - Motor PRIMM ainda não cobre um ciclo Predict→Run→Investigate→Modify→Make
   **dentro de um único desafio** — hoje ele se distribui pela sequência de 3
@@ -1069,16 +1565,11 @@ novos.
   modify/create sem ter passado pelo use correspondente — a rota não checa
   isso ainda).
 - **1.5 ("Vínculo aluno↔turma↔professor" — matricular/transferir aluno
-  entre turmas) continua sem endpoint/UI própria.** O MODELO de dado que
-  1.5 pede já existe desde antes de 4.2/4.3 (`Enrollment`: histórico
-  `active`/`unenrolledAt`, `studentPseudoId` estável — ver "Modelagem de
-  domínio" acima e `database.md`) — 4.3 só LÊ essa tabela
-  (`findActiveEnrollmentsByStudent`) pra resolver a turma ativa do aluno,
-  não implementa a escrita. Endpoints CRUD pra `schools`/`classrooms`/
-  `enrollments` (`subjects`/`topics` já têm leitura via `GET
-  /subjects/topics`; escrita continua não exposta em nenhum dos três — ver
-  regra 9 antes de expor isso ao professor: nada de formulário que exija
-  entender a estrutura de tabelas) seguem como o próximo passo real de 1.5.
+  entre turmas): ✅ implementado** (`EnrollmentsModule`, ver "Matrícula/
+  transferência de turma (1.5)" acima) — resolve o gap que este bullet
+  descrevia antes. `schools`/`classrooms` (criar escola, criar turma,
+  atribuir professor titular): **✅ também implementado** desde então, ver
+  "Gestão de escolas e turmas (admin)" acima.
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como

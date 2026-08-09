@@ -64,6 +64,15 @@ export interface TeacherChallengeSummary {
   createdAt: string;
 }
 
+// 3.7 (AC4) — mesma forma que ChallengeFeedbackMessages do backend
+// (challenge-config.interface.ts), mas nunca `undefined` aqui: o formulário
+// (TemplateChallengeForm) precisa de um input controlado, então usa string
+// vazia pra "sem valor", nunca omite a chave.
+export interface ChallengeFeedbackMessagesDraft {
+  retry: string;
+  success: string;
+}
+
 export interface TeacherChallengeDetail {
   id: string;
   title: string;
@@ -71,6 +80,7 @@ export interface TeacherChallengeDetail {
   templateId: string;
   templateKey: string;
   params: Record<string, unknown>;
+  feedbackMessages: Partial<ChallengeFeedbackMessagesDraft>;
 }
 
 // Parâmetros do formulário guiado — valores já no tipo esperado pelo

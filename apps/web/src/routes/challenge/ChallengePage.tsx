@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BlocklyWorkspace, type WorkspaceSvg } from 'react-blockly';
 import { PixiTurtleWorld } from '../../components/challenge/PixiTurtleWorld';
+import { InlineFeedback } from '../../components/ui';
 import {
   applyGenerousSnapTolerance,
   buildToolboxConfiguration,
@@ -12,6 +13,7 @@ import {
 import { interpretProgram, type SerializedBlock } from '../../lib/blockProgram';
 import { apiClient } from '../../lib/apiClient';
 import { diffChangedValues, extractEditableFieldValues } from '../../lib/editableFields';
+import { resolveRetryMessage, resolveSuccessMessage, type ChallengeFeedbackMessages } from '../../lib/feedbackMessages';
 import { logEvent } from '../../lib/logEvent';
 import {
   buildGoalPreviewPath,
@@ -41,6 +43,9 @@ interface ChallengeGoal {
   shape: 'square';
   sides: number;
   turnAngleDeg: number;
+  // 7.4 (AC3) — margem de erro (px) escolhida pelo professor num desafio
+  // criado via template; ausente usa o default de lib/turtleWorld.ts.
+  closureTolerancePx?: number;
 }
 
 // Motor PRIMM "Modify" (3.4/3.6) — um campo do `program` que o aluno pode
@@ -69,6 +74,10 @@ interface ChallengeDetail {
   // 4.2 — presente só em desafios criados via template pelo professor;
   // `null` usa o default do editor (aplicado no carregamento do módulo).
   snapTolerancePercent: number | null;
+  // 3.7 (AC4) — mensagens de feedback customizadas pelo professor; `null`
+  // (ou campo individual `null`) usa o conjunto de mensagens-padrão
+  // sugeridas (ver lib/feedbackMessages.ts).
+  feedbackMessages: ChallengeFeedbackMessages | null;
 }
 
 type Feedback = { kind: 'success' | 'retry'; message: string } | null;
@@ -287,11 +296,13 @@ export function ChallengePage() {
 
     const actions = interpretProgram(serialized);
     const result = runTurtleProgram(actions);
-    const evaluation = evaluateSquareGoal(result, challenge.goal);
+    // 7.4 (AC3) — margem de erro por-desafio (ausente usa o default do
+    // motor, ver lib/turtleWorld.ts), a mesma nos dois cálculos abaixo.
+    const evaluation = evaluateSquareGoal(result, challenge.goal, challenge.goal.closureTolerancePx);
     // Motor PRIMM "Predict": quantos lados o traçado realmente fechou com —
     // calculado uma vez, reusado tanto pelo comparativo de 3.3 (abaixo, só
     // no `program_executed`) quanto pelo de 3.4 (challenge_modify_attempt).
-    const actualSides = closedPolygonSides(result);
+    const actualSides = closedPolygonSides(result, challenge.goal.closureTolerancePx);
 
     setFeedback(null);
     executionStore.getState().play(result.points, motionEnabled);
@@ -362,6 +373,23 @@ export function ChallengePage() {
       if (challenge.predictQuestion) {
         setPrimmStage('predict');
       }
+      // 3.7 (AC6/feedback_shown) — a reflexão da fase Modify também passa
+      // pelo componente de feedback reutilizável (ver JSX abaixo), então
+      // também emite o mesmo evento que Use/Create — "fechou" é o sinal
+      // mais próximo de "sucesso" que esta fase exploratória tem, nunca
+      // comparado à previsão do aluno (regra não-negociável 5).
+      logEvent({
+        studentPseudoId: user.pseudonymId,
+        category: 'RD-I',
+        type: 'feedback_shown',
+        challengeId: challenge.id,
+        payload: {
+          challenge_id: challenge.id,
+          feedback_type: actualSides !== null ? 'success' : 'neutral',
+          stage: challenge.toolbox.stage,
+          timestamp: new Date().toISOString(),
+        },
+      });
       return;
     }
 
@@ -371,16 +399,34 @@ export function ChallengePage() {
     // verdade (regra não-negociável 4).
     if (challenge.locked) return;
 
+    // 3.7 (AC4) — mensagem configurável pelo professor por desafio, com
+    // fallback pro conjunto de mensagens-padrão sugeridas (lib/
+    // feedbackMessages.ts) quando o professor não personaliza.
+    const feedbackType: 'success' | 'neutral' = evaluation.success ? 'success' : 'neutral';
+    setFeedback(
+      evaluation.success
+        ? { kind: 'success', message: resolveSuccessMessage(challenge.feedbackMessages) }
+        : { kind: 'retry', message: resolveRetryMessage(challenge.feedbackMessages) },
+    );
+    logEvent({
+      studentPseudoId: user.pseudonymId,
+      category: 'RD-I',
+      type: 'feedback_shown',
+      challengeId: challenge.id,
+      payload: {
+        challenge_id: challenge.id,
+        feedback_type: feedbackType,
+        stage: challenge.toolbox.stage,
+        timestamp: new Date().toISOString(),
+      },
+    });
     if (evaluation.success) {
-      setFeedback({ kind: 'success', message: 'Você montou o desafio! ✅' });
       logEvent({
         studentPseudoId: user.pseudonymId,
         category: 'RD-C',
         type: 'challenge.completed',
         challengeId: challenge.id,
       });
-    } else {
-      setFeedback({ kind: 'retry', message: 'Quase lá — quer tentar de novo?' });
     }
   }
 
@@ -558,23 +604,23 @@ export function ChallengePage() {
             </>
           )}
 
-          {feedback && (
-            <p className={`challenge-page__feedback challenge-page__feedback--${feedback.kind}`}>
-              {feedback.message}
-            </p>
-          )}
+          {/* 3.7 (AC3/AC6) — mesmo componente reutilizável (icone + texto,
+              nunca só cor) usado nas 3 fases (3.3/3.4/3.5): aqui cobre
+              Use/Create; a reflexão da fase Modify logo abaixo usa o
+              mesmo InlineFeedback, só com texto composto dinamicamente. */}
+          {feedback && <InlineFeedback kind={feedback.kind}>{feedback.message}</InlineFeedback>}
 
           {/* Reflexão da fase "modify": só descreve o que aconteceu (o que o
               aluno previu vs. o que a figura fez), nunca "certo/errado" —
               regra não-negociável 4. O log de verdade (challenge_modify_
               attempt) já saiu em handleRun; isto é só o que aparece na tela. */}
           {isModify && modifyResult && (
-            <p className="challenge-page__modify-reflection">
+            <InlineFeedback kind={modifyResult.actualSides !== null ? 'success' : 'retry'}>
               Você imaginou {modifyResult.predictedSides} lados.{' '}
               {modifyResult.actualSides
                 ? `A figura fechou com ${modifyResult.actualSides} lados.`
                 : 'Essa figura não fechou — quer tentar outros valores?'}
-            </p>
+            </InlineFeedback>
           )}
 
           {(challenge.locked || isModify) && attempts > 0 && (

@@ -68,7 +68,11 @@ export interface GoalEvaluation {
 // Tolerância de fechamento em "passos": o caminho não precisa fechar num
 // pixel exato, só perto o bastante pra ser reconhecível como a mesma forma
 // (mesmo raciocínio de tolerância generosa da regra 3 do editor de blocos,
-// aplicado ao resultado visual em vez do encaixe de blocos).
+// aplicado ao resultado visual em vez do encaixe de blocos). Default usado
+// pelo currículo semeado (sem `goal.closureTolerancePx`); um desafio criado
+// via template (7.4, AC3) pode sobrescrever isso por-desafio — ver
+// `toleranceOverridePx` abaixo e `SquareGoalConfig.closureTolerancePx` no
+// backend (challenge-config.interface.ts).
 const CLOSE_TOLERANCE_PX = 5;
 
 // Fechou de verdade: voltou perto do ponto de partida E terminou de frente
@@ -77,10 +81,10 @@ const CLOSE_TOLERANCE_PX = 5;
 // `evaluateSquareGoal` (fase Create, meta fixa) e `closedPolygonSides`
 // (fase Modify, exploração sem meta fixa) — a mesma checagem de geometria,
 // duas perguntas diferentes em cima dela.
-function isPathClosed(result: TurtleRunResult): boolean {
+function isPathClosed(result: TurtleRunResult, tolerancePx: number): boolean {
   const start = result.points[0];
   const end = result.points[result.points.length - 1];
-  const closedPosition = Math.hypot(end.x - start.x, end.y - start.y) <= CLOSE_TOLERANCE_PX;
+  const closedPosition = Math.hypot(end.x - start.x, end.y - start.y) <= tolerancePx;
   const closedHeading = result.finalHeadingDeg % 360 === 0;
   return closedPosition && closedHeading;
 }
@@ -91,13 +95,17 @@ function isPathClosed(result: TurtleRunResult): boolean {
 // início) E o personagem terminou de frente pro mesmo lado que começou, com
 // pelo menos `sides` movimentos — o suficiente pra reconhecer "desenhou uma
 // forma fechada com o número de lados pedido", sem validar geometria exata.
-export function evaluateSquareGoal(result: TurtleRunResult, goal: SquareGoal): GoalEvaluation {
+export function evaluateSquareGoal(
+  result: TurtleRunResult,
+  goal: SquareGoal,
+  toleranceOverridePx?: number,
+): GoalEvaluation {
   const moveCount = result.points.length - 1;
   if (moveCount < goal.sides) {
     return { success: false };
   }
 
-  return { success: isPathClosed(result) };
+  return { success: isPathClosed(result, toleranceOverridePx ?? CLOSE_TOLERANCE_PX) };
 }
 
 // Fase Modify (3.4): não há meta fixa nem avaliação certo/errado — o aluno
@@ -107,9 +115,9 @@ export function evaluateSquareGoal(result: TurtleRunResult, goal: SquareGoal): G
 // vira mensagem de erro na tela, só compõe o log RD-P). Um caminho sem
 // nenhum movimento "fecha" trivialmente (início == fim) mas não é um
 // polígono — por isso o mínimo de 3 lados.
-export function closedPolygonSides(result: TurtleRunResult): number | null {
+export function closedPolygonSides(result: TurtleRunResult, toleranceOverridePx?: number): number | null {
   const moveCount = result.points.length - 1;
-  if (moveCount < 3 || !isPathClosed(result)) {
+  if (moveCount < 3 || !isPathClosed(result, toleranceOverridePx ?? CLOSE_TOLERANCE_PX)) {
     return null;
   }
   return moveCount;

@@ -71,6 +71,16 @@ validado por `role` no banco — é invariante de aplicação (ver
 persistente — setados pelo onboarding (2.2) via `PATCH
 /users/:id/sensory-profile`, nunca por `synchronize`/UI direta no banco.
 
+**1.4 — `active`/`passwordSetupToken`/`passwordSetupTokenExpiresAt`**
+(migration `AddUserStatusAndAdminActionLogs`): `active` (boolean, default
+`true`) é o soft delete — `AuthService` rejeita login pras três roles
+quando `false`, nunca um hard delete de linha. `passwordSetupToken` (uuid,
+nullable, sem hash — mesmo nível de proteção que `joinCode`/`pseudonymId`,
+identificador aleatório não reversível por inspeção) +
+`passwordSetupTokenExpiresAt` sustentam `POST /auth/set-password`: gerado
+na criação de professor/admin pelo admin (`AdminUsersService.create`),
+consumido uma vez, depois `NULL` de novo.
+
 ### `student_identity_reversals`
 
 Ver `apps/api/src/identity/entities/student-identity-reversal.entity.ts`.
@@ -98,8 +108,9 @@ Ver `apps/api/src/schools/entities/`. `classrooms.teacherId` (FK → `users`,
 `unenrolledAt`, nunca `DELETE` de uma matrícula encerrada), para um aluno
 poder trocar de turma/professor sem perder o rastro anterior. Nenhuma FK
 valida `role` no banco (ex.: nada impede um `teacherId` apontar para um user
-com `role=student`) — é invariante de aplicação, a validar na camada de
-serviço quando os endpoints existirem.
+com `role=student`) — é invariante de aplicação, validada na camada de
+serviço desde que o CRUD administrativo (`SchoolsAdminService`) existe (ver
+"Gestão de escolas e turmas (admin)" em `backend.md`).
 
 `classrooms.joinCode` (ex.: `"AZUL-1"`) é gerado por `@BeforeInsert`
 (`generateJoinCode()`, palavra de uma lista curta + dígito — ver
@@ -109,6 +120,19 @@ garante isso, e uma colisão rara faria o `INSERT` falhar. Aceitável no MVP
 dado o volume esperado; se turmas simultâneas crescerem muito, aumentar o
 espaço de códigos (mais palavras, mais dígitos) antes de qualquer outra
 mudança.
+
+**B1 — `schools.deletedAt`/`deletedByUserId`, `classrooms.deletedAt`/
+`deletedByUserId`, `schools.externalId`** (migration
+`AddSchoolAdminCrudAndSoftDelete`): as duas entidades passaram a estender
+`SoftDeletableEntity` (`apps/api/src/common/entities/soft-deletable.entity.ts`
+— `deletedAt` via `@DeleteDateColumn()`, `deletedByUserId` uuid solto sem
+FK) — ver "B1 — Soft delete como infraestrutura transversal" em
+`backend.md` pro racional completo (por que `@DeleteDateColumn` em vez de
+uma coluna comum, o cuidado com `createQueryBuilder` manual, por que
+`Challenge`/`ChallengeClassroomAllocation` ainda não ganharam a mesma
+coluna). `schools.externalId` (nullable, `UNIQUE` — Postgres permite
+múltiplos `NULL`, mesmo padrão de `User.email`) é o identificador externo
+opcional (ex.: código INEP) do CRUD administrativo de escola.
 
 ### `illustrations`
 
@@ -182,6 +206,14 @@ guiado — Modo Template (4.2)" em `backend.md` pro racional completo: um
 desafio de professor nunca entra sozinho na sequência forçada de todos os
 alunos do tópico.
 
+**3.7/7.4 — `config.feedbackMessages`/`config.goal.closureTolerancePx`**:
+nenhuma migration de schema (ambos vivem dentro do `config` jsonb já
+existente, sem coluna nova) — ver "Feedback de erro não-punitivo (3.7)" e
+"`closureTolerancePx` — critério de sucesso configurável (7.4, AC3)" em
+`backend.md`. `feedbackMessages` é `{ retry?, success? }`, ausente no
+currículo semeado; `goal.closureTolerancePx` é a margem de erro (px) pra
+considerar a forma fechada, também ausente no currículo semeado.
+
 ### `challenge_templates`
 
 Ver `apps/api/src/challenge-templates/entities/challenge-template.entity.ts`.
@@ -222,6 +254,22 @@ Esta é a linha que serve de log RD-C-equivalente da alocação (AC7 do card:
 `desafio_id`/`turma_id`/`professor_id`/`timestamp_alocacao`) — nunca um
 `interaction_events` com pseudônimo de professor forjado; ver "Nota de
 arquitetura" na seção 4.3 de `docs/ai/modules/backend.md`.
+
+### `admin_action_logs`
+
+Ver `apps/api/src/audit/entities/admin-action-log.entity.ts`. Segunda
+tabela de auditoria de staff do projeto (1.4, depois de
+`export_audit_logs`/6.6) — mesma filosofia (append-only,
+`actorUserId`/`targetUserId` FK nullable `ON DELETE SET NULL`, defesa em
+profundidade já que não existe hard delete de usuário). Registra
+`create`/`edit`/`activate`/`deactivate` do CRUD de usuários do admin
+(`actorRole`/`targetRole`/`actionType`/`metadata` jsonb). Deliberadamente
+fora de `interaction_events` — ver "Por que `AdminActionLog`, não um
+`interaction_event`" em `backend.md` pro racional completo (a maioria das
+chamadas de 1.4 não tem `studentPseudoId` nenhum pra carregar, já que o
+alvo costuma ser um professor/admin, não um aluno). Índice em
+`(actorUserId, createdAt)`, mesmo padrão de `interaction_events`/
+`export_audit_logs`.
 
 ### `interaction_events`
 
@@ -366,14 +414,42 @@ divergir das duas fontes.
     `migration:generate`, sem seed (4.3 — Alocação de desafio a uma turma;
     ver "`challenge_classroom_allocations`" acima e "Alocação de desafio a
     uma turma" em `backend.md`).
+21. `1786278462809-AddUserStatusAndAdminActionLogs.ts` — adiciona `active`
+    (boolean, default `true`), `passwordSetupToken`/
+    `passwordSetupTokenExpiresAt` em `users`; cria `admin_action_logs`
+    (`actorUserId`/`targetUserId` FK nullable `ON DELETE SET NULL` pra
+    `users`, índice em `(actorUserId, createdAt)`). Gerada com
+    `migration:generate`, sem seed (1.2/1.4/1.5 — criação de conta de
+    aluno, CRUD de usuários do admin, matrícula/transferência de turma;
+    ver "Gestão de contas — criação de aluno, CRUD de usuários, matrícula"
+    em `backend.md`).
+22. `1786282298140-AddClosureToleranceToRegularPolygonTemplate.ts` — só um
+    `UPDATE` (sem mudança de schema, `migration:generate` não geraria diff
+    pra isto — mesmo racional de `SeedSquareChallengeToolbox`): acrescenta
+    o parâmetro `closureTolerancePx` ao `parameterSchema` já seedado do
+    template `regular_polygon` (7.4, AC3 — ver "`closureTolerancePx` —
+    critério de sucesso configurável" em `backend.md`). `down` remove só
+    esse elemento do array jsonb (`jsonb_agg` filtrado), nunca apaga a
+    linha do template inteira.
+23. `1786316595440-AddSchoolAdminCrudAndSoftDelete.ts` — adiciona
+    `deletedAt`/`deletedByUserId` em `schools` e `classrooms` (B1 — soft
+    delete via `SoftDeletableEntity`) e `externalId` (nullable, `UNIQUE`)
+    em `schools` (CRUD administrativo de escola). Gerada com
+    `migration:generate`, sem seed — as contas/turmas demo já existentes
+    ficam com `deletedAt`/`externalId` nulos (ativas por padrão). Ver "B1 —
+    Soft delete como infraestrutura transversal" e "Gestão de escolas e
+    turmas (admin)" em `backend.md`.
 
-Todas as 12 primeiras, a 17ª, a 18ª, a 19ª e a 20ª já foram validadas com
-`npm run migration:run` contra um Postgres real, e `\dt` + `\d <tabela>`
-conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente `pg`
-direto — `psql` não estava disponível no ambiente que rodou essas
-migrations). Depois da última, um `migration:generate` extra confirmou "No
-changes in database schema were found" — zero diff pendente entre entidades
-e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª e a 23ª já
+foram validadas com `npm run migration:run` contra um Postgres real (a 21ª
+e a 22ª também conferidas via `curl` ponta a ponta contra as contas demo —
+ver "Testes" nas seções 1.2/1.4/1.5 e 3.7 de `backend.md`), e `\dt` + `\d
+<tabela>` conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente
+`pg` direto — `psql` não estava disponível no ambiente que rodou essas
+migrations). Depois da 20ª e de novo depois da 23ª, um `migration:generate`
+extra confirmou "No changes in database schema were found" — zero diff
+pendente entre entidades e banco. `GET /metrics/admin/export` (6.6) também
+foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
 rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
 real de `interaction_events`, `export_audit_logs` conferido com uma linha

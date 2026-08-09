@@ -8,6 +8,7 @@ describe('RegularPolygonTemplateHandler', () => {
     sides: 4,
     turnAngleDeg: 90,
     snapTolerancePercent: 60,
+    closureTolerancePx: 5,
     enabledBlockTypes: ['move_forward', 'turn', 'repeat_times'],
   };
 
@@ -61,6 +62,18 @@ describe('RegularPolygonTemplateHandler', () => {
       });
     });
 
+    it('7.4 (AC3) — rejects a closure tolerance outside 1-40px with a pedagogical explanation', () => {
+      const result = handler.validateParameters({ ...validParams, closureTolerancePx: 0 }, introduced);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual({
+        parameterKey: 'closureTolerancePx',
+        message:
+          'A margem de erro para considerar a forma fechada precisa estar entre ' +
+          '1 e 40 pixels (recomendamos 5).',
+      });
+    });
+
     it('rejects an empty block palette', () => {
       const result = handler.validateParameters({ ...validParams, enabledBlockTypes: [] }, introduced);
 
@@ -101,7 +114,13 @@ describe('RegularPolygonTemplateHandler', () => {
       );
 
       const keys = result.errors.map((e) => e.parameterKey).sort();
-      expect(keys).toEqual(['enabledBlockTypes', 'sides', 'snapTolerancePercent', 'turnAngleDeg']);
+      expect(keys).toEqual([
+        'closureTolerancePx',
+        'enabledBlockTypes',
+        'sides',
+        'snapTolerancePercent',
+        'turnAngleDeg',
+      ]);
     });
   });
 
@@ -112,7 +131,7 @@ describe('RegularPolygonTemplateHandler', () => {
       expect(config).toEqual({
         stage: 'create',
         allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
-        goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 },
+        goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90, closureTolerancePx: 5 },
         snapTolerancePercent: 60,
       });
     });

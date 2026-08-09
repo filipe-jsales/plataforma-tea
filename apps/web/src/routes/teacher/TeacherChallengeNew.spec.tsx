@@ -101,6 +101,7 @@ describe('TeacherChallengeNew', () => {
       expect(mockedPost).toHaveBeenCalledWith('/challenge-templates/template-1/challenges', {
         title: 'Meu desafio',
         params: { sides: 4 },
+        feedbackMessages: { retry: '', success: '' },
       }),
     );
   });

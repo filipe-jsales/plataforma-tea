@@ -1,0 +1,21 @@
+.teacher-students__empty {
+  color: var(--color-text-muted, #5a6472);
+}
+
+.teacher-students__student {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.teacher-students__avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.teacher-students__transfer-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 280px;
+}

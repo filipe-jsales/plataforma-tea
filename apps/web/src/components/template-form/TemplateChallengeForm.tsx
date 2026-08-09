@@ -3,25 +3,29 @@ import { PixiTurtleWorld } from '../challenge/PixiTurtleWorld';
 import { apiClient } from '../../lib/apiClient';
 import { buildGoalPreviewPath } from '../../lib/turtleWorld';
 import { buildInitialParams, errorsByParameterKey } from '../../lib/templateParameterForm';
+import { DEFAULT_RETRY_MESSAGE, DEFAULT_SUCCESS_MESSAGE } from '../../lib/feedbackMessages';
 import { createTurtleExecutionStore } from '../../stores/turtleExecutionStore';
 import type {
+  ChallengeFeedbackMessagesDraft,
   ChallengeTemplateDetail,
   TemplateParamsDraft,
   TemplatePreviewResult,
 } from '../../lib/challengeTemplateTypes';
-import { Button, InlineFeedback } from '../ui';
+import { Button, InlineFeedback, TextField } from '../ui';
 import { TemplateParameterField } from './TemplateParameterField';
 import './TemplateChallengeForm.css';
 
 export interface TemplateChallengeFormSubmitInput {
   title: string;
   params: TemplateParamsDraft;
+  feedbackMessages: ChallengeFeedbackMessagesDraft;
 }
 
 export interface TemplateChallengeFormProps {
   template: ChallengeTemplateDetail;
   initialTitle?: string;
   initialParams?: TemplateParamsDraft;
+  initialFeedbackMessages?: Partial<ChallengeFeedbackMessagesDraft>;
   submitLabel: string;
   onSubmit: (input: TemplateChallengeFormSubmitInput) => Promise<void>;
 }
@@ -37,6 +41,7 @@ export function TemplateChallengeForm({
   template,
   initialTitle = '',
   initialParams,
+  initialFeedbackMessages,
   submitLabel,
   onSubmit,
 }: TemplateChallengeFormProps) {
@@ -44,6 +49,14 @@ export function TemplateChallengeForm({
   const [params, setParams] = useState<TemplateParamsDraft>(
     () => initialParams ?? buildInitialParams(template.parameterSchema),
   );
+  // 3.7 (AC4) — mensagens de feedback opcionais, por desafio. Vazio (não
+  // `undefined`) pra o input controlado nunca alternar entre controlado/
+  // não-controlado; string vazia significa "usar o default sugerido" tanto
+  // aqui quanto no backend (ver sanitizeFeedbackMessages).
+  const [feedbackMessages, setFeedbackMessages] = useState<ChallengeFeedbackMessagesDraft>(() => ({
+    retry: initialFeedbackMessages?.retry ?? '',
+    success: initialFeedbackMessages?.success ?? '',
+  }));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -115,7 +128,7 @@ export function TemplateChallengeForm({
         return;
       }
       setFieldErrors({});
-      await onSubmit({ title: title.trim(), params });
+      await onSubmit({ title: title.trim(), params, feedbackMessages });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.');
     } finally {
@@ -146,6 +159,31 @@ export function TemplateChallengeForm({
             onChange={(value) => handleParamChange(definition.key, value)}
           />
         ))}
+      </div>
+
+      {/* 3.7 (AC4) — mensagens de feedback opcionais, por desafio. Vazio usa
+          o conjunto de mensagens-padrão sugeridas (placeholder mostra qual é
+          o default, pra o professor nunca digitar do zero sem saber o que
+          já está valendo). Nunca aceita linguagem punitiva — o backend
+          valida e devolve mensagem pedagógica se a tentativa violar isso
+          (regra não-negociável 4, ver feedback-messages.ts). */}
+      <div className="template-challenge-form__feedback-messages">
+        <TextField
+          id="feedback-retry-message"
+          label="Mensagem quando o aluno ainda não atingiu o objetivo (opcional)"
+          value={feedbackMessages.retry}
+          placeholder={DEFAULT_RETRY_MESSAGE}
+          maxLength={200}
+          onChange={(event) => setFeedbackMessages((current) => ({ ...current, retry: event.target.value }))}
+        />
+        <TextField
+          id="feedback-success-message"
+          label="Mensagem de sucesso (opcional)"
+          value={feedbackMessages.success}
+          placeholder={DEFAULT_SUCCESS_MESSAGE}
+          maxLength={200}
+          onChange={(event) => setFeedbackMessages((current) => ({ ...current, success: event.target.value }))}
+        />
       </div>
 
       {formError && <InlineFeedback kind="retry">{formError}</InlineFeedback>}

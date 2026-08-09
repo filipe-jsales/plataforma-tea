@@ -1,0 +1,89 @@
+.teacher-add-student__subtitle {
+  color: var(--color-text-muted, #5a6472);
+  max-width: 42rem;
+}
+
+.teacher-add-student__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 560px;
+}
+
+.teacher-add-student__avatar-field {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.teacher-add-student__avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+}
+
+.teacher-add-student__avatar-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.teacher-add-student__credential-card {
+  max-width: 480px;
+  margin: var(--space-4) 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.teacher-add-student__credential-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.teacher-add-student__credential-meta {
+  color: var(--color-text-muted, #5a6472);
+}
+
+.teacher-add-student__credential-section {
+  margin-top: var(--space-4);
+}
+
+.teacher-add-student__credential-avatar {
+  width: 96px;
+  height: 96px;
+}
+
+.teacher-add-student__credential-images {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.teacher-add-student__credential-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.teacher-add-student__credential-image img {
+  width: 72px;
+  height: 72px;
+}
+
+.teacher-add-student__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Credencial imprimível — só o cartão sai no papel, nunca o resto da tela
+   (navegação, botões, avisos). */
+@media print {
+  .teacher-add-student > *:not(#student-credential-card) {
+    display: none !important;
+  }
+}

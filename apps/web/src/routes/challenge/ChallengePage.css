@@ -52,20 +52,6 @@
   cursor: default;
 }
 
-.challenge-page__feedback {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-}
-
-.challenge-page__feedback--success {
-  color: var(--color-success);
-}
-
-.challenge-page__feedback--retry {
-  color: var(--color-warning);
-}
-
 .challenge-page__step-button {
   min-height: 48px;
   font-size: 1rem;
@@ -120,12 +106,6 @@
   border-radius: var(--radius-md);
   background: #fff;
   cursor: pointer;
-}
-
-.challenge-page__modify-reflection {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
 }
 
 .challenge-page__investigation {
