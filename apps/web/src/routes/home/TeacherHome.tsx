@@ -29,6 +29,12 @@ export function TeacherHome() {
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
+        <LinkButton to="/teacher/students/new" icon="➕">
+          Adicionar aluno
+        </LinkButton>
+        <LinkButton to="/teacher/students" icon="🧑‍🤝‍🧑">
+          Meus alunos
+        </LinkButton>
         <LinkButton to="/teacher/metrics" icon="📈">
           Painel da turma (progresso por aluno)
         </LinkButton>

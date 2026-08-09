@@ -63,6 +63,25 @@ export class User {
   @Column({ type: 'varchar', length: 120 })
   displayName: string;
 
+  // Soft delete (1.4, AC: "Desativar bloqueia login imediatamente, mas não
+  // apaga dados históricos"). Nunca um hard delete na interface do MVP —
+  // ver AuthService, que rejeita login para active=false antes de checar
+  // credencial.
+  @Column({ type: 'boolean', default: true })
+  active: boolean;
+
+  // Fluxo de definição de senha (1.4, criação de professor/admin pelo
+  // admin): token de uso único, gerado na criação da conta, consumido por
+  // POST /auth/set-password. Não é hasheado — mesmo nível de proteção que
+  // `joinCode`/`pseudonymId` (identificador aleatório, não reversível por
+  // inspeção), pela mesma razão que este projeto já aceita em outros
+  // identificadores gerados. Nulo depois de consumido.
+  @Column({ type: 'uuid', nullable: true })
+  passwordSetupToken: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  passwordSetupTokenExpiresAt: Date | null;
+
   // Perfil sensorial persistente (regra não-negociável 1): desligado por
   // padrão, definido no onboarding do aluno (2.2) ou pelo professor no
   // painel de turma/aluno — nunca precisa ser refeito a cada sessão/device.

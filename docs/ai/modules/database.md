@@ -71,6 +71,16 @@ validado por `role` no banco — é invariante de aplicação (ver
 persistente — setados pelo onboarding (2.2) via `PATCH
 /users/:id/sensory-profile`, nunca por `synchronize`/UI direta no banco.
 
+**1.4 — `active`/`passwordSetupToken`/`passwordSetupTokenExpiresAt`**
+(migration `AddUserStatusAndAdminActionLogs`): `active` (boolean, default
+`true`) é o soft delete — `AuthService` rejeita login pras três roles
+quando `false`, nunca um hard delete de linha. `passwordSetupToken` (uuid,
+nullable, sem hash — mesmo nível de proteção que `joinCode`/`pseudonymId`,
+identificador aleatório não reversível por inspeção) +
+`passwordSetupTokenExpiresAt` sustentam `POST /auth/set-password`: gerado
+na criação de professor/admin pelo admin (`AdminUsersService.create`),
+consumido uma vez, depois `NULL` de novo.
+
 ### `student_identity_reversals`
 
 Ver `apps/api/src/identity/entities/student-identity-reversal.entity.ts`.
@@ -223,6 +233,22 @@ Esta é a linha que serve de log RD-C-equivalente da alocação (AC7 do card:
 `interaction_events` com pseudônimo de professor forjado; ver "Nota de
 arquitetura" na seção 4.3 de `docs/ai/modules/backend.md`.
 
+### `admin_action_logs`
+
+Ver `apps/api/src/audit/entities/admin-action-log.entity.ts`. Segunda
+tabela de auditoria de staff do projeto (1.4, depois de
+`export_audit_logs`/6.6) — mesma filosofia (append-only,
+`actorUserId`/`targetUserId` FK nullable `ON DELETE SET NULL`, defesa em
+profundidade já que não existe hard delete de usuário). Registra
+`create`/`edit`/`activate`/`deactivate` do CRUD de usuários do admin
+(`actorRole`/`targetRole`/`actionType`/`metadata` jsonb). Deliberadamente
+fora de `interaction_events` — ver "Por que `AdminActionLog`, não um
+`interaction_event`" em `backend.md` pro racional completo (a maioria das
+chamadas de 1.4 não tem `studentPseudoId` nenhum pra carregar, já que o
+alvo costuma ser um professor/admin, não um aluno). Índice em
+`(actorUserId, createdAt)`, mesmo padrão de `interaction_events`/
+`export_audit_logs`.
+
 ### `interaction_events`
 
 Ver `apps/api/src/events/entities/interaction-event.entity.ts`. Tabela
@@ -366,12 +392,23 @@ divergir das duas fontes.
     `migration:generate`, sem seed (4.3 — Alocação de desafio a uma turma;
     ver "`challenge_classroom_allocations`" acima e "Alocação de desafio a
     uma turma" em `backend.md`).
+21. `1786278462809-AddUserStatusAndAdminActionLogs.ts` — adiciona `active`
+    (boolean, default `true`), `passwordSetupToken`/
+    `passwordSetupTokenExpiresAt` em `users`; cria `admin_action_logs`
+    (`actorUserId`/`targetUserId` FK nullable `ON DELETE SET NULL` pra
+    `users`, índice em `(actorUserId, createdAt)`). Gerada com
+    `migration:generate`, sem seed (1.2/1.4/1.5 — criação de conta de
+    aluno, CRUD de usuários do admin, matrícula/transferência de turma;
+    ver "Gestão de contas — criação de aluno, CRUD de usuários, matrícula"
+    em `backend.md`).
 
-Todas as 12 primeiras, a 17ª, a 18ª, a 19ª e a 20ª já foram validadas com
-`npm run migration:run` contra um Postgres real, e `\dt` + `\d <tabela>`
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª e a 21ª já foram
+validadas com `npm run migration:run` contra um Postgres real (a 21ª
+também conferida via `curl` ponta a ponta contra as contas demo — ver
+"Testes" na seção 1.2/1.4/1.5 de `backend.md`), e `\dt` + `\d <tabela>`
 conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente `pg`
 direto — `psql` não estava disponível no ambiente que rodou essas
-migrations). Depois da última, um `migration:generate` extra confirmou "No
+migrations). Depois da 20ª, um `migration:generate` extra confirmou "No
 changes in database schema were found" — zero diff pendente entre entidades
 e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),

@@ -1,0 +1,335 @@
+import { useEffect, useState } from 'react';
+import { ApiError, apiClient } from '../../lib/apiClient';
+import type { AdminUserProfile, CreateStaffUserResponse, PaginatedAdminUsers, UserRole } from '../../lib/adminUserTypes';
+import {
+  Badge,
+  Button,
+  Dialog,
+  InlineFeedback,
+  LinkButton,
+  SegmentedControl,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  TextField,
+} from '../../components/ui';
+import './AdminUsers.css';
+
+const ROLE_FILTER_OPTIONS = [
+  { value: '', label: 'Todos os papéis' },
+  { value: 'student', label: 'Aluno' },
+  { value: 'teacher', label: 'Professor' },
+  { value: 'admin', label: 'Admin' },
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'Todos' },
+  { value: 'true', label: 'Ativos' },
+  { value: 'false', label: 'Desativados' },
+];
+
+const ROLE_LABEL: Record<UserRole, string> = { student: 'Aluno', teacher: 'Professor', admin: 'Admin' };
+
+const PAGE_SIZE = 20;
+
+interface StaffForm {
+  displayName: string;
+  email: string;
+  role: 'teacher' | 'admin';
+}
+
+const EMPTY_STAFF_FORM: StaffForm = { displayName: '', email: '', role: 'teacher' };
+
+// 1.4 — CRUD de usuários (admin). Tela administrativa única pra
+// professores/admins e (indiretamente) alunos — nunca hard delete (AC
+// explícita); toda criação/edição/ativação é feita por
+// components/ui (regra de engenharia 3.11), nunca HTML cru.
+export function AdminUsers() {
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<PaginatedAdminUsers | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<StaffForm>(EMPTY_STAFF_FORM);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createResult, setCreateResult] = useState<CreateStaffUserResponse | null>(null);
+
+  const [editingUser, setEditingUser] = useState<AdminUserProfile | null>(null);
+  const [editForm, setEditForm] = useState<StaffForm>(EMPTY_STAFF_FORM);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+
+  function reload() {
+    setData(null);
+    setLoadError(null);
+    const params = new URLSearchParams();
+    if (roleFilter) params.set('role', roleFilter);
+    if (statusFilter) params.set('active', statusFilter);
+    params.set('page', String(page));
+    params.set('pageSize', String(PAGE_SIZE));
+    apiClient
+      .get<PaginatedAdminUsers>(`/admin/users?${params.toString()}`)
+      .then(setData)
+      .catch((caught) => setLoadError(caught instanceof Error ? caught.message : 'Não foi possível carregar.'));
+  }
+
+  useEffect(reload, [roleFilter, statusFilter, page]);
+
+  async function handleCreateSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (createForm.displayName.trim().length < 2) {
+      setCreateError('Informe o nome completo.');
+      return;
+    }
+    setCreateSaving(true);
+    setCreateError(null);
+    try {
+      const result = await apiClient.post<CreateStaffUserResponse>('/admin/users', {
+        displayName: createForm.displayName.trim(),
+        email: createForm.email.trim(),
+        role: createForm.role,
+      });
+      setCreateResult(result);
+      setCreateForm(EMPTY_STAFF_FORM);
+      reload();
+    } catch (caught) {
+      setCreateError(caught instanceof ApiError ? caught.message : 'Não foi possível criar o usuário.');
+    } finally {
+      setCreateSaving(false);
+    }
+  }
+
+  function openEdit(user: AdminUserProfile) {
+    setEditingUser(user);
+    setEditForm({ displayName: user.displayName, email: user.email ?? '', role: user.role === 'admin' ? 'admin' : 'teacher' });
+    setEditError(null);
+  }
+
+  async function handleEditSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editingUser) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const body: Record<string, unknown> = { displayName: editForm.displayName.trim() };
+      if (editingUser.role !== 'student') {
+        body.email = editForm.email.trim();
+        body.role = editForm.role;
+      }
+      await apiClient.patch(`/admin/users/${editingUser.id}`, body);
+      setEditingUser(null);
+      reload();
+    } catch (caught) {
+      setEditError(caught instanceof ApiError ? caught.message : 'Não foi possível salvar as alterações.');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function toggleStatus(user: AdminUserProfile) {
+    setPendingStatusId(user.id);
+    try {
+      await apiClient.patch(`/admin/users/${user.id}/status`, { active: !user.active });
+      reload();
+    } finally {
+      setPendingStatusId(null);
+    }
+  }
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+
+  return (
+    <main className="admin-users staff-theme page">
+      <LinkButton to="/home" variant="ghost" icon="←">
+        Voltar
+      </LinkButton>
+      <h1>Usuários</h1>
+      <p className="admin-users__subtitle">
+        Professores, admins e alunos da escola. Desativar bloqueia o login imediatamente, mas nunca apaga o
+        histórico — não existe exclusão permanente aqui.
+      </p>
+
+      <div className="admin-users__toolbar">
+        <SegmentedControl ariaLabel="Filtrar por papel" options={ROLE_FILTER_OPTIONS} value={roleFilter} onValueChange={(v) => { setPage(1); setRoleFilter(v); }} />
+        <SegmentedControl ariaLabel="Filtrar por status" options={STATUS_FILTER_OPTIONS} value={statusFilter} onValueChange={(v) => { setPage(1); setStatusFilter(v); }} />
+        <Button icon="➕" onClick={() => { setCreateResult(null); setCreateError(null); setCreateForm(EMPTY_STAFF_FORM); setCreateOpen(true); }}>
+          Criar professor/admin
+        </Button>
+      </div>
+
+      {loadError && <InlineFeedback kind="retry">{loadError}</InlineFeedback>}
+      {data === null && !loadError && <p>Carregando…</p>}
+
+      {data !== null && (
+        <>
+          <Table ariaLabel="Lista de usuários">
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell scope="col">Nome</TableHeaderCell>
+                <TableHeaderCell scope="col">Papel</TableHeaderCell>
+                <TableHeaderCell scope="col">E-mail</TableHeaderCell>
+                <TableHeaderCell scope="col">Status</TableHeaderCell>
+                <TableHeaderCell scope="col">Ações</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.items.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.displayName}</TableCell>
+                  <TableCell>{ROLE_LABEL[user.role]}</TableCell>
+                  <TableCell>{user.email ?? '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant={user.active ? 'success' : 'neutral'}>{user.active ? 'Ativo' : 'Desativado'}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="secondary" icon="✏️" onClick={() => openEdit(user)}>
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      icon={user.active ? '🚫' : '✅'}
+                      disabled={pendingStatusId === user.id}
+                      onClick={() => toggleStatus(user)}
+                    >
+                      {user.active ? 'Desativar' : 'Reativar'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {data.items.length === 0 && <p className="admin-users__empty">Nenhum usuário encontrado com esses filtros.</p>}
+
+          <div className="admin-users__pagination">
+            <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              Anterior
+            </Button>
+            <span>
+              Página {data.page} de {totalPages}
+            </span>
+            <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              Próxima
+            </Button>
+          </div>
+        </>
+      )}
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setCreateResult(null);
+        }}
+        title="Criar professor ou admin"
+        description="Alunos nunca são criados aqui — use 'Adicionar aluno', no painel do professor (1.2)."
+      >
+        {!createResult && (
+          <form className="admin-users__form" onSubmit={handleCreateSubmit}>
+            <TextField
+              id="staff-name"
+              label="Nome completo"
+              value={createForm.displayName}
+              onChange={(e) => setCreateForm((f) => ({ ...f, displayName: e.target.value }))}
+            />
+            <TextField
+              id="staff-email"
+              label="E-mail"
+              type="email"
+              value={createForm.email}
+              onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+            />
+            <SegmentedControl
+              ariaLabel="Papel"
+              options={[
+                { value: 'teacher', label: 'Professor' },
+                { value: 'admin', label: 'Admin' },
+              ]}
+              value={createForm.role}
+              onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v as 'teacher' | 'admin' }))}
+            />
+            {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
+            <Button type="submit" disabled={createSaving}>
+              {createSaving ? 'Criando…' : 'Criar'}
+            </Button>
+          </form>
+        )}
+
+        {createResult && (
+          <div className="admin-users__result">
+            <InlineFeedback kind="success">
+              Conta de {createResult.user.displayName} criada. Repasse o link abaixo pra pessoa definir a
+              própria senha — hoje isso ainda não é enviado por e-mail automaticamente.
+            </InlineFeedback>
+            <p className="admin-users__result-label">Link de definição de senha (uso único):</p>
+            <code className="admin-users__result-token">{createResult.passwordSetupToken}</code>
+            {createResult.totpOtpauthUri && (
+              <>
+                <p className="admin-users__result-label">
+                  Segredo do segundo fator (cadastrar num app autenticador):
+                </p>
+                <code className="admin-users__result-token">{createResult.totpOtpauthUri}</code>
+              </>
+            )}
+            <Button onClick={() => setCreateOpen(false)}>Fechar</Button>
+          </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={editingUser !== null}
+        onOpenChange={(open) => !open && setEditingUser(null)}
+        title={editingUser ? `Editar ${editingUser.displayName}` : 'Editar'}
+      >
+        {editingUser && (
+          <form className="admin-users__form" onSubmit={handleEditSubmit}>
+            <TextField
+              id="edit-name"
+              label="Nome completo"
+              value={editForm.displayName}
+              onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+            />
+            {editingUser.role !== 'student' && (
+              <>
+                <TextField
+                  id="edit-email"
+                  label="E-mail"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                />
+                <SegmentedControl
+                  ariaLabel="Papel"
+                  options={[
+                    { value: 'teacher', label: 'Professor' },
+                    { value: 'admin', label: 'Admin' },
+                  ]}
+                  value={editForm.role}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, role: v as 'teacher' | 'admin' }))}
+                />
+              </>
+            )}
+            {editingUser.role === 'student' && (
+              <p className="admin-users__hint">
+                Credencial de aluno (avatar/sequência de imagens) segue o fluxo próprio (1.3) — aqui só o nome
+                é editável.
+              </p>
+            )}
+            {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
+            <Button type="submit" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </form>
+        )}
+      </Dialog>
+    </main>
+  );
+}

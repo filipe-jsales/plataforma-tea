@@ -25,12 +25,15 @@ describe('AuthService', () => {
     role: Role.STUDENT,
     displayName: 'Aluno Um',
     loginImageSequence: ['img-a', 'img-b', 'img-c'],
+    active: true,
   };
 
   beforeEach(() => {
     usersService = {
       findById: jest.fn(),
       findByEmailAndRole: jest.fn(),
+      findByPasswordSetupToken: jest.fn(),
+      setPasswordHash: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
 
     schoolsService = {
@@ -66,7 +69,9 @@ describe('AuthService', () => {
     });
 
     it('never exposes email, pseudonym or reversible identity in the roster', async () => {
-      schoolsService.findClassroomByJoinCode.mockResolvedValue({ id: 'classroom-1' } as any);
+      schoolsService.findClassroomByJoinCode.mockResolvedValue({
+        id: 'classroom-1',
+      } as any);
       schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
         {
           student: {
@@ -100,10 +105,16 @@ describe('AuthService', () => {
 
   describe('loginStudent', () => {
     it('rejects when the user id does not resolve to a student', async () => {
-      usersService.findById.mockResolvedValue({ ...baseUser, role: Role.TEACHER } as User);
+      usersService.findById.mockResolvedValue({
+        ...baseUser,
+        role: Role.TEACHER,
+      } as User);
 
       await expect(
-        service.loginStudent({ userId: 'user-1', imageSequence: ['img-a'] } as any),
+        service.loginStudent({
+          userId: 'user-1',
+          imageSequence: ['img-a'],
+        } as any),
       ).rejects.toBeInstanceOf(UnauthorizedException);
       expect(eventsService.record).not.toHaveBeenCalled();
     });
@@ -135,12 +146,15 @@ describe('AuthService', () => {
       const result = await service.loginStudent({
         userId: 'user-1',
         imageSequence: ['img-a', 'img-b', 'img-c'],
-      } as any);
+      });
 
       expect(eventsService.record).toHaveBeenCalledTimes(2);
       expect(eventsService.record).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ type: 'login_attempt', payload: expect.objectContaining({ success: true }) }),
+        expect.objectContaining({
+          type: 'login_attempt',
+          payload: expect.objectContaining({ success: true }),
+        }),
       );
       expect(eventsService.record).toHaveBeenNthCalledWith(
         2,
@@ -155,6 +169,21 @@ describe('AuthService', () => {
         displayName: 'Aluno Um',
       });
     });
+
+    it('1.4 — rejects a deactivated student before comparing the image sequence', async () => {
+      usersService.findById.mockResolvedValue({
+        ...baseUser,
+        active: false,
+      } as User);
+
+      await expect(
+        service.loginStudent({
+          userId: 'user-1',
+          imageSequence: ['img-a', 'img-b', 'img-c'],
+        } as any),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(eventsService.record).not.toHaveBeenCalled();
+    });
   });
 
   describe('loginTeacher', () => {
@@ -162,7 +191,10 @@ describe('AuthService', () => {
       usersService.findByEmailAndRole.mockResolvedValue(null);
 
       await expect(
-        service.loginTeacher({ email: 'missing@escola.com', password: 'x' } as any),
+        service.loginTeacher({
+          email: 'missing@escola.com',
+          password: 'x',
+        } as any),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
@@ -175,7 +207,10 @@ describe('AuthService', () => {
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
-        service.loginTeacher({ email: 'prof@escola.com', password: 'wrong' } as any),
+        service.loginTeacher({
+          email: 'prof@escola.com',
+          password: 'wrong',
+        } as any),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
@@ -190,10 +225,27 @@ describe('AuthService', () => {
       const result = await service.loginTeacher({
         email: 'prof@escola.com',
         password: 'correct',
-      } as any);
+      });
 
       expect(result.accessToken).toBe('signed-token');
       expect(result.role).toBe(Role.TEACHER);
+    });
+
+    it('1.4 — rejects a correct password when the account was deactivated by an admin', async () => {
+      usersService.findByEmailAndRole.mockResolvedValue({
+        ...baseUser,
+        role: Role.TEACHER,
+        passwordHash: 'hash',
+        active: false,
+      } as User);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      await expect(
+        service.loginTeacher({
+          email: 'prof@escola.com',
+          password: 'correct',
+        } as any),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 
@@ -209,7 +261,11 @@ describe('AuthService', () => {
       (verifyTotp as jest.Mock).mockResolvedValue({ valid: false });
 
       await expect(
-        service.loginAdmin({ email: 'admin@escola.com', password: 'correct', otp: '000000' } as any),
+        service.loginAdmin({
+          email: 'admin@escola.com',
+          password: 'correct',
+          otp: '000000',
+        } as any),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
@@ -227,9 +283,49 @@ describe('AuthService', () => {
         email: 'admin@escola.com',
         password: 'correct',
         otp: '123456',
-      } as any);
+      });
 
       expect(result.role).toBe(Role.ADMIN);
+    });
+  });
+
+  describe('setPassword', () => {
+    it('rejects when the token does not match any user', async () => {
+      usersService.findByPasswordSetupToken.mockResolvedValue(null);
+
+      await expect(
+        service.setPassword('bad-token', 'new-password123'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.setPasswordHash).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired token', async () => {
+      usersService.findByPasswordSetupToken.mockResolvedValue({
+        ...baseUser,
+        id: 'user-2',
+        passwordSetupTokenExpiresAt: new Date(Date.now() - 1000),
+      } as User);
+
+      await expect(
+        service.setPassword('expired-token', 'new-password123'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.setPasswordHash).not.toHaveBeenCalled();
+    });
+
+    it('hashes the password and persists it via UsersService when the token is valid', async () => {
+      usersService.findByPasswordSetupToken.mockResolvedValue({
+        ...baseUser,
+        id: 'user-2',
+        passwordSetupTokenExpiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      } as User);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      await service.setPassword('good-token', 'new-password123');
+
+      expect(usersService.setPasswordHash).toHaveBeenCalledWith(
+        'user-2',
+        'hashed-password',
+      );
     });
   });
 });

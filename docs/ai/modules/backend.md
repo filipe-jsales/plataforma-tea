@@ -12,10 +12,12 @@ apps/api/src/
 │   ├── role.enum.ts             # student | teacher | admin
 │   └── event-category.enum.ts   # RD-I | RD-P | RD-C | RD-E | RD-L
 ├── users/
-│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado), role, perfil sensorial...
-│   ├── dto/update-sensory-profile.dto.ts
+│   ├── entities/user.entity.ts  # pseudonymId (auto-gerado), role, active (1.4), perfil sensorial...
+│   ├── dto/{update-sensory-profile,create-staff-user,update-staff-user,update-user-status,list-users-query}.dto.ts
 │   ├── users.controller.ts      # GET /users/me, PATCH /users/:id/sensory-profile
 │   ├── users.service.ts
+│   ├── admin-users.controller.ts  # 1.4 — GET/POST/PATCH /admin/users[...]
+│   ├── admin-users.service.ts
 │   └── users.module.ts
 ├── identity/
 │   ├── entities/student-identity-reversal.entity.ts  # pseudônimo → id real
@@ -46,8 +48,18 @@ apps/api/src/
 │   ├── entities/school.entity.ts
 │   ├── entities/classroom.entity.ts   # turma; teacherId reatribuível, sem vínculo fixo
 │   ├── entities/enrollment.entity.ts  # matrícula aluno↔turma, histórico (active/unenrolledAt)
-│   ├── schools.service.ts
+│   ├── schools.service.ts       # + createEnrollment/endEnrollment/duplicate-check (1.2/1.5)
 │   └── schools.module.ts
+├── student-accounts/            # 1.2 — criação de conta de aluno, ver seção própria
+│   ├── dto/create-student-account.dto.ts
+│   ├── student-accounts.service.ts
+│   ├── student-accounts.controller.ts  # POST /teacher/students
+│   └── student-accounts.module.ts
+├── enrollments/                 # 1.5 — matrícula/transferência, ver seção própria
+│   ├── dto/transfer-student.dto.ts
+│   ├── enrollments.service.ts
+│   ├── enrollments.controller.ts  # POST /teacher/students/:id/enrollments + GET /teacher/classrooms/:id/students
+│   └── enrollments.module.ts
 ├── blocks/
 │   ├── entities/block-definition.entity.ts  # catálogo de blocos Blockly (tabela, não enum)
 │   ├── blocks.service.ts
@@ -96,6 +108,7 @@ apps/api/src/
 │   └── settings.module.ts
 ├── audit/
 │   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
+│   ├── entities/admin-action-log.entity.ts  # 1.4 — append-only, CRUD de usuário (quem/quando/o quê)
 │   ├── audit.service.ts
 │   └── audit.module.ts
 ├── metrics/
@@ -1014,10 +1027,181 @@ apps/api`, ou `npm run test:api` na raiz). Todo `*.service.ts` tem um
 "Testes" em `docs/ai/rules/coding-rule.md` para o padrão esperado em módulos
 novos.
 
+## Gestão de contas — criação de aluno, CRUD de usuários, matrícula (1.2/1.4/1.5)
+
+Três features de gestão de conta, implementadas juntas por dependerem do
+mesmo alicerce (`users.active`, ver abaixo). Cobrem o que "Próximos passos"
+citava como gap (`POST /auth/register`, CRUD de `enrollments`) — resolvido
+por três endpoints com escopo próprio, não um registro genérico.
+
+### `users.active` + link de definição de senha (suporte a 1.4)
+
+Migration `AddUserStatusAndAdminActionLogs` acrescenta `users.active`
+(boolean, default `true`) e `users.passwordSetupToken` +
+`passwordSetupTokenExpiresAt` (uuid/timestamp, nullable). `AuthService`
+passa a checar `active` nas três rotas de login (`assertPassword` pro fluxo
+professor/admin, checagem equivalente em `loginStudent`) — desativar um
+usuário bloqueia login no próximo request, mesma mensagem genérica de
+credencial inválida (nunca "conta desativada", pra não vazar existência da
+conta). `POST /auth/set-password` (sem guard — a conta recém-criada ainda
+não tem senha) consome o token via `UsersService.findByPasswordSetupToken`/
+`setPasswordHash`.
+
+**Gap conhecido: transporte de e-mail.** A AC de 1.4 pede "sistema envia
+e-mail de definição de senha". Não existe integração de e-mail (SMTP/
+provedor) neste projeto — `AdminUsersService.create` devolve o token/link
+diretamente na resposta HTTP (uma vez só, nunca de novo em `GET
+/admin/users`) e a tela do admin (`apps/web/src/routes/admin/AdminUsers.tsx`)
+mostra pra copiar/repassar manualmente. Resolver isso de verdade é
+integrar um provedor de e-mail — não implementado de propósito (decisão de
+infraestrutura fora do escopo desta sessão, não um bug).
+
+### CRUD de usuários — admin (1.4)
+
+`UsersModule` ganhou `AdminUsersController`/`AdminUsersService`
+(`@Roles(Role.ADMIN)`, prefixo `admin/users`):
+
+- `GET /admin/users?role=&active=&page=&pageSize=` — lista paginada.
+- `POST /admin/users` — cria professor/admin (`displayName`/`email`/`role`,
+  nunca senha). `role=admin` gera `totpSecret` (`otplib.generateSecret`) +
+  devolve `totpOtpauthUri` (`otplib.generateURI`) — mesmo mecanismo de
+  segundo fator já usado em `AuthService.loginAdmin`, só que gerado aqui em
+  vez de semeado.
+- `PATCH /admin/users/:id` — edita `displayName`/`email`/`role`. Bloqueia
+  `email` em usuário `role=student` (`BadRequestException` — aluno não tem
+  e-mail) e só aceita `role` como `teacher`/`admin` (nunca rebaixa/promove
+  de/pra `student` por aqui — mudar o papel de um aluno pra staff ou
+  vice-versa não é uma "edição cadastral", precisaria de fluxo próprio).
+- `PATCH /admin/users/:id/status` — `{ active }`, soft delete (AC: "nunca
+  hard delete na interface do MVP"). Sem `DELETE` nesta classe de
+  propósito.
+
+Toda `create`/`edit`/`activate`/`deactivate` grava um `AdminActionLog`
+(`AuditService.recordUserAction`) — ver "Por que `AdminActionLog`, não um
+`interaction_event`" abaixo.
+
+### Criação de conta de aluno pelo professor/admin (1.2)
+
+`StudentAccountsModule` (`POST /teacher/students`, `@Roles(TEACHER, ADMIN)`)
+— o aluno nunca cria a própria conta. `StudentAccountsService.create`:
+
+1. Resolve a turma (`SchoolsService.findClassroomById`) e autoriza:
+   professor só na própria turma (`classroom.teacherId === actor.id`,
+   mesmo padrão de `ChallengeAllocationsService.assertOwnClassroom`),
+   admin sem restrição.
+2. `SchoolsService.hasActiveStudentWithNameInClassroom` — checagem
+   case/trim-insensitive pro alerta de duplicado (AC: "não bloqueante,
+   não erro fatal" — a conta é criada de qualquer forma, o response só
+   carrega `duplicateWarning: true`).
+3. Resolve o avatar — o escolhido pelo professor (validado contra o
+   catálogo `blocks`... catálogo `illustrations`, kind `avatar`) ou um
+   sorteio (`IllustrationsService.pickRandomAvatar`) se nenhum for
+   informado.
+4. Sorteia a sequência de login — `IllustrationsService.
+   pickRandomLoginImageSequence` (3 `Illustration(kind=login_image)`
+   distintas, ordem aleatória) — **reaproveita 100% o mecanismo de login
+   por sequência de imagens já implementado em 1.1**
+   (`AuthService.loginStudent`), a decisão de "PIN vs. imagem-senha"
+   citada como dependência do card já estava resolvida a favor de
+   imagem-senha antes desta feature existir.
+5. `UsersService.createStudent` + `SchoolsService.createEnrollment` — nunca
+   deriva a credencial de `displayName` (AC: "nome em texto livre nunca é
+   usado como parte da credencial").
+
+Resposta: `{ student, classroom, credential: { avatar, loginImages },
+duplicateWarning }` — vira a tela imprimível do professor
+(`apps/web/src/routes/teacher/TeacherAddStudent.tsx`, `window.print()`
+filtrando só o cartão de credencial via CSS `@media print`).
+
+### Matrícula/transferência de turma (1.5)
+
+`EnrollmentsModule` — dois controllers (`EnrollmentsController` em
+`teacher/students/:studentId/enrollments`, `ClassroomRosterController` em
+`teacher/classrooms/:classroomId/students`; prefixos deliberadamente
+distintos dos de 1.2, mesmo racional de
+`StudentClassroomChallengesController` vs `ChallengesController`).
+
+`EnrollmentsService.transfer` cobre matrícula E transferência com o MESMO
+método — só existe "tem vínculo anterior" ou não:
+
+- Sem vínculo ativo anterior → só cria (AC1).
+- Com vínculo ativo anterior → encerra (`SchoolsService.endEnrollment`,
+  `active: false` + `unenrolledAt`, nunca `DELETE`) e cria o novo (AC2).
+  Autorização checada nos DOIS lados (turma de origem e destino) quando o
+  ator é professor — não pode puxar aluno de turma alheia nem empurrar pra
+  turma alheia; admin sem essa restrição.
+- Mesma turma origem=destino → `409 ConflictException` (evita um "não-
+  evento" silencioso).
+- Nunca duas turmas ativas simultaneamente (AC5) — garantido por
+  construção: o método sempre encerra a anterior antes de criar a nova,
+  nunca acumula.
+
+`student_pseudo_id` nunca muda nessa operação — `Enrollment` só referencia
+`studentId`/`classroomId`, o `User.pseudonymId` do aluno é o mesmo antes e
+depois (era esse o requisito real da AC "permanece idêntico").
+
+### Por que `AdminActionLog`, não um `interaction_event`
+
+Duas das três features acima geram evento — mas em tabelas diferentes, e a
+diferença não é arbitrária:
+
+- **`student_account_created` (RD-I) e `class_enrollment_changed` (RD-L)
+  vão pra `interaction_events`.** Apesar de a AÇÃO ser de professor/admin,
+  o EVENTO é sobre um aluno específico que passa a existir com
+  `studentPseudoId` real — mesmo raciocínio de `login_attempt` (o aluno é
+  o sujeito do dado, não quem apertou o botão). `student_account_created`
+  carrega `{ created_by_role, class_id }`; `class_enrollment_changed`
+  carrega `{ previous_class_id, new_class_id }` — ambos com o
+  `studentPseudoId` do aluno afetado.
+- **`user_admin_action` (CRUD de 1.4) vira `AdminActionLog`, não
+  `interaction_events`.** Diferente dos dois acima, a maioria das chamadas
+  de 1.4 não tem NENHUM aluno envolvido (criar/editar/desativar um
+  professor não tem `studentPseudoId` nenhum pra carregar) —
+  `interaction_events.studentPseudoId` é `NOT NULL` de propósito (ver
+  "Padrão: eventos RD-* são escopados ao aluno" acima). Mesmo padrão já
+  estabelecido por `ChallengeClassroomAllocation` (4.3) e `ExportAuditLog`
+  (6.6): telemetria de ação de STAFF sobre outro registro (não sobre "a
+  experiência de um aluno") ganha tabela própria. `AdminActionLog`
+  (`apps/api/src/audit/entities/admin-action-log.entity.ts`) segue a MESMA
+  forma de `ExportAuditLog` (append-only, `actorUserId`/`targetUserId`
+  nullable + `ON DELETE SET NULL`) — `AuditModule` agora exporta os dois.
+
+### Testes
+
+`admin-users.service.spec.ts`, `student-accounts.service.spec.ts`,
+`enrollments.service.spec.ts` (mocks de repositório/serviço colaborador,
+mesmo padrão do resto do projeto) — cobrem as três checagens de
+autorização (professor só na própria turma, admin sem restrição), o
+alerta de duplicado não-bloqueante, o bloqueio de login pra `active:
+false`, e que a credencial gerada nunca deriva do nome digitado. Validado
+ponta a ponta via `curl` contra o Postgres local com as contas demo: criar
+professor → `set-password` → login; criar aluno → duplicar nome (alerta,
+não erro) → login do aluno com a credencial gerada; desativar aluno →
+login rejeitado; listar/filtrar `GET /admin/users`.
+
 ## Próximos passos (fora do escopo já implementado)
 
-- `POST /auth/register` — hoje só existe seed via migration; não há como
-  criar aluno/professor/admin em runtime ainda.
+- Transporte de e-mail de verdade pro link de definição de senha de 1.4
+  (hoje devolvido na resposta da API, ver "Gap conhecido" acima) — decisão
+  de infraestrutura (provedor SMTP/transacional), não implementada.
+- CRUD de `schools`/`classrooms` (criar escola, criar turma, atribuir
+  professor titular) continua sem endpoint — 1.5 implementou só a
+  ESCRITA de `enrollments` (matrícula/transferência); a tela de "Adicionar
+  aluno" (1.2) e a de matrícula (1.5) dependem de uma turma já existir
+  (hoje só via seed). Sem isso, um admin não tem como abrir uma escola/
+  turma nova pela UI ainda.
+- `POST /teacher/students`/`GET /admin/users` cobrem a criação/gestão —
+  falta a mesma teste de autorização "admin" no FRONTEND: a tela de
+  "Adicionar aluno" (`TeacherAddStudent.tsx`) só resolve a turma via `GET
+  /home/teacher` (escopado a professor); um admin que acesse a rota
+  autenticado como admin vê a lista de turmas vazia (backend já aceita
+  `role=admin` sem restrição de turma, só falta o seletor de escola/turma
+  no frontend pro admin usar de verdade).
+- Segundo fator (TOTP) de um admin criado via 1.4 é devolvido só como
+  `otpauthUri` em texto — sem QR code renderizado na tela (precisaria de
+  uma lib de geração de QR, não adicionada de propósito nesta sessão,
+  mesmo racional de "não fabricar dependência nova sem necessidade
+  concreta").
 - Ingestão de eventos pré-login (ver "Gap conhecido" acima).
 - Motor PRIMM ainda não cobre um ciclo Predict→Run→Investigate→Modify→Make
   **dentro de um único desafio** — hoje ele se distribui pela sequência de 3
@@ -1069,16 +1253,11 @@ novos.
   modify/create sem ter passado pelo use correspondente — a rota não checa
   isso ainda).
 - **1.5 ("Vínculo aluno↔turma↔professor" — matricular/transferir aluno
-  entre turmas) continua sem endpoint/UI própria.** O MODELO de dado que
-  1.5 pede já existe desde antes de 4.2/4.3 (`Enrollment`: histórico
-  `active`/`unenrolledAt`, `studentPseudoId` estável — ver "Modelagem de
-  domínio" acima e `database.md`) — 4.3 só LÊ essa tabela
-  (`findActiveEnrollmentsByStudent`) pra resolver a turma ativa do aluno,
-  não implementa a escrita. Endpoints CRUD pra `schools`/`classrooms`/
-  `enrollments` (`subjects`/`topics` já têm leitura via `GET
-  /subjects/topics`; escrita continua não exposta em nenhum dos três — ver
-  regra 9 antes de expor isso ao professor: nada de formulário que exija
-  entender a estrutura de tabelas) seguem como o próximo passo real de 1.5.
+  entre turmas): ✅ implementado** (`EnrollmentsModule`, ver "Matrícula/
+  transferência de turma (1.5)" acima) — resolve o gap que este bullet
+  descrevia antes. `schools`/`classrooms` (criar escola, criar turma,
+  atribuir professor titular) continuam sem endpoint próprio — só
+  `enrollments` ganhou escrita; ver "Próximos passos" logo acima.
 - Endpoint de reversão de identidade (`IdentityService.reveal`) — hoje só
   existe o service, sem controller/guard de role ainda.
 - Rotas de leitura de eventos para o painel do professor (agregando RD-E como

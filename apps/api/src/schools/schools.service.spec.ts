@@ -24,7 +24,10 @@ describe('SchoolsService', () => {
     } as unknown as jest.Mocked<Repository<Classroom>>;
     enrollmentsRepository = {
       find: jest.fn(),
+      findOne: jest.fn(),
       count: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
       createQueryBuilder: jest.fn(),
     } as unknown as jest.Mocked<Repository<Enrollment>>;
 
@@ -210,6 +213,107 @@ describe('SchoolsService', () => {
       await expect(
         service.findAllStudentPseudoIdsBySchool('school-1'),
       ).resolves.toEqual([]);
+    });
+  });
+
+  describe('hasActiveStudentWithNameInClassroom (1.2)', () => {
+    it('normalizes case/whitespace before comparing', async () => {
+      const queryBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(1),
+      } as unknown as jest.Mocked<SelectQueryBuilder<Enrollment>>;
+      enrollmentsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.hasActiveStudentWithNameInClassroom(
+        'classroom-1',
+        '  João Silva ',
+      );
+
+      expect(result).toBe(true);
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+        'LOWER(TRIM(student.displayName)) = :normalized',
+        { normalized: 'joão silva' },
+      );
+    });
+
+    it('returns false when no active enrollment matches', async () => {
+      const queryBuilder = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(0),
+      } as unknown as jest.Mocked<SelectQueryBuilder<Enrollment>>;
+      enrollmentsRepository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await expect(
+        service.hasActiveStudentWithNameInClassroom(
+          'classroom-1',
+          'Novo Aluno',
+        ),
+      ).resolves.toBe(false);
+    });
+  });
+
+  describe('createEnrollment (1.2/1.5)', () => {
+    it('creates an active enrollment for the student/classroom pair', async () => {
+      const created = { id: 'e1' } as Enrollment;
+      enrollmentsRepository.create.mockReturnValue(created);
+      enrollmentsRepository.save.mockResolvedValue(created);
+
+      const result = await service.createEnrollment('student-1', 'classroom-1');
+
+      expect(enrollmentsRepository.create).toHaveBeenCalledWith({
+        studentId: 'student-1',
+        classroomId: 'classroom-1',
+        active: true,
+      });
+      expect(result).toBe(created);
+    });
+  });
+
+  describe('endEnrollment (1.5)', () => {
+    it('marks the enrollment inactive and stamps unenrolledAt, never deleting it', async () => {
+      const enrollment = {
+        id: 'e1',
+        active: true,
+        unenrolledAt: null,
+      } as Enrollment;
+      enrollmentsRepository.save.mockImplementation(
+        async (e) => e as Enrollment,
+      );
+
+      const result = await service.endEnrollment(enrollment);
+
+      expect(result.active).toBe(false);
+      expect(result.unenrolledAt).toBeInstanceOf(Date);
+      expect(enrollmentsRepository.save).toHaveBeenCalledWith(enrollment);
+    });
+  });
+
+  describe('findSingleActiveEnrollment (1.5)', () => {
+    it('looks up the one active enrollment for a student', async () => {
+      enrollmentsRepository.findOne.mockResolvedValue(null);
+
+      await service.findSingleActiveEnrollment('student-1');
+
+      expect(enrollmentsRepository.findOne).toHaveBeenCalledWith({
+        where: { studentId: 'student-1', active: true },
+      });
+    });
+  });
+
+  describe('findClassroomsBySchoolForSelector (1.2/1.5 admin)', () => {
+    it('lists classrooms for a school ordered by name, no teacher relation', async () => {
+      classroomsRepository.find.mockResolvedValue([]);
+
+      await service.findClassroomsBySchoolForSelector('school-1');
+
+      expect(classroomsRepository.find).toHaveBeenCalledWith({
+        where: { schoolId: 'school-1' },
+        order: { name: 'ASC' },
+      });
     });
   });
 });

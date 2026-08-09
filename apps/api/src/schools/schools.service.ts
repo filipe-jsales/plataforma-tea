@@ -131,4 +131,71 @@ export class SchoolsService {
       .getRawMany<{ pseudonymId: string }>();
     return rows.map((row) => row.pseudonymId);
   }
+
+  // 1.2 — "tentativa de cadastro duplicado (mesmo nome + mesma turma) gera
+  // alerta não bloqueante". Comparação case/trim-insensitive: "João" e
+  // " joão " não deveriam escapar do alerta por diferença de digitação.
+  async hasActiveStudentWithNameInClassroom(
+    classroomId: string,
+    displayName: string,
+  ): Promise<boolean> {
+    const normalized = displayName.trim().toLowerCase();
+    const count = await this.enrollmentsRepository
+      .createQueryBuilder('enrollment')
+      .innerJoin('enrollment.student', 'student')
+      .where('enrollment.classroomId = :classroomId', { classroomId })
+      .andWhere('enrollment.active = true')
+      .andWhere('LOWER(TRIM(student.displayName)) = :normalized', {
+        normalized,
+      })
+      .getCount();
+    return count > 0;
+  }
+
+  // 1.2/1.5 — grava a matrícula (AC de 1.5: "o vínculo é registrado com
+  // data de início" — `enrolledAt` é `@CreateDateColumn`, sem input
+  // manual).
+  createEnrollment(
+    studentId: string,
+    classroomId: string,
+  ): Promise<Enrollment> {
+    const enrollment = this.enrollmentsRepository.create({
+      studentId,
+      classroomId,
+      active: true,
+    });
+    return this.enrollmentsRepository.save(enrollment);
+  }
+
+  // 1.5 — "ao mover um aluno, o vínculo anterior é encerrado (data de
+  // fim)". Nunca sobrescrito/apagado — só marcado inativo, mesma filosofia
+  // de histórico do resto do módulo.
+  async endEnrollment(enrollment: Enrollment): Promise<Enrollment> {
+    enrollment.active = false;
+    enrollment.unenrolledAt = new Date();
+    return this.enrollmentsRepository.save(enrollment);
+  }
+
+  // 1.5 — "um aluno não pode estar em duas turmas ativas simultaneamente
+  // no MVP": única matrícula ativa do aluno (schema já é N:N-capaz, ver
+  // Enrollment — esta é a leitura que impõe a regra de produto do MVP, não
+  // uma limitação do banco). `null` quando o aluno nunca foi matriculado.
+  async findSingleActiveEnrollment(
+    studentId: string,
+  ): Promise<Enrollment | null> {
+    return this.enrollmentsRepository.findOne({
+      where: { studentId, active: true },
+    });
+  }
+
+  // 1.2/1.5 (telas de admin) — turmas de uma escola específica, sem a
+  // relação `teacher` (diferente de `findClassroomsBySchool`, usada pelo
+  // painel institucional de 6.2) — só o suficiente pro seletor "turma" do
+  // formulário.
+  findClassroomsBySchoolForSelector(schoolId: string): Promise<Classroom[]> {
+    return this.classroomsRepository.find({
+      where: { schoolId },
+      order: { name: 'ASC' },
+    });
+  }
 }

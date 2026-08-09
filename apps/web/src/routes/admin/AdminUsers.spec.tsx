@@ -1,0 +1,134 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiClient } from '../../lib/apiClient';
+import { AdminUsers } from './AdminUsers';
+
+vi.mock('../../lib/apiClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/apiClient')>('../../lib/apiClient');
+  return {
+    ...actual,
+    apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  };
+});
+
+const mockedGet = vi.mocked(apiClient.get);
+const mockedPost = vi.mocked(apiClient.post);
+const mockedPatch = vi.mocked(apiClient.patch);
+
+const teacherUser = {
+  id: 'u1',
+  pseudonymId: 'p1',
+  displayName: 'Prof. Ana',
+  email: 'ana@escola.com',
+  role: 'teacher' as const,
+  active: true,
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
+const studentUser = {
+  id: 'u2',
+  pseudonymId: 'p2',
+  displayName: 'Aluno Um',
+  email: null,
+  role: 'student' as const,
+  active: false,
+  createdAt: '2026-01-02T00:00:00Z',
+};
+
+beforeEach(() => {
+  mockedGet.mockReset();
+  mockedPost.mockReset();
+  mockedPatch.mockReset();
+});
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <AdminUsers />
+    </MemoryRouter>,
+  );
+}
+
+describe('AdminUsers', () => {
+  it('lists users with role/status, never a delete action (no hard delete in the MVP)', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [teacherUser, studentUser], total: 2, page: 1, pageSize: 20 });
+
+    renderPage();
+
+    expect(await screen.findByText('Prof. Ana')).toBeInTheDocument();
+    expect(screen.getByText('Aluno Um')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /excluir/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Desativado/Ativo status, never only a color to convey it', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
+
+    renderPage();
+
+    expect(await screen.findByText('Desativado')).toBeInTheDocument();
+  });
+
+  it('the create form has no student credential field, only name/email/role', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [], total: 0, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText(/nenhum usuário encontrado/i);
+    await userEvent.click(screen.getByRole('button', { name: /criar professor\/admin/i }));
+
+    const dialog = await screen.findByRole('dialog', { name: /criar professor ou admin/i });
+    expect(within(dialog).getByLabelText(/nome completo/i)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/e-mail/i)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/avatar/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the one-time password-setup link after creating a staff account', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [], total: 0, page: 1, pageSize: 20 });
+    mockedPost.mockResolvedValueOnce({
+      user: { ...teacherUser, id: 'new-1' },
+      passwordSetupToken: 'token-abc-123',
+      totpOtpauthUri: null,
+    });
+    mockedGet.mockResolvedValueOnce({ items: [{ ...teacherUser, id: 'new-1' }], total: 1, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText(/nenhum usuário encontrado/i);
+    await userEvent.click(screen.getByRole('button', { name: /criar professor\/admin/i }));
+    const dialog = await screen.findByRole('dialog', { name: /criar professor ou admin/i });
+    await userEvent.type(within(dialog).getByLabelText(/nome completo/i), 'Prof. Nova');
+    await userEvent.type(within(dialog).getByLabelText(/e-mail/i), 'nova@escola.com');
+    await userEvent.click(within(dialog).getByRole('button', { name: /^criar$/i }));
+
+    expect(await screen.findByText('token-abc-123')).toBeInTheDocument();
+    expect(mockedPost).toHaveBeenCalledWith('/admin/users', {
+      displayName: 'Prof. Nova',
+      email: 'nova@escola.com',
+      role: 'teacher',
+    });
+  });
+
+  it('editing a student never exposes email/role fields (credential follows flow 1.3)', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText('Aluno Um');
+    await userEvent.click(screen.getByRole('button', { name: /editar/i }));
+
+    const dialog = await screen.findByRole('dialog', { name: /editar aluno um/i });
+    expect(within(dialog).getByLabelText(/nome completo/i)).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/e-mail/i)).not.toBeInTheDocument();
+  });
+
+  it('deactivate/activate calls PATCH .../status and refreshes the list', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [teacherUser], total: 1, page: 1, pageSize: 20 });
+    mockedPatch.mockResolvedValueOnce({ ...teacherUser, active: false });
+    mockedGet.mockResolvedValueOnce({ items: [{ ...teacherUser, active: false }], total: 1, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText('Prof. Ana');
+    await userEvent.click(screen.getByRole('button', { name: /desativar/i }));
+
+    expect(mockedPatch).toHaveBeenCalledWith('/admin/users/u1/status', { active: false });
+  });
+});

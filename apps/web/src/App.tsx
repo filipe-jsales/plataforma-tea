@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { AdminUsers } from './routes/admin/AdminUsers'
 import { AdminLogin } from './routes/login/AdminLogin'
 import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
@@ -17,6 +18,8 @@ import { HomeRouter } from './routes/home/HomeRouter'
 import { TeacherChallenges } from './routes/teacher/TeacherChallenges'
 import { TeacherChallengeNew } from './routes/teacher/TeacherChallengeNew'
 import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
+import { TeacherAddStudent } from './routes/teacher/TeacherAddStudent'
+import { TeacherStudents } from './routes/teacher/TeacherStudents'
 
 function App() {
   return (
@@ -127,6 +130,30 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <AdminExport />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <RequireAuth roles={['admin']}>
+            <AdminUsers />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/students/new"
+        element={
+          <RequireAuth roles={['teacher', 'admin']}>
+            <TeacherAddStudent />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/students"
+        element={
+          <RequireAuth roles={['teacher', 'admin']}>
+            <TeacherStudents />
           </RequireAuth>
         }
       />
