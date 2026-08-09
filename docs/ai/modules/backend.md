@@ -476,6 +476,72 @@ previsão do aluno (motor PRIMM "Predict") contra quantos lados o traçado
 realmente fechou com (`turtleWorld.closedPolygonSides`) — `false` quando o
 traçado nem fecha, sem virar mensagem de erro na tela (regra 4).
 
+## Feedback de erro não-punitivo (3.7)
+
+Regra não-negociável 4 (nunca "errado"/X vermelho/comparação entre alunos)
+já estava implementada no texto fixo de `ChallengePage.tsx` desde o MVP —
+o que faltava era (AC4) deixar essas mensagens **configuráveis pelo
+professor por desafio, com um conjunto de mensagens-padrão sugeridas**.
+
+`ChallengeConfig.feedbackMessages?: { retry?: string; success?: string }`
+(`challenge-config.interface.ts`) — só se aplica a desafios `stage:
+'create'` (`use` nunca avalia sucesso/falha; `modify` compõe a própria
+reflexão dinamicamente, nunca um texto estático, ver "Blocos por desafio"
+acima). `apps/api/src/challenges/feedback-messages.ts` concentra:
+
+- **`DEFAULT_FEEDBACK_MESSAGES`** — literalmente as strings que já
+  estavam hardcoded em `ChallengePage.tsx` antes desta feature
+  ("Quase lá — quer tentar de novo?"/"Você montou o desafio! ✅"). Um
+  desafio sem `feedbackMessages` (todo currículo semeado) continua se
+  comportando exatamente igual — o frontend resolve o default (ver
+  `lib/feedbackMessages.ts`, frontend.md), o backend só passa `null`
+  adiante quando ausente (mesmo padrão de `snapTolerancePercent`).
+- **`validateFeedbackMessages`** — rejeita mensagem customizada com
+  linguagem punitiva (`"errad"`, `"errou"`, `"falh"`, `"incorret"`, busca
+  simples por substring, não um filtro de linguagem genérico) ou maior que
+  200 caracteres. Chamada por `ChallengeTemplatesService.
+  validateAndBuildConfig` (ver "Configuração de desafio via formulário
+  guiado" abaixo) junto com a validação pedagógica do handler do template
+  — um professor não consegue salvar "Isso está errado, tente de novo."
+  como mensagem de retry, a regra não-negociável 4 é aplicada na ORIGEM,
+  não só confiada à tela.
+- **`sanitizeFeedbackMessages`** — trim + descarta campo vazio (nunca
+  persiste string vazia; o formulário de edição precisa distinguir "sem
+  valor" de "professor apagou o texto", ver frontend.md).
+
+`ChallengesController` devolve `feedbackMessages: ChallengeFeedbackMessages
+| null` em `ChallengeDetail` (`null` pro currículo semeado, mesmo padrão de
+`snapTolerancePercent`/`editableFields`). Configurado pelo professor via
+`SaveTemplateChallengeDto.feedbackMessages` (opcional, `POST
+/challenge-templates/:id/challenges` e `PATCH /teacher/challenges/:id`) —
+ver "Endpoints" na seção 4.2 abaixo. `TeacherChallengeDetail.feedbackMessages`
+(nunca `undefined`, `{}` quando o professor nunca customizou) alimenta o
+formulário de edição com o que já foi salvo.
+
+### `feedback_shown` (RD-I) — evento escopado ao aluno
+
+Emitido pelo frontend (`ChallengePage.tsx`) toda vez que um feedback é
+exibido — Use/Create (`evaluation.success` decide `feedback_type`) e
+Modify (`actualSides !== null` decide, já que ali não há meta fixa) —
+`{ challenge_id, feedback_type: 'neutral' | 'success', stage, timestamp }`.
+Cabe em `interaction_events` sem ressalva (diferente do racional de
+`AdminActionLog`/`ExportAuditLog` documentado alhures): é literalmente
+sobre a experiência do PRÓPRIO aluno vendo feedback, o caso central que o
+schema RD-I existe pra cobrir — nenhuma decisão de arquitetura nova aqui.
+
+### Testes
+
+`feedback-messages.spec.ts` (backend, função pura) cobre a lista de
+palavras punitivas, o limite de tamanho, o sanitize de string vazia/
+whitespace, e que os próprios defaults sugeridos passam na validação (não
+seria bom sugerir por padrão uma mensagem que o próprio validador
+rejeitaria). `ChallengeTemplatesService`/`ChallengesController` ganharam
+casos cobrindo o merge de `feedbackMessages` no `config`, a rejeição de
+mensagem punitiva tanto na criação quanto na edição, e o passthrough pro
+aluno. Do lado do frontend, `lib/feedbackMessages.spec.ts` (resolução de
+default) e `ChallengePage.spec.tsx` (primeiro teste de componente desta
+tela — ver frontend.md) cobrem o comportamento visível.
+
 ## Configuração de desafio via formulário guiado — Modo Template (4.2)
 
 RQ4 — barreira institucional/formação docente (17,39%): o professor cria um
@@ -521,8 +587,9 @@ acima). Por isso o desenho tem duas metades:
 ### `RegularPolygonTemplateHandler` — único template do MVP
 
 Parâmetros: `sides` (3-12), `turnAngleDeg` (1-359), `snapTolerancePercent`
-(10-100), `enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação
-real, não decorativa:
+(10-100), `closureTolerancePx` (1-40, 7.4 AC3 — ver seção própria abaixo),
+`enabledBlockTypes` (subconjunto do catálogo `blocks`). Validação real, não
+decorativa:
 
 - **Fechamento geométrico** — `sides × turnAngleDeg` precisa ser múltiplo
   de 360°; senão, mensagem pedagógica com sugestão de ângulo válido
@@ -552,12 +619,13 @@ real, não decorativa:
 
 `buildChallengeConfig` sempre produz `stage: 'create'` (editor livre — o
 template não autora Use/Modify, só o desafio de "mão na massa" final) com
-`goal: { shape: 'regular_polygon', sides, turnAngleDeg }` — reaproveita
-100% do motor geométrico já existente (`turtleWorld.ts`:
+`goal: { shape: 'regular_polygon', sides, turnAngleDeg, closureTolerancePx }`
+— reaproveita 100% do motor geométrico já existente (`turtleWorld.ts`:
 `evaluateSquareGoal`/`closedPolygonSides`/`buildGoalPreviewPath`), sem
-nenhuma mudança de engine. `SquareGoalConfig.shape` foi ampliado de
-`'square'` (literal) pra `string` só por causa disso — a matemática de
-fechamento já era genérica por `sides`/`turnAngleDeg` desde sempre.
+nenhuma mudança de engine além de aceitar a tolerância como parâmetro (ver
+seção 7.4 abaixo). `SquareGoalConfig.shape` foi ampliado de `'square'`
+(literal) pra `string` só por causa disso — a matemática de fechamento já
+era genérica por `sides`/`turnAngleDeg` desde sempre.
 
 ### `snapTolerancePercent` — parâmetro que afeta o editor de verdade
 
@@ -570,6 +638,59 @@ passou a aceitar um percentual e reescala `dragRadius`/`snapRadius`/
 especificamente pra AC3 não virar teatro: rejeitar "0% de tolerância" no
 formulário só tem sentido pedagógico se um valor válido REALMENTE mudar o
 comportamento do editor pro aluno.
+
+### `closureTolerancePx` — critério de sucesso configurável (7.4, AC3)
+
+`SquareGoalConfig.closureTolerancePx?: number` (`challenge-config.interface.ts`)
+é a margem de erro, em pixels, que `evaluateSquareGoal`/`closedPolygonSides`
+(frontend, `lib/turtleWorld.ts`) usam pra decidir "o traçado fechou a
+forma" — RQ4, mitigar imprecisão de coordenação motora fina na execução
+dos blocos, mesmo racional de `snapTolerancePercent`, mas um conceito
+DIFERENTE: aquele é tolerância de ENCAIXE de bloco no editor, este é
+tolerância de FECHAMENTO GEOMÉTRICO do traçado desenhado. Ausente
+(currículo semeado) usa o default do motor (`CLOSE_TOLERANCE_PX = 5`);
+escolhido pelo professor num desafio criado via template — validado no
+handler (`MIN/MAX_CLOSURE_TOLERANCE_PX = 1/40`, nunca 0 pelo mesmo motivo
+de `snapTolerancePercent` nunca 0%) e propagado no `goal` (`ChallengesController`
+devolve `goal` por inteiro, sem campo novo — `closureTolerancePx` chega ao
+frontend "de graça").
+
+Isto é a peça que faltava do card 7.4 ("Critério de sucesso suporta
+tolerância... necessário para mitigar imprecisão de coordenação motora
+fina"). O resto do card já estava coberto por 4.2 antes mesmo deste
+trabalho começar — ver "Seletores visuais pré-definidos" logo abaixo.
+
+### Seletores visuais pré-definidos e preview (7.4, AC1/AC2/AC4) — já cobertos por 4.2
+
+O card pede "seletores visuais pré-definidos (nº de lados, ângulo final,
+figura fechada?) em vez de expressões/código" (AC1) e "testar o critério
+de sucesso imediatamente usando o modo de pré-visualização (4.6) antes de
+publicar" (AC4) — **os dois já eram verdade antes desta sessão**, via o
+formulário guiado de 4.2 (`parameterSchema`/`TemplateParameterField`,
+`POST /challenge-templates/:id/preview`, ver seções acima). Nenhuma
+mudança de código foi necessária pra essas duas ACs — só documentar a
+correspondência:
+
+- "Número de lados"/"Ângulo final" → os parâmetros `sides`/`turnAngleDeg`
+  do template, exatamente como pedido.
+- "Figura fechada?" não existe como toggle independente pro polígono
+  regular — é GARANTIDO pela validação geométrica (`sides × turnAngleDeg`
+  múltiplo de 360°), não um critério configurável à parte. Um template
+  futuro cujo critério de fechamento não seja implícito por construção
+  precisaria de um seletor próprio; não fabricado aqui sem caso de uso.
+- "Modo de pré-visualização" → `POST .../preview`, já cobre "valida os
+  parâmetros" (AC3 de 4.2) e "mostra a forma-alvo animada" (AC4 de 4.2) —
+  a mesma coisa que 7.4-AC4 pede, sob outro número no backlog original.
+- AC2 de 7.4 (min/max configurável por campo editável, fase Modify,
+  validado no client antes da execução) — **já implementado como
+  capacidade de dado** desde antes de 4.2: `EditableFieldConfig.min/max`
+  (ver "Blocos por desafio" acima) é aplicado via `Blockly.FieldNumber.
+  setConstraints` no client. O que NÃO existe é uma tela onde o professor
+  autora um desafio `stage: 'modify'` via template (`RegularPolygonTemplateHandler.
+  buildChallengeConfig` sempre produz `stage: 'create'`) — mesma decisão já
+  documentada de "sem autoria de toolbox LIVRE pelo professor", nunca
+  revisitada nesta sessão por ser um escopo bem maior (autoria de fase
+  Modify inteira) que o card não pedia explicitamente.
 
 ### Autorização e escopo — desafio do professor nunca entra na sequência forçada
 
@@ -616,6 +737,9 @@ comportamento do editor pro aluno.
   server-side (defesa em profundidade — a tela sempre chama `/preview`
   antes) com `400 BadRequestException` cuja mensagem é a junção das
   mensagens pedagógicas do handler, nunca "erro de validação" genérico.
+  Aceita `feedbackMessages` opcional (3.7, AC4) — validado (linguagem
+  punitiva/tamanho, ver `feedback-messages.ts`) e mesclado no `config`
+  antes de persistir, mesma revalidação server-side de propósito.
 - `GET/PATCH/DELETE /teacher/challenges/:id` + `GET /teacher/challenges`
   (`TeacherChallengesController`, AC5/AC6) — "Meus desafios": mesmos dois
   campos (título + parâmetros) tanto pra criar quanto editar, nunca

@@ -7,6 +7,7 @@ import { BlocksService } from '../blocks/blocks.service';
 import { Role } from '../common/enums/role.enum';
 import {
   isChallengeConfig,
+  type ChallengeFeedbackMessages,
   type EditableFieldConfig,
   type SerializedBlockState,
 } from './challenge-config.interface';
@@ -48,6 +49,11 @@ interface ChallengeDetail {
   // via template; `null` usa o default do editor (ver
   // apps/web/src/lib/blocklyToolbox.ts#applyGenerousSnapTolerance).
   snapTolerancePercent: number | null;
+  // 3.7 (AC4) — mensagens de feedback customizadas pelo professor; campos
+  // ausentes/`null` usam o conjunto de mensagens-padrão sugeridas
+  // (ChallengePage.tsx resolve o default, mesmo racional de
+  // `snapTolerancePercent` acima).
+  feedbackMessages: ChallengeFeedbackMessages | null;
 }
 
 // Aluno só — rota alimenta o editor de blocos do desafio já atribuído. Não
@@ -121,6 +127,7 @@ export class ChallengesController {
       editableFields: challenge.config.editableFields ?? [],
       nextChallengeId: next?.id ?? null,
       snapTolerancePercent: challenge.config.snapTolerancePercent ?? null,
+      feedbackMessages: challenge.config.feedbackMessages ?? null,
     };
   }
 

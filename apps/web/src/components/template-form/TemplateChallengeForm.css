@@ -26,6 +26,12 @@
   flex-direction: column;
 }
 
+.template-challenge-form__feedback-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .template-challenge-form__actions {
   display: flex;
   gap: 0.75rem;

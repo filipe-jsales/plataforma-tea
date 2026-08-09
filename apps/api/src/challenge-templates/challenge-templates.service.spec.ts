@@ -54,6 +54,7 @@ describe('ChallengeTemplatesService', () => {
     sides: 4,
     turnAngleDeg: 90,
     snapTolerancePercent: 60,
+    closureTolerancePx: 5,
     enabledBlockTypes: ['move_forward', 'turn'],
   };
 
@@ -204,11 +205,53 @@ describe('ChallengeTemplatesService', () => {
         config: {
           stage: 'create',
           allowedBlockTypes: ['move_forward', 'turn'],
-          goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 },
+          goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90, closureTolerancePx: 5 },
           snapTolerancePercent: 60,
         },
         templateParams: validParams,
       });
+    });
+
+    it('3.7 (AC4) — merges valid custom feedback messages into the derived config', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+      challengesService.createFromTemplate.mockResolvedValue({ id: 'c1', createdAt: new Date() } as Challenge);
+
+      await service.createChallenge('template-1', 'teacher-1', {
+        title: 'Título',
+        params: validParams,
+        feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?', success: '  ' },
+      });
+
+      expect(challengesService.createFromTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?' },
+          }),
+        }),
+      );
+    });
+
+    it('3.7 (AC1) — rejects a custom feedback message with punitive language, never persisting it', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      await expect(
+        service.createChallenge('template-1', 'teacher-1', {
+          title: 'Título',
+          params: validParams,
+          feedbackMessages: { retry: 'Isso está errado.' },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(challengesService.createFromTemplate).not.toHaveBeenCalled();
+    });
+
+    it('omits feedbackMessages from config entirely when the professor never customizes it', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+      challengesService.createFromTemplate.mockResolvedValue({ id: 'c1', createdAt: new Date() } as Challenge);
+
+      await service.createChallenge('template-1', 'teacher-1', { title: 'Título', params: validParams });
+
+      const [[callArg]] = challengesService.createFromTemplate.mock.calls;
+      expect(callArg.config).not.toHaveProperty('feedbackMessages');
     });
 
     it('uses the professor-provided prompt instead of the generated default when given', async () => {
@@ -253,7 +296,29 @@ describe('ChallengeTemplatesService', () => {
         templateId: 'template-1',
         templateKey: 'regular_polygon',
         params: validParams,
+        feedbackMessages: {},
       });
+    });
+
+    it('3.7 (AC4) — getMineOrThrow returns the customized feedback messages, for the edit form to pre-fill', async () => {
+      challengesService.findByIdForOwner.mockResolvedValue({
+        id: 'c1',
+        title: 'Título',
+        prompt: 'Enunciado',
+        templateId: 'template-1',
+        template: regularPolygonTemplate,
+        templateParams: validParams,
+        config: {
+          stage: 'create',
+          allowedBlockTypes: [],
+          goal: {},
+          feedbackMessages: { retry: 'Quer tentar de novo?' },
+        },
+      } as unknown as Challenge);
+
+      const result = await service.getMineOrThrow('c1', 'teacher-1');
+
+      expect(result.feedbackMessages).toEqual({ retry: 'Quer tentar de novo?' });
     });
 
     it('updateMine re-validates parameters and re-derives config, never trusting the stored config blindly', async () => {
@@ -267,6 +332,23 @@ describe('ChallengeTemplatesService', () => {
         service.updateMine('c1', 'teacher-1', {
           title: 'Título',
           params: { ...validParams, sides: 3, turnAngleDeg: 200 },
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(challengesService.updateFromTemplate).not.toHaveBeenCalled();
+    });
+
+    it('3.7 (AC4) — updateMine rejects a punitive custom feedback message, never calls updateFromTemplate', async () => {
+      challengesService.findByIdForOwner.mockResolvedValue({
+        id: 'c1',
+        templateId: 'template-1',
+      } as unknown as Challenge);
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      await expect(
+        service.updateMine('c1', 'teacher-1', {
+          title: 'Título',
+          params: validParams,
+          feedbackMessages: { success: 'Você falhou de novo.' },
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(challengesService.updateFromTemplate).not.toHaveBeenCalled();

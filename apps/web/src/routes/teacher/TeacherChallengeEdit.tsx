@@ -31,7 +31,11 @@ export function TeacherChallengeEdit() {
     apiClient.get<ChallengeTemplateDetail>(`/challenge-templates/${challenge.templateId}`).then(setTemplateDetail);
   }, [challenge]);
 
-  async function handleSubmit(input: { title: string; params: Record<string, unknown> }) {
+  async function handleSubmit(input: {
+    title: string;
+    params: Record<string, unknown>;
+    feedbackMessages: { retry: string; success: string };
+  }) {
     if (!challengeId) return;
     await apiClient.patch(`/teacher/challenges/${challengeId}`, input);
     navigate('/teacher/challenges');
@@ -56,6 +60,7 @@ export function TeacherChallengeEdit() {
             template={templateDetail}
             initialTitle={challenge.title}
             initialParams={challenge.params}
+            initialFeedbackMessages={challenge.feedbackMessages}
             submitLabel="Salvar alterações"
             onSubmit={handleSubmit}
           />

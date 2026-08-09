@@ -626,10 +626,13 @@ evento é específico da fase `use`; a fase `modify` já loga cada rodada via
 
 Quando `toolbox.stage === 'create'`: o editor livre de sempre (toolbox
 arrastável, feedback de sucesso/tentativa nova sempre reversível — nunca
-"errado"/X vermelho, ver `challenge-page__feedback--retry`) + `challenge.
-completed` (RD-C) só quando a meta é atingida, o mesmo `type` que
-`HomeService`/`StudentHome` já esperavam desde 2.1 pra contar "desafios
-concluídos".
+"errado"/X vermelho, ver "Feedback não-punitivo reutilizável (3.7)" abaixo)
++ `challenge.completed` (RD-C) só quando a meta é atingida, o mesmo `type`
+que `HomeService`/`StudentHome` já esperavam desde 2.1 pra contar "desafios
+concluídos". `evaluateSquareGoal`/`closedPolygonSides` recebem
+`challenge.goal.closureTolerancePx` (7.4, AC3) como terceiro argumento —
+`undefined` pro currículo semeado (usa o default de `turtleWorld.ts`),
+escolhido pelo professor num desafio criado via template.
 
 **Botão de Ajuda** ("🔎 Ajuda: ver a forma") — andaime visual sem entregar a
 resposta: `turtleWorld.buildGoalPreviewPath(goal)` gera o traçado da forma-
@@ -653,6 +656,60 @@ tópico ou de outro, qualquer disciplina) ganha Predict/Investigate só
 preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
+
+## Feedback não-punitivo reutilizável (3.7)
+
+Antes desta feature, `ChallengePage` renderizava o feedback de Use/Create
+(`feedback` state) e a reflexão da fase Modify (`modifyResult`) com dois
+blocos de JSX próprios (`<p className="challenge-page__feedback--{kind}">`
+e `<p className="challenge-page__modify-reflection">`), nenhum dos dois com
+ícone — só cor/classe distinguia sucesso de "tentar de novo" (regra
+não-negociável 4 violada estruturalmente, mesmo com texto sempre
+descritivo). As duas telas agora renderizam via
+`components/ui/InlineFeedback` (3.10, já existia — usado até aqui só nas
+telas de professor):
+
+- **AC3 (ícone + texto sempre juntos).** `InlineFeedback` nunca omite o
+  ícone (`DEFAULT_ICON[kind]` sempre presente) — testável com escala de
+  cinza/simulação de daltonismo porque a distinção nunca depende só da cor.
+- **AC6 (componente reutilizável entre 3.3/3.4/3.5).** Um componente só,
+  duas chamadas: `{feedback && <InlineFeedback kind={feedback.kind}>...`
+  (Use/Create) e `{isModify && modifyResult && <InlineFeedback kind={...}>`
+  (Modify, texto composto dinamicamente a partir do resultado da execução —
+  a REUTILIZAÇÃO é do componente de apresentação, a fase Modify continua
+  sem meta fixa/avaliação certo-errado, mesmo racional de antes).
+- **AC4 (mensagens configuráveis pelo professor, com default sugerido).**
+  `lib/feedbackMessages.ts` (`resolveRetryMessage`/`resolveSuccessMessage`)
+  aplica `challenge.feedbackMessages?.retry ?? DEFAULT_RETRY_MESSAGE` (e o
+  equivalente pra sucesso) — `DEFAULT_RETRY_MESSAGE`/`DEFAULT_SUCCESS_MESSAGE`
+  são literalmente as strings que já estavam hardcoded antes desta feature
+  ("Quase lá — quer tentar de novo?"/"Você montou o desafio! ✅"), então o
+  currículo semeado (que nunca declara `feedbackMessages`) não muda de
+  comportamento. Só se aplica à fase `create` (AC de 3.7 é sobre "validação
+  de desafio falha" — `use` nunca avalia, `modify` compõe a própria
+  reflexão). Configurado pelo professor em `TemplateChallengeForm.tsx` (ver
+  "Modo Template" abaixo) — dois `TextField` opcionais, com `placeholder`
+  mostrando o default sugerido; o backend rejeita linguagem punitiva na
+  origem (ver `feedback-messages.ts`, `apps/api`), então o formulário nunca
+  precisa filtrar isso no cliente.
+- **`feedback_shown` (RD-I).** Emitido em toda exibição de feedback (Use/
+  Create via `evaluation.success`, Modify via `actualSides !== null`) com
+  `{ challenge_id, feedback_type: 'neutral' | 'success', stage, timestamp }`
+  — vocabulário `neutral`/`success` (não `retry`/`success` do `kind` interno
+  do componente, que é sobre estilo/ícone) porque é o vocabulário da AC de
+  dados da feature.
+- **Sem comparação entre alunos** (AC5) — nada no payload/texto referencia
+  outro aluno; já era assim antes, não uma mudança desta feature.
+
+Primeiro teste de componente de `ChallengePage.tsx` do projeto
+(`ChallengePage.spec.tsx`) — o componente nunca tinha spec própria antes
+(Blockly/PixiJS não rodam em jsdom). Mocka `react-blockly`
+(`BlocklyWorkspace` vira um stub que entrega uma instância de workspace
+fake pro `onInject`), `blockly/core`, `PixiTurtleWorld` e `lib/turtleWorld`
+(controla `evaluateSquareGoal`/`closedPolygonSides` diretamente — a
+geometria em si já é coberta por `turtleWorld.spec.ts`, aqui o alvo é o
+COMPORTAMENTO DA TELA: feedback ícone+texto, evento `feedback_shown`,
+mensagem customizável, tolerância repassada).
 
 ## Configuração de desafio via formulário guiado — Modo Template (4.2)
 
@@ -697,9 +754,9 @@ representação em blocos, nem no formulário, nem no preview, nem num erro.
 
 `components/template-form/TemplateChallengeForm.tsx` é o formulário guiado
 de verdade, parametrizado só por `template` (o `ChallengeTemplateDetail`
-já resolvido) + `initialTitle`/`initialParams` opcionais + `onSubmit` — as
-3 telas acima só decidem QUANDO montá-lo e o que fazer com o resultado,
-nunca reimplementam campo nenhum.
+já resolvido) + `initialTitle`/`initialParams`/`initialFeedbackMessages`
+opcionais + `onSubmit` — as 3 telas acima só decidem QUANDO montá-lo e o
+que fazer com o resultado, nunca reimplementam campo nenhum.
 
 - **Renderização 100% orientada a schema**: um `TemplateParameterField`
   por entrada de `template.parameterSchema`, dispatch só por
@@ -751,11 +808,24 @@ nunca reimplementam campo nenhum.
   professor — a tela é uma demonstração de autoria, não a experiência
   sensorial real de nenhum aluno específico (cada aluno continua vendo o
   desafio de acordo com o PRÓPRIO perfil quando for jogar de verdade).
+- **3.7 (AC4) — duas mensagens de feedback opcionais**: dois `TextField`
+  (`components/ui/`, 1º uso de texto livre no design system — ver nota em
+  `TextField.tsx`) fora do loop de `parameterSchema` (são genéricas a
+  QUALQUER template, não um parâmetro pedagógico específico de polígono) —
+  `placeholder` mostra `DEFAULT_RETRY_MESSAGE`/`DEFAULT_SUCCESS_MESSAGE`
+  (`lib/feedbackMessages.ts`), então o professor vê o default sugerido sem
+  digitar nada. Estado sempre `{ retry: string, success: string }` (nunca
+  `undefined`, pra o input continuar controlado) — string vazia via
+  `sanitizeFeedbackMessages` no backend vira "não personalizado".
 - **Salvar**: `handleSubmit` primeiro exige título não-vazio (mensagem
   própria, não HTML5 nativo — mesmo racional de `AdminSettings`), depois
-  roda a mesma `runValidation()` antes de chamar `onSubmit({ title, params
-  })` — nunca deixa a criação/edição ir pro backend com uma combinação que
-  a própria tela já sabe que é inválida.
+  roda a mesma `runValidation()` antes de chamar `onSubmit({ title, params,
+  feedbackMessages })` — nunca deixa a criação/edição ir pro backend com
+  uma combinação que a própria tela já sabe que é inválida. Linguagem
+  punitiva em `feedbackMessages` só é validada no backend (não há preview
+  próprio pra isso, diferente de `params`) — um erro aí aparece como
+  `formError` genérico no `catch`, mesma mensagem pedagógica que o backend
+  devolve.
 
 ### `lib/templateParameterForm.ts` — funções puras, testadas
 

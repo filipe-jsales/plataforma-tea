@@ -192,6 +192,14 @@ guiado — Modo Template (4.2)" em `backend.md` pro racional completo: um
 desafio de professor nunca entra sozinho na sequência forçada de todos os
 alunos do tópico.
 
+**3.7/7.4 — `config.feedbackMessages`/`config.goal.closureTolerancePx`**:
+nenhuma migration de schema (ambos vivem dentro do `config` jsonb já
+existente, sem coluna nova) — ver "Feedback de erro não-punitivo (3.7)" e
+"`closureTolerancePx` — critério de sucesso configurável (7.4, AC3)" em
+`backend.md`. `feedbackMessages` é `{ retry?, success? }`, ausente no
+currículo semeado; `goal.closureTolerancePx` é a margem de erro (px) pra
+considerar a forma fechada, também ausente no currículo semeado.
+
 ### `challenge_templates`
 
 Ver `apps/api/src/challenge-templates/entities/challenge-template.entity.ts`.
@@ -401,13 +409,21 @@ divergir das duas fontes.
     aluno, CRUD de usuários do admin, matrícula/transferência de turma;
     ver "Gestão de contas — criação de aluno, CRUD de usuários, matrícula"
     em `backend.md`).
+22. `1786282298140-AddClosureToleranceToRegularPolygonTemplate.ts` — só um
+    `UPDATE` (sem mudança de schema, `migration:generate` não geraria diff
+    pra isto — mesmo racional de `SeedSquareChallengeToolbox`): acrescenta
+    o parâmetro `closureTolerancePx` ao `parameterSchema` já seedado do
+    template `regular_polygon` (7.4, AC3 — ver "`closureTolerancePx` —
+    critério de sucesso configurável" em `backend.md`). `down` remove só
+    esse elemento do array jsonb (`jsonb_agg` filtrado), nunca apaga a
+    linha do template inteira.
 
-Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª e a 21ª já foram
-validadas com `npm run migration:run` contra um Postgres real (a 21ª
-também conferida via `curl` ponta a ponta contra as contas demo — ver
-"Testes" na seção 1.2/1.4/1.5 de `backend.md`), e `\dt` + `\d <tabela>`
-conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente `pg`
-direto — `psql` não estava disponível no ambiente que rodou essas
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª e a 22ª já foram
+validadas com `npm run migration:run` contra um Postgres real (a 21ª e a
+22ª também conferidas via `curl` ponta a ponta contra as contas demo — ver
+"Testes" nas seções 1.2/1.4/1.5 e 3.7 de `backend.md`), e `\dt` + `\d
+<tabela>` conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente
+`pg` direto — `psql` não estava disponível no ambiente que rodou essas
 migrations). Depois da 20ª, um `migration:generate` extra confirmou "No
 changes in database schema were found" — zero diff pendente entre entidades
 e banco. `GET /metrics/admin/export` (6.6) também foi testado ponta a ponta

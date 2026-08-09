@@ -130,6 +130,14 @@ describe('ChallengesController', () => {
 
       expect(result.snapTolerancePercent).toBeNull();
     });
+
+    it('3.7 (AC4) — defaults feedbackMessages to null for curriculum-seeded challenges', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.feedbackMessages).toBeNull();
+    });
   });
 
   describe('getById', () => {
@@ -193,6 +201,34 @@ describe('ChallengesController', () => {
     const result = await controller.getById('c3');
 
     expect(result.snapTolerancePercent).toBe(60);
+  });
+
+  it('3.7 (AC4) — passes through teacher-customized feedback messages for a template-authored challenge', async () => {
+    challengesService.findById.mockResolvedValue({
+      ...createChallenge,
+      config: {
+        ...createChallenge.config,
+        feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?' },
+      },
+    } as unknown as Challenge);
+
+    const result = await controller.getById('c3');
+
+    expect(result.feedbackMessages).toEqual({ retry: 'Esse ângulo ainda não fecha — quer ajustar?' });
+  });
+
+  it('7.4 (AC3) — passes through the teacher-chosen closureTolerancePx as part of goal', async () => {
+    challengesService.findById.mockResolvedValue({
+      ...createChallenge,
+      config: {
+        ...createChallenge.config,
+        goal: { shape: 'regular_polygon', sides: 6, turnAngleDeg: 60, closureTolerancePx: 12 },
+      },
+    } as unknown as Challenge);
+
+    const result = await controller.getById('c3');
+
+    expect(result.goal).toEqual({ shape: 'regular_polygon', sides: 6, turnAngleDeg: 60, closureTolerancePx: 12 });
   });
 
   it('never leaks internal ids beyond what the toolbox needs — only blockType/label/colour/json', async () => {

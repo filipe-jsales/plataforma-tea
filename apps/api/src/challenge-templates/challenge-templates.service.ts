@@ -2,9 +2,12 @@ import { BadRequestException, Injectable, InternalServerErrorException, NotFound
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BlocksService } from '../blocks/blocks.service';
+import type { ChallengeConfig, ChallengeFeedbackMessages } from '../challenges/challenge-config.interface';
 import { isChallengeConfig } from '../challenges/challenge-config.interface';
 import { ChallengesService } from '../challenges/challenges.service';
 import { Challenge } from '../challenges/entities/challenge.entity';
+import { sanitizeFeedbackMessages, validateFeedbackMessages } from '../challenges/feedback-messages';
+import type { ChallengeTemplateHandler } from './handlers/challenge-template-handler.interface';
 import type {
   ResolvedTemplateParameterDefinition,
   TemplateParameterDefinition,
@@ -46,12 +49,19 @@ export interface TeacherChallengeDetail {
   templateId: string;
   templateKey: string;
   params: Record<string, unknown>;
+  // 3.7 (AC4) — mensagens que o professor customizou (vazio quando nunca
+  // customizou, nunca omitido — o formulário de edição precisa distinguir
+  // "sem valor" de "campo ausente" pra decidir o que pré-preencher).
+  feedbackMessages: ChallengeFeedbackMessages;
 }
 
 export interface SaveTemplateChallengeInput {
   title: string;
   prompt?: string;
   params: Record<string, unknown>;
+  // 3.7 (AC4) — opcional: quando ausente/vazio, o desafio usa o conjunto de
+  // mensagens-padrão sugeridas (ver DEFAULT_FEEDBACK_MESSAGES).
+  feedbackMessages?: ChallengeFeedbackMessages;
 }
 
 // 4.2 — Configuração de desafio via formulário guiado (Modo Template).
@@ -122,9 +132,7 @@ export class ChallengeTemplatesService {
   ): Promise<TeacherChallengeSummary> {
     const { template, handler } = await this.loadTemplateAndHandler(templateId);
     const context = { introducedBlockTypes: await this.getIntroducedBlockTypes(template.topicId) };
-    this.throwIfInvalid(handler.validateParameters(input.params, context));
-
-    const config = handler.buildChallengeConfig(input.params);
+    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, context);
     const challenge = await this.challengesService.createFromTemplate({
       topicId: template.topicId,
       templateId: template.id,
@@ -164,6 +172,11 @@ export class ChallengeTemplatesService {
       templateId: challenge.templateId as string,
       templateKey: challenge.template?.key ?? '',
       params: challenge.templateParams ?? {},
+      // 3.7 (AC4) — pré-preenche o formulário de edição com o que o
+      // professor já customizou (nunca a partir de `Challenge.config`
+      // bruto, ver isChallengeConfig — desafio sem config válido ainda
+      // devolve {}, nunca quebra a tela).
+      feedbackMessages: isChallengeConfig(challenge.config) ? (challenge.config.feedbackMessages ?? {}) : {},
     };
   }
 
@@ -175,9 +188,7 @@ export class ChallengeTemplatesService {
     const challenge = await this.findOwnedTemplateChallengeOrThrow(id, teacherId);
     const { template, handler } = await this.loadTemplateAndHandler(challenge.templateId as string);
     const context = { introducedBlockTypes: await this.getIntroducedBlockTypes(template.topicId) };
-    this.throwIfInvalid(handler.validateParameters(input.params, context));
-
-    const config = handler.buildChallengeConfig(input.params);
+    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, context);
     const updated = await this.challengesService.updateFromTemplate(challenge, {
       title: input.title,
       prompt: input.prompt?.trim() || this.buildDefaultPrompt(template, input.params),
@@ -205,14 +216,35 @@ export class ChallengeTemplatesService {
     return challenge;
   }
 
-  private throwIfInvalid(validation: { valid: boolean; errors: TemplateValidationError[] }): void {
-    if (validation.valid) return;
-    // Defesa em profundidade: a tela sempre chama preview() antes de salvar
-    // (ver TeacherChallengeForm.tsx no frontend), então isto só dispara numa
-    // tentativa de bypass — a mensagem continua pedagógica (as mesmas do
-    // handler), nunca "erro de validação"/"schema" genérico (regra
-    // não-negociável 9).
-    throw new BadRequestException(validation.errors.map((error) => error.message).join(' '));
+  // Combina a validação pedagógica do template (número de lados, ângulo...)
+  // com a de 3.7 (AC1/AC4: mensagem de feedback customizada não pode usar
+  // linguagem punitiva) num único bloqueio — o professor vê as duas classes
+  // de erro juntas, nunca precisa salvar duas vezes pra descobrir a
+  // segunda. Defesa em profundidade: a tela sempre chama preview() antes de
+  // salvar (ver TeacherChallengeForm.tsx no frontend) para a validação do
+  // handler, mas a de feedbackMessages só é checada aqui (não há um botão
+  // de preview separado pra ela) — daí não poder pular esta chamada.
+  private validateAndBuildConfig(
+    handler: ChallengeTemplateHandler,
+    params: Record<string, unknown>,
+    feedbackMessages: ChallengeFeedbackMessages | undefined,
+    context: { introducedBlockTypes: string[] },
+  ): ChallengeConfig {
+    const handlerResult = handler.validateParameters(params, context);
+    const feedbackErrors = validateFeedbackMessages(feedbackMessages);
+    const errors = [...handlerResult.errors, ...feedbackErrors];
+    if (errors.length > 0) {
+      // Mensagem continua pedagógica (as mesmas do handler/validador),
+      // nunca "erro de validação"/"schema" genérico (regra não-negociável 9).
+      throw new BadRequestException(errors.map((error) => error.message).join(' '));
+    }
+
+    const config = handler.buildChallengeConfig(params);
+    const sanitized = sanitizeFeedbackMessages(feedbackMessages);
+    if (sanitized) {
+      config.feedbackMessages = sanitized;
+    }
+    return config;
   }
 
   private async loadTemplateAndHandler(templateId: string) {

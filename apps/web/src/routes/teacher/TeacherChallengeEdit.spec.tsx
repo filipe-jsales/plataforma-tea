@@ -97,6 +97,7 @@ describe('TeacherChallengeEdit', () => {
       expect(mockedPatch).toHaveBeenCalledWith('/teacher/challenges/c1', {
         title: 'Hexágonos',
         params: { sides: 8 },
+        feedbackMessages: { retry: '', success: '' },
       }),
     );
   });

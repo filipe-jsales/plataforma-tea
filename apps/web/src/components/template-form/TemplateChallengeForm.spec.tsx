@@ -111,7 +111,45 @@ describe('TemplateChallengeForm', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       title: 'Meu desafio',
       params: { sides: 4, turnAngleDeg: 90, snapTolerancePercent: 60, enabledBlockTypes: ['move_forward', 'turn'] },
+      feedbackMessages: { retry: '', success: '' },
     });
+  });
+
+  it('3.7 (AC4) — submits teacher-customized feedback messages alongside params', async () => {
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
+    await userEvent.type(
+      screen.getByLabelText(/mensagem quando o aluno ainda não atingiu/i),
+      'Esse ângulo ainda não fecha — quer ajustar?',
+    );
+    await userEvent.type(screen.getByLabelText(/mensagem de sucesso/i), 'Mandou bem!');
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByRole('button', { name: /salvar desafio/i })).toBeEnabled();
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?', success: 'Mandou bem!' },
+      }),
+    );
+  });
+
+  it('3.7 (AC4) — pre-fills feedback message fields when editing an already-customized challenge', () => {
+    render(
+      <TemplateChallengeForm
+        template={template}
+        submitLabel="Salvar alterações"
+        initialFeedbackMessages={{ retry: 'Tente de novo com outro ângulo.' }}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(/mensagem quando o aluno ainda não atingiu/i)).toHaveValue(
+      'Tente de novo com outro ângulo.',
+    );
+    expect(screen.getByLabelText(/mensagem de sucesso/i)).toHaveValue('');
   });
 
   it('AC4 — "Visualizar como aluno" opens a functional preview in the game engine when parameters are valid', async () => {

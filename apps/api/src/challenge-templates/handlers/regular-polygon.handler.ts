@@ -14,6 +14,14 @@ const MIN_ANGLE = 1;
 const MAX_ANGLE = 359;
 const MIN_TOLERANCE_PERCENT = 10;
 const MAX_TOLERANCE_PERCENT = 100;
+// 7.4 (AC3) — margem de erro (px) pra considerar que o traçado do aluno
+// fechou a forma. Mínimo 1 (0 exigiria fechamento pixel-perfeito, o mesmo
+// problema de coordenação motora fina que already motivou o mínimo de
+// snapTolerancePercent); teto 40 é generoso o bastante sem aceitar
+// "qualquer rabisco" como forma fechada (o desenho de um polígono do MVP
+// tem ~60px por lado, ver DEFAULT_STEP_LENGTH em turtleWorld.ts).
+const MIN_CLOSURE_TOLERANCE_PX = 1;
+const MAX_CLOSURE_TOLERANCE_PX = 40;
 // Um desenho de polígono não existe sem esses dois blocos — checagem de
 // domínio, não uma regra genérica de "todo template precisa de N blocos"
 // (um template futuro de outra disciplina define os próprios obrigatórios).
@@ -23,6 +31,7 @@ interface RegularPolygonParams {
   sides: number;
   turnAngleDeg: number;
   snapTolerancePercent: number;
+  closureTolerancePx: number;
   enabledBlockTypes: string[];
 }
 
@@ -113,6 +122,24 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       });
     }
 
+    const closureTolerancePx = toFiniteNumber(raw.closureTolerancePx);
+    const validClosureTolerance =
+      closureTolerancePx !== null &&
+      Number.isInteger(closureTolerancePx) &&
+      closureTolerancePx >= MIN_CLOSURE_TOLERANCE_PX &&
+      closureTolerancePx <= MAX_CLOSURE_TOLERANCE_PX;
+    if (!validClosureTolerance) {
+      // 7.4 (AC3) — mesmo racional do exemplo do card ("figura fechada com
+      // margem de erro de X pixels"): 0 exigiria fechamento exato, algo que
+      // a coordenação motora fina de montagem de blocos não sustenta (RQ4).
+      errors.push({
+        parameterKey: 'closureTolerancePx',
+        message:
+          'A margem de erro para considerar a forma fechada precisa estar entre ' +
+          `${MIN_CLOSURE_TOLERANCE_PX} e ${MAX_CLOSURE_TOLERANCE_PX} pixels (recomendamos 5).`,
+      });
+    }
+
     if (enabledBlockTypes.length === 0) {
       errors.push({
         parameterKey: 'enabledBlockTypes',
@@ -147,7 +174,12 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
     return {
       stage: 'create',
       allowedBlockTypes: params.enabledBlockTypes,
-      goal: { shape: 'regular_polygon', sides: params.sides, turnAngleDeg: params.turnAngleDeg },
+      goal: {
+        shape: 'regular_polygon',
+        sides: params.sides,
+        turnAngleDeg: params.turnAngleDeg,
+        closureTolerancePx: params.closureTolerancePx,
+      },
       snapTolerancePercent: params.snapTolerancePercent,
     };
   }
@@ -165,6 +197,7 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       sides: Number(raw.sides),
       turnAngleDeg: Number(raw.turnAngleDeg),
       snapTolerancePercent: Number(raw.snapTolerancePercent),
+      closureTolerancePx: Number(raw.closureTolerancePx),
       enabledBlockTypes: toStringArray(raw.enabledBlockTypes),
     };
   }

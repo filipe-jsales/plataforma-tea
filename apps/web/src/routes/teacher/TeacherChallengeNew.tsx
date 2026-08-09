@@ -51,7 +51,11 @@ export function TeacherChallengeNew() {
     apiClient.get<ChallengeTemplateDetail>(`/challenge-templates/${selectedTemplateId}`).then(setTemplateDetail);
   }, [selectedTemplateId]);
 
-  async function handleSubmit(input: { title: string; params: Record<string, unknown> }) {
+  async function handleSubmit(input: {
+    title: string;
+    params: Record<string, unknown>;
+    feedbackMessages: { retry: string; success: string };
+  }) {
     if (!templateDetail) return;
     await apiClient.post(`/challenge-templates/${templateDetail.id}/challenges`, input);
     navigate('/teacher/challenges');
@@ -104,6 +108,7 @@ export function TeacherChallengeNew() {
             template={templateDetail}
             initialTitle={sourceChallenge ? `${sourceChallenge.title} (cópia)` : undefined}
             initialParams={sourceChallenge?.params}
+            initialFeedbackMessages={sourceChallenge?.feedbackMessages}
             submitLabel="Salvar desafio"
             onSubmit={handleSubmit}
           />
