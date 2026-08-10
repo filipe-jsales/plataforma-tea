@@ -1206,38 +1206,152 @@ Toda `create`/`edit`/`activate`/`deactivate` grava um `AdminActionLog`
 (`AuditService.recordUserAction`) — ver "Por que `AdminActionLog`, não um
 `interaction_event`" abaixo.
 
-### Criação de conta de aluno pelo professor/admin (1.2)
+### Criação de conta de aluno pelo professor/admin (1.2/A2)
 
-`StudentAccountsModule` (`POST /teacher/students`, `@Roles(TEACHER, ADMIN)`)
-— o aluno nunca cria a própria conta. `StudentAccountsService.create`:
+`StudentAccountsModule` (`@Roles(TEACHER, ADMIN)`) — o aluno nunca cria a
+própria conta. Desde A2 ("Consentimento do responsável legal no cadastro do
+aluno"), a criação virou 2 chamadas reais (não só uma validação a mais no
+mesmo request) — ver "Consentimento do responsável legal (A2)" logo abaixo
+pro racional completo de por que isso precisou virar um estado "pendente"
+de verdade, não só uma checagem a mais.
 
-1. Resolve a turma (`SchoolsService.findClassroomById`) e autoriza:
-   professor só na própria turma (`classroom.teacherId === actor.id`,
-   mesmo padrão de `ChallengeAllocationsService.assertOwnClassroom`),
-   admin sem restrição.
-2. `SchoolsService.hasActiveStudentWithNameInClassroom` — checagem
-   case/trim-insensitive pro alerta de duplicado (AC: "não bloqueante,
-   não erro fatal" — a conta é criada de qualquer forma, o response só
-   carrega `duplicateWarning: true`).
-3. Resolve o avatar — o escolhido pelo professor (validado contra o
-   catálogo `blocks`... catálogo `illustrations`, kind `avatar`) ou um
-   sorteio (`IllustrationsService.pickRandomAvatar`) se nenhum for
-   informado.
-4. Sorteia a sequência de login — `IllustrationsService.
-   pickRandomLoginImageSequence` (3 `Illustration(kind=login_image)`
-   distintas, ordem aleatória) — **reaproveita 100% o mecanismo de login
-   por sequência de imagens já implementado em 1.1**
-   (`AuthService.loginStudent`), a decisão de "PIN vs. imagem-senha"
-   citada como dependência do card já estava resolvida a favor de
-   imagem-senha antes desta feature existir.
-5. `UsersService.createStudent` + `SchoolsService.createEnrollment` — nunca
-   deriva a credencial de `displayName` (AC: "nome em texto livre nunca é
-   usado como parte da credencial").
+1. **`POST /teacher/students`** (`StudentAccountsService.createPending`) —
+   cria a conta MATRICULADA, com avatar, mas **sem credencial utilizável**:
+   1. Resolve a turma (`SchoolsService.findClassroomById`) e autoriza:
+      professor só na própria turma (`classroom.teacherId === actor.id`,
+      mesmo padrão de `ChallengeAllocationsService.assertOwnClassroom`),
+      admin sem restrição.
+   2. `SchoolsService.hasActiveStudentWithNameInClassroom` — checagem
+      case/trim-insensitive pro alerta de duplicado (AC: "não bloqueante,
+      não erro fatal" — a conta é criada de qualquer forma, o response só
+      carrega `duplicateWarning: true`).
+   3. Resolve o avatar — o escolhido pelo professor (validado contra o
+      catálogo `illustrations`, kind `avatar`) ou um sorteio
+      (`IllustrationsService.pickRandomAvatar`) se nenhum for informado.
+   4. `UsersService.createPendingStudent` (`active: false`,
+      `loginImageSequence` fica `null`) + `SchoolsService.createEnrollment`
+      — matrícula já acontece aqui; só a CREDENCIAL de acesso é que fica
+      pendente.
 
-Resposta: `{ student, classroom, credential: { avatar, loginImages },
-duplicateWarning }` — vira a tela imprimível do professor
+   Resposta: `{ student, classroom, avatar, duplicateWarning }` — **sem**
+   `credential` (não existe ainda).
+
+2. **`POST /teacher/students/:id/guardian-consent`** (A2, ver seção
+   própria abaixo) — registra o consentimento do responsável legal e só
+   então libera a credencial.
+
+3. **`POST /teacher/students/:id/activate-credential`** — reaproveitado
+   internamente pelo passo 2 (`StudentAccountsService.activateCredential`,
+   chamado de dentro de `registerGuardianConsent`) e também exposto como
+   endpoint próprio, pra nova tentativa caso a ativação em si falhe depois
+   do consentimento já ter sido gravado. Sorteia a sequência de login
+   (`IllustrationsService.pickRandomLoginImageSequence`, 3
+   `Illustration(kind=login_image)` distintas — **reaproveita 100% o
+   mecanismo de login por sequência de imagens já implementado em 1.1**,
+   `AuthService.loginStudent`) e `UsersService.activateStudentCredential`
+   (`active: true` + a sequência gravada) — nunca deriva a credencial de
+   `displayName` (AC: "nome em texto livre nunca é usado como parte da
+   credencial"). Rejeita com `ConflictException` se a credencial já está
+   ativa (nunca regenerar em silêncio — invalidaria uma sequência já
+   impressa/entregue ao aluno).
+
+Resposta dos passos 2/3: `{ student, classroom, credential: { avatar,
+loginImages } }` — vira a tela imprimível do professor
 (`apps/web/src/routes/teacher/TeacherAddStudent.tsx`, `window.print()`
-filtrando só o cartão de credencial via CSS `@media print`).
+filtrando só o cartão de credencial via CSS `@media print`), agora a
+TERCEIRA tela de um wizard de 3 passos (dados do aluno → responsável legal
+→ credencial), não mais a única.
+
+## Consentimento do responsável legal no cadastro do aluno (A2)
+
+Requisito não-negociável de compliance ECA: nenhuma credencial de acesso de
+aluno pode existir sem o consentimento do responsável legal ter sido
+registrado antes — de forma auditável (quem coletou, quando).
+
+### `GuardianConsent` — módulo próprio, 1 registro por aluno
+
+`GuardianConsentsModule` (`apps/api/src/guardian-consents/`) — entidade
+`GuardianConsent` (`studentId` `UNIQUE` — um consentimento por aluno, o MVP
+não modela revogação/renovação): `guardianName`, `guardianRelationship`
+(texto livre, ex.: "mãe"/"tutor legal" — nunca um enum fixo, mesmo racional
+de `Classroom.name`), `guardianContact`, `consentedAt`,
+`collectedByUserId` (quem registrou — professor ou admin). Sem método de
+edição/remoção de propósito: nasce como registro histórico, uma correção
+de verdade precisaria de rastreabilidade própria, fora do escopo do MVP.
+
+**Por que módulo/tabela própria, não `AdminActionLog`** — cogitado e
+descartado: `AdminActionLog` (1.4) é especificamente sobre CRUD de
+USUÁRIO, com `metadata: jsonb` solto pra detalhe livre; o consentimento
+tem campos fixos com significado legal próprio (nome/vínculo/contato do
+responsável) que merecem colunas reais, não um blob genérico — e a tela de
+auditoria (AC4) precisa consultá-los estruturadamente, não fazer parsing
+de `metadata`.
+
+**Por que não é um `interaction_event`** — mesmo racional já documentado
+pra `ChallengeClassroomAllocation`/`AdminActionLog`: o SUJEITO aqui é uma
+ação administrativa sobre um cadastro (dado de identidade REAL de um
+terceiro, o responsável — nunca pseudonimizado, porque não é dado de
+avaliação de Pensamento Computacional do aluno, é dado de conformidade
+legal), não uma interação pedagógica do aluno com o Blockly.
+`interaction_events.studentPseudoId` é `NOT NULL` de propósito pro schema
+RD-* (RQ5) — forçar isso aqui seria o mesmo erro de categoria já evitado
+alhures.
+
+### Bloqueio de ativação — `StudentAccountsService.activateCredential`
+
+```
+GuardianConsentsService.hasConsent(studentId) === false
+  → BadRequestException('Consentimento do responsável legal pendente —
+     registre-o antes de ativar a credencial do aluno.')
+```
+
+Esta é a checagem que dá substância real à AC3 ("bloqueia a ativação e
+indica claramente qual etapa está pendente") — não uma mensagem genérica
+de segurança (como as de `AuthService`, que deliberadamente não revelam o
+motivo de uma falha de login): aqui quem recebe o erro já é STAFF
+autenticado tentando administrar um cadastro que ele mesmo iniciou, então
+ser específico não vaza nada sensível — é o oposto de um vetor de
+enumeração.
+
+### Admin nunca escopado por escola aqui (mesma decisão de "Gestão de
+escolas e turmas")
+
+`GuardianConsentsAdminController` (`GET
+/admin/students/:id/guardian-consent`, `@Roles(Role.ADMIN)`) — sempre
+`200`, `{ recorded: false, ... null }` pra "ainda pendente" (não um erro).
+Resolve `collectedByDisplayName` via relation já carregada
+(`GuardianConsentsService.findByStudentId` — `relations: { collectedBy:
+true }`), nunca uma segunda query.
+
+### Backfill do aluno demo — grandfathering explícito, nunca atalho de teste
+
+A migration `CreateGuardianConsents` faz backfill de um `GuardianConsent`
+pro aluno demo semeado em `AddLoginMechanisms` (antes de A2 existir) — sem
+isso, a conta demo documentada em `database.md` ficaria "com pendência"
+numa tela de auditoria que só existe desde agora, mesmo já sendo
+utilizável há sessões. **Isto é diferente de pular o fluxo em ambiente de
+teste (AC5 proíbe isso explicitamente)**: o backfill só cobre uma conta
+que já existia ANTES da feature nascer; a validação ponta a ponta desta
+sessão usou um aluno NOVO passando pelos 2 passos reais (criar pendente →
+registrar consentimento → credencial liberada), nunca reaproveitando o
+backfill como um caminho mais curto.
+
+### Testes
+
+`student-accounts.service.spec.ts` cobre os 3 métodos separadamente:
+`createPending` nunca chama `pickRandomLoginImageSequence` (prova de que
+nenhuma credencial nasce nesse passo); `registerGuardianConsent` registra
+o consentimento ANTES de ativar (ordem de chamada verificada
+explicitamente), rejeita aceite não-explícito e consentimento duplicado;
+`activateCredential` bloqueia sem consentimento com a mensagem de AC3,
+rejeita reativar uma conta já ativa (nunca regenerar credencial em
+silêncio). `guardian-consents.service.spec.ts` cobre o CRUD mínimo
+(`hasConsent`/`findByStudentId`/`recordConsent`). Frontend:
+`TeacherAddStudent.spec.tsx` cobre os 3 passos (conta pendente sem
+credencial → bloqueio sem aceite explícito → credencial só depois do
+consentimento) e `AdminUsers.spec.tsx` cobre a tela de auditoria (AC4):
+"Consentimento" só aparece pra linha de aluno, estado pendente vs.
+registrado (quem/quando).
 
 ### Matrícula/transferência de turma (1.5)
 
@@ -1489,6 +1603,110 @@ não existe, e a distinção `null`/`undefined` de `teacherId` no update
 `AdminSchools.spec.tsx`/`AdminSchoolClassrooms.spec.tsx` (Vitest + Testing
 Library) cobrem listagem/criação/edição/desativação e o bloqueio de "Criar
 turma" quando a escola está desativada.
+
+## Autosave incremental do workspace Blockly do aluno (C2)
+
+RQ4 — sobrecarga cognitiva/abstração (39,13%, maior barreira do
+mapeamento): perda de sessão, timeout ou atualização acidental da página
+não pode forçar o aluno a remontar a lógica do zero. Diretamente ligado a
+#46 (expiração de sessão, ainda não tratada) — este card foi implementado
+ANTES/junto, pra que quando a expiração de sessão for tratada, ela nunca
+resulte em perda de trabalho do aluno.
+
+### `StudentChallengeDraft` — registro MUTÁVEL de "estado atual", não um evento
+
+`ChallengeDraftsModule` (`apps/api/src/challenge-drafts/`) — decisão de
+arquitetura explícita: o rascunho é uma tabela com upsert
+(`studentId`+`challengeId` `UNIQUE`), não uma linha nova em
+`interaction_events` a cada debounce. `interaction_events` é append-only
+por natureza (existe pra reconstituir uma linha do tempo, RQ5) — um
+autosave que sobrescreve repetidamente "o estado agora" é um conceito
+diferente (recuperar "o rascunho de agora" precisa ser um SELECT direto,
+não um `ORDER BY createdAt DESC LIMIT 1` sobre uma tabela que cresce a
+cada poucos segundos de edição contínua). Mesmo racional já usado pra
+`User.sensoryOnboardingCompletedAt`/`AdminActionLog` (registro mutável)
+vs. `interaction_events` (log imutável) — dois padrões que este projeto já
+mantém deliberadamente distintos, não uma decisão nova.
+
+`workspaceJson` é o MESMO formato de `Challenge.config.program`
+(`Blockly.serialization.blocks.save()`), mas é dado POR ALUNO — nunca
+escrito em `Challenge.config`, que é conteúdo curricular compartilhado por
+todos os alunos do tópico. Nullable: workspace vazio (aluno apagou tudo) é
+um estado válido pra salvar (`workspaceJson: null` na linha); "sem
+rascunho nenhum" é a AUSÊNCIA da linha, um conceito diferente — ver
+`ChallengeDraftsService.findByStudentAndChallenge`.
+
+### Endpoints — sempre escopados ao próprio aluno autenticado
+
+`ChallengeDraftsController`, `@Controller('students/me/challenges')` +
+`@Roles(Role.STUDENT)` (mesmo prefixo/padrão de
+`StudentClassroomChallengesController`, 4.3 — nunca um id de aluno vindo
+do corpo/query, sempre `req.user.sub`):
+
+- `GET :challengeId/draft` — `{ workspaceJson }` (`null` se não houver
+  rascunho).
+- `PATCH :challengeId/draft` — upsert (`ChallengeDraftsService.upsert`:
+  `find` + `save`/`create` explícito, não o `.upsert()` mágico do TypeORM
+  — mesmo padrão de `SchoolsService.updateSchool`/`updateClassroom`, B1).
+- `DELETE :challengeId/draft` — descarta (idempotente: nunca erro se não
+  houver nada pra descartar).
+
+### Frontend (`ChallengePage.tsx`) — restaurar, debounce, retry silencioso, descartar
+
+- **Restaurar (AC2)**: um `useEffect` novo busca o rascunho assim que o
+  desafio carrega (só em fase não travada — `use` é sempre `readOnly`,
+  nunca editada, autosave não faz sentido ali). A tela só monta o
+  `<BlocklyWorkspace>` depois que o rascunho resolve (`draftLoaded`) —
+  nunca monta com o `program` curricular pra só depois trocar pelo
+  rascunho, o que reiniciaria o Blockly de forma perceptível. `initialJson`
+  prioriza o rascunho sobre `challenge.program` quando presente (fase não
+  travada) — ele representa progresso MAIS recente do aluno.
+- **Debounce (AC1)**: `handleWorkspaceAutosave`, um SEGUNDO listener
+  registrado via `workspace.addChangeListener` (ao lado do
+  `handleWorkspaceEvent` já existente, que só reage a `BlockDrag`) — filtra
+  só eventos de CONTEÚDO (`BlockCreate`/`BlockDelete`/`BlockChange`/
+  `BlockMove`), nunca eventos de UI (seleção, clique, scroll, que
+  `addChangeListener` também emite). 1.5s de debounce (`setTimeout`
+  manual, `clearTimeout` a cada novo evento — sem dependência de debounce
+  nova, mesmo racional de "não fabricar dependência sem necessidade
+  concreta" já citado no backlog pra QR code/e-mail transacional).
+- **Falha silenciosa + 1 retentativa (AC5)**: `saveDraftSilently` nunca
+  lança nem mostra erro — no `.catch()`, agenda UMA retentativa 4s depois;
+  falhas subsequentes são engolidas (o próximo debounce tick, se o aluno
+  continuar editando, já tenta salvar de novo com o estado mais recente —
+  uma fila de retentativa persistente não agregaria nada aqui).
+- **Sem UI nenhuma (AC4)**: nenhum estado/indicador de "salvando…" existe
+  no componente — o autosave é literalmente invisível, não só
+  "discreto"; regra não-negociável 1 (nada visual sem respaldo em
+  evidência liga por padrão) aplicada ao extremo — aqui nem existe o
+  elemento.
+- **Descartar na conclusão (AC3)**: `discardDraftSilently()` chamado no
+  branch de sucesso de `handleRun` (fase `create`, `evaluation.success`),
+  logo depois do evento `challenge.completed` — fire-and-forget, mesma
+  filosofia silenciosa do save.
+
+### `workspace_autosaved` (RD-P) — evento escopado ao aluno
+
+Emitido a cada autosave bem-sucedido (nunca a cada debounce TICK, só
+quando o `PATCH` de fato completa) — mesma forma de `program_executed`
+(`block_sequence_json` + `challenge_id` + `timestamp`), regra não-
+negociável 6 (nenhuma feature nasce sem log estruturado desde o primeiro
+commit) aplicada aqui: o autosave em si é uma interação relevante pro RQ5
+(estado intermediário de montagem, não só o resultado final submetido),
+mesmo que a UI nunca mostre nada sobre isso ao aluno.
+
+### Testes
+
+`challenge-drafts.service.spec.ts` cobre o upsert (cria vs. atualiza,
+nunca duas linhas pro mesmo par aluno+desafio) e o descarte idempotente.
+`ChallengePage.spec.tsx` ganhou uma seção própria (`vi.useFakeTimers()` +
+`vi.advanceTimersByTimeAsync`, mock de `react-blockly`/`blockly/core`
+exposto via `vi.hoisted` pra disparar os listeners registrados
+diretamente): restauração prioriza o rascunho sobre o `program`
+curricular, nunca busca rascunho na fase travada, debounce (não salva
+antes de 1.5s, salva depois, um burst de mudanças reseta o timer e salva
+só uma vez), retentativa silenciosa após falha, nenhum indicador de
+"salvando" na tela, e descarte do rascunho ao concluir o desafio.
 
 ## Próximos passos (fora do escopo já implementado)
 

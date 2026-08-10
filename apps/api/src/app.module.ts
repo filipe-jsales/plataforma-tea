@@ -8,7 +8,9 @@ import { BlocksModule } from './blocks/blocks.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { ChallengeTemplatesModule } from './challenge-templates/challenge-templates.module';
 import { ChallengeAllocationsModule } from './challenge-allocations/challenge-allocations.module';
+import { ChallengeDraftsModule } from './challenge-drafts/challenge-drafts.module';
 import { EventsModule } from './events/events.module';
+import { GuardianConsentsModule } from './guardian-consents/guardian-consents.module';
 import { HomeModule } from './home/home.module';
 import { IdentityModule } from './identity/identity.module';
 import { IllustrationsModule } from './illustrations/illustrations.module';
@@ -56,6 +58,8 @@ import { UsersModule } from './users/users.module';
     MetricsModule,
     StudentAccountsModule,
     EnrollmentsModule,
+    GuardianConsentsModule,
+    ChallengeDraftsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

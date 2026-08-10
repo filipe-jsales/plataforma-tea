@@ -26,10 +26,9 @@ export interface CreateStaffUserParams {
 // nota de gap de e-mail) sem deixar o token válido indefinidamente.
 const PASSWORD_SETUP_TOKEN_TTL_MS = 48 * 60 * 60 * 1000;
 
-export interface CreateStudentParams {
+export interface CreatePendingStudentParams {
   displayName: string;
   avatarId: string;
-  loginImageSequence: string[];
 }
 
 @Injectable()
@@ -129,18 +128,39 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  // 1.2 — cria aluno sem e-mail/senha/telefone (AC: "O formulário não
-  // possui campo de e-mail, senha ou telefone do aluno"). Credencial real
-  // (avatar + sequência de imagens) é resolvida por quem chama
-  // (StudentAccountsService) reaproveitando o mecanismo de login já
-  // existente (ver IllustrationsService) — nunca o nome do aluno.
-  createStudent(params: CreateStudentParams): Promise<User> {
+  // 1.2/A2 — cria aluno sem e-mail/senha/telefone (AC: "O formulário não
+  // possui campo de e-mail, senha ou telefone do aluno"), e SEM credencial
+  // utilizável ainda: `active: false`, `loginImageSequence` fica `null`
+  // (nasce nullable — ver User). Avatar já é escolhido aqui (identidade
+  // visual, "quem eu sou") — distinto da sequência de login (a credencial
+  // em si), que só é gerada em `activateStudentCredential`, depois que o
+  // consentimento do responsável legal existir (A2, ver
+  // GuardianConsentsService/StudentAccountsService).
+  createPendingStudent(params: CreatePendingStudentParams): Promise<User> {
     const user = this.usersRepository.create({
       displayName: params.displayName,
       role: Role.STUDENT,
       avatarId: params.avatarId,
-      loginImageSequence: params.loginImageSequence,
+      active: false,
     });
+    return this.usersRepository.save(user);
+  }
+
+  // A2 — só chamado depois que o consentimento do responsável legal já foi
+  // verificado (checagem em StudentAccountsService.activateCredential, não
+  // aqui — este método só grava o resultado, mesmo racional de
+  // setPasswordHash). Ativa o login (`active: true`) e grava a credencial
+  // de verdade (sequência de imagens) — nunca antes disso.
+  async activateStudentCredential(
+    id: string,
+    loginImageSequence: string[],
+  ): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      return null;
+    }
+    user.loginImageSequence = loginImageSequence;
+    user.active = true;
     return this.usersRepository.save(user);
   }
 

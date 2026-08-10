@@ -308,6 +308,40 @@ pedido (schoolId/challengeId/from/to/format/page/pageSize); `rowCount` é
 quantas linhas saíram NAQUELA resposta, não o total do recorte. Índice em
 `(adminUserId, createdAt)`, mesmo padrão de `interaction_events`.
 
+### `guardian_consents`
+
+Ver `apps/api/src/guardian-consents/entities/guardian-consent.entity.ts`
+(A2 — consentimento do responsável legal, ECA). `studentId` é FK `UNIQUE`
+pra `users` (`ON DELETE CASCADE`) — um consentimento por aluno, o MVP não
+modela revogação/renovação. `guardianName`/`guardianRelationship`/
+`guardianContact` são dado de identidade REAL de um terceiro (o
+responsável), nunca pseudonimizado — não é dado de avaliação de
+Pensamento Computacional do aluno (RQ5), é dado de conformidade legal;
+por isso vive fora de `interaction_events` (que é `studentPseudoId NOT
+NULL` de propósito) e fora de qualquer tela que só alunos/professores
+enxergam pseudônimo. `collectedByUserId` (nullable, `ON DELETE SET NULL`,
+mesma defesa em profundidade de `AdminActionLog.actorUserId`) é quem
+(professor ou admin) registrou o consentimento — junto com `consentedAt`,
+é o par que sustenta a AC "visualizar quando e por quem foi coletado".
+Sem `UPDATE`/`DELETE` de propósito na camada de aplicação (ver
+`GuardianConsentsService`) — nasce como registro histórico.
+
+### `student_challenge_drafts`
+
+Ver
+`apps/api/src/challenge-drafts/entities/student-challenge-draft.entity.ts`
+(C2 — autosave incremental do workspace Blockly do aluno). Índice único
+`(studentId, challengeId)` — upsert por par aluno+desafio, registro
+MUTÁVEL de "estado atual" (nunca append-only como `interaction_events`,
+ver "Autosave incremental do workspace Blockly do aluno (C2)" em
+`backend.md` pro racional completo dessa escolha). `workspaceJson` (jsonb,
+nullable — `null` é "workspace vazio salvo", um estado diferente de "sem
+rascunho", que é a ausência da linha) é o mesmo formato de
+`Challenge.config.program`, mas é dado POR ALUNO — nunca escrito em
+`Challenge.config`, que é conteúdo curricular compartilhado. FKs `CASCADE`
+pra `users`/`challenges` (se o aluno ou o desafio sumir, o rascunho não
+faz sentido sozinho).
+
 ### Migrations aplicadas
 
 1. `1785866463111-CreateUsersAndInteractionEvents.ts` — cria `users` e
@@ -439,17 +473,29 @@ divergir das duas fontes.
     ficam com `deletedAt`/`externalId` nulos (ativas por padrão). Ver "B1 —
     Soft delete como infraestrutura transversal" e "Gestão de escolas e
     turmas (admin)" em `backend.md`.
+24. `1786368180441-CreateGuardianConsents.ts` — cria `guardian_consents`
+    (A2). Gerada com `migration:generate` + backfill manual: um
+    `GuardianConsent` pro aluno demo (semeado em `AddLoginMechanisms`,
+    antes de A2 existir) — grandfathering explícito de uma conta
+    pré-existente, nunca um atalho pra pular o fluxo real em teste (ver
+    "Backfill do aluno demo" em `backend.md`). `down` remove só essa linha
+    de backfill antes de derrubar a tabela.
+25. `1786368360888-CreateStudentChallengeDrafts.ts` — cria
+    `student_challenge_drafts` (C2). Gerada com `migration:generate`, sem
+    seed.
 
-Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª e a 23ª já
-foram validadas com `npm run migration:run` contra um Postgres real (a 21ª
-e a 22ª também conferidas via `curl` ponta a ponta contra as contas demo —
-ver "Testes" nas seções 1.2/1.4/1.5 e 3.7 de `backend.md`), e `\dt` + `\d
-<tabela>` conferidos no `psql` (a 19ª e a 20ª foram conferidas via cliente
-`pg` direto — `psql` não estava disponível no ambiente que rodou essas
-migrations). Depois da 20ª e de novo depois da 23ª, um `migration:generate`
-extra confirmou "No changes in database schema were found" — zero diff
-pendente entre entidades e banco. `GET /metrics/admin/export` (6.6) também
-foi testado ponta a ponta
+Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª, a 23ª, a
+24ª e a 25ª já foram validadas com `npm run migration:run` contra um
+Postgres real (a 21ª e a 22ª também conferidas via `curl` ponta a ponta
+contra as contas demo — ver "Testes" nas seções 1.2/1.4/1.5 e 3.7 de
+`backend.md`), e `\dt` + `\d <tabela>` conferidos no `psql` (a 19ª e a 20ª
+foram conferidas via cliente `pg` direto — `psql` não estava disponível no
+ambiente que rodou essas migrations). Depois da 20ª e de novo depois da
+23ª e da 25ª, um `migration:generate` extra confirmou "No changes in
+database schema were found" — zero diff pendente entre entidades e banco.
+O backfill da 24ª foi conferido por query direta (`guardian_consents` join
+`users`, aluno demo com `guardianName`/`guardianRelationship` presentes).
+`GET /metrics/admin/export` (6.6) também foi testado ponta a ponta
 via `curl` contra a conta demo de admin: rejeição sem filtro (`400`),
 rejeição de período acima de 90 dias (`400`), export JSON e CSV com dado
 real de `interaction_events`, `export_audit_logs` conferido com uma linha

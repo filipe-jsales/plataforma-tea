@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as Blockly from 'blockly/core';
 import { apiClient } from '../../lib/apiClient';
 import { logEvent } from '../../lib/logEvent';
 import { evaluateSquareGoal, closedPolygonSides } from '../../lib/turtleWorld';
@@ -19,9 +20,18 @@ import { ChallengePage } from './ChallengePage';
 // já testada em turtleWorld.spec.ts) também são mockados aqui: o que este
 // arquivo testa é o COMPORTAMENTO DA TELA (feedback icon+texto, evento
 // feedback_shown, mensagem customizável, tolerância repassada), não a
-// geometria.
+// geometria. `workspaceHolder` (via vi.hoisted, pra ficar acessível dentro
+// da factory do mock) expõe a instância fake pro corpo dos testes de
+// autosave (C2) conseguirem disparar os listeners registrados via
+// `addChangeListener` diretamente.
+const { workspaceHolder, lastInitialJsonHolder } = vi.hoisted(() => ({
+  workspaceHolder: { current: null as null | { addChangeListener: ReturnType<typeof vi.fn> } },
+  lastInitialJsonHolder: { current: undefined as unknown },
+}));
+
 vi.mock('react-blockly', () => ({
-  BlocklyWorkspace: (props: { onInject?: (workspace: unknown) => void }) => {
+  BlocklyWorkspace: (props: { onInject?: (workspace: unknown) => void; initialJson?: unknown }) => {
+    lastInitialJsonHolder.current = props.initialJson;
     useEffect(() => {
       const fakeWorkspace = {
         addChangeListener: vi.fn(),
@@ -30,6 +40,7 @@ vi.mock('react-blockly', () => ({
         getTopBlocks: () => [{}],
         getBlockById: () => null,
       };
+      workspaceHolder.current = fakeWorkspace;
       props.onInject?.(fakeWorkspace);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -39,7 +50,14 @@ vi.mock('react-blockly', () => ({
 
 vi.mock('blockly/core', () => ({
   serialization: { blocks: { save: vi.fn(() => ({ type: 'move_forward' })) } },
-  Events: { Abstract: class {}, BlockDrag: class {} },
+  Events: {
+    Abstract: class {},
+    BlockDrag: class {},
+    BlockCreate: class {},
+    BlockDelete: class {},
+    BlockChange: class {},
+    BlockMove: class {},
+  },
   FieldNumber: class {},
 }));
 
@@ -64,10 +82,14 @@ vi.mock('../../lib/turtleWorld', () => ({
   buildGoalPreviewPath: vi.fn(() => ({ points: [], finalHeadingDeg: 0 })),
 }));
 
-vi.mock('../../lib/apiClient', () => ({ apiClient: { get: vi.fn() } }));
+vi.mock('../../lib/apiClient', () => ({
+  apiClient: { get: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
 vi.mock('../../lib/logEvent', () => ({ logEvent: vi.fn() }));
 
 const mockedGet = vi.mocked(apiClient.get);
+const mockedPatch = vi.mocked(apiClient.patch);
+const mockedDelete = vi.mocked(apiClient.delete);
 const mockedLogEvent = vi.mocked(logEvent);
 const mockedEvaluateSquareGoal = vi.mocked(evaluateSquareGoal);
 const mockedClosedPolygonSides = vi.mocked(closedPolygonSides);
@@ -100,7 +122,17 @@ const baseCreateChallenge = {
 };
 
 beforeEach(() => {
+  workspaceHolder.current = null;
+  lastInitialJsonHolder.current = undefined;
   mockedGet.mockReset();
+  // C2 — toda tela de desafio não-travada busca o rascunho salvo logo
+  // depois de buscar o desafio (2ª chamada de `apiClient.get`); os testes
+  // deste arquivo não são sobre autosave, então o valor-padrão (sem
+  // rascunho) cobre a 2ª chamada em diante — cada teste só precisa
+  // continuar enfileirando a 1ª (`mockResolvedValueOnce(baseCreateChallenge)`).
+  mockedGet.mockResolvedValue({ workspaceJson: null });
+  mockedPatch.mockReset().mockResolvedValue(undefined);
+  mockedDelete.mockReset().mockResolvedValue(undefined);
   mockedLogEvent.mockReset();
   mockedEvaluateSquareGoal.mockReset();
   mockedClosedPolygonSides.mockReset().mockReturnValue(null);
@@ -244,5 +276,171 @@ describe('ChallengePage — closure tolerance (7.4 AC3)', () => {
 
     await waitFor(() => expect(mockedEvaluateSquareGoal).toHaveBeenCalled());
     expect(mockedEvaluateSquareGoal.mock.calls[0][2]).toBeUndefined();
+  });
+});
+
+// Dispara um evento de mudança de CONTEÚDO (nunca UI/seleção) em todo
+// listener registrado via `workspace.addChangeListener` — `handleWorkspaceEvent`
+// (que só reage a BlockDrag) simplesmente ignora, então isto é seguro pra
+// exercitar só o autosave (handleWorkspaceAutosave) sem precisar saber qual
+// dos dois listeners é qual.
+function fireContentChangeOnAllListeners() {
+  const listeners = workspaceHolder.current!.addChangeListener.mock.calls.map(
+    (call) => call[0] as (event: unknown) => void,
+  );
+  const event = new (Blockly as unknown as { Events: { BlockCreate: new () => unknown } }).Events.BlockCreate();
+  listeners.forEach((listener) => listener(event));
+}
+
+describe('ChallengePage — autosave do workspace (C2)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('AC2 — restores the workspace from the saved draft, taking priority over the curriculum program', async () => {
+    mockedGet.mockResolvedValueOnce({
+      ...baseCreateChallenge,
+      toolbox: { stage: 'modify', categories: [] },
+      program: { type: 'move_forward' },
+    });
+    mockedGet.mockResolvedValueOnce({
+      workspaceJson: { type: 'repeat_times', fields: { TIMES: 6 } },
+    });
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(lastInitialJsonHolder.current).toEqual({
+      blocks: { languageVersion: 0, blocks: [{ type: 'repeat_times', fields: { TIMES: 6 } }] },
+    });
+  });
+
+  it('falls back to the curriculum program when there is no saved draft yet', async () => {
+    mockedGet.mockResolvedValueOnce({
+      ...baseCreateChallenge,
+      toolbox: { stage: 'modify', categories: [] },
+      program: { type: 'move_forward' },
+    });
+    // 2ª chamada (draft) cai no default do beforeEach: { workspaceJson: null }
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(lastInitialJsonHolder.current).toEqual({
+      blocks: { languageVersion: 0, blocks: [{ type: 'move_forward' }] },
+    });
+  });
+
+  it('never fetches a draft for the locked (`use`) stage — nothing to autosave there', async () => {
+    mockedGet.mockResolvedValueOnce({
+      ...baseCreateChallenge,
+      locked: true,
+      toolbox: { stage: 'use', categories: [] },
+      program: { type: 'move_forward' },
+    });
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(mockedGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('AC1 — debounces content changes and saves the current workspace only after the aluno stops editing', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    vi.useFakeTimers();
+    fireContentChangeOnAllListeners();
+    expect(mockedPatch).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(mockedPatch).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mockedPatch).toHaveBeenCalledWith(
+      '/students/me/challenges/challenge-1/draft',
+      { workspaceJson: { type: 'move_forward' } },
+    );
+  });
+
+  it('AC1 — a burst of changes resets the debounce, saving only once', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    vi.useFakeTimers();
+    fireContentChangeOnAllListeners();
+    await vi.advanceTimersByTimeAsync(1000);
+    fireContentChangeOnAllListeners();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mockedPatch).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(500);
+    expect(mockedPatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('AC5 — retries once, silently, after a failed autosave, never surfacing the error to the aluno', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+    mockedPatch.mockReset();
+    mockedPatch.mockRejectedValueOnce(new Error('network down'));
+    mockedPatch.mockResolvedValueOnce(undefined);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    vi.useFakeTimers();
+    fireContentChangeOnAllListeners();
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(4000);
+
+    expect(mockedPatch).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/erro|falhou|failed/i)).not.toBeInTheDocument();
+  });
+
+  it('AC4 — autosave never renders any "saving…" indicator, on purpose', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    vi.useFakeTimers();
+    fireContentChangeOnAllListeners();
+    await vi.advanceTimersByTimeAsync(1500);
+
+    expect(screen.queryByText(/salvando/i)).not.toBeInTheDocument();
+  });
+
+  it('AC3 — discards the draft once the challenge is completed and submitted, never conflicting with the final result', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+    mockedEvaluateSquareGoal.mockReturnValue({ success: true });
+
+    renderChallenge('challenge-1');
+    await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
+
+    await waitFor(() =>
+      expect(mockedDelete).toHaveBeenCalledWith('/students/me/challenges/challenge-1/draft'),
+    );
+  });
+
+  it('workspace_autosaved (RD-P) is logged after a successful autosave', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    vi.useFakeTimers();
+    fireContentChangeOnAllListeners();
+    await vi.advanceTimersByTimeAsync(1500);
+
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'RD-P',
+        type: 'workspace_autosaved',
+        challengeId: 'challenge-1',
+      }),
+    );
   });
 });

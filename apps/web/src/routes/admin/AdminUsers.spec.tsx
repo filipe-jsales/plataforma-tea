@@ -131,4 +131,57 @@ describe('AdminUsers', () => {
 
     expect(mockedPatch).toHaveBeenCalledWith('/admin/users/u1/status', { active: false });
   });
+
+  it('the "Consentimento" action only appears for student rows (A2, AC4)', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [teacherUser, studentUser], total: 2, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText('Prof. Ana');
+
+    const rows = screen.getAllByRole('row');
+    const teacherRow = rows.find((row) => within(row).queryByText('Prof. Ana'));
+    const studentRow = rows.find((row) => within(row).queryByText('Aluno Um'));
+    expect(teacherRow && within(teacherRow).queryByRole('button', { name: /consentimento/i })).toBeFalsy();
+    expect(studentRow && within(studentRow).getByRole('button', { name: /consentimento/i })).toBeTruthy();
+  });
+
+  it('AC4 — shows a pending state when the guardian consent has not been registered yet', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
+    mockedGet.mockResolvedValueOnce({
+      recorded: false,
+      guardianName: null,
+      guardianRelationship: null,
+      guardianContact: null,
+      consentedAt: null,
+      collectedByDisplayName: null,
+    });
+
+    renderPage();
+    await screen.findByText('Aluno Um');
+    await userEvent.click(screen.getByRole('button', { name: /consentimento/i }));
+
+    expect(mockedGet).toHaveBeenCalledWith('/admin/students/u2/guardian-consent');
+    expect(await screen.findByText(/ainda não registrado/i)).toBeInTheDocument();
+  });
+
+  it('AC4 — shows when and by whom the consent was recorded', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
+    mockedGet.mockResolvedValueOnce({
+      recorded: true,
+      guardianName: 'Maria Silva',
+      guardianRelationship: 'Mãe',
+      guardianContact: '11999990000',
+      consentedAt: '2026-01-05T12:00:00Z',
+      collectedByDisplayName: 'Prof. Ana',
+    });
+
+    renderPage();
+    await screen.findByText('Aluno Um');
+    await userEvent.click(screen.getByRole('button', { name: /consentimento/i }));
+
+    expect(await screen.findByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.getByText('Mãe')).toBeInTheDocument();
+    expect(screen.getByText('11999990000')).toBeInTheDocument();
+    expect(screen.getByText('Prof. Ana')).toBeInTheDocument();
+  });
 });

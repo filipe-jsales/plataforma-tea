@@ -39,6 +39,17 @@ applyGenerousSnapTolerance();
 // controla o ritmo — por isso vale 0 nesse caso.
 const SEGMENT_DURATION_MS = 260;
 
+// C2 (AC1) — "a cada alteração relevante no workspace, com debounce". Um
+// valor curto o bastante pra não perder muito trabalho numa queda de
+// conexão, longo o bastante pra não disparar uma requisição a cada
+// clique/arrasto individual.
+const AUTOSAVE_DEBOUNCE_MS = 1500;
+// C2 (AC5) — "tenta novamente silenciosamente sem expor erro técnico ao
+// aluno". Uma única retentativa (não uma fila robusta — o próximo debounce
+// tick já tenta de novo com o estado mais recente de qualquer forma, então
+// uma fila persistente não agregaria nada aqui).
+const AUTOSAVE_RETRY_DELAY_MS = 4000;
+
 interface ChallengeGoal {
   shape: 'square';
   sides: number;
@@ -156,9 +167,17 @@ export function ChallengePage() {
   const [primmStage, setPrimmStage] = useState<PrimmStage>('predict');
   const [predictAnswer, setPredictAnswer] = useState<number | null>(null);
   const [modifyResult, setModifyResult] = useState<ModifyResult | null>(null);
+  // C2 — rascunho salvo do workspace (autosave). `draftLoaded` atrasa a
+  // primeira renderização do editor até sabermos se existe rascunho pra
+  // restaurar — nunca monta com o programa curricular pra só depois trocar
+  // pelo rascunho (isso reiniciaria o Blockly de forma perceptível).
+  const [draftJson, setDraftJson] = useState<SerializedBlock | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
   const workspaceRef = useRef<WorkspaceSvg | null>(null);
   const toolboxRenderedRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const executionStore = useMemo(() => createTurtleExecutionStore(), []);
   const helpStore = useMemo(() => createTurtleExecutionStore(), []);
   const executionStatus = executionStore((state) => state.status);
@@ -174,9 +193,13 @@ export function ChallengePage() {
     setPrimmStage('predict');
     setPredictAnswer(null);
     setModifyResult(null);
+    setDraftJson(null);
+    setDraftLoaded(false);
     toolboxRenderedRef.current = false;
     executionStore.getState().reset();
     helpStore.getState().reset();
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
 
     const path = topicId ? `/challenges/by-topic/${topicId}` : `/challenges/${challengeId}`;
     apiClient
@@ -208,6 +231,28 @@ export function ChallengePage() {
     });
   }, [challenge, user]);
 
+  // C2 (AC2) — busca o rascunho salvo assim que o desafio carrega, pra
+  // restaurar "exatamente no estado salvo mais recente". Fase `use` é
+  // sempre travada (readOnly, nunca editada) — nem faz a chamada, autosave
+  // não faz sentido ali. Falha de rede aqui cai pro programa curricular
+  // (nunca trava a tela por causa disso).
+  useEffect(() => {
+    if (!challenge) return;
+    if (challenge.locked) {
+      setDraftJson(null);
+      setDraftLoaded(true);
+      return;
+    }
+    setDraftLoaded(false);
+    apiClient
+      .get<{ workspaceJson: SerializedBlock | null }>(
+        `/students/me/challenges/${challenge.id}/draft`,
+      )
+      .then((response) => setDraftJson(response.workspaceJson))
+      .catch(() => setDraftJson(null))
+      .finally(() => setDraftLoaded(true));
+  }, [challenge]);
+
   // Só a fase `create` (Make) oferece paleta de blocos nova pra arrastar —
   // `use` é travado, `modify` edita campos de um programa fixo, nenhuma das
   // duas mostra toolbox (nunca inferido de `locked`, que hoje só descreve o
@@ -219,11 +264,17 @@ export function ChallengePage() {
     () => (challenge && isCreate ? buildToolboxConfiguration(challenge.toolbox.categories) : undefined),
     [challenge, isCreate],
   );
-  // `program` só existe em `use`/`modify` — não depende de `locked`.
-  const initialJson = useMemo(
-    () => (challenge?.program ? toInitialWorkspaceJson(challenge.program) : undefined),
-    [challenge],
-  );
+  // `program` só existe em `use`/`modify` — não depende de `locked`. C2: um
+  // rascunho salvo (fase não travada) tem prioridade sobre o `program`
+  // curricular — ele representa progresso MAIS recente do aluno; `use` é
+  // sempre travado, então `draftJson` nunca é populado ali (ver efeito
+  // acima).
+  const initialJson = useMemo(() => {
+    if (!challenge) return undefined;
+    const effectiveProgram =
+      !challenge.locked && draftJson ? draftJson : challenge.program;
+    return effectiveProgram ? toInitialWorkspaceJson(effectiveProgram) : undefined;
+  }, [challenge, draftJson]);
   // Snapshot dos valores originais dos campos editáveis (fase `modify`),
   // calculado uma vez a partir do `program` pré-montado — comparado contra o
   // valor atual a cada Executar pra montar `changed_values` do evento
@@ -265,6 +316,81 @@ export function ChallengePage() {
         timestamp: new Date().toISOString(),
       },
     });
+  }
+
+  // C2 (AC4) — invisível ao aluno por padrão: nenhum estado/UI de "salvando…"
+  // é criado aqui, o autosave nunca aparece na tela. (AC5) — falha de rede
+  // tenta de novo em silêncio, uma vez, sem lançar/expor o erro.
+  function saveDraftSilently(serialized: SerializedBlock | null) {
+    if (!challenge) return;
+    const challengeId = challenge.id;
+    apiClient
+      .patch(`/students/me/challenges/${challengeId}/draft`, { workspaceJson: serialized })
+      .then(() => {
+        if (!user) return;
+        logEvent({
+          studentPseudoId: user.pseudonymId,
+          category: 'RD-P',
+          type: 'workspace_autosaved',
+          challengeId,
+          payload: {
+            challenge_id: challengeId,
+            block_sequence_json: serialized,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      })
+      .catch(() => {
+        if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
+        autosaveRetryTimerRef.current = setTimeout(() => {
+          apiClient
+            .patch(`/students/me/challenges/${challengeId}/draft`, { workspaceJson: serialized })
+            .catch(() => {
+              // Silencioso de propósito (AC5) — o próximo tick de debounce
+              // (nova alteração no workspace) já tenta salvar de novo com o
+              // estado mais recente; uma fila de retentativa persistente não
+              // agregaria nada aqui.
+            });
+        }, AUTOSAVE_RETRY_DELAY_MS);
+      });
+  }
+
+  // AC1 — só eventos que mudam o CONTEÚDO do workspace disparam autosave
+  // (criar/apagar/mover/alterar bloco) — nunca eventos de UI (seleção,
+  // clique, scroll), que o addChangeListener também emite.
+  function handleWorkspaceAutosave(event: Blockly.Events.Abstract) {
+    if (!challenge || challenge.locked) return;
+    const isContentChange =
+      event instanceof Blockly.Events.BlockCreate ||
+      event instanceof Blockly.Events.BlockDelete ||
+      event instanceof Blockly.Events.BlockChange ||
+      event instanceof Blockly.Events.BlockMove;
+    if (!isContentChange) return;
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      const workspace = workspaceRef.current;
+      if (!workspace) return;
+      const topBlock = workspace.getTopBlocks(true)[0] ?? null;
+      const serialized = topBlock
+        ? (Blockly.serialization.blocks.save(topBlock, {
+            addInputBlocks: true,
+            addNextBlocks: true,
+          }) as SerializedBlock | null)
+        : null;
+      saveDraftSilently(serialized);
+    }, AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  // AC3 — consolida/descarta o rascunho na submissão final, pra não deixar
+  // um autosave intermediário conflitando com o resultado já concluído.
+  // Fire-and-forget (silencioso, mesmo racional de saveDraftSilently): uma
+  // falha aqui não é grave — o pior caso é o rascunho reaparecer, o que o
+  // aluno já resolveu construindo de novo.
+  function discardDraftSilently() {
+    if (!challenge) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    apiClient.delete(`/students/me/challenges/${challenge.id}/draft`).catch(() => {});
   }
 
   // Motor PRIMM "Predict" (3.6): resposta é uma ação explícita do aluno
@@ -427,6 +553,9 @@ export function ChallengePage() {
         type: 'challenge.completed',
         challengeId: challenge.id,
       });
+      // C2 (AC3) — desafio concluído e submetido: o autosave intermediário
+      // não deve sobrar conflitando com o resultado final.
+      discardDraftSilently();
     }
   }
 
@@ -493,7 +622,11 @@ export function ChallengePage() {
     );
   }
 
-  if (!challenge || !user) {
+  // C2 — espera o rascunho carregar antes de montar o editor pela primeira
+  // vez (nunca monta com o programa curricular pra só depois trocar pelo
+  // rascunho) — mesma tela em branco que `!challenge` já mostra, nenhum
+  // indicador novo (AC4: autosave invisível por padrão).
+  if (!challenge || !user || !draftLoaded) {
     return null;
   }
 
@@ -524,6 +657,11 @@ export function ChallengePage() {
           onInject={(workspace) => {
             workspaceRef.current = workspace;
             workspace.addChangeListener(handleWorkspaceEvent);
+            // C2 — autosave só faz sentido onde o aluno pode editar; `use`
+            // é sempre readOnly (ver workspaceConfiguration acima).
+            if (!challenge.locked) {
+              workspace.addChangeListener(handleWorkspaceAutosave);
+            }
             // 4.2 — reaplica a tolerância de encaixe pra ESTE desafio
             // específico: default (100%) pro currículo semeado, ou o valor
             // que o professor escolheu no formulário guiado ao criar um
@@ -536,6 +674,9 @@ export function ChallengePage() {
           }}
           onDispose={(workspace) => {
             workspace.removeChangeListener(handleWorkspaceEvent);
+            workspace.removeChangeListener(handleWorkspaceAutosave);
+            if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+            if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
           }}
         />
 

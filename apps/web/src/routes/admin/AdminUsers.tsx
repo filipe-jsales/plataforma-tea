@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../../lib/apiClient';
+import type { GuardianConsentAdminView } from '../../lib/adminGuardianConsentTypes';
 import type { AdminUserProfile, CreateStaffUserResponse, PaginatedAdminUsers, UserRole } from '../../lib/adminUserTypes';
 import {
   Badge,
@@ -66,6 +67,11 @@ export function AdminUsers() {
   const [editError, setEditError] = useState<string | null>(null);
 
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+
+  // A2 (AC4) — "quando um admin consulta o cadastro daquele aluno...
+  // consegue visualizar quando e por quem o consentimento foi coletado".
+  const [consentStudent, setConsentStudent] = useState<AdminUserProfile | null>(null);
+  const [consentData, setConsentData] = useState<GuardianConsentAdminView | null>(null);
 
   function reload() {
     setData(null);
@@ -144,6 +150,12 @@ export function AdminUsers() {
     }
   }
 
+  function openConsent(user: AdminUserProfile) {
+    setConsentStudent(user);
+    setConsentData(null);
+    apiClient.get<GuardianConsentAdminView>(`/admin/students/${user.id}/guardian-consent`).then(setConsentData);
+  }
+
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
@@ -193,6 +205,11 @@ export function AdminUsers() {
                     <Button variant="secondary" icon="✏️" onClick={() => openEdit(user)}>
                       Editar
                     </Button>
+                    {user.role === 'student' && (
+                      <Button variant="secondary" icon="🛡️" onClick={() => openConsent(user)}>
+                        Consentimento
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       icon={user.active ? '🚫' : '✅'}
@@ -328,6 +345,34 @@ export function AdminUsers() {
               {editSaving ? 'Salvando…' : 'Salvar'}
             </Button>
           </form>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={consentStudent !== null}
+        onOpenChange={(open) => !open && setConsentStudent(null)}
+        title={consentStudent ? `Consentimento do responsável — ${consentStudent.displayName}` : 'Consentimento do responsável'}
+      >
+        {consentStudent && consentData === null && <p>Carregando…</p>}
+        {consentStudent && consentData && !consentData.recorded && (
+          <InlineFeedback kind="retry">
+            Consentimento do responsável legal ainda não registrado — a credencial de acesso deste aluno
+            está pendente até essa etapa ser concluída.
+          </InlineFeedback>
+        )}
+        {consentStudent && consentData?.recorded && (
+          <dl className="admin-users__consent-details">
+            <dt>Responsável</dt>
+            <dd>{consentData.guardianName}</dd>
+            <dt>Vínculo</dt>
+            <dd>{consentData.guardianRelationship}</dd>
+            <dt>Contato</dt>
+            <dd>{consentData.guardianContact}</dd>
+            <dt>Registrado em</dt>
+            <dd>{consentData.consentedAt ? new Date(consentData.consentedAt).toLocaleString('pt-BR') : '—'}</dd>
+            <dt>Registrado por</dt>
+            <dd>{consentData.collectedByDisplayName ?? '—'}</dd>
+          </dl>
         )}
       </Dialog>
     </main>

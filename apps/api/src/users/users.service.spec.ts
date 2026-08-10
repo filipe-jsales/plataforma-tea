@@ -160,24 +160,57 @@ describe('UsersService', () => {
     });
   });
 
-  describe('createStudent', () => {
-    it('creates the user with role=student and the resolved credential, never an email/password', async () => {
+  describe('createPendingStudent (A2)', () => {
+    it('creates the user with role=student, active=false, and no login credential yet', async () => {
       repository.create.mockImplementation((input) => input as User);
       repository.save.mockImplementation(async (u) => u as User);
 
-      const result = await service.createStudent({
+      const result = await service.createPendingStudent({
         displayName: 'Aluno Teste',
         avatarId: 'avatar-1',
-        loginImageSequence: ['img-1', 'img-2', 'img-3'],
       });
 
       expect(repository.create).toHaveBeenCalledWith({
         displayName: 'Aluno Teste',
         role: Role.STUDENT,
         avatarId: 'avatar-1',
-        loginImageSequence: ['img-1', 'img-2', 'img-3'],
+        active: false,
       });
       expect(result.role).toBe(Role.STUDENT);
+    });
+  });
+
+  describe('activateStudentCredential (A2)', () => {
+    it('returns null without saving when the student does not exist', async () => {
+      repository.findOne.mockResolvedValue(null);
+
+      const result = await service.activateStudentCredential('missing', [
+        'img-1',
+        'img-2',
+        'img-3',
+      ]);
+
+      expect(result).toBeNull();
+      expect(repository.save).not.toHaveBeenCalled();
+    });
+
+    it('sets loginImageSequence and flips active to true — never before this point', async () => {
+      const user = {
+        id: 'student-1',
+        active: false,
+        loginImageSequence: null,
+      } as unknown as User;
+      repository.findOne.mockResolvedValue(user);
+      repository.save.mockImplementation(async (u) => u as User);
+
+      const result = await service.activateStudentCredential('student-1', [
+        'img-1',
+        'img-2',
+        'img-3',
+      ]);
+
+      expect(result?.active).toBe(true);
+      expect(result?.loginImageSequence).toEqual(['img-1', 'img-2', 'img-3']);
     });
   });
 
