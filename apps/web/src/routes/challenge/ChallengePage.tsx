@@ -6,8 +6,10 @@ import { PixiTurtleWorld } from '../../components/challenge/PixiTurtleWorld';
 import { InlineFeedback } from '../../components/ui';
 import {
   applyGenerousSnapTolerance,
+  applyModifyFieldLocking,
   buildToolboxConfiguration,
   registerBlockDefinitions,
+  type EditableFieldConfig,
   type ToolboxCategory,
 } from '../../lib/blocklyToolbox';
 import { interpretProgram, type SerializedBlock } from '../../lib/blockProgram';
@@ -59,17 +61,6 @@ interface ChallengeGoal {
   closureTolerancePx?: number;
 }
 
-// Motor PRIMM "Modify" (3.4/3.6) — um campo do `program` que o aluno pode
-// editar, com os limites curados pra este desafio (ver EditableFieldConfig
-// em apps/api/src/challenges/challenge-config.interface.ts, mesma forma).
-interface EditableField {
-  blockType: string;
-  fieldName: string;
-  label: string;
-  min: number;
-  max: number;
-}
-
 interface ChallengeDetail {
   id: string;
   title: string;
@@ -80,7 +71,7 @@ interface ChallengeDetail {
   program: SerializedBlock | null;
   investigationQuestion: string | null;
   predictQuestion: string | null;
-  editableFields: EditableField[];
+  editableFields: EditableFieldConfig[];
   nextChallengeId: string | null;
   // 4.2 — presente só em desafios criados via template pelo professor;
   // `null` usa o default do editor (aplicado no carregamento do módulo).
@@ -114,34 +105,6 @@ interface ModifyResult {
 
 function toInitialWorkspaceJson(program: SerializedBlock): object {
   return { blocks: { languageVersion: 0, blocks: [program] } };
-}
-
-// Motor PRIMM "Modify": trava a estrutura do programa (bloco não pode ser
-// movido/apagado) e o valor de todo campo que não está em `editableFields` —
-// só os campos configurados pro desafio aceitam edição, e com o min/max
-// definidos ali (não o min/max técnico do bloco em si, ver migration
-// AddAngleFieldToTurnBlock). Chamado uma vez no `onInject` do workspace.
-function applyModifyFieldLocking(workspace: WorkspaceSvg, editableFields: EditableField[]): void {
-  for (const block of workspace.getAllBlocks(false)) {
-    block.setMovable(false);
-    block.setDeletable(false);
-
-    const editableForBlock = editableFields.filter((field) => field.blockType === block.type);
-    for (const input of block.inputList) {
-      for (const field of input.fieldRow) {
-        if (!field.name) continue;
-        const spec = editableForBlock.find((candidate) => candidate.fieldName === field.name);
-        if (!spec) {
-          field.setEnabled(false);
-          continue;
-        }
-        field.setEnabled(true);
-        if (field instanceof Blockly.FieldNumber) {
-          field.setConstraints(spec.min, spec.max, undefined);
-        }
-      }
-    }
-  }
 }
 
 // 3.1/3.2/3.3/3.4 — editor de blocos com paleta restrita (RQ4), mundo de

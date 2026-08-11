@@ -13,6 +13,12 @@ vi.mock('../lib/logEvent', () => ({
   logEvent: vi.fn(),
 }));
 
+const navigateMock = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => navigateMock };
+});
+
 const mockedGet = vi.mocked(apiClient.get);
 
 const testUser = {
@@ -28,6 +34,7 @@ const testUser = {
 
 beforeEach(() => {
   mockedGet.mockReset();
+  navigateMock.mockReset();
   useAuthStore.setState({ token: 'token', user: testUser });
 });
 
@@ -120,5 +127,29 @@ describe('SubjectSelector', () => {
     expect(confirmButton).toBeDisabled();
     await userEvent.click(await screen.findByText('Ângulos e formas'));
     expect(confirmButton).toBeEnabled();
+  });
+
+  it('navigates to the regular ChallengePage route for a topic without a special domain', async () => {
+    mockedGet.mockResolvedValueOnce([{ topicId: 't1', subjectId: 's1', name: 'Ângulos e formas' }]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+    await userEvent.click(await screen.findByText('Ângulos e formas'));
+    await userEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/subjects/t1');
+  });
+
+  it('3.13/3.16 — navigates to the dedicated water-state page for a topic with domain "water_state"', async () => {
+    mockedGet.mockResolvedValueOnce([
+      { topicId: 't2', subjectId: 's2', name: 'Estados da matéria', domain: 'water_state' },
+    ]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+    await userEvent.click(await screen.findByText('Estados da matéria'));
+    await userEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/water/t2');
   });
 });

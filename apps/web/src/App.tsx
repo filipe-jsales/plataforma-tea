@@ -7,6 +7,7 @@ import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
 import { TeacherLogin } from './routes/login/TeacherLogin'
 import { ChallengePage } from './routes/challenge/ChallengePage'
+import { WaterStateChallengePage } from './routes/challenge/WaterStateChallengePage'
 import { AdminExport } from './routes/metrics/AdminExport'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
 import { AdminSettings } from './routes/metrics/AdminSettings'
@@ -68,6 +69,26 @@ function App() {
         element={
           <RequireAuth roles={['student']}>
             <ChallengePage />
+          </RequireAuth>
+        }
+      />
+      {/* 3.13/3.16 — trilha "Estados da Matéria" (domínio water_state, ver
+          Topic.domain): página dedicada, nunca ChallengePage (acoplada ao
+          mundo de tartaruga/Pixi). SubjectSelector.handleConfirm decide
+          entre esta rota e /subjects/:topicId a partir de `topic.domain`. */}
+      <Route
+        path="/water/:topicId"
+        element={
+          <RequireAuth roles={['student']}>
+            <WaterStateChallengePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/water/challenge/:challengeId"
+        element={
+          <RequireAuth roles={['student']}>
+            <WaterStateChallengePage />
           </RequireAuth>
         }
       />

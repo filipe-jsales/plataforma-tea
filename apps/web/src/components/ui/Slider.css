@@ -1,0 +1,54 @@
+.ui-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ui-slider__root {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-height: var(--hit-area-min);
+  touch-action: none;
+  user-select: none;
+}
+
+.ui-slider__track {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.ui-slider__range {
+  position: absolute;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.ui-slider__thumb {
+  display: block;
+  width: var(--hit-area-min);
+  height: var(--hit-area-min);
+  border-radius: 999px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-primary);
+  cursor: pointer;
+}
+
+.ui-slider__thumb:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Redundância textual do valor — nunca só a posição do thumb. */
+.ui-slider__value {
+  min-width: 4.5em;
+  text-align: right;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-text);
+}

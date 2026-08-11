@@ -11,6 +11,10 @@ interface TopicOption {
   topicId: string;
   subjectId: string;
   name: string;
+  // 3.13/3.16 — qual página abre ao confirmar este módulo. Ausente (tópicos
+  // antigos, testes existentes) cai no domínio original de tartaruga —
+  // nunca inferido do slug/nome do tópico.
+  domain?: string;
 }
 
 // 2.3 — seletor de matéria/módulo. Componente genérico pra N itens (AC1);
@@ -45,7 +49,16 @@ export function SubjectSelector() {
       type: 'subject_module_selected',
       payload: { subjectId: selected.subjectId, topicId: selected.topicId },
     });
-    navigate(`/subjects/${selected.topicId}`);
+    // 3.13/3.16 — trilha "Estados da Matéria" abre numa página dedicada
+    // (WaterStateChallengePage), nunca ChallengePage (que é específica do
+    // mundo de tartaruga/Pixi). Um domínio novo sempre exige página nova de
+    // verdade, então esta ramificação por `domain` é o mínimo necessário
+    // aqui — não uma tabela de rotas genérica pra 2 itens.
+    navigate(
+      selected.domain === 'water_state'
+        ? `/water/${selected.topicId}`
+        : `/subjects/${selected.topicId}`,
+    );
   }
 
   return (

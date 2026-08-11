@@ -73,6 +73,7 @@ vi.mock('../../components/challenge/PixiTurtleWorld', () => ({
 
 vi.mock('../../lib/blocklyToolbox', () => ({
   applyGenerousSnapTolerance: vi.fn(),
+  applyModifyFieldLocking: vi.fn(),
   buildToolboxConfiguration: vi.fn(() => ({})),
   registerBlockDefinitions: vi.fn(),
 }));
