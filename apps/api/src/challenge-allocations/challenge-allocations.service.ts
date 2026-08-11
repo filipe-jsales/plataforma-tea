@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChallengesService } from '../challenges/challenges.service';
+import { ChallengeViewsService } from '../challenge-views/challenge-views.service';
 import { Classroom } from '../schools/entities/classroom.entity';
 import { SchoolsService } from '../schools/schools.service';
 import { ChallengeClassroomAllocation } from './entities/challenge-classroom-allocation.entity';
@@ -16,6 +17,11 @@ export interface AvailableChallengeForStudent {
   id: string;
   title: string;
   prompt: string;
+  // E1 — AC1: sinal discreto de "nunca aberto por este aluno", nunca uma
+  // contagem/prazo. Calculado aqui (não persistido em `Challenge`/
+  // `ChallengeClassroomAllocation` — é sempre relativo ao aluno que pediu a
+  // lista, não um atributo do desafio em si).
+  isNew: boolean;
 }
 
 // 4.3 — Alocação de desafio a uma turma. Sem isso, um desafio criado via
@@ -47,6 +53,7 @@ export class ChallengeAllocationsService {
     private readonly allocationsRepository: Repository<ChallengeClassroomAllocation>,
     private readonly challengesService: ChallengesService,
     private readonly schoolsService: SchoolsService,
+    private readonly challengeViewsService: ChallengeViewsService,
   ) {}
 
   // AC1 — a tela de alocação lista as turmas do desafio (pra mostrar quais
@@ -111,11 +118,28 @@ export class ChallengeAllocationsService {
       relations: { challenge: true },
       order: { allocatedAt: 'DESC' },
     });
+    // E1 (AC1/AC3) — 1 query pra descobrir "visto" de TODA a lista, nunca
+    // uma checagem por item (a lista pode ter vários desafios alocados de
+    // uma vez — AC3 exige que cada um seja avaliado individualmente, mas
+    // isso é sobre a EXIBIÇÃO, não sobre custo de query).
+    const viewedIds = await this.challengeViewsService.findViewedChallengeIds(
+      studentUserId,
+      allocations.map((allocation) => allocation.challenge.id),
+    );
     return allocations.map((allocation) => ({
       id: allocation.challenge.id,
       title: allocation.challenge.title,
       prompt: allocation.challenge.prompt,
+      isNew: !viewedIds.has(allocation.challenge.id),
     }));
+  }
+
+  // E1 (AC2) — passthrough pro `ChallengeViewsService`, chamado pela tela do
+  // desafio assim que ele abre. Mantém `StudentClassroomChallengesController`
+  // dependendo só deste service (mesmo padrão de escopo dos outros métodos
+  // aqui).
+  markChallengeViewed(studentUserId: string, challengeId: string): Promise<void> {
+    return this.challengeViewsService.markViewed(studentUserId, challengeId);
   }
 
   private async assertOwnChallenge(challengeId: string, teacherId: string): Promise<void> {

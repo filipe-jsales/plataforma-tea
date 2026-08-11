@@ -342,6 +342,18 @@ rascunho", que é a ausência da linha) é o mesmo formato de
 pra `users`/`challenges` (se o aluno ou o desafio sumir, o rascunho não
 faz sentido sozinho).
 
+### `student_challenge_views`
+
+Ver
+`apps/api/src/challenge-views/entities/student-challenge-view.entity.ts`
+(E1 — indicação visual de desafio novo). Índice único `(studentId,
+challengeId)` — a EXISTÊNCIA da linha já é o estado ("visto"), sem coluna
+de valor nenhuma além de `firstViewedAt` (só informativo, nada lê esse
+timestamp hoje). Sem `UPDATE`/revogação de propósito — "visto" nunca
+volta a "não visto" (ver "Indicação visual de desafio novo/recém-alocado
+(E1)" em `backend.md`). FKs `CASCADE` pra `users`/`challenges`, mesmo
+racional de `student_challenge_drafts`.
+
 ### Migrations aplicadas
 
 1. `1785866463111-CreateUsersAndInteractionEvents.ts` — cria `users` e
@@ -483,15 +495,18 @@ divergir das duas fontes.
 25. `1786368360888-CreateStudentChallengeDrafts.ts` — cria
     `student_challenge_drafts` (C2). Gerada com `migration:generate`, sem
     seed.
+26. `1786413260034-CreateStudentChallengeViews.ts` — cria
+    `student_challenge_views` (E1). Gerada com `migration:generate`, sem
+    seed.
 
 Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª, a 23ª, a
-24ª e a 25ª já foram validadas com `npm run migration:run` contra um
-Postgres real (a 21ª e a 22ª também conferidas via `curl` ponta a ponta
+24ª, a 25ª e a 26ª já foram validadas com `npm run migration:run` contra
+um Postgres real (a 21ª e a 22ª também conferidas via `curl` ponta a ponta
 contra as contas demo — ver "Testes" nas seções 1.2/1.4/1.5 e 3.7 de
 `backend.md`), e `\dt` + `\d <tabela>` conferidos no `psql` (a 19ª e a 20ª
 foram conferidas via cliente `pg` direto — `psql` não estava disponível no
 ambiente que rodou essas migrations). Depois da 20ª e de novo depois da
-23ª e da 25ª, um `migration:generate` extra confirmou "No changes in
+23ª, da 25ª e da 26ª, um `migration:generate` extra confirmou "No changes in
 database schema were found" — zero diff pendente entre entidades e banco.
 O backfill da 24ª foi conferido por query direta (`guardian_consents` join
 `users`, aluno demo com `guardianName`/`guardianRelationship` presentes).

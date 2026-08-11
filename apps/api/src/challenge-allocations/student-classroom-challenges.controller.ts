@@ -1,4 +1,4 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -20,5 +20,17 @@ export class StudentClassroomChallengesController {
   @Get('classroom-challenges')
   getClassroomChallenges(@Request() req: { user: JwtPayload }) {
     return this.allocationsService.findAvailableForStudent(req.user.sub);
+  }
+
+  // E1 (AC2) — chamado por `ChallengePage` assim que o desafio abre; nunca
+  // uma ação explícita de "marcar como lido" pro aluno. Sempre escopado ao
+  // próprio aluno autenticado (`req.user.sub`), nunca um id vindo do corpo.
+  @Post('classroom-challenges/:challengeId/viewed')
+  @HttpCode(204)
+  markViewed(
+    @Param('challengeId') challengeId: string,
+    @Request() req: { user: JwtPayload },
+  ): Promise<void> {
+    return this.allocationsService.markChallengeViewed(req.user.sub, challengeId);
   }
 }

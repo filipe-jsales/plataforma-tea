@@ -77,6 +77,49 @@ describe('apiClient', () => {
     await expect(apiClient.get('/users/me')).rejects.toBeInstanceOf(ApiError);
   });
 
+  describe('1.5.1 — expiração de sessão', () => {
+    it('a 401 WITHOUT a session token (ex.: login com credencial errada) never clears a session or redirects', async () => {
+      // token já é null por padrão no beforeEach — este é literalmente o
+      // caso "tentativa de login", nunca deveria mexer na sessão.
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ message: 'Sequência incorreta.' }),
+      });
+
+      await expect(apiClient.post('/auth/student/login', {})).rejects.toMatchObject({ status: 401 });
+
+      expect(useAuthStore.getState().token).toBeNull();
+    });
+
+    it('a 401 WITH a session token clears the local session (token expirado/inválido)', async () => {
+      useAuthStore.setState({ token: 'expired-token', user: null });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ message: 'Unauthorized' }),
+      });
+
+      await expect(apiClient.get('/users/me')).rejects.toMatchObject({ status: 401 });
+
+      expect(useAuthStore.getState().token).toBeNull();
+      expect(useAuthStore.getState().user).toBeNull();
+    });
+
+    it('a 403 (papel errado, não sessão expirada) never clears the session', async () => {
+      useAuthStore.setState({ token: 'valid-token', user: null });
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ message: 'Forbidden' }),
+      });
+
+      await expect(apiClient.get('/admin/users')).rejects.toMatchObject({ status: 403 });
+
+      expect(useAuthStore.getState().token).toBe('valid-token');
+    });
+  });
+
   it('joins a class-validator array message into a single string', async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,

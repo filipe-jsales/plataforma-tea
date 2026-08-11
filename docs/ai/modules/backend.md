@@ -1708,6 +1708,163 @@ antes de 1.5s, salva depois, um burst de mudanças reseta o timer e salva
 só uma vez), retentativa silenciosa após falha, nenhum indicador de
 "salvando" na tela, e descarte do rascunho ao concluir o desafio.
 
+## Indicação visual de desafio novo/recém-alocado (E1)
+
+Regra não-negociável de feedback não-punitivo/não-ansiogênico; complementa
+RQ4 — ansiedade social/RSD (13,04%). "Novo" aqui é sempre relativo ao
+ALUNO ("nunca aberto por ele"), nunca ao tempo de alocação — evita um
+parâmetro de janela arbitrário (ex.: "novo = alocado nos últimos N dias")
+e casa exatamente com a AC2 ("o marcador é removido automaticamente
+quando o aluno abre pela primeira vez, nunca reaparece").
+
+### `StudentChallengeView` — existência da linha É o estado
+
+`ChallengeViewsModule` (`apps/api/src/challenge-views/`) — tabela
+`student_challenge_views` (`studentId`+`challengeId` `UNIQUE`). Mesmo
+racional já estabelecido pra `StudentChallengeDraft` (C2) e
+`ChallengeClassroomAllocation` (4.3): estado do PRÓPRIO aluno sobre um
+desafio, nunca um `interaction_event` fake — aqui a decisão é ainda mais
+direta que nos outros dois casos, porque a pergunta é literalmente
+binária ("existe a linha?"), sem nenhum dado adicional pra carregar. Sem
+`updatedAt`/revogação — "visto" nunca volta a "não visto".
+
+`ChallengeViewsService.markViewed` é idempotente por construção (checa
+existência antes de inserir, e ainda assim engole uma falha de UNIQUE
+numa corrida rara — ex.: duas abas no mesmo desafio) — a AC2 exige "sem
+exigir ação extra de marcar como lido", o que só faz sentido se a segunda
+chamada (aluno reabre o mesmo desafio depois) nunca vira erro.
+
+### `findAvailableForStudent` ganha `isNew` — sem N+1
+
+`ChallengeAllocationsService.findAvailableForStudent` (4.3) passou a
+computar `isNew` pra cada desafio da lista com UMA chamada a
+`ChallengeViewsService.findViewedChallengeIds` (recebe a lista inteira de
+`challengeId`, devolve um `Set` dos já vistos) — nunca uma query por
+item, mesmo com vários desafios alocados de uma vez (AC3: "cada desafio é
+sinalizado individualmente", mas isso é sobre a EXIBIÇÃO, não sobre custo
+de query).
+
+### Endpoint — `POST /students/me/classroom-challenges/:challengeId/viewed`
+
+Adicionado a `StudentClassroomChallengesController` (mesmo controller de
+`GET .../classroom-challenges`, 4.3) — sempre escopado ao próprio aluno
+autenticado (`req.user.sub`), `204` sem corpo, chamado pelo frontend
+assim que `ChallengePage` abre (mesmo efeito que já loga `toolbox_rendered`,
+ver "Blocos por desafio"), nunca uma ação explícita de "marcar como lido"
+do aluno.
+
+### Frontend — marcador discreto, nunca contagem
+
+`SubjectSelector.tsx` (a tela onde "a trilha" do aluno vive, 4.3) renderiza
+`<Badge variant="info">Novo</Badge>` ao lado do link de cada desafio com
+`isNew: true` — `variant="info"` usa `--color-primary` (cor de marca calma,
+nunca `--color-warning`/vermelho de alerta — AC1: "sem cor de
+alerta/urgência"). Nenhum contador agregado em lugar nenhum da tela (AC3)
+— cada `<Badge>` é independente, texto estático "Novo" sem prazo/contagem
+regressiva (AC4). `ChallengePage.tsx` chama o endpoint de "visto" no mesmo
+efeito que já loga `toolbox_rendered`, fire-and-forget (uma falha de rede
+aqui nunca deve impedir o aluno de usar o desafio — mesma filosofia de
+`logEvent`).
+
+### Testes
+
+`challenge-views.service.spec.ts` cobre a idempotência de `markViewed`
+(inclusive a corrida de UNIQUE engolida) e `findViewedChallengeIds`
+(lista vazia não dispara query). `challenge-allocations.service.spec.ts`
+ganhou casos pra `isNew` (misto visto/não visto na mesma lista) e pro
+passthrough de `markChallengeViewed`. Frontend:
+`SubjectSelector.spec.tsx` cobre o marcador aparecendo/sumindo e a
+ausência de contador agregado com 3 desafios novos de uma vez;
+`ChallengePage.spec.tsx` cobre a chamada do endpoint de "visto" ao abrir
+e que uma falha nele nunca bloqueia a tela.
+
+## Logout e expiração de sessão (1.5.1)
+
+Duas lacunas reais que existiam desde o MVP: (1) `useAuthStore.clearSession()`
+já existia mas nenhum componente chamava — não havia botão de logout em
+lugar nenhum da UI; (2) nenhum tratamento de token JWT expirado —
+`RequireAuth` só checava se havia uma sessão salva, nunca se o token
+ainda era válido, e `apiClient` tratava um 401 igual a qualquer outro
+erro HTTP.
+
+### Logout é sempre local — JWT stateless, sem endpoint de revogação
+
+`lib/logout.ts` (`performLogout`) — chama `useAuthStore.getState().clearSession()`
+direto, sem chamada de API: não existe endpoint de logout/revogação no
+backend (mesma decisão já tomada pro resto da autenticação deste projeto,
+"sem OAuth de terceiros", ver `useAuthStore.ts`) — um JWT válido continua
+válido no backend até expirar sozinho, mesmo depois do "logout" no
+cliente; isso é uma limitação aceita de JWT stateless, não um bug (e não
+há infraestrutura de blacklist de token no MVP, fora de escopo aqui).
+
+`logout` (RD-L) só é logado pro ALUNO — mesmo padrão de
+`login_success`/`login_attempt` (`interaction_events.studentPseudoId` é
+escopado a aluno de propósito; professor/admin não geram evento aqui, ver
+"Padrão: eventos RD-* são escopados ao aluno"). Não é possível logar isso
+DEPOIS que a sessão expira (o próprio evento exigiria um JWT válido pra
+passar por `JwtAuthGuard`), então esse evento só cobre logout VOLUNTÁRIO
+(clique em "Sair"), nunca expiração.
+
+### Sem endpoint de refresh token — decisão de escopo, não gap esquecido
+
+`JwtModule` já configura `JWT_EXPIRES_IN` (8h em `.env.example`) desde o
+início do projeto, mas não existe (e este card não adiciona) um endpoint
+de renovação silenciosa de token. Quando o token expira, a única saída é
+logar de novo — decisão de escopo deliberada (o ticket original só pede
+"tratamento de expiração", não "sessão nunca expira") — documentada aqui
+pra não ser confundida com uma lacuna esquecida.
+
+### `apiClient.ts` — 401 só derruba sessão que EXISTIA
+
+`authorizedFetch` agora checa `response.status === 401 && token` — o
+`&& token` é o detalhe que importa: um 401 numa tentativa de LOGIN (que
+nunca carrega token, `Authorization` header ausente) é só "credenciais
+erradas", tratado como sempre por `throwForErrorResponse` — nunca
+dispara `clearSession()`/redirect (isso destruiria a tela de login no
+meio de mostrar a mensagem de erro pro aluno/professor/admin). Só um 401
+numa requisição que JÁ tinha um Bearer token significa "sessão que
+achávamos válida foi rejeitada pelo backend" — aí sim `clearSession()` +
+`window.location.href = '/login'` (navegação de página inteira, não
+`useNavigate` — `apiClient` é um módulo puro, fora de contexto React).
+
+### `RequireAuth.tsx` — checagem proativa, não só reativa
+
+`lib/jwt.ts` (`isTokenExpired`) decodifica só o PAYLOAD do JWT (nunca
+valida assinatura no cliente — isso é sempre responsabilidade do backend
+a cada request) e compara `exp` com a hora atual. `RequireAuth` usa isso
+pra redirecionar pro login ANTES de qualquer chamada de API sair — cobre
+o caso "abriu uma aba/computador da sala 9h depois", que só o tratamento
+de 401 do `apiClient` (reativo, só age depois de uma chamada falhar)
+não cobriria de forma tão imediata. As duas camadas são complementares,
+não redundantes: proativa (abrir a tela) + reativa (uma chamada em voo
+que expira no meio).
+
+### Botão "Sair" — sem header/AppShell compartilhado
+
+As 3 homes (`StudentHome`/`TeacherHome`/`AdminHome`) não tinham (e
+continuam sem) nenhum componente de header/navbar comum — cada uma
+ganhou seu próprio botão "Sair" (`home__topbar`, fora do grupo
+`home__actions`) de propósito: na home do aluno, "Sair" NÃO conta como
+uma das "no máximo 2 ações principais" (AC1 de 2.1) — é uma ação de
+escape sempre disponível mas visualmente discreta (`variant="ghost"`),
+nunca competindo pela atenção do aluno com "Continuar"/"Meu progresso".
+Construir um `AppShell`/header compartilhado pras 3 telas foi
+considerado e descartado por escopo — o ticket pede "existe um jeito de
+sair", não uma reformulação de navegação global.
+
+### Testes
+
+`jwt.spec.ts` cobre token válido/expirado/malformado/sem `exp` (falha
+segura — trata como expirado). `apiClient.spec.ts` ganhou os 3 casos que
+importam: 401 sem token (login errado) nunca limpa sessão, 401 com token
+limpa, 403 (papel errado, não expiração) nunca limpa. `RequireAuth.spec.tsx`
+(novo arquivo — não existia teste pra este componente antes) cobre sem
+sessão, sessão válida, token expirado (limpa + redireciona), papel
+errado. `logout.spec.ts` cobre o evento RD-L só pra aluno. Cada home
+ganhou um teste mínimo confirmando que "Sair" limpa a sessão e navega pro
+login — sem duplicar cobertura entre os 3 (a lógica em si já está
+integralmente coberta por `logout.spec.ts`).
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Transporte de e-mail de verdade pro link de definição de senha de 1.4

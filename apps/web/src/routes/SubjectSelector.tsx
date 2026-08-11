@@ -4,7 +4,7 @@ import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import type { AvailableChallengeForStudent } from '../lib/challengeAllocationTypes';
 import { useAuthStore } from '../stores/useAuthStore';
-import { Button, LinkButton, SelectableCard } from '../components/ui';
+import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
 
 interface TopicOption {
@@ -77,10 +77,14 @@ export function SubjectSelector() {
           <h2>Desafios da sua turma</h2>
           <ul className="subject-selector__list">
             {classroomChallenges.map((challenge) => (
-              <li key={challenge.id}>
+              <li key={challenge.id} className="subject-selector__classroom-challenge">
                 <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon="🧩">
                   {challenge.title}
                 </LinkButton>
+                {/* E1 — marcador discreto, nunca contagem/urgência (AC1/AC4):
+                    "Novo" some sozinho quando o aluno abre o desafio (AC2,
+                    ver ChallengePage), sem contador agregado (AC3). */}
+                {challenge.isNew && <Badge variant="info">Novo</Badge>}
               </li>
             ))}
           </ul>

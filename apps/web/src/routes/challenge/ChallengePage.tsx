@@ -229,6 +229,11 @@ export function ChallengePage() {
         timestamp: new Date().toISOString(),
       },
     });
+    // E1 (AC2) — "o marcador de novo é removido automaticamente, sem
+    // exigir ação extra" — chamado sempre que o desafio abre (não só o
+    // primeiro, o backend já é idempotente), silencioso: falha de rede
+    // aqui nunca deve impedir o aluno de usar o desafio.
+    apiClient.post(`/students/me/classroom-challenges/${challenge.id}/viewed`).catch(() => {});
   }, [challenge, user]);
 
   // C2 (AC2) — busca o rascunho salvo assim que o desafio carrega, pra

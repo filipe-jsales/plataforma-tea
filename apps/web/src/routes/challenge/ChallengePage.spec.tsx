@@ -83,11 +83,12 @@ vi.mock('../../lib/turtleWorld', () => ({
 }));
 
 vi.mock('../../lib/apiClient', () => ({
-  apiClient: { get: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 vi.mock('../../lib/logEvent', () => ({ logEvent: vi.fn() }));
 
 const mockedGet = vi.mocked(apiClient.get);
+const mockedPost = vi.mocked(apiClient.post);
 const mockedPatch = vi.mocked(apiClient.patch);
 const mockedDelete = vi.mocked(apiClient.delete);
 const mockedLogEvent = vi.mocked(logEvent);
@@ -131,6 +132,7 @@ beforeEach(() => {
   // rascunho) cobre a 2ª chamada em diante — cada teste só precisa
   // continuar enfileirando a 1ª (`mockResolvedValueOnce(baseCreateChallenge)`).
   mockedGet.mockResolvedValue({ workspaceJson: null });
+  mockedPost.mockReset().mockResolvedValue(undefined);
   mockedPatch.mockReset().mockResolvedValue(undefined);
   mockedDelete.mockReset().mockResolvedValue(undefined);
   mockedLogEvent.mockReset();
@@ -442,5 +444,25 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
         challengeId: 'challenge-1',
       }),
     );
+  });
+});
+
+describe('ChallengePage — marca o desafio como visto (E1, AC2)', () => {
+  it('calls the "viewed" endpoint scoped to this challenge as soon as it opens', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(mockedPost).toHaveBeenCalledWith('/students/me/classroom-challenges/challenge-1/viewed');
+  });
+
+  it('never blocks the challenge from rendering if marking it viewed fails', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+    mockedPost.mockRejectedValueOnce(new Error('network down'));
+
+    renderChallenge('challenge-1');
+
+    expect(await screen.findByRole('button', { name: /executar/i })).toBeInTheDocument();
   });
 });
