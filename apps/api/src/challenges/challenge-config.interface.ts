@@ -149,6 +149,16 @@ export interface ChallengeConfig {
   // template antes de o desafio poder ser salvo (RQ4, coordenação motora
   // fina).
   snapTolerancePercent?: number;
+  // Tamanho dos blocos no editor (fator de escala aplicado a
+  // `zoom.startScale` do Blockly, ver ChallengePage.tsx) — escolhido pelo
+  // professor entre 3 opções nomeadas (Pequeno/Médio/Grande, nunca um número
+  // de escala cru, regra não-negociável 9) num desafio criado via template.
+  // Ausente em desafios curados via seed (comportamento default do Blockly,
+  // `startScale: 1`). Mesmo racional de `snapTolerancePercent` acima —
+  // blocos maiores ajudam legibilidade e alvo de toque pra coordenação
+  // motora fina (RQ4) — mas é um conceito DIFERENTE: aquele é tolerância de
+  // encaixe, este é tamanho visual do bloco.
+  blockScale?: number;
   // 3.7 (AC4) — ver ChallengeFeedbackMessages acima.
   feedbackMessages?: ChallengeFeedbackMessages;
 }

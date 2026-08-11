@@ -56,6 +56,7 @@ describe('ChallengeTemplatesService', () => {
     snapTolerancePercent: 60,
     closureTolerancePx: 5,
     enabledBlockTypes: ['move_forward', 'turn'],
+    blockSize: 'medium',
   };
 
   beforeEach(() => {
@@ -207,6 +208,7 @@ describe('ChallengeTemplatesService', () => {
           allowedBlockTypes: ['move_forward', 'turn'],
           goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90, closureTolerancePx: 5 },
           snapTolerancePercent: 60,
+          blockScale: 1.3,
         },
         templateParams: validParams,
       });

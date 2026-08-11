@@ -3,7 +3,7 @@
 // Duplicado aqui de propósito (mesmo padrão de ChallengeConfig/
 // SerializedBlockState — não há pacote compartilhado entre as duas apps
 // neste monorepo, ver challenge-config.interface.ts no backend).
-export type TemplateParameterType = 'integer' | 'percentage' | 'boolean' | 'blockSelection';
+export type TemplateParameterType = 'integer' | 'percentage' | 'boolean' | 'blockSelection' | 'select';
 
 export type TemplateParameterVisualPreview = 'polygonSides' | 'angleWedge' | 'toleranceGauge' | 'none';
 
@@ -20,10 +20,12 @@ export interface TemplateParameterDefinition {
   helpText?: string;
   min?: number;
   max?: number;
-  defaultValue: number | boolean | string[];
+  defaultValue: number | boolean | string | string[];
   visualPreview: TemplateParameterVisualPreview;
-  // Só presente pra 'blockSelection', já resolvido pelo backend (rótulo em
-  // português do catálogo de blocos, filtrado pela regra Use-Modify-Create).
+  // Presente pra 'blockSelection' (resolvido pelo backend: rótulo em
+  // português do catálogo de blocos, filtrado pela regra Use-Modify-Create)
+  // e pra 'select' (opções fixas já declaradas no `parameterSchema`, sem
+  // nada a resolver).
   options?: TemplateParameterOption[];
 }
 

@@ -85,6 +85,11 @@ interface ChallengeDetail {
   // 4.2 — presente só em desafios criados via template pelo professor;
   // `null` usa o default do editor (aplicado no carregamento do módulo).
   snapTolerancePercent: number | null;
+  // Tamanho dos blocos escolhido pelo professor num desafio criado via
+  // template (Pequeno/Médio/Grande no formulário guiado, ver
+  // challenge-config.interface.ts#blockScale no backend); `null` usa o
+  // default do editor (`startScale: 1`, ver workspaceConfiguration abaixo).
+  blockScale: number | null;
   // 3.7 (AC4) — mensagens de feedback customizadas pelo professor; `null`
   // (ou campo individual `null`) usa o conjunto de mensagens-padrão
   // sugeridas (ver lib/feedbackMessages.ts).
@@ -656,7 +661,7 @@ export function ChallengePage() {
             // applyModifyFieldLocking), então nenhuma das duas aparece lá.
             trashcan: isCreate,
             grid: { spacing: 24, length: 3, colour: '#d7dbe0', snap: false },
-            zoom: { controls: !challenge.locked, wheel: false, startScale: 1 },
+            zoom: { controls: !challenge.locked, wheel: false, startScale: challenge.blockScale ?? 1 },
             move: { scrollbars: true, drag: !challenge.locked, wheel: false },
           }}
           onInject={(workspace) => {

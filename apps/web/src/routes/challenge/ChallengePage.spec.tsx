@@ -24,14 +24,20 @@ import { ChallengePage } from './ChallengePage';
 // da factory do mock) expõe a instância fake pro corpo dos testes de
 // autosave (C2) conseguirem disparar os listeners registrados via
 // `addChangeListener` diretamente.
-const { workspaceHolder, lastInitialJsonHolder } = vi.hoisted(() => ({
+const { workspaceHolder, lastInitialJsonHolder, lastWorkspaceConfigHolder } = vi.hoisted(() => ({
   workspaceHolder: { current: null as null | { addChangeListener: ReturnType<typeof vi.fn> } },
   lastInitialJsonHolder: { current: undefined as unknown },
+  lastWorkspaceConfigHolder: { current: undefined as unknown },
 }));
 
 vi.mock('react-blockly', () => ({
-  BlocklyWorkspace: (props: { onInject?: (workspace: unknown) => void; initialJson?: unknown }) => {
+  BlocklyWorkspace: (props: {
+    onInject?: (workspace: unknown) => void;
+    initialJson?: unknown;
+    workspaceConfiguration?: unknown;
+  }) => {
     lastInitialJsonHolder.current = props.initialJson;
+    lastWorkspaceConfigHolder.current = props.workspaceConfiguration;
     useEffect(() => {
       const fakeWorkspace = {
         addChangeListener: vi.fn(),
@@ -119,12 +125,14 @@ const baseCreateChallenge = {
   editableFields: [],
   nextChallengeId: null,
   snapTolerancePercent: null,
+  blockScale: null,
   feedbackMessages: null,
 };
 
 beforeEach(() => {
   workspaceHolder.current = null;
   lastInitialJsonHolder.current = undefined;
+  lastWorkspaceConfigHolder.current = undefined;
   mockedGet.mockReset();
   // C2 — toda tela de desafio não-travada busca o rascunho salvo logo
   // depois de buscar o desafio (2ª chamada de `apiClient.get`); os testes
@@ -278,6 +286,32 @@ describe('ChallengePage — closure tolerance (7.4 AC3)', () => {
 
     await waitFor(() => expect(mockedEvaluateSquareGoal).toHaveBeenCalled());
     expect(mockedEvaluateSquareGoal.mock.calls[0][2]).toBeUndefined();
+  });
+});
+
+describe('ChallengePage — tamanho dos blocos', () => {
+  it('uses the Blockly default scale (1) when the challenge does not customize blockScale (curriculum-seeded)', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+
+    await waitFor(() =>
+      expect(
+        (lastWorkspaceConfigHolder.current as { zoom: { startScale: number } }).zoom.startScale,
+      ).toBe(1),
+    );
+  });
+
+  it('applies the teacher-chosen blockScale as the Blockly startScale for a template-authored challenge', async () => {
+    mockedGet.mockResolvedValueOnce({ ...baseCreateChallenge, blockScale: 1.6 });
+
+    renderChallenge('challenge-1');
+
+    await waitFor(() =>
+      expect(
+        (lastWorkspaceConfigHolder.current as { zoom: { startScale: number } }).zoom.startScale,
+      ).toBe(1.6),
+    );
   });
 });
 
