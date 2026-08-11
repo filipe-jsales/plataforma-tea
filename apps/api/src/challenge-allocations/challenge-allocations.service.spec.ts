@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, NotFoundException } from '@nestj
 import { Repository } from 'typeorm';
 import { ChallengesService } from '../challenges/challenges.service';
 import { Challenge } from '../challenges/entities/challenge.entity';
+import { ChallengeViewsService } from '../challenge-views/challenge-views.service';
 import { Classroom } from '../schools/entities/classroom.entity';
 import { Enrollment } from '../schools/entities/enrollment.entity';
 import { SchoolsService } from '../schools/schools.service';
@@ -13,6 +14,7 @@ describe('ChallengeAllocationsService', () => {
   let allocationsRepository: jest.Mocked<Repository<ChallengeClassroomAllocation>>;
   let challengesService: jest.Mocked<ChallengesService>;
   let schoolsService: jest.Mocked<SchoolsService>;
+  let challengeViewsService: jest.Mocked<ChallengeViewsService>;
 
   const ownedChallenge = { id: 'challenge-1', createdByUserId: 'teacher-1' } as unknown as Challenge;
   const ownClassroom = { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-1', teacherId: 'teacher-1' } as Classroom;
@@ -31,8 +33,17 @@ describe('ChallengeAllocationsService', () => {
       findClassroomById: jest.fn(),
       findActiveEnrollmentsByStudent: jest.fn(),
     } as unknown as jest.Mocked<SchoolsService>;
+    challengeViewsService = {
+      findViewedChallengeIds: jest.fn().mockResolvedValue(new Set()),
+      markViewed: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ChallengeViewsService>;
 
-    service = new ChallengeAllocationsService(allocationsRepository, challengesService, schoolsService);
+    service = new ChallengeAllocationsService(
+      allocationsRepository,
+      challengesService,
+      schoolsService,
+      challengeViewsService,
+    );
   });
 
   describe('listForTeacherChallenge', () => {
@@ -162,7 +173,9 @@ describe('ChallengeAllocationsService', () => {
         relations: { challenge: true },
         order: { allocatedAt: 'DESC' },
       });
-      expect(result).toEqual([{ id: 'c1', title: 'Hexágonos', prompt: 'Monte um desenho com 6 lados.' }]);
+      expect(result).toEqual([
+        { id: 'c1', title: 'Hexágonos', prompt: 'Monte um desenho com 6 lados.', isNew: true },
+      ]);
     });
 
     it('AC3 — a challenge never allocated to any classroom never appears for any student', async () => {
@@ -172,6 +185,33 @@ describe('ChallengeAllocationsService', () => {
       allocationsRepository.find.mockResolvedValue([]);
 
       await expect(service.findAvailableForStudent('student-1')).resolves.toEqual([]);
+    });
+
+    it('E1 (AC1/AC2) — isNew is false for a challenge the student has already viewed', async () => {
+      schoolsService.findActiveEnrollmentsByStudent.mockResolvedValue([
+        { classroomId: 'classroom-1' } as Enrollment,
+      ]);
+      allocationsRepository.find.mockResolvedValue([
+        { challenge: { id: 'c1', title: 'Hexágonos', prompt: 'p' } } as ChallengeClassroomAllocation,
+        { challenge: { id: 'c2', title: 'Triângulos', prompt: 'p' } } as ChallengeClassroomAllocation,
+      ]);
+      challengeViewsService.findViewedChallengeIds.mockResolvedValue(new Set(['c1']));
+
+      const result = await service.findAvailableForStudent('student-1');
+
+      expect(challengeViewsService.findViewedChallengeIds).toHaveBeenCalledWith('student-1', ['c1', 'c2']);
+      expect(result).toEqual([
+        { id: 'c1', title: 'Hexágonos', prompt: 'p', isNew: false },
+        { id: 'c2', title: 'Triângulos', prompt: 'p', isNew: true },
+      ]);
+    });
+  });
+
+  describe('markChallengeViewed (E1, AC2)', () => {
+    it('delegates to ChallengeViewsService, scoped to the given student', async () => {
+      await service.markChallengeViewed('student-1', 'challenge-1');
+
+      expect(challengeViewsService.markViewed).toHaveBeenCalledWith('student-1', 'challenge-1');
     });
   });
 });

@@ -1,11 +1,24 @@
 import * as Blockly from 'blockly/core';
+import type { WorkspaceSvg } from 'react-blockly';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   applyGenerousSnapTolerance,
+  applyModifyFieldLocking,
   buildToolboxConfiguration,
   registerBlockDefinitions,
   type ToolboxCategory,
 } from './blocklyToolbox';
+
+// Testes deste describe usam um Blockly.Workspace headless de verdade (sem
+// SVG/DOM) — o suficiente pra exercitar isMovable/getField/setConstraints,
+// que não dependem de renderização. `applyModifyFieldLocking` só declara
+// `WorkspaceSvg` na assinatura porque é o tipo que react-blockly entrega em
+// produção (ver onInject em ChallengePage/WaterStateChallengePage); o cast
+// aqui é só pra satisfazer esse tipo mais amplo em teste, nunca usado fora
+// de teste.
+function asWorkspaceSvg(workspace: Blockly.Workspace): WorkspaceSvg {
+  return workspace as unknown as WorkspaceSvg;
+}
 
 const categories: ToolboxCategory[] = [
   {
@@ -121,5 +134,68 @@ describe('applyGenerousSnapTolerance', () => {
     expect(Blockly.config.dragRadius).toBeGreaterThan(0);
     expect(Blockly.config.snapRadius).toBeGreaterThan(0);
     expect(Blockly.config.connectingSnapRadius).toBeGreaterThan(0);
+  });
+});
+
+// Extraída de ChallengePage.tsx (era local/não-exportada) pra ser
+// reaproveitada por WaterStateChallengePage — domínio-agnóstica de
+// propósito, então os testes aqui usam um bloco de teste genérico, nunca
+// um bloco real de tartaruga/condicional.
+describe('applyModifyFieldLocking', () => {
+  beforeEach(() => {
+    delete (Blockly.Blocks as Record<string, unknown>).test_lockable;
+    Blockly.defineBlocksWithJsonArray([
+      {
+        type: 'test_lockable',
+        message0: 'valor %1',
+        args0: [{ type: 'field_number', name: 'VALUE', value: 10 }],
+        previousStatement: null,
+        nextStatement: null,
+      },
+    ]);
+  });
+
+  it('locks structure (not movable/deletable) for every block, regardless of domain', () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock('test_lockable');
+
+    applyModifyFieldLocking(asWorkspaceSvg(workspace), []);
+
+    expect(block.isMovable()).toBe(false);
+    expect(block.isDeletable()).toBe(false);
+  });
+
+  it('disables every field not listed in editableFields', () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock('test_lockable');
+
+    applyModifyFieldLocking(asWorkspaceSvg(workspace), []);
+
+    expect(block.getField('VALUE')?.isEnabled()).toBe(false);
+  });
+
+  it('enables and constrains only the fields declared in editableFields, matched by blockType+fieldName', () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock('test_lockable');
+
+    applyModifyFieldLocking(asWorkspaceSvg(workspace), [
+      { blockType: 'test_lockable', fieldName: 'VALUE', label: 'Valor', min: 1, max: 5 },
+    ]);
+
+    const field = block.getField('VALUE') as Blockly.FieldNumber;
+    expect(field.isEnabled()).toBe(true);
+    expect(field.getMin()).toBe(1);
+    expect(field.getMax()).toBe(5);
+  });
+
+  it("leaves a field disabled when editableFields names it for a DIFFERENT blockType", () => {
+    const workspace = new Blockly.Workspace();
+    const block = workspace.newBlock('test_lockable');
+
+    applyModifyFieldLocking(asWorkspaceSvg(workspace), [
+      { blockType: 'some_other_block', fieldName: 'VALUE', label: 'Valor', min: 1, max: 5 },
+    ]);
+
+    expect(block.getField('VALUE')?.isEnabled()).toBe(false);
   });
 });

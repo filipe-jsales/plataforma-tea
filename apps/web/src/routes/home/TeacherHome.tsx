@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
+import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { LinkButton } from '../../components/ui';
+import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
 
 interface TeacherHomeClassroom {
@@ -15,6 +17,7 @@ interface TeacherHomeClassroom {
 // ("N alunos com atividade hoje"), nunca ranking de alunos (AC3) — RD-E
 // como sinal observável agregado, não inferência individual.
 export function TeacherHome() {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [classrooms, setClassrooms] = useState<TeacherHomeClassroom[] | null>(null);
 
@@ -22,10 +25,22 @@ export function TeacherHome() {
     apiClient.get<TeacherHomeClassroom[]>('/home/teacher').then(setClassrooms);
   }, []);
 
+  function handleLogout() {
+    if (!user) return;
+    performLogout(user);
+    navigate('/login', { replace: true });
+  }
+
   if (!user) return null;
 
   return (
     <main className="home staff-theme">
+      <div className="home__topbar">
+        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
+          Sair
+        </Button>
+      </div>
+
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">

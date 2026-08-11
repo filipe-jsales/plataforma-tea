@@ -49,6 +49,10 @@ interface ChallengeDetail {
   // via template; `null` usa o default do editor (ver
   // apps/web/src/lib/blocklyToolbox.ts#applyGenerousSnapTolerance).
   snapTolerancePercent: number | null;
+  // Tamanho dos blocos escolhido pelo professor num desafio criado via
+  // template (ver ChallengeConfig.blockScale); `null` usa o default do
+  // editor (`startScale: 1`, ver ChallengePage.tsx).
+  blockScale: number | null;
   // 3.7 (AC4) — mensagens de feedback customizadas pelo professor; campos
   // ausentes/`null` usam o conjunto de mensagens-padrão sugeridas
   // (ChallengePage.tsx resolve o default, mesmo racional de
@@ -127,6 +131,7 @@ export class ChallengesController {
       editableFields: challenge.config.editableFields ?? [],
       nextChallengeId: next?.id ?? null,
       snapTolerancePercent: challenge.config.snapTolerancePercent ?? null,
+      blockScale: challenge.config.blockScale ?? null,
       feedbackMessages: challenge.config.feedbackMessages ?? null,
     };
   }

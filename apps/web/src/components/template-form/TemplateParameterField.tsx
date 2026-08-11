@@ -1,4 +1,4 @@
-import { InlineFeedback, ToggleSwitch } from '../ui';
+import { InlineFeedback, SegmentedControl, ToggleSwitch } from '../ui';
 import { toggleBlockType } from '../../lib/templateParameterForm';
 import type { TemplateParameterDefinition } from '../../lib/challengeTemplateTypes';
 import { AngleWedgeIcon } from './AngleWedgeIcon';
@@ -10,7 +10,7 @@ export interface TemplateParameterFieldProps {
   definition: TemplateParameterDefinition;
   value: unknown;
   error?: string;
-  onChange: (value: number | boolean | string[]) => void;
+  onChange: (value: number | boolean | string | string[]) => void;
 }
 
 // AC2 — "exemplo visual inline do efeito daquele parâmetro": dispatch só por
@@ -89,6 +89,15 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
               label={definition.label}
               checked={Boolean(value)}
               onCheckedChange={(checked) => onChange(checked)}
+            />
+          )}
+
+          {definition.type === 'select' && (
+            <SegmentedControl
+              ariaLabel={definition.label}
+              value={String(value)}
+              onValueChange={onChange}
+              options={definition.options ?? []}
             />
           )}
 

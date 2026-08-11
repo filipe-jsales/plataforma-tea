@@ -48,6 +48,11 @@ describe('coerceParameterValue', () => {
     expect(coerceParameterValue('blockSelection', ['move_forward'])).toEqual(['move_forward']);
     expect(coerceParameterValue('blockSelection', 'oops')).toEqual([]);
   });
+
+  it('keeps select as the raw string, defaulting to empty string for a non-string value', () => {
+    expect(coerceParameterValue('select', 'large')).toBe('large');
+    expect(coerceParameterValue('select', true)).toBe('');
+  });
 });
 
 describe('errorsByParameterKey', () => {

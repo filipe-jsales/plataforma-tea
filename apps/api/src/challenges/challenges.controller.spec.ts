@@ -131,6 +131,14 @@ describe('ChallengesController', () => {
       expect(result.snapTolerancePercent).toBeNull();
     });
 
+    it('defaults blockScale to null for curriculum-seeded challenges', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.blockScale).toBeNull();
+    });
+
     it('3.7 (AC4) — defaults feedbackMessages to null for curriculum-seeded challenges', async () => {
       challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
 
@@ -201,6 +209,17 @@ describe('ChallengesController', () => {
     const result = await controller.getById('c3');
 
     expect(result.snapTolerancePercent).toBe(60);
+  });
+
+  it('passes through the teacher-chosen blockScale for a template-authored challenge', async () => {
+    challengesService.findById.mockResolvedValue({
+      ...createChallenge,
+      config: { ...createChallenge.config, blockScale: 1.3 },
+    } as unknown as Challenge);
+
+    const result = await controller.getById('c3');
+
+    expect(result.blockScale).toBe(1.3);
   });
 
   it('3.7 (AC4) — passes through teacher-customized feedback messages for a template-authored challenge', async () => {

@@ -24,13 +24,16 @@ export function buildInitialParams(parameterSchema: TemplateParameterDefinition[
 export function coerceParameterValue(
   type: TemplateParameterDefinition['type'],
   rawValue: string | boolean | string[],
-): number | boolean | string[] {
+): number | boolean | string | string[] {
   if (type === 'integer' || type === 'percentage') {
     const num = Number(rawValue);
     return Number.isFinite(num) ? num : 0;
   }
   if (type === 'boolean') {
     return Boolean(rawValue);
+  }
+  if (type === 'select') {
+    return typeof rawValue === 'string' ? rawValue : '';
   }
   return Array.isArray(rawValue) ? rawValue : [];
 }

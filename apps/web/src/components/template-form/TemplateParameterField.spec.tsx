@@ -27,6 +27,20 @@ const toleranceDefinition: TemplateParameterDefinition = {
   visualPreview: 'toleranceGauge',
 };
 
+const blockSizeDefinition: TemplateParameterDefinition = {
+  key: 'blockSize',
+  label: 'Tamanho dos blocos',
+  icon: '🔍',
+  type: 'select',
+  defaultValue: 'medium',
+  visualPreview: 'none',
+  options: [
+    { value: 'small', label: 'Pequeno' },
+    { value: 'medium', label: 'Médio' },
+    { value: 'large', label: 'Grande' },
+  ],
+};
+
 const blocksDefinition: TemplateParameterDefinition = {
   key: 'enabledBlockTypes',
   label: 'Blocos disponíveis',
@@ -73,6 +87,25 @@ describe('TemplateParameterField', () => {
 
     expect(screen.getByLabelText('Tolerância de encaixe')).toHaveAttribute('type', 'range');
     expect(screen.getByText('60%')).toBeInTheDocument();
+  });
+
+  it('regra 9 — renders a select field as 3 named options, never a raw scale number', () => {
+    render(<TemplateParameterField definition={blockSizeDefinition} value="medium" onChange={vi.fn()} />);
+
+    expect(screen.getByRole('radiogroup', { name: 'Tamanho dos blocos' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Pequeno' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Médio' })).toHaveAttribute('data-state', 'on');
+    expect(screen.getByRole('radio', { name: 'Grande' })).toBeInTheDocument();
+    expect(screen.queryByText(/1[.,]3|1[.,]6/)).not.toBeInTheDocument();
+  });
+
+  it('calls onChange with the option value when the professor picks a different block size', async () => {
+    const onChange = vi.fn();
+    render(<TemplateParameterField definition={blockSizeDefinition} value="medium" onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Grande' }));
+
+    expect(onChange).toHaveBeenCalledWith('large');
   });
 
   it('renders one toggle per candidate block, reflecting which ones are already selected', () => {

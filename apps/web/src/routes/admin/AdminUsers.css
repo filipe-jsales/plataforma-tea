@@ -55,3 +55,19 @@
   word-break: break-all;
   font-size: var(--font-size-small);
 }
+
+.admin-users__consent-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  min-width: 320px;
+}
+
+.admin-users__consent-details dt {
+  color: var(--color-text-muted, #5a6472);
+  font-weight: 600;
+}
+
+.admin-users__consent-details dd {
+  margin: 0;
+}

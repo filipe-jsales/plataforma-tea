@@ -27,12 +27,27 @@ const MAX_CLOSURE_TOLERANCE_PX = 40;
 // (um template futuro de outra disciplina define os próprios obrigatórios).
 const REQUIRED_BLOCK_TYPES = ['move_forward', 'turn'];
 
+// Tamanho dos blocos no editor — 3 opções nomeadas (nunca um número de escala
+// exposto ao professor, regra não-negociável 9). O valor numérico vira
+// `zoom.startScale` do Blockly em ChallengePage.tsx: 1.3/1.6 ampliam alvo de
+// toque e legibilidade do texto do bloco pra quem tem dificuldade de
+// coordenação motora fina (mesmo racional de MIN_TOLERANCE_PERCENT acima),
+// sem exigir zoom manual do aluno a cada desafio.
+const BLOCK_SIZE_SCALES = { small: 1, medium: 1.3, large: 1.6 } as const;
+type BlockSizePreset = keyof typeof BLOCK_SIZE_SCALES;
+const BLOCK_SIZE_PRESETS = Object.keys(BLOCK_SIZE_SCALES) as BlockSizePreset[];
+
+function isBlockSizePreset(value: unknown): value is BlockSizePreset {
+  return typeof value === 'string' && (BLOCK_SIZE_PRESETS as string[]).includes(value);
+}
+
 interface RegularPolygonParams {
   sides: number;
   turnAngleDeg: number;
   snapTolerancePercent: number;
   closureTolerancePx: number;
   enabledBlockTypes: string[];
+  blockSize: BlockSizePreset;
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -140,6 +155,13 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       });
     }
 
+    if (!isBlockSizePreset(raw.blockSize)) {
+      errors.push({
+        parameterKey: 'blockSize',
+        message: 'Escolha um tamanho de bloco: Pequeno, Médio ou Grande.',
+      });
+    }
+
     if (enabledBlockTypes.length === 0) {
       errors.push({
         parameterKey: 'enabledBlockTypes',
@@ -181,6 +203,7 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
         closureTolerancePx: params.closureTolerancePx,
       },
       snapTolerancePercent: params.snapTolerancePercent,
+      blockScale: BLOCK_SIZE_SCALES[params.blockSize],
     };
   }
 
@@ -199,6 +222,7 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       snapTolerancePercent: Number(raw.snapTolerancePercent),
       closureTolerancePx: Number(raw.closureTolerancePx),
       enabledBlockTypes: toStringArray(raw.enabledBlockTypes),
+      blockSize: raw.blockSize as BlockSizePreset,
     };
   }
 }

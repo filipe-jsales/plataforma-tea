@@ -5,7 +5,7 @@
 // hardcoded — então um template novo (geometria ou outra disciplina) ganha
 // formulário funcionando só cadastrando a definição, sem componente novo,
 // contanto que reaproveite um `type`/`visualPreview` já suportado.
-export type TemplateParameterType = 'integer' | 'percentage' | 'boolean' | 'blockSelection';
+export type TemplateParameterType = 'integer' | 'percentage' | 'boolean' | 'blockSelection' | 'select';
 
 // Qual miniatura inline mostrar junto ao campo (AC2 — "exemplo visual do
 // efeito daquele parâmetro"). 'none' pra parâmetros autoexplicativos (ex.:
@@ -38,7 +38,7 @@ export interface TemplateParameterDefinition {
   // Só pra 'integer'/'percentage'.
   min?: number;
   max?: number;
-  defaultValue: number | boolean | string[];
+  defaultValue: number | boolean | string | string[];
   visualPreview: TemplateParameterVisualPreview;
   // Só pra 'blockSelection': candidatos cadastrados no template. A lista
   // efetivamente oferecida ao professor (`options`, resolvida em
@@ -47,12 +47,16 @@ export interface TemplateParameterDefinition {
   // regra de progressão Use-Modify-Create (coding-rule.md) vale também pro
   // desafio criado pelo professor, não só pro currículo semeado.
   candidateBlockTypes?: string[];
+  // Só pra 'select': opções fixas (rótulo em português), declaradas direto
+  // no `parameterSchema` — ao contrário de 'blockSelection', não dependem de
+  // resolução em runtime (nenhum filtro Use-Modify-Create se aplica a um
+  // valor que não é blockType).
+  options?: TemplateParameterOption[];
 }
 
 // Versão resolvida em runtime, devolvida por GET /challenge-templates/:id —
-// `options` só existe pra 'blockSelection', já filtrada e traduzida (label
-// em português vindo do catálogo `blocks`, nunca o `blockType` cru como
-// rótulo).
-export interface ResolvedTemplateParameterDefinition extends TemplateParameterDefinition {
-  options?: TemplateParameterOption[];
-}
+// `options` de 'blockSelection' chega aqui já filtrada e traduzida (label em
+// português vindo do catálogo `blocks`, nunca o `blockType` cru como
+// rótulo); `options` de 'select' já vem assim do `parameterSchema` bruto
+// (ver TemplateParameterDefinition.options), sem nada a resolver.
+export type ResolvedTemplateParameterDefinition = TemplateParameterDefinition;

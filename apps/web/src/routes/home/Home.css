@@ -4,6 +4,16 @@
   padding: var(--space-4);
 }
 
+/* 1.5.1 — "Sair" fica FORA de `.home__actions` de propósito: não é uma das
+   "no máximo 2 ações principais" da home do aluno (AC1 de 2.1), é uma ação
+   de escape sempre disponível mas visualmente discreta (`variant="ghost"`),
+   nunca competindo com as ações principais pela atenção do aluno. */
+.home__topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
 .home__greeting {
   margin-bottom: var(--space-4);
 }

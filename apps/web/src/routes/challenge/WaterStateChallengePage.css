@@ -1,0 +1,96 @@
+.water-challenge-page {
+  max-width: 960px;
+  margin: var(--space-4) auto;
+  padding: 0 var(--space-4) var(--space-5);
+}
+
+.water-challenge-page__back-link {
+  display: inline-block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
+}
+
+.water-challenge-page__prompt {
+  margin-bottom: var(--space-4);
+  font-size: 1.1rem;
+}
+
+.water-challenge-page__layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.water-challenge-page__editor {
+  flex: 1 1 480px;
+  height: 360px;
+  min-width: 320px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.water-challenge-page__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 0 0 320px;
+}
+
+.water-challenge-page__run-button {
+  min-height: 56px;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.water-challenge-page__predict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.water-challenge-page__predict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* AC de coordenação motora fina (RQ4, regra 4) — alvo de toque grande,
+   mesmo racional de .challenge-page__predict-option em ChallengePage.css. */
+.water-challenge-page__predict-option {
+  min-width: 56px;
+  min-height: 56px;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+}
+
+.water-challenge-page__proceed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.water-challenge-page__proceed-button {
+  min-height: 56px;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-success);
+  color: #fff;
+  cursor: pointer;
+}
+
+.water-challenge-page__proceed-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

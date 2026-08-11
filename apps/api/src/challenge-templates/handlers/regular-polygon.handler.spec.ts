@@ -10,6 +10,7 @@ describe('RegularPolygonTemplateHandler', () => {
     snapTolerancePercent: 60,
     closureTolerancePx: 5,
     enabledBlockTypes: ['move_forward', 'turn', 'repeat_times'],
+    blockSize: 'medium',
   };
 
   describe('validateParameters', () => {
@@ -74,6 +75,23 @@ describe('RegularPolygonTemplateHandler', () => {
       });
     });
 
+    it('rejects a missing/invalid block size preset with a pedagogical message, never a raw scale number', () => {
+      const result = handler.validateParameters({ ...validParams, blockSize: 'huge' }, introduced);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual({
+        parameterKey: 'blockSize',
+        message: 'Escolha um tamanho de bloco: Pequeno, Médio ou Grande.',
+      });
+    });
+
+    it('accepts each of the 3 named block size presets', () => {
+      for (const blockSize of ['small', 'medium', 'large']) {
+        const result = handler.validateParameters({ ...validParams, blockSize }, introduced);
+        expect(result.valid).toBe(true);
+      }
+    });
+
     it('rejects an empty block palette', () => {
       const result = handler.validateParameters({ ...validParams, enabledBlockTypes: [] }, introduced);
 
@@ -115,6 +133,7 @@ describe('RegularPolygonTemplateHandler', () => {
 
       const keys = result.errors.map((e) => e.parameterKey).sort();
       expect(keys).toEqual([
+        'blockSize',
         'closureTolerancePx',
         'enabledBlockTypes',
         'sides',
@@ -133,7 +152,13 @@ describe('RegularPolygonTemplateHandler', () => {
         allowedBlockTypes: ['move_forward', 'turn', 'repeat_times'],
         goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90, closureTolerancePx: 5 },
         snapTolerancePercent: 60,
+        blockScale: 1.3,
       });
+    });
+
+    it('translates each named block size preset into its scale factor, never the raw preset string', () => {
+      expect(handler.buildChallengeConfig({ ...validParams, blockSize: 'small' }).blockScale).toBe(1);
+      expect(handler.buildChallengeConfig({ ...validParams, blockSize: 'large' }).blockScale).toBe(1.6);
     });
   });
 

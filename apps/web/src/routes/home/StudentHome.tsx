@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
 import { logEvent } from '../../lib/logEvent';
+import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Button } from '../../components/ui';
 import './Home.css';
@@ -32,10 +33,25 @@ export function StudentHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  function handleLogout() {
+    if (!user) return;
+    performLogout(user);
+    navigate('/login', { replace: true });
+  }
+
   if (!user) return null;
 
   return (
     <main className="home">
+      {/* 1.5.1 — "Sair" fica fora de home__actions: não é uma das "no
+          máximo 2 ações principais" (AC1), é uma ação de escape sempre
+          disponível mas discreta. */}
+      <div className="home__topbar">
+        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
+          Sair
+        </Button>
+      </div>
+
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">

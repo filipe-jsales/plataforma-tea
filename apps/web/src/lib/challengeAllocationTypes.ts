@@ -17,4 +17,6 @@ export interface AvailableChallengeForStudent {
   id: string;
   title: string;
   prompt: string;
+  // E1 — "nunca aberto por este aluno", nunca uma contagem/prazo.
+  isNew: boolean;
 }

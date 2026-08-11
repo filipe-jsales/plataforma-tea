@@ -14,6 +14,9 @@ export class SubjectsController {
       topicId: topic.id,
       subjectId: topic.subjectId,
       name: `${topic.subject.name} — ${topic.name}`,
+      // 3.13/3.16 — decide pro frontend qual página abrir ao confirmar este
+      // módulo (SubjectSelector.handleConfirm); nunca inferido do slug/nome.
+      domain: topic.domain,
     }));
   }
 }

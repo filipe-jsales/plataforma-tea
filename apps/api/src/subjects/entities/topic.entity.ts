@@ -35,6 +35,16 @@ export class Topic {
   @Column({ type: 'varchar', length: 255, nullable: true })
   description: string | null;
 
+  // Qual página/experiência de frontend renderiza os desafios deste tópico
+  // — 'blocks_turtle' (ChallengePage, mundo de tartaruga/Pixi) ou
+  // 'water_state' (WaterStateChallengePage, sem Pixi). Diferente de
+  // subjects/blocks (catálogo que cresce só com dado), um domínio novo
+  // SEMPRE exige uma página nova de verdade — nunca é só conteúdo, por isso
+  // é uma coluna com um conjunto pequeno e fechado de valores, não uma
+  // tabela à parte (mesmo raciocínio de `User.role`, ver coding-rule.md).
+  @Column({ type: 'varchar', length: 40, default: 'blocks_turtle' })
+  domain: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

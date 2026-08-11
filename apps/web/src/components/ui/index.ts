@@ -28,4 +28,5 @@ export { Dialog, type DialogProps } from './Dialog';
 export { Heading, type HeadingProps, type HeadingLevel } from './Heading';
 export { Text, type TextProps, type TextTone, type TextSize } from './Text';
 export { InlineFeedback, type InlineFeedbackProps, type FeedbackKind } from './InlineFeedback';
+export { Slider, type SliderProps } from './Slider';
 export { VisuallyHidden } from './VisuallyHidden';

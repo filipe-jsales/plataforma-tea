@@ -65,7 +65,7 @@ export function TemplateChallengeForm({
 
   const previewStore = useMemo(() => createTurtleExecutionStore(), []);
 
-  function handleParamChange(key: string, value: number | boolean | string[]) {
+  function handleParamChange(key: string, value: number | boolean | string | string[]) {
     setParams((current) => ({ ...current, [key]: value }));
     // Erros ficam desatualizados assim que qualquer campo muda — nunca
     // deixar uma mensagem de validação de um valor anterior grudada na

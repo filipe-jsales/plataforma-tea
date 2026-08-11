@@ -13,7 +13,7 @@ export class ApiError extends Error {
 
 async function authorizedFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = useAuthStore.getState().token;
-  return fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -21,6 +21,22 @@ async function authorizedFetch(path: string, options: RequestInit = {}): Promise
       ...options.headers,
     },
   });
+  // 1.5.1 — sessão expirada/token inválido: só quando a requisição JÁ TINHA
+  // um token (isto é, achávamos que havia sessão) e o backend responde 401
+  // é que isso significa "sessão morreu" — nunca dispara em uma tentativa
+  // de login sem sessão ainda (essas chamadas não carregam token, e um 401
+  // ali é só "credenciais erradas", tratado normalmente por
+  // throwForErrorResponse, a tela de login precisa continuar montada pra
+  // mostrar a mensagem). Encerra a sessão local (JWT é stateless — não há
+  // endpoint de revogação no backend) e manda pro login, em vez de deixar a
+  // tela presa repetindo o mesmo 401 em todo request seguinte.
+  if (response.status === 401 && token) {
+    useAuthStore.getState().clearSession();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
+  return response;
 }
 
 async function throwForErrorResponse(response: Response): Promise<never> {
