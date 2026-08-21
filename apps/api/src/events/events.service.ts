@@ -238,6 +238,20 @@ export class EventsService {
     });
   }
 
+  // Linhas brutas de `water_program_validated` (3.17, RD-C) — resultado da
+  // validação do backend contra o `expectedModel` do desafio 2.3. Só
+  // gravado pelo `ChallengeValidationService` (nunca pelo frontend
+  // diretamente, ao contrário do resto deste arquivo), lido só pelo
+  // relatório do professor (MetricsAdminChallengeService).
+  findWaterProgramValidations(
+    challengeId: string,
+  ): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { challengeId, type: 'water_program_validated' },
+      order: { studentPseudoId: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
   // 6.6 — exportação de dados brutos pra pesquisa externa. Filtros são
   // opcionais e combináveis (AND) — quem chama (MetricsAdminExportService)
   // já garantiu que ao menos um está presente antes de chegar aqui, essa

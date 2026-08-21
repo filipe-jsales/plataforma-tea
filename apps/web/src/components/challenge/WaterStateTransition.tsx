@@ -5,6 +5,11 @@ import './WaterStateTransition.css';
 
 export interface WaterStateTransitionProps {
   state: WaterState;
+  // Leitura numérica que acompanha o ícone durante a animação de transição
+  // (ver WaterStateChallengePage#animateStateTransition) — opcional porque
+  // telas futuras que só mostram o estado (sem termômetro) continuam
+  // funcionando sem essa prop.
+  temperatureC?: number;
 }
 
 const STATE_ICON: Record<WaterState, string> = {
@@ -50,7 +55,7 @@ function playTransitionChime(): void {
 // `data-motion='full'` (mesmo mecanismo de ToggleSwitch.css) — o componente
 // nunca reimplementa esse gate, só declara a transição normalmente. Ícone+
 // texto sempre juntos (regra não-negociável 9), nunca só a troca visual.
-export function WaterStateTransition({ state }: WaterStateTransitionProps) {
+export function WaterStateTransition({ state, temperatureC }: WaterStateTransitionProps) {
   const soundEnabled = useSensoryProfileStore((s) => s.soundEnabled);
   const [entered, setEntered] = useState(false);
   const isFirstRender = useRef(true);
@@ -80,6 +85,12 @@ export function WaterStateTransition({ state }: WaterStateTransitionProps) {
       </span>
       <span className="water-state-transition__label" aria-live="polite">
         {STATE_LABEL[state]}
+        {temperatureC !== undefined && (
+          <span className="water-state-transition__temperature">
+            {' '}
+            ({Math.round(temperatureC)}°C)
+          </span>
+        )}
       </span>
     </div>
   );

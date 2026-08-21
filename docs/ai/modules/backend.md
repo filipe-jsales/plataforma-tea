@@ -324,6 +324,179 @@ empírico ao ciclo **completo** de 3 etapas — este é o primeiro tópico com o
 trio inteiro, use-o como referência ao desenhar um tópico novo (ver "Desafio
 novo..." em `docs/ai/rules/coding-rule.md`).
 
+### Trilha "Estados da Matéria" — bloco condicional (3.12)
+
+Segundo tópico com o ciclo Use→Modify→Create completo (domínio
+`water_state`, `Topic.domain` — ver "Adição de domínio a tópicos" abaixo),
+seedado em `SeedEstadosDaMateriaTopic` (desafios 1/2) +
+`SeedEstadosDaMateriaCreateChallenge` (desafio 3, adicionado nesta revisão
+pra fechar o ciclo — os dois primeiros já existiam, o terceiro faltava):
+
+| position | title | stage | Comportamento |
+|---|---|---|---|
+| 1 | Como a água muda de estado? | `use` | programa pré-montado (`conditional_if` com limiar de ebulição 100°C) e travado, só Executar/Repetir + Predict antes de cada execução |
+| 2 | Como a água muda de estado? — agora mude! | `modify` | mesmo programa, campo `THRESHOLD` editável (80–120°C) inline no bloco, Predict antes de cada execução |
+| 3 | Como a água muda de estado? — crie o seu! | `create` | editor livre, mesma paleta completa (`conditional_if` + `set_water_state`) que Use/Modify já usam via `allowedBlockTypes`, sem `program` pré-montado |
+
+O bloco `conditional_if` (migration `CreateConditionalBlock`) é o primeiro
+bloco do catálogo com ramificação real — `DO_THEN`/`DO_ELSE`, comparação
+`temperatureC > THRESHOLD`. Cada ramo é rotulado com ícone **e** texto
+(`✅ ENTÃO`/`❌ SENÃO`) direto no `message0` do bloco Blockly — nunca só a
+cor diferencia os caminhos (AC4 de 3.12; `colour: 210` é igual pros dois
+ramos, comprovando que não é o diferenciador). `set_water_state`
+(migration `CreateSetWaterStateBlock`) é a ação folha — "definir estado
+como X" — usada dentro de cada ramo.
+
+A fase Modify **não** ganhou uma toolbox própria de "blocos numéricos
+avulsos" (como o texto do card 3.12 sugere): não existiria onde um bloco
+numérico solto se encaixaria, já que `THRESHOLD` é um `FieldNumber` do
+próprio `conditional_if`, não um input de valor separado. Mesmo mecanismo
+de `editableFields`/`applyModifyFieldLocking` que a fase Modify de
+Geometria já usa (ver "Fase Modify (3.4)" acima) — só o parâmetro numérico
+fica manipulável, o bloco condicional em si nunca é destacável/removível
+nem aparece numa paleta pra recompor a estrutura, o que satisfaz a intenção
+do AC ("só o valor-limiar é editável, o condicional completo não aparece
+pra montar") por um caminho já estabelecido no resto da plataforma, em vez
+de introduzir um segundo mecanismo (toolbox restrita) só pra esta trilha.
+
+O intérprete (`waterProgram.ts#interpretWaterProgram`, frontend) é puro e
+com ramificação de verdade — ao contrário do intérprete de tartaruga
+(`blockProgram.ts`, achata tudo numa lista sequencial), aqui só um dos dois
+ramos do `conditional_if` é percorrido por chamada. Ver "Trilha 'Estados da
+Matéria'" em `frontend.md` para a UI (toolbox por fase, componente de
+transição sensorial 3.16).
+
+**Eventos dos desafios 2.1/2.2/2.3 (3.13/3.14/3.15)** — todos escopados ao
+aluno, mesmo schema RD-I/RD-P/RD-C/RD-E do resto da plataforma, nenhuma
+categoria nova:
+
+| Evento | Categoria | Desafio | Quando |
+|---|---|---|---|
+| `temperature_slider_changed` | RD-I | 2.1/2.2 | ao soltar o slider (`onValueCommit`), nunca a cada pixel do arrasto |
+| `predict_to_run_duration` | RD-I | 2.1/2.2 | ao Executar, se havia predição pendente — `duration_ms` desde `handlePredict` |
+| `thresholdChanged` | RD-I | 2.2 | a cada edição do campo `THRESHOLD` destravado — `previous_value`/`new_value` |
+| `program_executed` | RD-P | 2.1/2.2/2.3 | a cada Executar/Repetir execução — snapshot do programa serializado; em 2.1 (Use) carrega também `prediction_given`/`result_matched_prediction`, mesmo formato opcional de `ChallengePage`, pra `findExecutionsWithPrediction` enxergar |
+| `water_state_prediction` | RD-C | 2.1/2.2 | a cada Executar com predição pendente — predição declarada × resultado real (a predição em si nunca loga sozinha, mesma decisão de `ChallengePage.handlePredict` pra Geometria); nunca dispara em 2.3, que não tem predição |
+| `water_states_coverage` | RD-C | 2.3 | a cada Executar — `covered_states`/`missing_states`/`all_covered`, fallback de corretude client-side (ver 3.17 abaixo pra corretude AUTORITATIVA) |
+| `challenge.completed` | RD-C | 2.3 | quando `water_states_coverage.all_covered` — mesmo `type` que o Create de Geometria usa, contado por `StudentHome`/`HomeService` |
+| `water_program_validated` | RD-C | 2.3 | gravado pelo BACKEND (nunca pelo frontend), a cada `submit-program`, só quando o desafio tem `expectedModel` — ver "Validador de lógica condicional vs. modelo esperado (3.17)" abaixo |
+| `challenge_use_completed` | RD-P + RD-C | 2.1 | ao "Avançar" saindo da fase Use (`attempts >= 1`) — faltava, corrigido nesta revisão; sem ele `findUseCompletions` nunca via a fase Use da água |
+| `feedback_shown` | RD-I | 2.1/2.2/2.3 | toda vez que o feedback (sempre descritivo, nunca punitivo) é exibido |
+| `challenge_time_in_phase` | RD-E | 2.1/2.2/2.3 | ao "Avançar" — tempo na fase + nº de tentativas |
+
+### Validador de lógica condicional vs. modelo esperado (3.17)
+
+Corretude AUTORITATIVA do desafio 2.3 — nunca confiada ao frontend (o
+aluno poderia, em tese, forjar uma requisição alegando ter acertado) e
+NUNCA visível a ele em nenhuma forma (AC2 de 3.17: "visível apenas ao
+professor", nunca "erro"/"nota" individual pro aluno).
+
+- **Sem "rodar o JS gerado pelo Blockly" — decisão deliberada.** O texto
+  do card sugere `Blockly.JavaScript.workspaceToCode` + `eval`/`new
+  Function` no servidor. Isso seria a PRIMEIRA superfície de execução de
+  código dinâmico gerado a partir de input do aluno em todo o backend
+  (confirmado: nenhum `eval`/`new Function` existe hoje em `apps/api`,
+  `blockly` não é dependência do backend). Em vez disso,
+  `apps/api/src/challenges/water-program.ts` é uma PORTA em TypeScript
+  puro de `apps/web/src/lib/waterProgram.ts` (mesmo algoritmo, mesma
+  árvore `SerializedBlockState`) — um tree-walker que só compara
+  `type`/`fields`, nunca executa nada. Mesma decisão de duplicar tipos
+  entre frontend/backend já documentada em `SerializedBlockState`
+  (`challenge-config.interface.ts`) — não há pacote compartilhado neste
+  monorepo.
+- **`WaterExpectedModel`** (`challenge-config.interface.ts`) —
+  `{ scenarioLabel, testCases: { temperatureC, expectedState }[] }`,
+  campo opcional `Challenge.config.expectedModel`. Curado via migration
+  hoje (`AddExpectedModelToWaterCreateChallenge`, cenário "Dia muito
+  quente": 7 temperaturas cobrindo os 3 estados, evitando os limiares
+  exatos 0°C/100°C de propósito — mede cobertura física, não uma
+  ambiguidade de comparação `>`/`>=`). Um handler de template pro domínio
+  `water_state` (professor escolhendo limiares numa tela, em vez de
+  migration) é possível com a MESMA arquitetura de
+  `ChallengeTemplateHandler` que `RegularPolygonTemplateHandler` já usa —
+  não construído nesta revisão (o preview "Visualizar como aluno" de
+  `TemplateChallengeForm.tsx` é hoje hardcoded pro motor Pixi/tartaruga;
+  um template de água precisaria de um preview alternativo, trabalho à
+  parte).
+- **`validateWaterProgramAgainstTestCases(topBlock, testCases)`**
+  (`water-program.ts`) — roda `interpretWaterProgram` uma vez por caso de
+  teste, compara com `expectedState`, devolve `caseResults`/
+  `correctCount`/`totalCount`/`allPassed`. Pura, sem I/O, testada em
+  `water-program.spec.ts` (9 casos, incluindo aninhamento e limite de
+  profundidade).
+- **`ChallengeValidationModule`** (`apps/api/src/challenge-validation/`)
+  — módulo pequeno e dedicado, mesmo padrão de granularidade de
+  `ChallengeDraftsModule`:
+  - `POST /students/me/challenges/:challengeId/submit-program`
+    (`ChallengeValidationController`, `Roles(Role.STUDENT)`, mesmo
+    prefixo/racional de `ChallengeDraftsController` — sempre escopado ao
+    PRÓPRIO aluno via `req.user`, nunca um id do corpo). Corpo:
+    `{ program: SerializedBlockState | null }` — a MESMA árvore já
+    enviada em `program_executed.block_sequence_json`, reenviada porque a
+    validação precisa da autoridade do backend.
+  - `ChallengeValidationService.submitWaterProgram` — no-op silencioso
+    (`{ validated: false }`, sem erro) quando o desafio não tem
+    `expectedModel` (cobre "não é o 2.3 de água" e "professor não
+    configurou cenário ainda", ambos fluxos normais); senão roda a
+    validação e grava `water_program_validated` (RD-C) via
+    `EventsService.record`, com `case_results` completo. **Resposta
+    SEMPRE só `{ validated: boolean }`** — nunca corretude.
+- **Leitura — só pelo relatório do admin.** `MetricsAdminChallengeService.
+  buildCreateInsights(challengeId, expectedModel)`, chamado em
+  `getChallengeReport` quando `stage === 'create' && expectedModel`
+  existe: agrega `allCasesPassedRate` (mesmo formato `RateReport` de
+  `predictionMatchRate`, aggregate + perStudent + histograma) e `perCase`
+  (passes/submissions POR temperatura configurada — nunca por aluno
+  nomeado; lista TODOS os casos do cenário, mesmo com 0 submissões, nunca
+  esconde qual caso o cenário define). `EventsService.
+  findWaterProgramValidations` é a query nova, mesmo padrão de
+  `findModifyAttempts`. `ChallengesController` (rota do aluno) nunca lê
+  `expectedModel` nem os eventos de validação — isolamento por "endpoint
+  nunca inclui o campo", mesmo mecanismo que já garante que nenhum campo
+  interno vaza pro aluno por acidente (ver "Blocos por desafio" acima).
+- **Frontend**: `WaterStateChallengePage.handleRun` dispara o `submit-
+  program` fire-and-forget (`.catch(() => {})`, mesmo padrão do POST de
+  `.../viewed`) sempre que `isCreate`, mesmo quando não há `expectedModel`
+  configurado (o backend decide se há algo a validar). A resposta nunca é
+  lida além do ack — nenhuma UI de aluno reage a ela.
+- **Reaproveitamento do motor de "casos de teste" da Geometria**: não
+  existe — confirmado na investigação que precedeu esta implementação.
+  Geometria avalia sucesso via `evaluateSquareGoal` (uma checagem de
+  fechamento geométrico único, não uma lista de casos de teste). 3.17 é a
+  PRIMEIRA implementação de um motor de "N casos de teste vs. resultado
+  esperado" na plataforma — nasceu deliberadamente genérica na FORMA
+  (`WaterProgramTestCase`/`WaterProgramValidationResult` não têm nada
+  Blockly-específico além da árvore `SerializedBlockState`), mas o
+  intérprete em si (`water-program.ts`) é específico do domínio
+  `water_state` (mesmo racional de `blockProgram.ts`/`waterProgram.ts`
+  serem intérpretes SEPARADOS por domínio no frontend) — um domínio
+  condicional futuro reaproveitaria o padrão (módulo dedicado + porta
+  backend do intérprete + `expectedModel` no config), não o código.
+
+**`predictionAccuracy`/`predictionMatchRate` (RD-L)** — calculado em
+`MetricsAdminChallengeService.buildUseInsights`/`buildModifyInsights`
+(`apps/api/src/metrics/metrics-admin-challenge.service.ts`), genérico por
+TYPE/formato de payload de evento, não por domínio. `buildModifyInsights`
+(`challenge_modify_attempt`) já funcionava pra água desde 3.14 — o desafio
+2.2 reaproveita o evento sem mudança de forma. `buildUseInsights`
+(`findExecutionsWithPrediction` + `findUseCompletions`) **não** enxergava
+o desafio 2.1 antes desta revisão — corrigido pelos dois ajustes de evento
+na tabela acima (`program_executed` com `prediction_given`, e
+`challenge_use_completed` passando a existir).
+
+**`modifyExitedAt`** — não existe campo com esse nome; o equivalente
+funcional é `MetricsService.resolveCompletedStudents` (`stage ===
+'modify'`, linha ~70-83): um aluno "saiu" do Modify quando tem QUALQUER
+evento no `nextChallengeId` da sequência (`EventsService.
+findStudentsWithEvent`), resolvido genericamente por `ChallengeStage` +
+posição na sequência — funciona pra água automaticamente, já que o 2.3
+(criado nesta revisão) tem `position`/`topicId` corretos. É um booleano de
+conclusão, não um timestamp — se o AC exigir literalmente um campo
+`*ExitedAt` (não só a lógica derivada), falta reaproveitar
+`EventsService.findEarliestEventTimestamps` (já existe, usado hoje só pra
+`earliestAnyEvent`/`earliestExecution` DENTRO do próprio desafio) contra o
+`nextChallengeId`.
+
 ### Fase Modify (3.4)
 
 O desafio `modify` reaproveita o mecanismo de `program` pré-montado da fase

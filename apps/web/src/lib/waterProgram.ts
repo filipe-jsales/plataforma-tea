@@ -55,3 +55,28 @@ function evaluateBlock(
   // do `default` em blockProgram.ts#interpretBlock.
   return evaluateBlock(block.next?.block, temperatureC, depth + 1);
 }
+
+export const ALL_WATER_STATES: readonly WaterState[] = ['SOLID', 'LIQUID', 'GAS'];
+
+// 3.15 (AC2) — "o programa cobre os 3 estados?" pro desafio 2.3 (Create):
+// um único `conditional_if` de 1 nível produz no máximo 2 estados
+// distintos (2 ramos); cobrir os 3 exige aninhar um segundo `conditional_if`
+// num dos ramos — estrutura que o intérprete e a toolbox já suportam sem
+// caso especial (ver comentário de `interpretWaterProgram` acima). Em vez
+// de resolver algebricamente os limiares do programa (exigiria conhecer a
+// forma exata da árvore), varre por amostragem toda a faixa de temperatura
+// que o slider oferece (`minTemperatureC..maxTemperatureC`, grau a grau) —
+// função pura, sem I/O, roda uma vez por clique em Executar, custo
+// desprezível pro tamanho da faixa (dezenas a centenas de graus).
+export function evaluateWaterStatesCoverage(
+  topBlock: SerializedBlock | null | undefined,
+  minTemperatureC: number,
+  maxTemperatureC: number,
+): WaterState[] {
+  const covered = new Set<WaterState>();
+  for (let temperatureC = Math.ceil(minTemperatureC); temperatureC <= Math.floor(maxTemperatureC); temperatureC += 1) {
+    const state = interpretWaterProgram(topBlock, temperatureC);
+    if (state) covered.add(state);
+  }
+  return ALL_WATER_STATES.filter((state) => covered.has(state));
+}

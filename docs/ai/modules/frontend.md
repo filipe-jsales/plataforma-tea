@@ -657,6 +657,253 @@ preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
 
+## Trilha "Estados da Matéria" (`WaterStateChallengePage`, 3.12/3.13/3.14/3.16)
+
+Domínio `water_state` (`Topic.domain`), tela própria — **não** reaproveita
+`ChallengePage`, que é acoplada ao mundo de tartaruga/Pixi (goal com
+`sides`/`turnAngleDeg`, interpretador sem ramificação). Reaproveita só a
+infraestrutura genérica de `blocklyToolbox.ts`/`editableFields.ts`/
+`feedbackMessages.ts`/`logEvent.ts`. Duas rotas, o mesmo componente:
+`/water/:topicId` (entrada, sempre o Desafio 1) e
+`/water/challenge/:challengeId` (acesso direto, ex.: via "Avançar").
+
+### Bloco condicional com paleta configurável por fase (3.12)
+
+`conditional_if` (SE/ENTÃO/SENÃO) é o primeiro bloco do editor com
+ramificação real — `apps/web/src/lib/waterProgram.ts#evaluateBlock` percorre
+`inputs.DO_THEN`/`inputs.DO_ELSE` conforme `temperatureC > THRESHOLD`, nunca
+os dois ramos. Cada ramo é rotulado com ícone **e** texto direto no
+`message0`/`message1`/`message2` do bloco (`✅ ENTÃO`/`❌ SENÃO`,
+`apps/api/src/database/migrations/1786416943219-CreateConditionalBlock.ts`) —
+nunca só a cor (`colour: 210` igual nos dois ramos) diferencia os caminhos.
+
+A disponibilidade da toolbox por fase segue **o mesmo mecanismo genérico**
+de `ChallengePage.tsx#isCreate`/`toolboxConfiguration`, replicado aqui
+(antes desta feature, `WaterStateChallengePage` nunca calculava
+`isCreate`/`toolboxConfiguration` e por isso nenhuma fase mostrava toolbox
+alguma — corrigido nesta revisão):
+
+- **Use** (`stage: 'use'`): `challenge.locked` vem `true`
+  (`ChallengesController#buildDetailOrThrow`, `locked: config.stage ===
+  'use'`), o `program` pré-montado (`conditional_if` com limiar de
+  ebulição) vem travado (`workspaceConfiguration.readOnly`), e
+  `toolboxConfiguration` fica `undefined` — sem paleta visível, só
+  Executar/Repetir execução.
+- **Modify** (`stage: 'modify'`): mesmo racional de `ChallengePage`
+  (nenhuma fase Modify da plataforma usa toolbox arrastável, geometria
+  incluída) — o valor-limiar (`THRESHOLD`) é editável **inline**, direto no
+  campo do bloco já montado, via `applyModifyFieldLocking` (trava
+  estrutura/demais campos, libera só os listados em
+  `challenge.editableFields`). Isso satisfaz "só o parâmetro numérico é
+  manipulável, o condicional completo nunca aparece pra montar" sem
+  precisar de uma paleta com um bloco numérico avulso — não existiria onde
+  encaixá-lo, já que `THRESHOLD` é um campo do próprio `conditional_if`
+  (`FieldNumber`), não um input de valor separado.
+- **Create** (`stage: 'create'`, `SeedEstadosDaMateriaCreateChallenge`
+  migration — 3º desafio da trilha, sem `program`): `isCreate` computa
+  `toolboxConfiguration = buildToolboxConfiguration(challenge.toolbox.categories)`
+  a partir do MESMO `allowedBlockTypes: ["conditional_if",
+  "set_water_state"]` que Use/Modify já usam — paleta completa, aluno monta
+  o SE/ENTÃO/SENÃO do zero. `trashcan: isCreate` (só Create permite excluir
+  blocos livremente).
+
+### Interpretador com ramificação real (3.13/3.14)
+
+`waterProgram.ts#interpretWaterProgram(topBlock, temperatureC)` é **puro**:
+mesma entrada → mesma saída, sem efeito colateral, sem estado de módulo. Ao
+contrário de `blockProgram.ts` (turtle, achata tudo numa lista sequencial),
+aqui existe ramificação de verdade — só um dos dois ramos do
+`conditional_if` é percorrido. Reamostrar essa função em várias temperaturas
+intermediárias (ver seção de animação abaixo) nunca precisa conhecer o
+limiar do programa: basta variar `temperatureC` e comparar o resultado.
+
+### Desafio 2.1 — simulação guiada, fase Use (3.13)
+
+Desafio 1 da trilha (`stage: 'use'`): `program` pré-montado (o
+`conditional_if` com limiar de ebulição) chega travado — sem
+`toolboxConfiguration`, `readOnly: true` — o único controle é
+Executar/Repetir execução, igual à fase Use de Geometria.
+
+**Motor PRIMM Predict→Run→Investigate**: os 3 botões de predição
+(❄️ Sólido/💧 Líquido/☁️ Gasoso) travam o Executar até o aluno escolher um
+(`primmStage: 'predict' → 'run'`, `handlePredict`) — mesmo padrão de
+`ChallengePage.handlePredict`, incluindo a decisão de **não logar a
+predição sozinha**: o valor entra no evento `water_state_prediction` (RD-C)
+junto do resultado real, em `handleRun`, pra manter previsão+resultado como
+uma unidade logável só. O que `handlePredict` faz sozinho é marcar
+`predictedAtRef.current = Date.now()` — usado só pra medir a duração até
+Executar (ver evento novo abaixo), nunca pra logar a predição em si mais
+cedo.
+
+- **RD-I `predict_to_run_duration`** (novo nesta revisão — faltava a
+  métrica "tempo entre predição e Run" que o card pede): logado em
+  `handleRun`, só quando havia uma predição pendente pra esta rodada
+  (`predictedAtRef.current !== null` — fica `null` em desafios sem
+  `predictQuestion`, ex.: `create`). `payload.duration_ms =
+  Date.now() - predictedAtRef.current`.
+- **RD-I `temperature_slider_changed`**: só no `onValueCommit` do
+  `Slider` (ao soltar, nunca a cada pixel do arrasto) — já existia.
+- Transição renderizada por `WaterStateTransition` (3.16, ver abaixo)
+  sempre que o aluno Executa, qualquer que seja o limiar cruzado — não é
+  uma checagem especial pra "100°C", é o comportamento padrão do
+  componente pra qualquer mudança de estado resultante do `interpretWaterProgram`.
+- Feedback sempre descritivo, nunca "errado" (regra não-negociável 4):
+  "Você imaginou que a água ficaria {predição}, mas ela ficou {real}." —
+  mesmo mecanismo de `InlineFeedback` (3.7) que o resto da plataforma usa.
+
+### Desafio 2.2 — ajuste de limiares, fase Modify (3.14)
+
+Desafio 2 (`stage: 'modify'`): mesmo `program` do Desafio 1, mas
+`locked: false` e o campo `THRESHOLD` destravado via
+`applyModifyFieldLocking(workspace, challenge.editableFields)` — o aluno
+edita o valor-limiar inline, no próprio bloco já montado; a estrutura
+(bloco em si, `set_water_state` de cada ramo) fica `movable(false)` +
+`deletable(false)`, e nenhum outro campo é destravado.
+
+- **"Bloco condicional novo é exclusivo da fase Create" já é garantido por
+  ausência de toolbox** — a fase Modify nunca passa `toolboxConfiguration`
+  pro `BlocklyWorkspace` (mesma decisão documentada em 3.12 acima), então
+  não existe paleta de onde arrastar um `conditional_if` novo. Mais forte
+  que "permitir soltar e então bloquear": a ação simplesmente não está
+  disponível.
+- **Recálculo dinâmico**: `handleRun` sempre serializa o workspace atual
+  (`Blockly.serialization.blocks.save`) e chama
+  `interpretWaterProgram(serialized, temperatureC)` — o limiar usado é
+  sempre o que está no bloco NAQUELE momento, nunca um valor fixo
+  capturado no carregamento da página.
+- **`thresholdChanged` (RD-I)**: `handleWorkspaceFieldChange`, casado
+  contra `challenge.editableFields` (nunca hardcoded `"THRESHOLD"` —
+  qualquer `modify` futuro com outro nome de campo funciona sem mudança),
+  loga `previous_value`/`new_value` a cada edição do campo — já
+  implementado, nenhuma mudança necessária.
+
+### Desafio 2.3 — construção livre do ciclo da água, fase Create (3.15)
+
+Desafio 3 (`stage: 'create'`, `SeedEstadosDaMateriaCreateChallenge`, ver
+3.12 acima): editor livre, paleta completa (`conditional_if` +
+`set_water_state`), sem `program`/`predictQuestion` — o aluno monta a
+lógica dos 3 estados do zero.
+
+**Duas camadas de corretude coexistem aqui** (a primeira é o fallback já
+existente antes do card 3.17; a segunda é a implementação de 3.17 em si,
+ver "Validador de lógica condicional vs. modelo esperado (3.17)" em
+`backend.md` pra arquitetura completa):
+
+1. **Cobertura de estados (client-side, sempre roda)** — fallback
+   estrutural, "o programa cobre os 3 estados possíveis?" —
+   `waterProgram.ts#evaluateWaterStatesCoverage(topBlock, minTemperatureC,
+   maxTemperatureC)` amostra `interpretWaterProgram` grau a grau em toda a
+   faixa do slider (`TEMPERATURE_MIN_C..TEMPERATURE_MAX_C`, -20 a 150) e
+   devolve os estados alcançados. Um único `conditional_if` de 1 nível
+   nunca cobre os 3 (2 ramos ⇒ no máximo 2 estados) — o intérprete e a
+   toolbox já suportam aninhar um segundo `conditional_if` num dos ramos
+   sem caso especial (`waterProgram.spec.ts`, "supports a conditional_if
+   nested inside a branch"), então a estrutura necessária pra passar já
+   está disponível ao aluno hoje. É o que decide `displayedState`/feedback
+   NESTA tela — nunca depende do professor ter configurado um cenário.
+   Em `handleRun` (só quando `isCreate`):
+   - Loga `water_states_coverage` (RD-C) com `covered_states`/
+     `missing_states`/`all_covered`.
+   - Quando `all_covered`: loga `challenge.completed` (RD-C, **mesmo
+     `type`** que o Create de Geometria usa) — é o que
+     `StudentHome`/`HomeService` já contam como "desafios concluídos"
+     desde 2.1, domínio-agnóstico por `challengeId`.
+   - Feedback sempre descritivo (regra não-negociável 4): sucesso
+     reaproveita `resolveSuccessMessage`; caso contrário, nomeia
+     especificamente quais estados faltaram ("Seu programa ainda não
+     mostra a água em todos os estados possíveis — faltou: sólido. Que
+     tal ajustar os limiares pra cobrir os três?") — nunca
+     "errado"/"incompleto" sem contexto.
+2. **Validação backend contra o "modelo esperado" (3.17, autoridade
+   real)** — `handleRun` também dispara (fire-and-forget, `.catch(() =>
+   {})`, mesmo padrão do POST de "viewed") `POST /students/me/challenges/
+   :id/submit-program` com o programa serializado. O backend roda ESSE
+   MESMO programa contra o `expectedModel` do desafio (se o professor
+   configurou um — curado via migration hoje, ver backend.md) e grava o
+   resultado como evento `water_program_validated` (RD-C), lido só pelo
+   relatório do admin/pesquisador (`ChallengeReport.tsx`, seção "Estágio
+   Create"). A resposta pra esta tela é sempre só `{ validated: boolean }`
+   — nunca corretude, nunca "quantos acertou": essa informação nunca
+   chega no frontend do aluno, satisfazendo o AC2 de 3.17 ("visível
+   apenas ao professor, nunca erro/nota" pro aluno).
+
+**Gaps corrigidos nesta revisão pra destravar `predictionAccuracy`
+(RD-L)**: as queries genéricas de métricas (`findExecutionsWithPrediction`/
+`findUseCompletions`, ver `backend.md`) casam por FORMATO de payload/TYPE
+de evento, não por domínio — mas a água divergia em dois pontos que
+faziam a fase Use (2.1) ficar invisível pra elas, mesmo já tendo predição
+funcionando na tela:
+
+- `program_executed` da água nunca carregava `prediction_given`/
+  `result_matched_prediction` (só existiam no evento separado
+  `water_state_prediction`) — `findExecutionsWithPrediction` nunca achava
+  nada. Corrigido: `handleRun` agora espelha o mesmo payload opcional que
+  `ChallengePage` já usa (`prediction_given`/`result_matched_prediction`
+  só quando `challenge.predictQuestion && !isModify && predictedState !==
+  null` — ou seja, só na fase Use; Modify continua só no
+  `challenge_modify_attempt`, mesma decisão de sempre pra não duplicar o
+  comparativo).
+- `handleProceed` nunca logava `challenge_use_completed` — só
+  `challenge_time_in_phase` (RD-E). Corrigido: mesmo par de eventos
+  RD-P/RD-C que `ChallengePage.handleProceed` já loga quando
+  `challenge.locked`, disparado uma vez só (`attempts >= 1`, mesma
+  condição de sempre).
+- `water_state_prediction` (RD-C) agora só loga quando
+  `challenge.predictQuestion` existe — antes disparava incondicionalmente,
+  inclusive em `create` (que nunca tem predição pra comparar; o payload
+  saía com `prediction_given: null` sempre, um evento sem sentido pro
+  domínio daquele desafio).
+
+**`modifyExitedAt` (equivalente, sem novo evento)**: o card pede que a
+"saída" da fase Modify seja derivada do 1º evento do desafio seguinte, sem
+reabrir escopo de emissão de evento — isso já existe, genérico por
+`ChallengeStage`/`nextChallengeId` (não hardcoded pra Geometria), em
+`MetricsService.resolveCompletedStudents` (`stage === 'modify'` → aluno
+"saiu" quando tem qualquer evento no `nextChallengeId`, ver `backend.md`).
+Como o 2.3 de água já tem `position`/`topicId` corretos na sequência (a
+migration desta revisão), esse mecanismo já funciona pra água sem
+nenhuma mudança de código — só materializa um booleano de conclusão, não
+um timestamp nomeado `modifyExitedAt`; se o card exigir literalmente esse
+campo (não só a lógica equivalente), falta uma query nova reaproveitando
+`EventsService` (ver nota em `backend.md`).
+
+### Componente de transição com perfil sensorial (3.16)
+
+`components/challenge/WaterStateTransition.tsx` — ícone (❄️/💧/☁️) + rótulo
+textual sempre juntos (regra não-negociável 9), reaproveitado por todos os
+desafios da trilha via a mesma instância (`<WaterStateTransition state=...
+temperatureC=... />` em `WaterStateChallengePage`), sem lógica de swap
+duplicada em nenhum outro lugar.
+
+- **Movimento reduzido = troca estática, não "mais rápida"**: a
+  transição CSS (`opacity`/`transform: scale()`) usa
+  `var(--motion-duration)`/`var(--motion-easing)`; fora de
+  `data-motion="full"`, `sensory-theme.css` zera `animation-duration`/
+  `transition-duration` pra `0.001ms !important` (não apenas acelera) —
+  reforçado por `@media (prefers-reduced-motion: reduce)` independente do
+  toggle do aluno. O componente nunca reimplementa esse gate, só declara a
+  transição normalmente (mesmo padrão de `ToggleSwitch.css`).
+- **Som nunca toca por padrão**: `useSensoryProfileStore.soundEnabled`
+  nasce `false`; `playTransitionChime()` só é chamado
+  `if (soundEnabled && !isFirstRender.current)` — e nunca na primeira
+  renderização (estado inicial do desafio, não uma transição de verdade).
+- **Animação de temperatura entre execuções** (extensão desta revisão,
+  mesma técnica de passo-fixo de `PixiTurtleWorld`: loop com `sleep`
+  redesenhando a cada tique, sem lib de animação nova):
+  `WaterStateChallengePage#animateStateTransition` reamostra
+  `interpretWaterProgram` em `TEMPERATURE_ANIMATION_STEPS` (12) pontos
+  interpolados entre a temperatura da última execução e a nova, então o
+  ícone/temperatura "viaja" pelos estados intermediários (ex.: gelo a 0°C →
+  água a 20°C mostra o gelo derretendo no meio do caminho) em vez de trocar
+  instantaneamente. Só roda com `motionEnabled` (opt-in); com movimento
+  reduzido (**padrão**), a mesma fila de temperaturas fica em
+  `pendingStepsRef` e um botão "Próximo passo →" (`handleAdvanceWaterStep`,
+  mesmo texto/estilo do botão homônimo de `ChallengePage`) deixa o aluno
+  avançar tique a tique — nunca pula direto pro resultado final, mesmo
+  sem animação automática. Cancelamento por token (`animationTokenRef`,
+  mesmo padrão de `runToken`/`cancelled` do mundo da tartaruga) evita que
+  uma execução antiga sobreponha uma nova.
+
 ## Feedback não-punitivo reutilizável (3.7)
 
 Antes desta feature, `ChallengePage` renderizava o feedback de Use/Create

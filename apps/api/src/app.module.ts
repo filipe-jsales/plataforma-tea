@@ -9,6 +9,7 @@ import { ChallengesModule } from './challenges/challenges.module';
 import { ChallengeTemplatesModule } from './challenge-templates/challenge-templates.module';
 import { ChallengeAllocationsModule } from './challenge-allocations/challenge-allocations.module';
 import { ChallengeDraftsModule } from './challenge-drafts/challenge-drafts.module';
+import { ChallengeValidationModule } from './challenge-validation/challenge-validation.module';
 import { EventsModule } from './events/events.module';
 import { GuardianConsentsModule } from './guardian-consents/guardian-consents.module';
 import { HomeModule } from './home/home.module';
@@ -60,6 +61,7 @@ import { UsersModule } from './users/users.module';
     EnrollmentsModule,
     GuardianConsentsModule,
     ChallengeDraftsModule,
+    ChallengeValidationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

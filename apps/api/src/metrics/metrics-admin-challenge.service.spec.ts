@@ -6,11 +6,17 @@ import { SettingsService } from '../settings/settings.service';
 import { MetricsAdminChallengeService } from './metrics-admin-challenge.service';
 import { MetricsService } from './metrics.service';
 
-function fakeConfig(stage: 'use' | 'modify' | 'create') {
-  return { stage, allowedBlockTypes: [], goal: {} };
+function fakeConfig(
+  stage: 'use' | 'modify' | 'create',
+  expectedModel?: Record<string, unknown>,
+) {
+  return { stage, allowedBlockTypes: [], goal: {}, expectedModel };
 }
 
-function fakeEvent(studentPseudoId: string, payload: Record<string, unknown>): InteractionEvent {
+function fakeEvent(
+  studentPseudoId: string,
+  payload: Record<string, unknown>,
+): InteractionEvent {
   return { studentPseudoId, payload } as InteractionEvent;
 }
 
@@ -35,6 +41,7 @@ describe('MetricsAdminChallengeService', () => {
       findModifyAttempts: jest.fn(),
       findExecutionsWithPrediction: jest.fn(),
       findUseCompletions: jest.fn(),
+      findWaterProgramValidations: jest.fn(),
     } as unknown as jest.Mocked<EventsService>;
     settingsService = {
       getOrCreate: jest.fn(),
@@ -60,6 +67,7 @@ describe('MetricsAdminChallengeService', () => {
     eventsService.findModifyAttempts.mockResolvedValue([]);
     eventsService.findExecutionsWithPrediction.mockResolvedValue([]);
     eventsService.findUseCompletions.mockResolvedValue([]);
+    eventsService.findWaterProgramValidations.mockResolvedValue([]);
     challengesService.findByTopicIdOrdered.mockResolvedValue([]);
     metricsService.getChallengeProgressForStudents.mockResolvedValue(new Map());
 
@@ -74,14 +82,29 @@ describe('MetricsAdminChallengeService', () => {
   describe('listChallenges', () => {
     it('maps id/title/stage/topicName, stage null for a challenge with no config yet', async () => {
       challengesService.findAllWithTopic.mockResolvedValue([
-        { id: 'c1', title: 'Monte o quadrado', config: fakeConfig('use'), topic: { name: 'Ângulos' } } as any,
-        { id: 'c2', title: 'Rascunho', config: {}, topic: { name: 'Ângulos' } } as any,
+        {
+          id: 'c1',
+          title: 'Monte o quadrado',
+          config: fakeConfig('use'),
+          topic: { name: 'Ângulos' },
+        } as any,
+        {
+          id: 'c2',
+          title: 'Rascunho',
+          config: {},
+          topic: { name: 'Ângulos' },
+        } as any,
       ]);
 
       const result = await service.listChallenges();
 
       expect(result).toEqual([
-        { id: 'c1', title: 'Monte o quadrado', stage: 'use', topicName: 'Ângulos' },
+        {
+          id: 'c1',
+          title: 'Monte o quadrado',
+          stage: 'use',
+          topicName: 'Ângulos',
+        },
         { id: 'c2', title: 'Rascunho', stage: null, topicName: 'Ângulos' },
       ]);
     });
@@ -91,13 +114,20 @@ describe('MetricsAdminChallengeService', () => {
     it('throws NotFoundException when the challenge does not exist', async () => {
       challengesService.findById.mockResolvedValue(null);
 
-      await expect(service.getChallengeReport('missing')).rejects.toThrow(NotFoundException);
+      await expect(service.getChallengeReport('missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException when the challenge config is not set up yet', async () => {
-      challengesService.findById.mockResolvedValue({ id: 'c1', config: {} } as any);
+      challengesService.findById.mockResolvedValue({
+        id: 'c1',
+        config: {},
+      } as any);
 
-      await expect(service.getChallengeReport('c1')).rejects.toThrow(NotFoundException);
+      await expect(service.getChallengeReport('c1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -156,7 +186,11 @@ describe('MetricsAdminChallengeService', () => {
         title: 'D',
         config: fakeConfig('create'),
       } as any);
-      eventsService.findDistinctStudentsForChallenge.mockResolvedValue(['p1', 'p2', 'p3']);
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([
+        'p1',
+        'p2',
+        'p3',
+      ]);
       metricsService.getChallengeProgressForStudents.mockResolvedValue(
         new Map([
           ['p1', { status: 'completed', attempts: 2 }],
@@ -195,7 +229,9 @@ describe('MetricsAdminChallengeService', () => {
 
       await service.getChallengeReport('c2');
 
-      expect(metricsService.getChallengeProgressForStudents).toHaveBeenCalledWith([], {
+      expect(
+        metricsService.getChallengeProgressForStudents,
+      ).toHaveBeenCalledWith([], {
         challengeId: 'c2',
         stage: 'modify',
         nextChallengeId: 'c3',
@@ -209,17 +245,22 @@ describe('MetricsAdminChallengeService', () => {
         title: 'D',
         config: fakeConfig('create'),
       } as any);
-      eventsService.findDistinctStudentsForChallenge.mockResolvedValue(['p1', 'p2']);
-      eventsService.findEarliestEventTimestamps.mockImplementation(async (_challengeId, type) => {
-        if (!type) {
-          return new Map([
-            ['p1', new Date('2026-01-01T10:00:00Z')],
-            ['p2', new Date('2026-01-01T10:00:00Z')],
-          ]);
-        }
-        // p2 never executed — only p1 has a first `program_executed`.
-        return new Map([['p1', new Date('2026-01-01T10:00:05Z')]]);
-      });
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([
+        'p1',
+        'p2',
+      ]);
+      eventsService.findEarliestEventTimestamps.mockImplementation(
+        async (_challengeId, type) => {
+          if (!type) {
+            return new Map([
+              ['p1', new Date('2026-01-01T10:00:00Z')],
+              ['p2', new Date('2026-01-01T10:00:00Z')],
+            ]);
+          }
+          // p2 never executed — only p1 has a first `program_executed`.
+          return new Map([['p1', new Date('2026-01-01T10:00:05Z')]]);
+        },
+      );
 
       const result = await service.getChallengeReport('c1');
 
@@ -241,7 +282,9 @@ describe('MetricsAdminChallengeService', () => {
 
       const result = await service.getChallengeReport('c1');
 
-      expect(result.eventsByType).toEqual([{ label: 'program_executed', count: 5 }]);
+      expect(result.eventsByType).toEqual([
+        { label: 'program_executed', count: 5 },
+      ]);
     });
   });
 
@@ -249,7 +292,10 @@ describe('MetricsAdminChallengeService', () => {
     const baseChallenge = { id: 'c1', topicId: 't1', title: 'D' };
 
     it('includes only modifyInsights for a stage "modify" challenge', async () => {
-      challengesService.findById.mockResolvedValue({ ...baseChallenge, config: fakeConfig('modify') } as any);
+      challengesService.findById.mockResolvedValue({
+        ...baseChallenge,
+        config: fakeConfig('modify'),
+      } as any);
       eventsService.findDistinctStudentsForChallenge.mockResolvedValue([]);
 
       const result = await service.getChallengeReport('c1');
@@ -259,7 +305,10 @@ describe('MetricsAdminChallengeService', () => {
     });
 
     it('includes only useInsights for a stage "use" challenge', async () => {
-      challengesService.findById.mockResolvedValue({ ...baseChallenge, config: fakeConfig('use') } as any);
+      challengesService.findById.mockResolvedValue({
+        ...baseChallenge,
+        config: fakeConfig('use'),
+      } as any);
       eventsService.findDistinctStudentsForChallenge.mockResolvedValue([]);
 
       const result = await service.getChallengeReport('c1');
@@ -268,12 +317,33 @@ describe('MetricsAdminChallengeService', () => {
       expect(result.modifyInsights).toBeUndefined();
     });
 
-    it('includes neither block for a stage "create" challenge (AC de 6.5)', async () => {
-      challengesService.findById.mockResolvedValue({ ...baseChallenge, config: fakeConfig('create') } as any);
+    it('includes neither modify/use/create block for a stage "create" challenge without expectedModel (AC de 6.5)', async () => {
+      challengesService.findById.mockResolvedValue({
+        ...baseChallenge,
+        config: fakeConfig('create'),
+      } as any);
       eventsService.findDistinctStudentsForChallenge.mockResolvedValue([]);
 
       const result = await service.getChallengeReport('c1');
 
+      expect(result.modifyInsights).toBeUndefined();
+      expect(result.useInsights).toBeUndefined();
+      expect(result.createInsights).toBeUndefined();
+    });
+
+    it('includes createInsights for a stage "create" challenge WITH expectedModel (3.17)', async () => {
+      challengesService.findById.mockResolvedValue({
+        ...baseChallenge,
+        config: fakeConfig('create', {
+          scenarioLabel: 'Dia muito quente',
+          testCases: [],
+        }),
+      } as any);
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([]);
+
+      const result = await service.getChallengeReport('c1');
+
+      expect(result.createInsights).toBeDefined();
       expect(result.modifyInsights).toBeUndefined();
       expect(result.useInsights).toBeUndefined();
     });
@@ -287,36 +357,58 @@ describe('MetricsAdminChallengeService', () => {
         title: 'D',
         config: fakeConfig('modify'),
       } as any);
-      eventsService.findDistinctStudentsForChallenge.mockResolvedValue(['p1', 'p2']);
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([
+        'p1',
+        'p2',
+      ]);
     });
 
     it('computes attemptsUntilMatch only over students who eventually matched', async () => {
       eventsService.findModifyAttempts.mockResolvedValue([
-        fakeEvent('p1', { changed_values: ['TIMES'], prediction_given: 4, result_matched_prediction: false }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES'],
+          prediction_given: 4,
+          result_matched_prediction: false,
+        }),
         fakeEvent('p1', {
           changed_values: ['TIMES', 'ANGLE'],
           prediction_given: 4,
           result_matched_prediction: true,
         }),
-        fakeEvent('p2', { changed_values: ['ANGLE'], prediction_given: 3, result_matched_prediction: true }),
+        fakeEvent('p2', {
+          changed_values: ['ANGLE'],
+          prediction_given: 3,
+          result_matched_prediction: true,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
 
       // p1 matched on their 2nd attempt, p2 on their 1st.
       expect(result.modifyInsights!.attemptsUntilMatch.n).toBe(2);
-      expect(result.modifyInsights!.attemptsUntilMatch.mean).toBeCloseTo(1.5, 8);
+      expect(result.modifyInsights!.attemptsUntilMatch.mean).toBeCloseTo(
+        1.5,
+        8,
+      );
     });
 
     it('computes aggregate and per-student prediction match rate as two distinct numbers', async () => {
       eventsService.findModifyAttempts.mockResolvedValue([
-        fakeEvent('p1', { changed_values: ['TIMES'], prediction_given: 4, result_matched_prediction: false }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES'],
+          prediction_given: 4,
+          result_matched_prediction: false,
+        }),
         fakeEvent('p1', {
           changed_values: ['TIMES', 'ANGLE'],
           prediction_given: 4,
           result_matched_prediction: true,
         }),
-        fakeEvent('p2', { changed_values: ['ANGLE'], prediction_given: 3, result_matched_prediction: true }),
+        fakeEvent('p2', {
+          changed_values: ['ANGLE'],
+          prediction_given: 3,
+          result_matched_prediction: true,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -328,14 +420,28 @@ describe('MetricsAdminChallengeService', () => {
       });
       // Per-student: p1 = 50%, p2 = 100% — mean of the two RATES, not of the raw counts.
       expect(result.modifyInsights!.predictionMatchRate.perStudent.n).toBe(2);
-      expect(result.modifyInsights!.predictionMatchRate.perStudent.meanPercent).toBeCloseTo(75, 8);
+      expect(
+        result.modifyInsights!.predictionMatchRate.perStudent.meanPercent,
+      ).toBeCloseTo(75, 8);
     });
 
     it('builds the full frequency table of changed fields across every attempt, not just the mode', async () => {
       eventsService.findModifyAttempts.mockResolvedValue([
-        fakeEvent('p1', { changed_values: ['TIMES'], prediction_given: 4, result_matched_prediction: false }),
-        fakeEvent('p1', { changed_values: ['TIMES', 'ANGLE'], prediction_given: 4, result_matched_prediction: true }),
-        fakeEvent('p2', { changed_values: ['ANGLE'], prediction_given: 3, result_matched_prediction: true }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES'],
+          prediction_given: 4,
+          result_matched_prediction: false,
+        }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES', 'ANGLE'],
+          prediction_given: 4,
+          result_matched_prediction: true,
+        }),
+        fakeEvent('p2', {
+          changed_values: ['ANGLE'],
+          prediction_given: 3,
+          result_matched_prediction: true,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -348,9 +454,21 @@ describe('MetricsAdminChallengeService', () => {
 
     it('produces one scatter point per student (attempts × their individual match rate)', async () => {
       eventsService.findModifyAttempts.mockResolvedValue([
-        fakeEvent('p1', { changed_values: ['TIMES'], prediction_given: 4, result_matched_prediction: false }),
-        fakeEvent('p1', { changed_values: ['TIMES'], prediction_given: 4, result_matched_prediction: true }),
-        fakeEvent('p2', { changed_values: ['ANGLE'], prediction_given: 3, result_matched_prediction: true }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES'],
+          prediction_given: 4,
+          result_matched_prediction: false,
+        }),
+        fakeEvent('p1', {
+          changed_values: ['TIMES'],
+          prediction_given: 4,
+          result_matched_prediction: true,
+        }),
+        fakeEvent('p2', {
+          changed_values: ['ANGLE'],
+          prediction_given: 3,
+          result_matched_prediction: true,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -368,7 +486,10 @@ describe('MetricsAdminChallengeService', () => {
       const result = await service.getChallengeReport('c1');
 
       expect(result.modifyInsights!.attemptsUntilMatch.n).toBe(0);
-      expect(result.modifyInsights!.predictionMatchRate.aggregate).toEqual({ n: 0, ratePercent: null });
+      expect(result.modifyInsights!.predictionMatchRate.aggregate).toEqual({
+        n: 0,
+        ratePercent: null,
+      });
       expect(result.modifyInsights!.mostChangedFieldDistribution).toEqual([]);
       expect(result.modifyInsights!.attemptsVsMatchRateScatter).toEqual([]);
     });
@@ -382,13 +503,22 @@ describe('MetricsAdminChallengeService', () => {
         title: 'D',
         config: fakeConfig('use'),
       } as any);
-      eventsService.findDistinctStudentsForChallenge.mockResolvedValue(['p1', 'p2']);
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([
+        'p1',
+        'p2',
+      ]);
     });
 
     it('computes attemptsBeforeProceed from the RD-P challenge_use_completed rows', async () => {
       eventsService.findUseCompletions.mockResolvedValue([
-        fakeEvent('p1', { attempts_before_proceed: 2, investigation_answer: 'porque sim' }),
-        fakeEvent('p2', { attempts_before_proceed: 4, investigation_answer: null }),
+        fakeEvent('p1', {
+          attempts_before_proceed: 2,
+          investigation_answer: 'porque sim',
+        }),
+        fakeEvent('p2', {
+          attempts_before_proceed: 4,
+          investigation_answer: null,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -399,8 +529,14 @@ describe('MetricsAdminChallengeService', () => {
 
     it('counts investigationResponses only for a non-empty answer', async () => {
       eventsService.findUseCompletions.mockResolvedValue([
-        fakeEvent('p1', { attempts_before_proceed: 1, investigation_answer: 'resposta real' }),
-        fakeEvent('p2', { attempts_before_proceed: 1, investigation_answer: '' }),
+        fakeEvent('p1', {
+          attempts_before_proceed: 1,
+          investigation_answer: 'resposta real',
+        }),
+        fakeEvent('p2', {
+          attempts_before_proceed: 1,
+          investigation_answer: '',
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -410,9 +546,18 @@ describe('MetricsAdminChallengeService', () => {
 
     it('computes aggregate and per-student prediction match rate from program_executed rows', async () => {
       eventsService.findExecutionsWithPrediction.mockResolvedValue([
-        fakeEvent('p1', { prediction_given: 4, result_matched_prediction: true }),
-        fakeEvent('p1', { prediction_given: 4, result_matched_prediction: true }),
-        fakeEvent('p2', { prediction_given: 3, result_matched_prediction: false }),
+        fakeEvent('p1', {
+          prediction_given: 4,
+          result_matched_prediction: true,
+        }),
+        fakeEvent('p1', {
+          prediction_given: 4,
+          result_matched_prediction: true,
+        }),
+        fakeEvent('p2', {
+          prediction_given: 3,
+          result_matched_prediction: false,
+        }),
       ]);
 
       const result = await service.getChallengeReport('c1');
@@ -423,7 +568,169 @@ describe('MetricsAdminChallengeService', () => {
       });
       expect(result.useInsights!.predictionMatchRate.perStudent.n).toBe(2);
       // p1 = 100%, p2 = 0% → mean 50%.
-      expect(result.useInsights!.predictionMatchRate.perStudent.meanPercent).toBe(50);
+      expect(
+        result.useInsights!.predictionMatchRate.perStudent.meanPercent,
+      ).toBe(50);
+    });
+  });
+
+  describe('getChallengeReport — createInsights (3.17)', () => {
+    const testCases = [
+      { temperatureC: -20, expectedState: 'SOLID' },
+      { temperatureC: 20, expectedState: 'LIQUID' },
+      { temperatureC: 150, expectedState: 'GAS' },
+    ];
+
+    beforeEach(() => {
+      challengesService.findById.mockResolvedValue({
+        id: 'c1',
+        topicId: 't1',
+        title: 'D',
+        config: fakeConfig('create', {
+          scenarioLabel: 'Dia muito quente',
+          testCases,
+        }),
+      } as any);
+      eventsService.findDistinctStudentsForChallenge.mockResolvedValue([
+        'p1',
+        'p2',
+      ]);
+    });
+
+    it('carries the scenarioLabel through from the expectedModel', async () => {
+      const result = await service.getChallengeReport('c1');
+      expect(result.createInsights!.scenarioLabel).toBe('Dia muito quente');
+    });
+
+    it('lists every configured test case even with zero submissions, never an empty list', async () => {
+      const result = await service.getChallengeReport('c1');
+      expect(result.createInsights!.perCase).toEqual([
+        {
+          temperatureC: -20,
+          expectedState: 'SOLID',
+          passes: 0,
+          submissions: 0,
+        },
+        {
+          temperatureC: 20,
+          expectedState: 'LIQUID',
+          passes: 0,
+          submissions: 0,
+        },
+        { temperatureC: 150, expectedState: 'GAS', passes: 0, submissions: 0 },
+      ]);
+    });
+
+    it('tallies passes/submissions per case and the aggregate all-passed rate across students', async () => {
+      eventsService.findWaterProgramValidations.mockResolvedValue([
+        fakeEvent('p1', {
+          all_passed: true,
+          case_results: [
+            {
+              temperatureC: -20,
+              expectedState: 'SOLID',
+              actualState: 'SOLID',
+              passed: true,
+            },
+            {
+              temperatureC: 20,
+              expectedState: 'LIQUID',
+              actualState: 'LIQUID',
+              passed: true,
+            },
+            {
+              temperatureC: 150,
+              expectedState: 'GAS',
+              actualState: 'GAS',
+              passed: true,
+            },
+          ],
+        }),
+        fakeEvent('p2', {
+          all_passed: false,
+          case_results: [
+            {
+              temperatureC: -20,
+              expectedState: 'SOLID',
+              actualState: 'LIQUID',
+              passed: false,
+            },
+            {
+              temperatureC: 20,
+              expectedState: 'LIQUID',
+              actualState: 'LIQUID',
+              passed: true,
+            },
+            {
+              temperatureC: 150,
+              expectedState: 'GAS',
+              actualState: 'GAS',
+              passed: true,
+            },
+          ],
+        }),
+      ]);
+
+      const result = await service.getChallengeReport('c1');
+
+      expect(result.createInsights!.perCase).toEqual([
+        {
+          temperatureC: -20,
+          expectedState: 'SOLID',
+          passes: 1,
+          submissions: 2,
+        },
+        {
+          temperatureC: 20,
+          expectedState: 'LIQUID',
+          passes: 2,
+          submissions: 2,
+        },
+        { temperatureC: 150, expectedState: 'GAS', passes: 2, submissions: 2 },
+      ]);
+      // 1 de 2 submissões (p1) teve all_passed=true.
+      expect(result.createInsights!.allCasesPassedRate.aggregate).toEqual({
+        n: 2,
+        ratePercent: 50,
+      });
+      expect(result.createInsights!.allCasesPassedRate.perStudent.n).toBe(2);
+      // p1 = 100% (1/1 all-passed), p2 = 0% (0/1) → média 50%.
+      expect(
+        result.createInsights!.allCasesPassedRate.perStudent.meanPercent,
+      ).toBe(50);
+    });
+
+    it('ignores a case_results entry that no longer matches any configured test case', async () => {
+      eventsService.findWaterProgramValidations.mockResolvedValue([
+        fakeEvent('p1', {
+          all_passed: false,
+          case_results: [
+            {
+              temperatureC: 999,
+              expectedState: 'SOLID',
+              actualState: null,
+              passed: false,
+            },
+          ],
+        }),
+      ]);
+
+      const result = await service.getChallengeReport('c1');
+
+      expect(
+        result.createInsights!.perCase.every(
+          (entry) => entry.submissions === 0,
+        ),
+      ).toBe(true);
+    });
+
+    it('returns zeros/nulls, never an error, when there is no submission yet', async () => {
+      const result = await service.getChallengeReport('c1');
+      expect(result.createInsights!.allCasesPassedRate.aggregate).toEqual({
+        n: 0,
+        ratePercent: null,
+      });
+      expect(result.createInsights!.allCasesPassedRate.perStudent.n).toBe(0);
     });
   });
 });

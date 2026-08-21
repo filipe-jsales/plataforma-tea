@@ -114,6 +114,34 @@ export interface SerializedBlockState {
   next?: { block?: SerializedBlockState };
 }
 
+// 3.17 — mesmo domínio de apps/web/src/lib/waterProgram.ts#WaterState,
+// duplicado aqui pelo mesmo racional de SerializedBlockState acima.
+export type WaterState = 'SOLID' | 'LIQUID' | 'GAS';
+
+// Um ponto de teste do "modelo esperado" (3.17): a temperatura e o estado
+// físico cientificamente correto pra ela, segundo o cenário que o
+// professor configurou pro desafio (ex.: limiares de fusão/ebulição de
+// "dia muito quente"). `apps/api/src/challenges/water-program.ts` roda o
+// programa do aluno em CADA `temperatureC` daqui e compara contra
+// `expectedState` — nunca visível ao aluno (ver
+// ChallengesController.buildDetailOrThrow, que nunca inclui este campo na
+// resposta do aluno).
+export interface WaterProgramTestCase {
+  temperatureC: number;
+  expectedState: WaterState;
+}
+
+// 3.17 — presente só em desafios `stage: 'create'` do domínio `water_state`
+// (hoje curado via migration, mesmo racional de "sem autoria de toolbox
+// pelo professor nesta versão" já documentado acima pra `editableFields`/
+// `allowedBlockTypes` — um handler de template pro domínio água fica pra
+// depois). `scenarioLabel` é só pra exibição no relatório do professor
+// (nunca ao aluno).
+export interface WaterExpectedModel {
+  scenarioLabel: string;
+  testCases: WaterProgramTestCase[];
+}
+
 export interface ChallengeConfig {
   stage: ChallengeStage;
   allowedBlockTypes: string[];
@@ -161,6 +189,11 @@ export interface ChallengeConfig {
   blockScale?: number;
   // 3.7 (AC4) — ver ChallengeFeedbackMessages acima.
   feedbackMessages?: ChallengeFeedbackMessages;
+  // 3.17 — ver WaterExpectedModel acima. Presente só no desafio 2.3 (`create`,
+  // domínio `water_state`); ausente em qualquer outro desafio (geometria
+  // inclusa) — `ChallengeValidationService` só valida quando este campo
+  // existe, nunca assume um modelo default.
+  expectedModel?: WaterExpectedModel;
 }
 
 export function isChallengeConfig(value: unknown): value is ChallengeConfig {
