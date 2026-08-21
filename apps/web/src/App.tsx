@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AdminSchoolClassrooms } from './routes/admin/AdminSchoolClassrooms'
 import { AdminSchools } from './routes/admin/AdminSchools'
@@ -23,6 +24,14 @@ import { TeacherChallengeNew } from './routes/teacher/TeacherChallengeNew'
 import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
 import { TeacherAddStudent } from './routes/teacher/TeacherAddStudent'
 import { TeacherStudents } from './routes/teacher/TeacherStudents'
+
+// MJ1 — único ponto de `React.lazy` do app hoje, de propósito: é o que
+// garante o AC "lazy-loading do motor de jogo... sem impacto de bundle na
+// área principal de blocos" — PixiJS já é puxado eagerly por
+// PixiTurtleWorld (ChallengePage), então isso não evita o Pixi já
+// existente, só evita que MiniGameEngine/cenas de mini jogo entrem no
+// chunk principal antes de precisar delas.
+const MiniGamePage = lazy(() => import('./routes/minigame/MiniGamePage'))
 
 function App() {
   return (
@@ -89,6 +98,20 @@ function App() {
         element={
           <RequireAuth roles={['student']}>
             <WaterStateChallengePage />
+          </RequireAuth>
+        }
+      />
+      {/* MJ1 — 2ª metodologia ativa (mini jogos sérios), complementar ao
+          desafio de blocos pro mesmo `conceptId`. Suspense só nesta rota —
+          nenhuma outra tela do app paga o custo de um fallback de
+          carregamento. */}
+      <Route
+        path="/minigame/:conceptId"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <MiniGamePage />
+            </Suspense>
           </RequireAuth>
         }
       />

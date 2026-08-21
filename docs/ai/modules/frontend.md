@@ -904,6 +904,121 @@ duplicada em nenhum outro lugar.
   mesmo padrão de `runToken`/`cancelled` do mundo da tartaruga) evita que
   uma execução antiga sobreponha uma nova.
 
+## Motor base de mini jogos sérios (MJ1/MJ7)
+
+2ª metodologia ativa da plataforma (RQ1 — Serious Games, 39,13% dos
+estudos, atrás só de Visual Programming Environments), **complementar**
+ao editor de blocos (`ChallengePage`/`WaterStateChallengePage`), nunca um
+módulo desconectado — plano completo em `docs/ai/backlog/
+mini-jogos-serios.md` (cards MJ1–MJ8; só MJ1 e MJ7 estão implementados
+até aqui). Toda a infraestrutura vive fora do bundle principal (ver
+lazy-loading abaixo) e não importa nada de `ChallengePage`/Blockly.
+
+### Decisão de arquitetura: PixiJS, não Phaser
+
+O card original de MJ1 sugere Phaser 3. Implementado com **PixiJS**
+mesmo assim — é o motor que `PixiTurtleWorld.tsx` já usa em produção pro
+mundo de execução do desafio de blocos, e o próprio card reconhece o
+risco de manter duas stacks de renderização 2D ("por isso a recomendação
+é convergir... para ambos"). Introduzir Phaser agora criaria exatamente
+esse problema; reaproveitar PixiJS resolve o objetivo declarado sem
+migrar o mundo de tartaruga já em produção.
+
+### Ciclo PRIMM como arquitetura interna (regra não-negociável 3)
+
+`lib/primmLifecycle.ts` — `PRIMM_PHASES = ['predict', 'run',
+'investigate', 'modify', 'make']`, mais `nextPrimmPhase`/
+`isFinalPrimmPhase`. Vocabulário puro, sem I/O — nunca exposto como
+rótulo na UI do aluno (nenhuma cena mostra "Predict"/"Investigate"; a
+cena placeholder mostra só "Etapa N de 5", ver abaixo).
+
+### `createMiniGameStore` (factory, `stores/miniGameStore.ts`)
+
+Mesmo racional de `createTurtleExecutionStore` (3.2 AC1): factory, não
+singleton — cada mini jogo na tela (hoje, um por rota) tem sua própria
+instância, criada via `useMemo`. Guarda um único `activeScene: {
+sceneId, conceptId, phase, attempts, status, startedAt, phaseEnteredAt }
+| null`:
+
+- `startScene(sceneId, conceptId)` — sempre nasce na 1ª fase
+  (`'predict'`), 0 tentativas. Chamar de novo com um `sceneId` diferente
+  substitui a cena INTEIRA (nunca funde com a anterior) — é o que sustenta
+  "uma única cena carregada por vez" (AC de MJ1) junto com o motor (ver
+  `MiniGameEngine` abaixo).
+- `recordAttempt()` — incrementa tentativas na fase atual; no-op se não
+  houver cena ativa ou ela já estiver concluída (nunca ressuscita uma
+  cena terminada).
+- `advancePhase()` — avança pra próxima fase PRIMM, resetando
+  `attempts`/`phaseEnteredAt`; na última fase (`'make'`), marca
+  `status: 'completed'` em vez de tentar avançar pra uma fase inexistente.
+- `reset()` — limpa `activeScene` inteiro.
+
+Testado isolado do motor de renderização (`miniGameStore.spec.ts`) —
+lógica pura, sem depender de Pixi/DOM.
+
+### `MiniGameEngine` (`components/minigame/MiniGameEngine.tsx`)
+
+Mesmo padrão de `PixiTurtleWorld`: monta uma `Application` Pixi uma vez
+(`app.init()` assíncrono, `disposed`/`ready` guardando contra
+StrictMode montando/desmontando duas vezes em dev), comunica
+EXCLUSIVAMENTE via o `store` que recebe por prop — nunca conhece o
+conteúdo de uma cena específica.
+
+Contrato de cena (`MiniGameSceneDefinition`): `{ id, conceptId,
+mount({ app, store }): () => void }`. O motor:
+
+1. Ao montar (ou quando a prop `scene` muda), sempre chama a limpeza da
+   cena anterior + `app.stage.removeChildren()` **antes** de montar a
+   nova (`store.getState().startScene(...)` seguido de `scene.mount(...)`)
+   — garante que nunca há duas cenas coexistindo no mesmo stage, mesmo
+   trocando de cena rapidamente (AC "uma única cena por vez").
+2. Guarda a função de limpeza devolvida por `mount()` num ref, chamada
+   tanto na próxima troca de cena quanto no unmount do componente.
+
+### Cena placeholder (`components/minigame/scenes/placeholderScene.ts`)
+
+Prova o ciclo de vida ponta a ponta (montar → avançar as 5 fases →
+concluir → desmontar) sem ser conteúdo pedagógico de verdade — um botão
+Pixi que chama `store.getState().advancePhase()` a cada toque, com um
+texto "Etapa N de 5" (nunca os rótulos técnicos do PRIMM). MJ3/MJ4/MJ5
+(roteiro visual TEACCH, áreas de interação tolerantes, rotulagem
+redundante completa) são cards separados que qualquer cena de CONTEÚDO
+real precisa seguir — esta cena é deliberadamente a mais simples
+possível, só valida a infraestrutura.
+
+### Rota e lazy-loading (`routes/minigame/MiniGamePage.tsx`, `/minigame/:conceptId`)
+
+Único uso de `React.lazy`/`Suspense` no app hoje — `App.tsx` só importa
+`MiniGamePage` dinamicamente (`lazy(() => import(...))`), então
+`MiniGameEngine`/PixiJS-pro-mini-jogo só entra no bundle quando o aluno
+navega pra essa rota, nunca pesando na área principal de blocos (AC de
+MJ1). `conceptId` vem da URL — hoje uma string livre; o vínculo formal
+com o `Challenge`/`Topic` equivalente do desafio de blocos é MJ8
+(bloqueado, precisa de decisão de schema em conjunto — ver backlog).
+
+### Eventos de mini jogo (MJ7) — `lib/miniGameEvents.ts` + `lib/useMiniGameEventLogging.ts`
+
+Mesmas 5 categorias já definidas (RD-I/P/C/E/L), mesmo `logEvent`/
+`POST /events` — nenhuma taxonomia paralela, nenhuma mudança de schema
+de banco (payload jsonb já comporta os campos novos). `useMiniGameEventLogging(store, studentPseudoId)`
+observa `store.subscribe` (nunca lê Pixi) e traduz toda transição de
+`activeScene` num evento:
+
+| Evento | Categoria | Quando |
+|---|---|---|
+| `minigame_scene_started` | RD-P | cena nova monta (1ª vez ou troca de `sceneId`) |
+| `minigame_primm_phase_changed` | RD-I | `advancePhase()` avança pra uma fase não-final — payload com `from_phase`/`to_phase`/`attempts_in_phase`/`time_in_phase_ms` |
+| `minigame_step_retry` | RD-I | `recordAttempt()` dentro da MESMA fase |
+| `minigame_completed` | RD-C | `advancePhase()` na fase final marca `status: 'completed'` |
+| `minigame_abandoned` | RD-E | componente desmonta com a cena ainda `'active'` (nunca se já `'completed'`) |
+
+`concept_id` presente em TODO payload (não só nos metadados internos da
+cena) — é o campo que MJ8 (futuro) usa pra cruzar com eventos do desafio
+de blocos equivalente. `minigame_abandoned` (RD-E) só carrega
+`time_in_phase_ms`/`attempts_in_phase` — números brutos, nunca um campo
+tipo "possível dificuldade"/"sobrecarga" (regra não-negociável 7, testado
+explicitamente em `useMiniGameEventLogging.spec.ts`).
+
 ## Feedback não-punitivo reutilizável (3.7)
 
 Antes desta feature, `ChallengePage` renderizava o feedback de Use/Create

@@ -43,6 +43,10 @@ const template: ChallengeTemplateDetail = {
       ],
     },
   ],
+  primmQuestionSuggestion: {
+    predictQuestion: 'Quantos lados você acha que essa figura vai ter?',
+    investigationQuestion: 'O que você percebeu sobre o ângulo de giro?',
+  },
 };
 
 beforeEach(() => {
@@ -112,6 +116,8 @@ describe('TemplateChallengeForm', () => {
       title: 'Meu desafio',
       params: { sides: 4, turnAngleDeg: 90, snapTolerancePercent: 60, enabledBlockTypes: ['move_forward', 'turn'] },
       feedbackMessages: { retry: '', success: '' },
+      predictQuestion: template.primmQuestionSuggestion.predictQuestion,
+      investigationQuestion: template.primmQuestionSuggestion.investigationQuestion,
     });
   });
 

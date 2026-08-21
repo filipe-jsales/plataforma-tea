@@ -26,6 +26,10 @@ const templateDetail = {
   parameterSchema: [
     { key: 'sides', label: 'Número de lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
   ],
+  primmQuestionSuggestion: {
+    predictQuestion: 'Quantos lados você acha que essa figura vai ter?',
+    investigationQuestion: 'O que você percebeu sobre o ângulo de giro?',
+  },
 };
 
 beforeEach(() => {
@@ -98,6 +102,8 @@ describe('TeacherChallengeEdit', () => {
         title: 'Hexágonos',
         params: { sides: 8 },
         feedbackMessages: { retry: '', success: '' },
+        predictQuestion: templateDetail.primmQuestionSuggestion.predictQuestion,
+        investigationQuestion: templateDetail.primmQuestionSuggestion.investigationQuestion,
       }),
     );
   });
