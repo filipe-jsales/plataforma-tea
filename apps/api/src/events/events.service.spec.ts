@@ -467,12 +467,16 @@ describe('EventsService', () => {
       return queryBuilder;
     }
 
-    it('applies no andWhere when every filter is omitted (caller already guarantees at least one)', async () => {
+    it('applies no per-filter andWhere when every caller filter is omitted (caller already guarantees at least one) — but always excludes teacher-authored rows (7.5)', async () => {
       const queryBuilder = mockQueryBuilder();
 
       await service.findEventsForExport({}, 1, 500);
 
-      expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+      // A ÚNICA chamada é a exclusão fixa de eventos sem `studentPseudoId`
+      // (7.5) — nenhuma das quatro condições OPCIONAIS (pseudoIds/
+      // challengeId/from/to) foi aplicada.
+      expect(queryBuilder.andWhere).toHaveBeenCalledTimes(1);
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.studentPseudoId IS NOT NULL');
     });
 
     it('filters by pseudoIds, challengeId and a date range together (AND, not OR)', async () => {

@@ -133,6 +133,11 @@ function groupByStudent(
 ): Map<string, InteractionEvent[]> {
   const groups = new Map<string, InteractionEvent[]>();
   for (const event of events) {
+    // 7.5 — `studentPseudoId` é `null` só em eventos de AUTORIA do
+    // professor (ver InteractionEvent), que nunca aparecem nas queries que
+    // alimentam esta função (filtradas por `type` de evento de aluno) —
+    // guarda de tipo, não um caso esperado em runtime.
+    if (!event.studentPseudoId) continue;
     const existing = groups.get(event.studentPseudoId);
     if (existing) {
       existing.push(event);

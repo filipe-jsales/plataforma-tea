@@ -20,9 +20,25 @@ export class InteractionEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Nunca o id reversível do aluno — sempre o pseudônimo.
-  @Column({ type: 'varchar', length: 64 })
-  studentPseudoId: string;
+  // Nunca o id reversível do aluno — sempre o pseudônimo. `null` só nos
+  // poucos eventos de AUTORIA do professor (ver `teacherUserId` abaixo) —
+  // um evento de aluno de verdade sempre tem os dois preenchidos
+  // exclusivamente entre si, nunca os dois juntos nem os dois nulos
+  // (responsabilidade de `EventsService.record`/`recordTeacherEvent`, não
+  // de uma constraint de banco).
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  studentPseudoId: string | null;
+
+  // 7.5 — id real (não pseudonimizado) do professor autor, só presente em
+  // eventos de AUTORIA de currículo (ex.: `challenge_primm_questions_
+  // configured`), nunca em telemetria de interação do aluno. Coluna
+  // separada de propósito: professor/admin não são pseudonimizados (regra
+  // não-negociável 8 só se aplica a dado de ALUNO) — misturar o id real do
+  // professor dentro de `studentPseudoId` contaminaria qualquer contagem/
+  // exportação que assume "toda linha desta tabela = 1 pseudônimo de
+  // aluno" (ex.: `countDistinctStudentsActiveSince`, exportação 6.6).
+  @Column({ type: 'uuid', nullable: true })
+  teacherUserId: string | null;
 
   @Column({ type: 'enum', enum: EventCategory })
   category: EventCategory;

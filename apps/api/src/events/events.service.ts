@@ -24,6 +24,33 @@ export class EventsService {
     return this.eventsRepository.save(event);
   }
 
+  // 7.5 — contraparte de `record()` pra eventos de AUTORIA do professor
+  // (ex.: `challenge_primm_questions_configured`), nunca exposta via
+  // `POST /events` (esse endpoint continua exigindo `studentPseudoId`,
+  // inalterado) — só chamada server-side, de dentro de um service que já
+  // resolveu `req.user.sub` do professor autenticado
+  // (ChallengeTemplatesService). `studentPseudoId` fica `null` de
+  // propósito, nunca reaproveitado pro id do professor (ver comentário na
+  // entidade).
+  async recordTeacherEvent(
+    teacherUserId: string,
+    category: EventCategory,
+    type: string,
+    challengeId: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<InteractionEvent> {
+    const event = this.eventsRepository.create({
+      studentPseudoId: null,
+      teacherUserId,
+      category,
+      type,
+      payload,
+      sessionId: null,
+      challengeId,
+    });
+    return this.eventsRepository.save(event);
+  }
+
   // Home do professor (2.1): sinal de engajamento neutro por turma — nunca
   // ranking individual, só a contagem de alunos com pelo menos 1 evento
   // desde `since`. Se `pseudoIds` vier vazio (turma sem aluno matriculado),
@@ -276,6 +303,14 @@ export class EventsService {
   ): Promise<InteractionEvent[]> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
+      // 7.5 — exportação de dados de ALUNO (6.6): nunca deixa vazar um
+      // evento de autoria do professor (`studentPseudoId: null`,
+      // `teacherUserId` preenchido) mesmo quando o filtro não inclui
+      // `pseudoIds` — explícito aqui, não confiado ao acaso de `IN` não
+      // casar `NULL`. `andWhere` (não `where`) porque é assim que o mock
+      // de `createQueryBuilder` já é montado nos testes deste service —
+      // TypeORM aceita `andWhere` como primeira condição normalmente.
+      .andWhere('event.studentPseudoId IS NOT NULL')
       .orderBy('event.createdAt', 'ASC')
       .addOrderBy('event.id', 'ASC');
     if (filter.pseudoIds) {

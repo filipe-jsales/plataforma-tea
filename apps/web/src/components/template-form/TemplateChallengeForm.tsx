@@ -11,7 +11,7 @@ import type {
   TemplateParamsDraft,
   TemplatePreviewResult,
 } from '../../lib/challengeTemplateTypes';
-import { Button, InlineFeedback, TextField } from '../ui';
+import { Button, InlineFeedback, TextareaField, TextField } from '../ui';
 import { TemplateParameterField } from './TemplateParameterField';
 import './TemplateChallengeForm.css';
 
@@ -19,6 +19,8 @@ export interface TemplateChallengeFormSubmitInput {
   title: string;
   params: TemplateParamsDraft;
   feedbackMessages: ChallengeFeedbackMessagesDraft;
+  predictQuestion: string;
+  investigationQuestion: string;
 }
 
 export interface TemplateChallengeFormProps {
@@ -26,6 +28,11 @@ export interface TemplateChallengeFormProps {
   initialTitle?: string;
   initialParams?: TemplateParamsDraft;
   initialFeedbackMessages?: Partial<ChallengeFeedbackMessagesDraft>;
+  // 7.5 (AC3) — vindo do desafio salvo (edição/duplicação); ausente numa
+  // criação nova, caso em que o formulário pré-preenche com a sugestão do
+  // template (`template.primmQuestionSuggestion`), nunca com string vazia.
+  initialPredictQuestion?: string;
+  initialInvestigationQuestion?: string;
   submitLabel: string;
   onSubmit: (input: TemplateChallengeFormSubmitInput) => Promise<void>;
 }
@@ -42,6 +49,8 @@ export function TemplateChallengeForm({
   initialTitle = '',
   initialParams,
   initialFeedbackMessages,
+  initialPredictQuestion,
+  initialInvestigationQuestion,
   submitLabel,
   onSubmit,
 }: TemplateChallengeFormProps) {
@@ -57,6 +66,16 @@ export function TemplateChallengeForm({
     retry: initialFeedbackMessages?.retry ?? '',
     success: initialFeedbackMessages?.success ?? '',
   }));
+  // 7.5 — ao contrário de `feedbackMessages` (vazio = "usar default"), aqui
+  // vazio nunca é uma opção válida: sem valor salvo (criação nova), o
+  // campo já nasce preenchido com a sugestão do template — editável, nunca
+  // um placeholder cinza que o professor precisaria apagar pra digitar.
+  const [predictQuestion, setPredictQuestion] = useState(
+    () => initialPredictQuestion ?? template.primmQuestionSuggestion.predictQuestion,
+  );
+  const [investigationQuestion, setInvestigationQuestion] = useState(
+    () => initialInvestigationQuestion ?? template.primmQuestionSuggestion.investigationQuestion,
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -128,7 +147,13 @@ export function TemplateChallengeForm({
         return;
       }
       setFieldErrors({});
-      await onSubmit({ title: title.trim(), params, feedbackMessages });
+      await onSubmit({
+        title: title.trim(),
+        params,
+        feedbackMessages,
+        predictQuestion,
+        investigationQuestion,
+      });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.');
     } finally {
@@ -159,6 +184,27 @@ export function TemplateChallengeForm({
             onChange={(value) => handleParamChange(definition.key, value)}
           />
         ))}
+      </div>
+
+      {/* 7.5 — perguntas PRIMM (AC1): OBRIGATÓRIAS, ao contrário das
+          mensagens de feedback abaixo. Pré-preenchidas com a sugestão do
+          template (AC2), sempre editáveis. Sem limite curto de caracteres
+          (AC4) — TextareaField acomoda linguagem acessível mais longa. */}
+      <div className="template-challenge-form__primm-questions">
+        <TextareaField
+          id="predict-question"
+          label="Pergunta de Predição (antes de Executar)"
+          value={predictQuestion}
+          error={fieldErrors.predictQuestion}
+          onChange={(event) => setPredictQuestion(event.target.value)}
+        />
+        <TextareaField
+          id="investigation-question"
+          label="Pergunta de Investigação (depois de Executar)"
+          value={investigationQuestion}
+          error={fieldErrors.investigationQuestion}
+          onChange={(event) => setInvestigationQuestion(event.target.value)}
+        />
       </div>
 
       {/* 3.7 (AC4) — mensagens de feedback opcionais, por desafio. Vazio usa

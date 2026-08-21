@@ -13,6 +13,7 @@ function makeEvent(
   return {
     id: 'event-1',
     studentPseudoId: 'pseudo-1',
+    teacherUserId: null,
     category: EventCategory.PRODUCT,
     type: 'program_executed',
     payload: {},
