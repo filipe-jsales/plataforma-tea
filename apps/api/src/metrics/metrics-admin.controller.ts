@@ -18,6 +18,7 @@ import { toCsv, type CsvCell } from './csv';
 import { ExportEventsQueryDto } from './dto/export-events-query.dto';
 import { MetricsAdminChallengeService } from './metrics-admin-challenge.service';
 import { MetricsAdminExportService } from './metrics-admin-export.service';
+import { MetricsAdminMiniGameService } from './metrics-admin-minigame.service';
 import { MetricsAdminService } from './metrics-admin.service';
 
 const EXPORT_CSV_HEADERS = [
@@ -43,6 +44,7 @@ export class MetricsAdminController {
     private readonly metricsAdminService: MetricsAdminService,
     private readonly metricsAdminChallengeService: MetricsAdminChallengeService,
     private readonly metricsAdminExportService: MetricsAdminExportService,
+    private readonly metricsAdminMiniGameService: MetricsAdminMiniGameService,
   ) {}
 
   @Get('schools')
@@ -65,6 +67,18 @@ export class MetricsAdminController {
   @Get('challenges/:challengeId')
   getChallengeReport(@Param('challengeId') challengeId: string) {
     return this.metricsAdminChallengeService.getChallengeReport(challengeId);
+  }
+
+  // Métricas dos eventos de mini jogo pro admin (pedido explícito do
+  // produto), mesmo padrão de 6.5 pro desafio de blocos.
+  @Get('minigames')
+  listMiniGames() {
+    return this.metricsAdminMiniGameService.listMiniGameLevels();
+  }
+
+  @Get('minigames/:levelId')
+  getMiniGameLevelReport(@Param('levelId') levelId: string) {
+    return this.metricsAdminMiniGameService.getMiniGameLevelReport(levelId);
   }
 
   // 6.6 — exportação de dados brutos. `ThrottlerGuard` só nesta rota (não

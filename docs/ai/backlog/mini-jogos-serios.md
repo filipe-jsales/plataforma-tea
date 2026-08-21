@@ -35,12 +35,17 @@ trade-offs" no fim deste documento.
 |---|---|
 | MJ1 — Motor base | **Implementado** (ver `docs/ai/modules/frontend.md` → "Motor base de mini jogos sérios (MJ1)") |
 | MJ7 — Schema de eventos | **Implementado** (ver mesma seção — vocabulário de eventos do motor) |
-| MJ2 — Perfil sensorial aplicado por padrão | Não implementado — MJ1 já nasce com áudio mudo/sem partículas por padrão (mesmo default seguro do resto da plataforma), mas o QA sensorial documentado e a config runtime completa (toggle explícito por jogo) ficam para quando existir um mini jogo de conteúdo de verdade |
-| MJ3 — Roteiro visual estruturado | Não implementado |
-| MJ4 — Áreas de interação grandes e tolerantes | Não implementado (não há mecânica de jogo concreta ainda — MJ1 é infraestrutura, não um jogo) |
-| MJ5 — Rotulagem redundante | Não implementado pelo mesmo motivo — reaproveitará `components/ui` quando existir conteúdo |
+| MJ2 — Perfil sensorial aplicado por padrão | **Implementado** — `MiniGameEngine` lê `useSensoryProfileStore` ao vivo (`getSensory()` no contexto de cena) e repassa pra cena decidir animar/tocar som; checklist QA em `docs/ai/qa/sensory-checklist-minigames.md`. |
+| MJ3 — Roteiro visual estruturado | **Implementado** — `components/minigame/MiniGameBriefing.tsx`, reutilizável, aplicado tanto na cena placeholder (`MiniGamePage.tsx`) quanto no jogo de conteúdo (`FractionsGamePage.tsx`); botão "Ver roteiro" reabre sem perder progresso. |
+| MJ4 — Áreas de interação grandes e tolerantes | **Implementado**, entregue junto com o 1º jogo de conteúdo — `components/minigame/CardSequenceEditor.tsx` reordena por botão ↑/↓ (nunca drag-and-drop), sem timer obrigatório em nenhuma mecânica. |
+| MJ5 — Rotulagem redundante | **Implementado** — reaproveita `InlineFeedback`/`Button` (`components/ui`); resultado da rodada nunca é só cor (a peça entregue no Pixi também ganha ícone de check). |
 | MJ6 — Comparação de progresso (opt-in) | Não implementado — depende de #37/#27 (comparação entre alunos no desafio de blocos), que também não existem ainda |
 | MJ8 — Vínculo conceito-currículo | Não implementado — MJ7 já faz cada evento de mini jogo carregar `concept_id` no payload (pré-requisito de dado), mas a comparação lado a lado no painel do professor é trabalho futuro à parte |
+
+**1º mini jogo de conteúdo real:** "Fábrica de Pedaços Iguais" (frações),
+ver `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`. MJ4/MJ5 acima só
+fazem sentido sobre uma mecânica de verdade — este jogo é o veículo que
+fechou as duas.
 
 ---
 

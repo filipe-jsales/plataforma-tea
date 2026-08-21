@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { MiniGameBriefing } from '../../components/minigame/MiniGameBriefing';
 import { MiniGameEngine } from '../../components/minigame/MiniGameEngine';
 import { createPlaceholderScene } from '../../components/minigame/scenes/placeholderScene';
 import { useMiniGameEventLogging } from '../../lib/useMiniGameEventLogging';
 import { createMiniGameStore } from '../../stores/miniGameStore';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { LinkButton } from '../../components/ui';
+import { Button, LinkButton } from '../../components/ui';
 import './MiniGamePage.css';
 
 // MJ1 — ponto de entrada de um mini jogo na área do aluno. Importada só via
@@ -29,6 +30,11 @@ export function MiniGamePage() {
   const store = useMemo(() => createMiniGameStore(), [conceptId]);
   const scene = useMemo(() => createPlaceholderScene(conceptId ?? 'desconhecido'), [conceptId]);
 
+  // MJ3 — toda cena é precedida por um roteiro visual (regra não-negociável
+  // 2/AC de MJ3), inclusive esta cena placeholder de infraestrutura.
+  const [showBriefing, setShowBriefing] = useState(true);
+  const [reopenedBriefing, setReopenedBriefing] = useState(false);
+
   useMiniGameEventLogging(store, user?.pseudonymId ?? null);
 
   if (!conceptId || !user) {
@@ -41,7 +47,29 @@ export function MiniGamePage() {
         Voltar
       </LinkButton>
       <h1>Mini jogo</h1>
-      <MiniGameEngine store={store} scene={scene} />
+      {showBriefing ? (
+        <MiniGameBriefing
+          title="Mini jogo"
+          objective="Toque no botão até concluir todas as etapas."
+          steps={[{ icon: '➡️', label: 'Toque no botão para avançar' }]}
+          reopened={reopenedBriefing}
+          onStart={() => setShowBriefing(false)}
+        />
+      ) : (
+        <>
+          <Button
+            variant="ghost"
+            icon="📋"
+            onClick={() => {
+              setReopenedBriefing(true);
+              setShowBriefing(true);
+            }}
+          >
+            Ver roteiro
+          </Button>
+          <MiniGameEngine store={store} scene={scene} />
+        </>
+      )}
     </main>
   );
 }

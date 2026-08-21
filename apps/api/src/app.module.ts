@@ -16,6 +16,7 @@ import { HomeModule } from './home/home.module';
 import { IdentityModule } from './identity/identity.module';
 import { IllustrationsModule } from './illustrations/illustrations.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { MinigamesModule } from './minigames/minigames.module';
 import { SchoolsModule } from './schools/schools.module';
 import { SettingsModule } from './settings/settings.module';
 import { StudentAccountsModule } from './student-accounts/student-accounts.module';
@@ -56,6 +57,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     HomeModule,
     SettingsModule,
+    MinigamesModule,
     MetricsModule,
     StudentAccountsModule,
     EnrollmentsModule,

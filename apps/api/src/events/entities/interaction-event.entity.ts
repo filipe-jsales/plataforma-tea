@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Challenge } from '../../challenges/entities/challenge.entity';
 import { EventCategory } from '../../common/enums/event-category.enum';
+import { MiniGameLevel } from '../../minigames/entities/mini-game-level.entity';
 
 // Tabela append-only: eventos nunca são atualizados ou apagados, apenas inseridos.
 // Sustenta os RQ5 do mapeamento (ausência de instrumento padronizado de avaliação de CT
@@ -65,6 +66,17 @@ export class InteractionEvent {
   @ManyToOne(() => Challenge, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'challengeId' })
   challenge: Challenge | null;
+
+  // MJ7 estendido — mesmo racional de `challengeId`, pro domínio de mini
+  // jogos sérios: nem todo evento de mini jogo referencia um nível
+  // específico (a cena placeholder de MJ1 não é backed por uma linha de
+  // `mini_game_levels`), então nullable sem exigir presença.
+  @Column({ type: 'uuid', nullable: true })
+  miniGameLevelId: string | null;
+
+  @ManyToOne(() => MiniGameLevel, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'miniGameLevelId' })
+  miniGameLevel: MiniGameLevel | null;
 
   @CreateDateColumn()
   createdAt: Date;

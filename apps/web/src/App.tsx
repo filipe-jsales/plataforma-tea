@@ -13,7 +13,9 @@ import { AdminExport } from './routes/metrics/AdminExport'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
 import { AdminSettings } from './routes/metrics/AdminSettings'
 import { ChallengeReport } from './routes/metrics/ChallengeReport'
+import { MiniGameReport } from './routes/metrics/MiniGameReport'
 import { TeacherMetrics } from './routes/metrics/TeacherMetrics'
+import { TeacherMiniGameSettings } from './routes/teacher/TeacherMiniGameSettings'
 import { OnboardingSensorial } from './routes/OnboardingSensorial'
 import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
@@ -32,6 +34,9 @@ import { TeacherStudents } from './routes/teacher/TeacherStudents'
 // existente, só evita que MiniGameEngine/cenas de mini jogo entrem no
 // chunk principal antes de precisar delas.
 const MiniGamePage = lazy(() => import('./routes/minigame/MiniGamePage'))
+// 1º mini jogo de CONTEÚDO ("Fábrica de Pedaços Iguais", frações) — mesmo
+// racional de lazy-loading do MiniGamePage acima.
+const FractionsGamePage = lazy(() => import('./routes/minigame/fractions/FractionsGamePage'))
 
 function App() {
   return (
@@ -116,6 +121,16 @@ function App() {
         }
       />
       <Route
+        path="/minigame/fractions/:stage"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <FractionsGamePage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/admin/metrics"
         element={
           <RequireAuth roles={['admin']}>
@@ -160,6 +175,22 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <ChallengeReport />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/minigames"
+        element={
+          <RequireAuth roles={['admin']}>
+            <MiniGameReport />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/minigames"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherMiniGameSettings />
           </RequireAuth>
         }
       />

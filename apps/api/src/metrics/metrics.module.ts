@@ -3,11 +3,13 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from '../audit/audit.module';
 import { ChallengesModule } from '../challenges/challenges.module';
 import { EventsModule } from '../events/events.module';
+import { MinigamesModule } from '../minigames/minigames.module';
 import { SchoolsModule } from '../schools/schools.module';
 import { SettingsModule } from '../settings/settings.module';
 import { SubjectsModule } from '../subjects/subjects.module';
 import { MetricsAdminChallengeService } from './metrics-admin-challenge.service';
 import { MetricsAdminExportService } from './metrics-admin-export.service';
+import { MetricsAdminMiniGameService } from './metrics-admin-minigame.service';
 import { MetricsAdminController } from './metrics-admin.controller';
 import { MetricsAdminService } from './metrics-admin.service';
 import { MetricsTeacherController } from './metrics-teacher.controller';
@@ -42,6 +44,7 @@ import { MetricsService } from './metrics.service';
     SubjectsModule,
     ChallengesModule,
     SettingsModule,
+    MinigamesModule,
     AuditModule,
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 5 }]),
   ],
@@ -52,6 +55,7 @@ import { MetricsService } from './metrics.service';
     MetricsTeacherService,
     MetricsAdminChallengeService,
     MetricsAdminExportService,
+    MetricsAdminMiniGameService,
   ],
   exports: [MetricsService],
 })

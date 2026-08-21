@@ -1311,6 +1311,39 @@ limite, só a rota que expõe volume grande de dado por requisição precisa
 disso. Por IP (comportamento default da lib), não por admin autenticado —
 suficiente pro MVP, sem tracker customizado.
 
+## Mini jogo "Fábrica de Pedaços Iguais" — configuração e métricas (MJ2-MJ5)
+
+1º mini jogo de CONTEÚDO da plataforma (MJ1/MJ7 já eram infraestrutura),
+plano completo em `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`.
+Módulo novo `apps/api/src/minigames/` — mesma modelagem de `Challenge`
+(`stage`+`position` explícitos, `config` jsonb tipado em
+`mini-game-level-config.interface.ts`, nunca gabarito oculto: tudo em
+`config` é visível ao aluno). `MinigamesController` (`GET
+/minigames/levels?conceptId=`, `@Roles(Role.STUDENT)`) serve o catálogo;
+`TeacherMinigamesController` (`GET/PATCH /teacher/minigames/levels`,
+`@Roles(Role.TEACHER)`) é o painel de configuração pedido pelo produto —
+tema + fração-alvo por nível, validação semântica no service (denominador
+2-8, numerador 1..denominador-1), nunca "edite o JSON de config" (regra
+não-negociável 9). Sem sistema de template plugável (ao contrário de
+`challenge-templates`) — só existe 1 jogo, uma abstração de handler seria
+prematura.
+
+`interaction_events` ganhou `miniGameLevelId` (uuid nullable, FK `ON DELETE
+SET NULL`, migration `AddMiniGameLevelIdToInteractionEvents`) — mesmo
+padrão de `challengeId`, permite ao admin cruzar sem parsear `scene_id`
+como string do payload. `EventsService` ganhou um bloco de métodos
+`*ForMiniGameLevel` dedicados (não generalizados com os `*ForChallenge` —
+convenção já estabelecida no arquivo: métodos dedicados por concern).
+
+`MetricsAdminMiniGameService` (`apps/api/src/metrics/
+metrics-admin-minigame.service.ts`) espelha `MetricsAdminChallengeService`
+(6.5) — mesma orquestração (busca bruta por aluno, delega todo cálculo a
+`statistics.ts`, zero fórmula duplicada), rotas `GET /metrics/admin/
+minigames` (lista) e `GET /metrics/admin/minigames/:levelId` (relatório
+completo: alunos alcançados/concluídos, rodadas por aluno, tempo até 1ª
+execução, eventos por categoria/tipo, abandono RD-E sempre como número
+bruto — regra não-negociável 7, taxa de resposta da predição opcional).
+
 ## Banco de dados
 
 Ver `docs/ai/modules/database.md` para o fluxo completo de migrations. Regra

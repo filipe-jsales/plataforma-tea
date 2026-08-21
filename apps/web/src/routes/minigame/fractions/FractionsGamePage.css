@@ -1,0 +1,50 @@
+.fractions-game-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.fractions-game-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.fractions-game-page__body {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.fractions-game-page__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1 1 20rem;
+  min-width: 18rem;
+}
+
+.fractions-game-page__predict {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.fractions-game-page__predict-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.fractions-game-page__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

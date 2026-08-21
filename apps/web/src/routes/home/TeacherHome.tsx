@@ -56,6 +56,9 @@ export function TeacherHome() {
         <LinkButton to="/teacher/challenges" icon="🧩">
           Meus desafios
         </LinkButton>
+        <LinkButton to="/teacher/minigames" icon="🎮">
+          Mini jogo: Fábrica de Pedaços Iguais
+        </LinkButton>
       </div>
 
       {classrooms && classrooms.length === 0 && <p>Nenhuma turma atribuída ainda.</p>}

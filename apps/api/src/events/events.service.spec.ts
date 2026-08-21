@@ -41,6 +41,7 @@ describe('EventsService', () => {
         payload: {},
         sessionId: null,
         challengeId: null,
+        miniGameLevelId: null,
       });
     });
 
@@ -531,6 +532,109 @@ describe('EventsService', () => {
         'ASC',
       );
       expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('event.id', 'ASC');
+    });
+  });
+
+  describe('findDistinctStudentsForMiniGameLevel', () => {
+    it('returns the distinct pseudoIds with any event on the level', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findDistinctStudentsForMiniGameLevel('level-1');
+
+      expect(result).toEqual(['p1']);
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'event.miniGameLevelId = :miniGameLevelId',
+        { miniGameLevelId: 'level-1' },
+      );
+    });
+  });
+
+  describe('countEventsByCategoryForMiniGameLevel', () => {
+    it('fills every RD-* category with 0 when there is no event yet', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countEventsByCategoryForMiniGameLevel('level-1');
+
+      expect(result).toEqual({ 'RD-I': 0, 'RD-P': 0, 'RD-C': 0, 'RD-E': 0, 'RD-L': 0 });
+    });
+  });
+
+  describe('countAttemptsByStudentsForMiniGameLevel', () => {
+    it('short-circuits to an empty map without querying when pseudoIds is empty', async () => {
+      const result = await service.countAttemptsByStudentsForMiniGameLevel([], 'level-1');
+
+      expect(result).toEqual(new Map());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('groups minigame_round_executed counts per student', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1', count: '4' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countAttemptsByStudentsForMiniGameLevel(['p1'], 'level-1');
+
+      expect(result).toEqual(new Map([['p1', 4]]));
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'minigame_round_executed',
+      });
+    });
+  });
+
+  describe('findMiniGameCompletions', () => {
+    it('scopes to minigame_completed on the given level', async () => {
+      repository.find.mockResolvedValue([]);
+
+      await service.findMiniGameCompletions('level-1');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { miniGameLevelId: 'level-1', type: 'minigame_completed' },
+        order: { studentPseudoId: 'ASC' },
+      });
+    });
+  });
+
+  describe('findEarliestMiniGameEventTimestamps', () => {
+    it('groups the earliest createdAt per student for the given type', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { studentPseudoId: 'p1', earliest: new Date('2026-01-01T10:00:00Z') },
+        ]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findEarliestMiniGameEventTimestamps(
+        'level-1',
+        'minigame_round_executed',
+      );
+
+      expect(result.get('p1')).toEqual(new Date('2026-01-01T10:00:00Z'));
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'minigame_round_executed',
+      });
     });
   });
 });

@@ -104,3 +104,62 @@ export function logMiniGameAbandoned(studentPseudoId: string, scene: MiniGameSce
     },
   });
 }
+
+// Estendido pro 1º mini jogo de conteúdo ("Fábrica de Pedaços Iguais", ver
+// docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md) — os 5 eventos acima
+// são derivados automaticamente das transições do store
+// (useMiniGameEventLogging); os 2 abaixo são ações explícitas do jogo (o
+// clique em "Executar", a resposta opcional de predição) sem uma transição
+// de fase 1:1 correspondente, então são chamados diretamente pela tela do
+// jogo (FractionsGamePage), não pelo hook genérico. Mesmas 5 categorias
+// RD-*, nenhuma taxonomia paralela (regra não-negociável 6).
+
+// RD-P — produto: o estado do "programa" (sequência de cartões) que o
+// aluno executou, equivalente a `program_executed` no desafio de blocos.
+// `miniGameLevelId` (FK real, ver InteractionEvent) permite ao admin cruzar
+// isto sem parsear `scene_id` como string.
+export function logMiniGameRoundExecuted(
+  studentPseudoId: string,
+  miniGameLevelId: string,
+  scene: MiniGameSceneState,
+  details: { sequence: unknown; matchedTarget: boolean },
+): void {
+  logEvent({
+    studentPseudoId,
+    miniGameLevelId,
+    category: 'RD-P',
+    type: 'minigame_round_executed',
+    payload: {
+      concept_id: scene.conceptId,
+      scene_id: scene.sceneId,
+      sequence: details.sequence,
+      matched_target: details.matchedTarget,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
+
+// RD-C — curricular: resposta à predição opcional ("quantos pedaços você
+// acha que vai sair?"). Só é chamado quando o aluno de fato responde — a
+// predição nunca bloqueia o avanço (regra de MJ1/PRIMM), então pular não
+// gera evento nenhum, nunca um evento "predição pulada" com conotação
+// negativa.
+export function logMiniGamePredictAnswered(
+  studentPseudoId: string,
+  miniGameLevelId: string,
+  scene: MiniGameSceneState,
+  predictedParts: number,
+): void {
+  logEvent({
+    studentPseudoId,
+    miniGameLevelId,
+    category: 'RD-C',
+    type: 'minigame_predict_answered',
+    payload: {
+      concept_id: scene.conceptId,
+      scene_id: scene.sceneId,
+      predicted_parts: predictedParts,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}

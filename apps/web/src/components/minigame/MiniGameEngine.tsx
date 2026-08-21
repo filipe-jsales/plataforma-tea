@@ -1,13 +1,26 @@
 import { Application } from 'pixi.js';
 import { useEffect, useRef } from 'react';
+import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import type { MiniGameStore } from '../../stores/miniGameStore';
 import './MiniGameEngine.css';
 
 const ENGINE_SIZE = 480;
 
+// MJ2 — perfil sensorial aplicado por padrão a todo mini jogo (regra
+// não-negociável 1): nasce sem som/animação a menos que o aluno tenha
+// ativado explicitamente. `getSensory()` é uma leitura AO VIVO (não um
+// valor congelado no mount) — uma cena de execução longa (ex.: animação de
+// corte) consulta no momento de decidir animar/tocar som, então uma
+// mudança de perfil no meio de uma rodada é respeitada imediatamente.
+export interface MiniGameSensoryFlags {
+  motionEnabled: boolean;
+  soundEnabled: boolean;
+}
+
 export interface MiniGameSceneContext {
   app: Application;
   store: MiniGameStore;
+  getSensory: () => MiniGameSensoryFlags;
 }
 
 // MJ1 — contrato que toda cena de mini jogo implementa: recebe a
@@ -95,7 +108,14 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
       app.stage.removeChildren();
 
       store.getState().startScene(scene.id, scene.conceptId);
-      sceneCleanupRef.current = scene.mount({ app, store });
+      sceneCleanupRef.current = scene.mount({
+        app,
+        store,
+        getSensory: () => {
+          const profile = useSensoryProfileStore.getState();
+          return { motionEnabled: profile.motionEnabled, soundEnabled: profile.soundEnabled };
+        },
+      });
     })();
 
     return () => {

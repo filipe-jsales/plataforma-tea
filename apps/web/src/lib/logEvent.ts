@@ -8,6 +8,7 @@ interface LogEventInput {
   type: string;
   payload?: Record<string, unknown>;
   challengeId?: string;
+  miniGameLevelId?: string;
 }
 
 // Wrapper fino sobre POST /events — nunca chamar fetch direto pra eventos,

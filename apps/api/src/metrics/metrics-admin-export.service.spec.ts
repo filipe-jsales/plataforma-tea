@@ -20,6 +20,8 @@ function makeEvent(
     sessionId: null,
     challengeId: 'challenge-1',
     challenge: null,
+    miniGameLevelId: null,
+    miniGameLevel: null,
     createdAt: new Date('2026-01-05T10:00:00.000Z'),
     ...overrides,
   };

@@ -25,4 +25,8 @@ export class CreateEventDto {
   @IsOptional()
   @IsUUID()
   challengeId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  miniGameLevelId?: string;
 }

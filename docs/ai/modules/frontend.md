@@ -1019,6 +1019,63 @@ de blocos equivalente. `minigame_abandoned` (RD-E) só carrega
 tipo "possível dificuldade"/"sobrecarga" (regra não-negociável 7, testado
 explicitamente em `useMiniGameEventLogging.spec.ts`).
 
+## MJ2/MJ3/MJ4/MJ5 + "Fábrica de Pedaços Iguais" (1º mini jogo de conteúdo)
+
+Plano completo em `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`.
+MJ1/MJ7 (acima) eram só infraestrutura; MJ2/MJ4/MJ5 só fazem sentido sobre
+uma mecânica de verdade, então os quatro foram fechados junto com o
+primeiro jogo de conteúdo real (frações).
+
+**MJ2 — perfil sensorial no motor:** `MiniGameSceneContext`
+(`MiniGameEngine.tsx`) ganhou `getSensory(): { motionEnabled, soundEnabled
+}`, uma leitura AO VIVO de `useSensoryProfileStore` (não um valor
+congelado no mount) — uma cena de execução longa consulta no momento de
+decidir animar, então uma mudança de perfil no meio de uma rodada é
+respeitada imediatamente. `fractionsFactoryScene.ts` é o primeiro
+consumidor real: anima o corte só se `motionEnabled`, senão renderiza o
+estado final direto. Checklist QA em `docs/ai/qa/
+sensory-checklist-minigames.md`.
+
+**MJ3 — roteiro visual (TEACCH):** `components/minigame/
+MiniGameBriefing.tsx`, reutilizável — objetivo em linguagem simples,
+etapas com ícone+texto, marcação início/fim, botão "Ver roteiro" sempre
+visível durante a rodada que reabre o painel SEM resetar a store (a cena
+continua montada por baixo, só um overlay local). Aplicado tanto na cena
+placeholder de MJ1 (`MiniGamePage.tsx`) quanto no jogo de conteúdo
+(`FractionsGamePage.tsx`) — a regra vale pra toda cena, não só a nova.
+
+**MJ4 — áreas de interação tolerantes:** `components/minigame/
+CardSequenceEditor.tsx` reordena a sequência de cartões por botão ↑/↓
+(`Button` de `components/ui`, toque mínimo 56×56 já garantido), nunca
+drag-and-drop de precisão fina. `CardBank.tsx` (nível Create) é a paleta
+fixa de 5 cartões, clique adiciona ao fim — reordenação depois é sempre
+via os mesmos botões.
+
+**MJ5 — rotulagem redundante:** sem componente novo — `InlineFeedback`
+(`kind: 'success'|'retry'`) pro resultado da rodada, nunca cor sozinha; a
+peça "entregue" desenhada no Pixi (`fractionsFactoryScene.ts`) também
+ganha um ícone de check, nunca só opacidade/cor.
+
+**O jogo em si:** `apps/web/src/lib/fractionsFactory.ts` — lógica pura
+(`simulateSequence`/`matchesTarget`), zero I/O, testada isolada
+(`fractionsFactory.spec.ts`). `stores/fractionsRoundStore.ts` — factory
+Zustand separada do `MiniGameStore` genérico (que só guarda fase PRIMM):
+guarda o resultado da simulação (`totalParts`/`deliveredParts`) que a cena
+Pixi assina pra redesenhar. `routes/minigame/fractions/
+FractionsGamePage.tsx` (`/minigame/fractions/:stage`) orquestra tudo —
+mapeamento PRIMM sobre o `createMiniGameStore` já existente documentado
+inline no arquivo (divergência do mesmo tipo já registrada pro desafio de
+blocos, "Predict mora em 3.3 e 3.4"). A store da rodada é iniciada pela
+PRÓPRIA tela (`store.getState().startScene(...)` no efeito que carrega o
+nível), não delegada ao mount assíncrono de `MiniGameEngine` — assim
+"Executar" funciona de forma determinística independente do timing de
+inicialização do Pixi (e é testável mockando só `MiniGameEngine`, sem
+precisar de Canvas real em jsdom).
+
+Configuração pelo professor (`GET/PATCH /teacher/minigames/levels`) e
+métricas pro admin (`GET /metrics/admin/minigames[/:levelId]`) documentadas
+em `docs/ai/modules/backend.md` e no backlog do jogo.
+
 ## Feedback não-punitivo reutilizável (3.7)
 
 Antes desta feature, `ChallengePage` renderizava o feedback de Use/Create
