@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AdminSchoolClassrooms } from './routes/admin/AdminSchoolClassrooms'
 import { AdminSchools } from './routes/admin/AdminSchools'
@@ -12,7 +13,9 @@ import { AdminExport } from './routes/metrics/AdminExport'
 import { AdminMetrics } from './routes/metrics/AdminMetrics'
 import { AdminSettings } from './routes/metrics/AdminSettings'
 import { ChallengeReport } from './routes/metrics/ChallengeReport'
+import { MiniGameReport } from './routes/metrics/MiniGameReport'
 import { TeacherMetrics } from './routes/metrics/TeacherMetrics'
+import { TeacherMiniGameSettings } from './routes/teacher/TeacherMiniGameSettings'
 import { OnboardingSensorial } from './routes/OnboardingSensorial'
 import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
@@ -23,6 +26,17 @@ import { TeacherChallengeNew } from './routes/teacher/TeacherChallengeNew'
 import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
 import { TeacherAddStudent } from './routes/teacher/TeacherAddStudent'
 import { TeacherStudents } from './routes/teacher/TeacherStudents'
+
+// MJ1 — único ponto de `React.lazy` do app hoje, de propósito: é o que
+// garante o AC "lazy-loading do motor de jogo... sem impacto de bundle na
+// área principal de blocos" — PixiJS já é puxado eagerly por
+// PixiTurtleWorld (ChallengePage), então isso não evita o Pixi já
+// existente, só evita que MiniGameEngine/cenas de mini jogo entrem no
+// chunk principal antes de precisar delas.
+const MiniGamePage = lazy(() => import('./routes/minigame/MiniGamePage'))
+// 1º mini jogo de CONTEÚDO ("Fábrica de Pedaços Iguais", frações) — mesmo
+// racional de lazy-loading do MiniGamePage acima.
+const FractionsGamePage = lazy(() => import('./routes/minigame/fractions/FractionsGamePage'))
 
 function App() {
   return (
@@ -92,6 +106,30 @@ function App() {
           </RequireAuth>
         }
       />
+      {/* MJ1 — 2ª metodologia ativa (mini jogos sérios), complementar ao
+          desafio de blocos pro mesmo `conceptId`. Suspense só nesta rota —
+          nenhuma outra tela do app paga o custo de um fallback de
+          carregamento. */}
+      <Route
+        path="/minigame/:conceptId"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <MiniGamePage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/minigame/fractions/:stage"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <FractionsGamePage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
       <Route
         path="/admin/metrics"
         element={
@@ -137,6 +175,22 @@ function App() {
         element={
           <RequireAuth roles={['admin']}>
             <ChallengeReport />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/admin/minigames"
+        element={
+          <RequireAuth roles={['admin']}>
+            <MiniGameReport />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/teacher/minigames"
+        element={
+          <RequireAuth roles={['teacher']}>
+            <TeacherMiniGameSettings />
           </RequireAuth>
         }
       />

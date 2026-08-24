@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SerializedBlock } from './blockProgram';
-import { interpretWaterProgram } from './waterProgram';
+import { evaluateWaterStatesCoverage, interpretWaterProgram } from './waterProgram';
 
 // Mesmo programa seedado em SeedEstadosDaMateriaTopic: 1 conditional_if
 // (limiar 100°C) com set_water_state em cada ramo.
@@ -81,5 +81,43 @@ describe('interpretWaterProgram', () => {
     };
 
     expect(interpretWaterProgram(unknown, 50)).toBe('LIQUID');
+  });
+});
+
+describe('evaluateWaterStatesCoverage', () => {
+  const nested: SerializedBlock = {
+    type: 'conditional_if',
+    fields: { THRESHOLD: 100 },
+    inputs: {
+      DO_THEN: { block: { type: 'set_water_state', fields: { STATE: 'GAS' } } },
+      DO_ELSE: {
+        block: {
+          type: 'conditional_if',
+          fields: { THRESHOLD: 0 },
+          inputs: {
+            DO_THEN: { block: { type: 'set_water_state', fields: { STATE: 'LIQUID' } } },
+            DO_ELSE: { block: { type: 'set_water_state', fields: { STATE: 'SOLID' } } },
+          },
+        },
+      },
+    },
+  };
+
+  it('finds all 3 states when a nested conditional covers the whole range (3.15 AC2)', () => {
+    expect(evaluateWaterStatesCoverage(nested, -20, 150)).toEqual(['SOLID', 'LIQUID', 'GAS']);
+  });
+
+  it('finds only the 2 states a single-level conditional can ever produce', () => {
+    expect(evaluateWaterStatesCoverage(boilingProgram, -20, 150)).toEqual(['LIQUID', 'GAS']);
+  });
+
+  it('returns an empty list for an empty program, never throws', () => {
+    expect(evaluateWaterStatesCoverage(null, -20, 150)).toEqual([]);
+  });
+
+  it('never finds a state whose branch threshold sits outside the sampled range', () => {
+    // SOLID só é alcançável com temperatureC <= 0 — consultar só 10..150
+    // nunca deveria "inventar" cobertura que a amostragem não confirmou.
+    expect(evaluateWaterStatesCoverage(nested, 10, 150)).toEqual(['LIQUID', 'GAS']);
   });
 });

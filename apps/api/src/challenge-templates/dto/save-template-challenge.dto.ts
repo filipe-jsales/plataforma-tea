@@ -28,4 +28,19 @@ export class SaveTemplateChallengeDto {
   @IsOptional()
   @IsObject()
   feedbackMessages?: ChallengeFeedbackMessages;
+
+  // 7.5 — perguntas PRIMM (Predição/Investigação). Ao contrário de
+  // `feedbackMessages`, são OBRIGATÓRIAS pra publicar — mas essa
+  // obrigatoriedade é checada em ChallengeTemplatesService
+  // (`validatePrimmQuestions`), não aqui: os decorators abaixo só validam
+  // a FORMA (string, quando presente), pra o professor ver a mensagem
+  // pedagógica de "campo obrigatório" (regra não-negociável 9), nunca um
+  // 400 genérico de payload malformado.
+  @IsOptional()
+  @IsString()
+  predictQuestion?: string;
+
+  @IsOptional()
+  @IsString()
+  investigationQuestion?: string;
 }

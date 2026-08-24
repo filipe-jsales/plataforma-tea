@@ -32,6 +32,12 @@
   gap: 0.75rem;
 }
 
+.template-challenge-form__primm-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .template-challenge-form__actions {
   display: flex;
   gap: 0.75rem;

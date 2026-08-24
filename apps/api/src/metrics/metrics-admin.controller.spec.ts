@@ -1,6 +1,7 @@
 import { MetricsAdminChallengeService } from './metrics-admin-challenge.service';
 import { MetricsAdminController } from './metrics-admin.controller';
 import { MetricsAdminExportService } from './metrics-admin-export.service';
+import { MetricsAdminMiniGameService } from './metrics-admin-minigame.service';
 import { MetricsAdminService } from './metrics-admin.service';
 
 function mockResponse() {
@@ -12,6 +13,7 @@ describe('MetricsAdminController', () => {
   let metricsAdminService: jest.Mocked<MetricsAdminService>;
   let metricsAdminChallengeService: jest.Mocked<MetricsAdminChallengeService>;
   let metricsAdminExportService: jest.Mocked<MetricsAdminExportService>;
+  let metricsAdminMiniGameService: jest.Mocked<MetricsAdminMiniGameService>;
 
   beforeEach(() => {
     metricsAdminService = {
@@ -25,12 +27,34 @@ describe('MetricsAdminController', () => {
     metricsAdminExportService = {
       exportEvents: jest.fn(),
     } as unknown as jest.Mocked<MetricsAdminExportService>;
+    metricsAdminMiniGameService = {
+      listMiniGameLevels: jest.fn(),
+      getMiniGameLevelReport: jest.fn(),
+    } as unknown as jest.Mocked<MetricsAdminMiniGameService>;
 
     controller = new MetricsAdminController(
       metricsAdminService,
       metricsAdminChallengeService,
       metricsAdminExportService,
+      metricsAdminMiniGameService,
     );
+  });
+
+  it('listMiniGames delegates straight to the service, no extra transformation', async () => {
+    const levels = [{ id: 'l1', title: 'Observe o pedido pronto' }] as any;
+    metricsAdminMiniGameService.listMiniGameLevels.mockResolvedValue(levels);
+
+    await expect(controller.listMiniGames()).resolves.toBe(levels);
+  });
+
+  it('getMiniGameLevelReport passes the :levelId param through to the service', async () => {
+    const report = { levelId: 'l1' } as any;
+    metricsAdminMiniGameService.getMiniGameLevelReport.mockResolvedValue(report);
+
+    const result = await controller.getMiniGameLevelReport('l1');
+
+    expect(metricsAdminMiniGameService.getMiniGameLevelReport).toHaveBeenCalledWith('l1');
+    expect(result).toBe(report);
   });
 
   it('listSchools delegates straight to the service, no extra transformation', async () => {

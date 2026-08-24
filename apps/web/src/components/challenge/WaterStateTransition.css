@@ -25,3 +25,8 @@
   font-size: var(--font-size-h3);
   font-weight: var(--font-weight-heading);
 }
+
+.water-state-transition__temperature {
+  font-weight: var(--font-weight-body);
+  color: var(--color-text-muted, #5a6472);
+}

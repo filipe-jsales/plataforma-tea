@@ -85,6 +85,21 @@ export function SubjectSelector() {
         Confirmar
       </Button>
 
+      {/* MJ1/MJ3 — 2ª metodologia ativa (mini jogo sério), complementar aos
+          módulos curriculares acima pro mesmo assunto (frações). Entrada
+          sempre pelo nível 1 (Use) — a própria tela do jogo oferece
+          "Próximo nível" ao concluir cada um. */}
+      <section className="subject-selector__minigames">
+        <h2>Mini jogos</h2>
+        <ul className="subject-selector__list">
+          <li>
+            <LinkButton to="/minigame/fractions/use" variant="secondary" icon="🎮">
+              Fábrica de Pedaços Iguais
+            </LinkButton>
+          </li>
+        </ul>
+      </section>
+
       {classroomChallenges && classroomChallenges.length > 0 && (
         <section className="subject-selector__classroom-challenges">
           <h2>Desafios da sua turma</h2>

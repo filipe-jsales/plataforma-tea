@@ -9,12 +9,14 @@ import { ChallengesModule } from './challenges/challenges.module';
 import { ChallengeTemplatesModule } from './challenge-templates/challenge-templates.module';
 import { ChallengeAllocationsModule } from './challenge-allocations/challenge-allocations.module';
 import { ChallengeDraftsModule } from './challenge-drafts/challenge-drafts.module';
+import { ChallengeValidationModule } from './challenge-validation/challenge-validation.module';
 import { EventsModule } from './events/events.module';
 import { GuardianConsentsModule } from './guardian-consents/guardian-consents.module';
 import { HomeModule } from './home/home.module';
 import { IdentityModule } from './identity/identity.module';
 import { IllustrationsModule } from './illustrations/illustrations.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { MinigamesModule } from './minigames/minigames.module';
 import { SchoolsModule } from './schools/schools.module';
 import { SettingsModule } from './settings/settings.module';
 import { StudentAccountsModule } from './student-accounts/student-accounts.module';
@@ -55,11 +57,13 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     HomeModule,
     SettingsModule,
+    MinigamesModule,
     MetricsModule,
     StudentAccountsModule,
     EnrollmentsModule,
     GuardianConsentsModule,
     ChallengeDraftsModule,
+    ChallengeValidationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

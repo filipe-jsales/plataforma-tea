@@ -20,6 +20,34 @@ export class EventsService {
       payload: dto.payload ?? {},
       sessionId: dto.sessionId ?? null,
       challengeId: dto.challengeId ?? null,
+      miniGameLevelId: dto.miniGameLevelId ?? null,
+    });
+    return this.eventsRepository.save(event);
+  }
+
+  // 7.5 — contraparte de `record()` pra eventos de AUTORIA do professor
+  // (ex.: `challenge_primm_questions_configured`), nunca exposta via
+  // `POST /events` (esse endpoint continua exigindo `studentPseudoId`,
+  // inalterado) — só chamada server-side, de dentro de um service que já
+  // resolveu `req.user.sub` do professor autenticado
+  // (ChallengeTemplatesService). `studentPseudoId` fica `null` de
+  // propósito, nunca reaproveitado pro id do professor (ver comentário na
+  // entidade).
+  async recordTeacherEvent(
+    teacherUserId: string,
+    category: EventCategory,
+    type: string,
+    challengeId: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<InteractionEvent> {
+    const event = this.eventsRepository.create({
+      studentPseudoId: null,
+      teacherUserId,
+      category,
+      type,
+      payload,
+      sessionId: null,
+      challengeId,
     });
     return this.eventsRepository.save(event);
   }
@@ -238,6 +266,20 @@ export class EventsService {
     });
   }
 
+  // Linhas brutas de `water_program_validated` (3.17, RD-C) — resultado da
+  // validação do backend contra o `expectedModel` do desafio 2.3. Só
+  // gravado pelo `ChallengeValidationService` (nunca pelo frontend
+  // diretamente, ao contrário do resto deste arquivo), lido só pelo
+  // relatório do professor (MetricsAdminChallengeService).
+  findWaterProgramValidations(
+    challengeId: string,
+  ): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { challengeId, type: 'water_program_validated' },
+      order: { studentPseudoId: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
   // 6.6 — exportação de dados brutos pra pesquisa externa. Filtros são
   // opcionais e combináveis (AND) — quem chama (MetricsAdminExportService)
   // já garantiu que ao menos um está presente antes de chegar aqui, essa
@@ -262,6 +304,14 @@ export class EventsService {
   ): Promise<InteractionEvent[]> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
+      // 7.5 — exportação de dados de ALUNO (6.6): nunca deixa vazar um
+      // evento de autoria do professor (`studentPseudoId: null`,
+      // `teacherUserId` preenchido) mesmo quando o filtro não inclui
+      // `pseudoIds` — explícito aqui, não confiado ao acaso de `IN` não
+      // casar `NULL`. `andWhere` (não `where`) porque é assim que o mock
+      // de `createQueryBuilder` já é montado nos testes deste service —
+      // TypeORM aceita `andWhere` como primeira condição normalmente.
+      .andWhere('event.studentPseudoId IS NOT NULL')
       .orderBy('event.createdAt', 'ASC')
       .addOrderBy('event.id', 'ASC');
     if (filter.pseudoIds) {
@@ -284,5 +334,117 @@ export class EventsService {
       .skip((page - 1) * pageSize)
       .take(pageSize + 1)
       .getMany();
+  }
+
+  // Relatório de profundidade por nível de mini jogo (espelha o bloco
+  // "6.5"/challenge acima, mesmo racional: métodos dedicados por concern,
+  // não uma generalização challengeId/miniGameLevelId — convenção já
+  // estabelecida neste arquivo). Sem `pseudoIds` pré-filtrado de propósito,
+  // mesma visão de pesquisa do admin, plataforma inteira.
+
+  async findDistinctStudentsForMiniGameLevel(miniGameLevelId: string): Promise<string[]> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
+      .where('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId })
+      .getRawMany<{ studentPseudoId: string }>();
+    return rows.map((row) => row.studentPseudoId);
+  }
+
+  async countEventsByCategoryForMiniGameLevel(
+    miniGameLevelId: string,
+  ): Promise<Record<EventCategory, number>> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.category', 'category')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId })
+      .groupBy('event.category')
+      .getRawMany<{ category: EventCategory; count: string }>();
+    const result = Object.fromEntries(
+      Object.values(EventCategory).map((category) => [category, 0]),
+    ) as Record<EventCategory, number>;
+    for (const row of rows) {
+      result[row.category] = Number(row.count);
+    }
+    return result;
+  }
+
+  async countEventsByTypeForMiniGameLevel(
+    miniGameLevelId: string,
+  ): Promise<{ type: string; count: number }[]> {
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.type', 'type')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId })
+      .groupBy('event.type')
+      .getRawMany<{ type: string; count: string }>();
+    return rows
+      .map((row) => ({ type: row.type, count: Number(row.count) }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
+  }
+
+  // Quantas vezes cada aluno clicou "Executar" (`minigame_round_executed`,
+  // RD-P) neste nível — equivalente a `countAttemptsByStudents` do desafio
+  // de blocos, mas sobre o recorte `pseudoIds` do relatório de admin (que
+  // aqui já é "todo aluno que chegou ao nível", não turma/escola).
+  async countAttemptsByStudentsForMiniGameLevel(
+    pseudoIds: string[],
+    miniGameLevelId: string,
+  ): Promise<Map<string, number>> {
+    if (pseudoIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId })
+      .andWhere('event.type = :type', { type: 'minigame_round_executed' })
+      .groupBy('event.studentPseudoId')
+      .getRawMany<{ studentPseudoId: string; count: string }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
+  }
+
+  findMiniGameCompletions(miniGameLevelId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { miniGameLevelId, type: 'minigame_completed' },
+      order: { studentPseudoId: 'ASC' },
+    });
+  }
+
+  findMiniGameAbandonments(miniGameLevelId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { miniGameLevelId, type: 'minigame_abandoned' },
+      order: { studentPseudoId: 'ASC' },
+    });
+  }
+
+  findMiniGamePredictAnswers(miniGameLevelId: string): Promise<InteractionEvent[]> {
+    return this.eventsRepository.find({
+      where: { miniGameLevelId, type: 'minigame_predict_answered' },
+      order: { studentPseudoId: 'ASC' },
+    });
+  }
+
+  // Primeiro `minigame_round_executed` por aluno neste nível — "tempo até a
+  // 1ª execução" (mesmo racional de `findEarliestEventTimestamps`).
+  async findEarliestMiniGameEventTimestamps(
+    miniGameLevelId: string,
+    type?: string,
+  ): Promise<Map<string, Date>> {
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('MIN(event.createdAt)', 'earliest')
+      .where('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId })
+      .groupBy('event.studentPseudoId');
+    if (type) {
+      query.andWhere('event.type = :type', { type });
+    }
+    const rows = await query.getRawMany<{ studentPseudoId: string; earliest: Date }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, new Date(row.earliest)]));
   }
 }

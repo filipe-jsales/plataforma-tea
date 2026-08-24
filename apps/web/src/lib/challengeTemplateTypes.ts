@@ -37,8 +37,17 @@ export interface ChallengeTemplateSummary {
   icon: string;
 }
 
+// 7.5 (AC2) — sugestão pré-escrita por template, editável (nunca só um
+// placeholder cinza como feedbackMessages — aqui a resposta vazia não é
+// válida, então o formulário pré-preenche com texto real).
+export interface PrimmQuestionSuggestion {
+  predictQuestion: string;
+  investigationQuestion: string;
+}
+
 export interface ChallengeTemplateDetail extends ChallengeTemplateSummary {
   parameterSchema: TemplateParameterDefinition[];
+  primmQuestionSuggestion: PrimmQuestionSuggestion;
 }
 
 export interface TemplateValidationError {
@@ -83,6 +92,11 @@ export interface TeacherChallengeDetail {
   templateKey: string;
   params: Record<string, unknown>;
   feedbackMessages: Partial<ChallengeFeedbackMessagesDraft>;
+  // 7.5 (AC3) — perguntas PRIMM já salvas (nunca `undefined`: string vazia
+  // só no caso defensivo de um desafio sem config válido ainda, ver
+  // ChallengeTemplatesService.getMineOrThrow).
+  predictQuestion: string;
+  investigationQuestion: string;
 }
 
 // Parâmetros do formulário guiado — valores já no tipo esperado pelo

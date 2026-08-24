@@ -1,0 +1,35 @@
+.ui-textarea-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-small);
+}
+
+.ui-textarea-field__label {
+  font-weight: 600;
+}
+
+.ui-textarea-field__input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-body);
+  resize: vertical;
+}
+
+.ui-textarea-field__input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.ui-textarea-field[data-invalid='true'] .ui-textarea-field__input {
+  border-color: var(--color-danger, #b3261e);
+}
+
+.ui-textarea-field__error {
+  color: var(--color-danger, #b3261e);
+  font-weight: 600;
+}

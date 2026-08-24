@@ -13,12 +13,15 @@ function makeEvent(
   return {
     id: 'event-1',
     studentPseudoId: 'pseudo-1',
+    teacherUserId: null,
     category: EventCategory.PRODUCT,
     type: 'program_executed',
     payload: {},
     sessionId: null,
     challengeId: 'challenge-1',
     challenge: null,
+    miniGameLevelId: null,
+    miniGameLevel: null,
     createdAt: new Date('2026-01-05T10:00:00.000Z'),
     ...overrides,
   };

@@ -1,0 +1,91 @@
+/*
+  Relatório de mini jogos pro admin. Mesmo racional/tokens de
+  ChallengeReport.css — layout de página vem de `.page` + components/ui/.
+*/
+
+.minigame-report__subtitle {
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+  opacity: 0.75;
+}
+
+.minigame-report__loading,
+.minigame-report__empty {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: center;
+  opacity: 0.8;
+}
+
+.minigame-report__picker {
+  margin-bottom: var(--space-4);
+}
+
+.minigame-report__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.minigame-report__stage-tag {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.minigame-report__headline-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.minigame-report__headline-stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-width: 160px;
+}
+
+.minigame-report__headline-stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.minigame-report__headline-stat-label {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.minigame-report__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: var(--space-4);
+}
+
+.minigame-report__card {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  overflow-x: auto;
+}
+
+.minigame-report__card h4 {
+  margin-bottom: var(--space-3);
+  font-size: 0.95rem;
+}
+
+.minigame-report__plain-stat {
+  margin: 0 0 var(--space-1);
+  font-size: 0.9rem;
+}

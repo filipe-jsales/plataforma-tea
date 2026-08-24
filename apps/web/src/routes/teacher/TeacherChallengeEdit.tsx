@@ -35,6 +35,8 @@ export function TeacherChallengeEdit() {
     title: string;
     params: Record<string, unknown>;
     feedbackMessages: { retry: string; success: string };
+    predictQuestion: string;
+    investigationQuestion: string;
   }) {
     if (!challengeId) return;
     await apiClient.patch(`/teacher/challenges/${challengeId}`, input);
@@ -61,6 +63,8 @@ export function TeacherChallengeEdit() {
             initialTitle={challenge.title}
             initialParams={challenge.params}
             initialFeedbackMessages={challenge.feedbackMessages}
+            initialPredictQuestion={challenge.predictQuestion}
+            initialInvestigationQuestion={challenge.investigationQuestion}
             submitLabel="Salvar alterações"
             onSubmit={handleSubmit}
           />

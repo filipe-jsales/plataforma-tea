@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ChallengeStage, isChallengeConfig } from '../challenges/challenge-config.interface';
+import {
+  ChallengeStage,
+  isChallengeConfig,
+  type WaterExpectedModel,
+  type WaterState,
+} from '../challenges/challenge-config.interface';
 import { ChallengesService } from '../challenges/challenges.service';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { InteractionEvent } from '../events/entities/interaction-event.entity';
@@ -38,6 +43,25 @@ export interface UseInsights {
   investigationResponses: { n: number };
 }
 
+// 3.17 — resultado agregado da validação backend contra o `expectedModel`
+// do desafio 2.3 (nunca visível ao aluno — só chega aqui, no relatório do
+// admin/pesquisador). `passes`/`submissions` por caso deixam claro QUAIS
+// temperaturas o time da turma erra mais, sem nunca apontar um aluno
+// específico (AC2 de 3.17: "visível apenas ao professor", nunca "erro"/
+// "nota" individual).
+export interface CreateValidationCaseInsight {
+  temperatureC: number;
+  expectedState: WaterState;
+  passes: number;
+  submissions: number;
+}
+
+export interface CreateInsights {
+  scenarioLabel: string;
+  allCasesPassedRate: RateReport;
+  perCase: CreateValidationCaseInsight[];
+}
+
 export interface ChallengeDepthReport {
   challengeId: string;
   title: string;
@@ -52,6 +76,7 @@ export interface ChallengeDepthReport {
   eventsByType: FrequencyBucket[];
   modifyInsights?: ModifyInsights;
   useInsights?: UseInsights;
+  createInsights?: CreateInsights;
 }
 
 export interface ChallengePickerOption {
@@ -66,16 +91,53 @@ function asFiniteNumber(value: unknown): number | null {
 }
 
 function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : [];
 }
 
 function asNonEmptyString(value: unknown): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function groupByStudent(events: InteractionEvent[]): Map<string, InteractionEvent[]> {
+function isWaterState(value: unknown): value is WaterState {
+  return value === 'SOLID' || value === 'LIQUID' || value === 'GAS';
+}
+
+// 3.17 — `event.payload.case_results` é jsonb livre (mesmo racional de
+// `asStringArray` acima) — nunca confia na forma sem checar campo a campo,
+// mesmo vindo de um evento gravado pelo próprio backend (defesa em
+// profundidade contra um schema futuro divergente).
+function asCaseResults(
+  value: unknown,
+): { temperatureC: number; expectedState: WaterState; passed: boolean }[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const candidate = entry as Record<string, unknown>;
+    const temperatureC = asFiniteNumber(candidate.temperatureC);
+    if (temperatureC === null || !isWaterState(candidate.expectedState))
+      return [];
+    return [
+      {
+        temperatureC,
+        expectedState: candidate.expectedState,
+        passed: candidate.passed === true,
+      },
+    ];
+  });
+}
+
+function groupByStudent(
+  events: InteractionEvent[],
+): Map<string, InteractionEvent[]> {
   const groups = new Map<string, InteractionEvent[]>();
   for (const event of events) {
+    // 7.5 — `studentPseudoId` é `null` só em eventos de AUTORIA do
+    // professor (ver InteractionEvent), que nunca aparecem nas queries que
+    // alimentam esta função (filtradas por `type` de evento de aluno) —
+    // guarda de tipo, não um caso esperado em runtime.
+    if (!event.studentPseudoId) continue;
     const existing = groups.get(event.studentPseudoId);
     if (existing) {
       existing.push(event);
@@ -108,7 +170,9 @@ export class MetricsAdminChallengeService {
     return challenges.map((challenge) => ({
       id: challenge.id,
       title: challenge.title,
-      stage: isChallengeConfig(challenge.config) ? challenge.config.stage : null,
+      stage: isChallengeConfig(challenge.config)
+        ? challenge.config.stage
+        : null,
       topicName: challenge.topic?.name ?? '—',
     }));
   }
@@ -119,38 +183,58 @@ export class MetricsAdminChallengeService {
       throw new NotFoundException('Desafio não encontrado.');
     }
     if (!isChallengeConfig(challenge.config)) {
-      throw new NotFoundException('Este desafio ainda não tem blocos configurados.');
+      throw new NotFoundException(
+        'Este desafio ainda não tem blocos configurados.',
+      );
     }
     const stage = challenge.config.stage;
 
     // "N que chegou até o desafio" (AC de 6.5) — plataforma inteira, sem
     // escopo de turma/escola (ver nota em EventsService). População-base de
     // todo o resto do relatório.
-    const reachedPseudoIds = await this.eventsService.findDistinctStudentsForChallenge(challengeId);
+    const reachedPseudoIds =
+      await this.eventsService.findDistinctStudentsForChallenge(challengeId);
 
-    const [settings, siblings, earliestAnyEvent, earliestExecution, eventsByCategory, eventsByTypeRaw] =
-      await Promise.all([
-        this.settingsService.getOrCreate(),
-        this.challengesService.findByTopicIdOrdered(challenge.topicId),
-        this.eventsService.findEarliestEventTimestamps(challengeId),
-        this.eventsService.findEarliestEventTimestamps(challengeId, 'program_executed'),
-        this.eventsService.countEventsByCategoryForChallenge(challengeId),
-        this.eventsService.countEventsByTypeForChallenge(challengeId),
-      ]);
+    const [
+      settings,
+      siblings,
+      earliestAnyEvent,
+      earliestExecution,
+      eventsByCategory,
+      eventsByTypeRaw,
+    ] = await Promise.all([
+      this.settingsService.getOrCreate(),
+      this.challengesService.findByTopicIdOrdered(challenge.topicId),
+      this.eventsService.findEarliestEventTimestamps(challengeId),
+      this.eventsService.findEarliestEventTimestamps(
+        challengeId,
+        'program_executed',
+      ),
+      this.eventsService.countEventsByCategoryForChallenge(challengeId),
+      this.eventsService.countEventsByTypeForChallenge(challengeId),
+    ]);
 
     // `nextChallengeId` (só importa pra resolver "completed" na fase
     // `modify`, ver MetricsService) é a posição do próprio desafio entre os
     // irmãos do tópico — mesmo raciocínio de ChallengesController/
     // MetricsTeacherService.
-    const ownIndex = siblings.findIndex((sibling) => sibling.id === challenge.id);
-    const nextChallengeId = ownIndex >= 0 ? (siblings[ownIndex + 1]?.id ?? null) : null;
-    const progress = await this.metricsService.getChallengeProgressForStudents(reachedPseudoIds, {
-      challengeId,
-      stage,
-      nextChallengeId,
-    });
+    const ownIndex = siblings.findIndex(
+      (sibling) => sibling.id === challenge.id,
+    );
+    const nextChallengeId =
+      ownIndex >= 0 ? (siblings[ownIndex + 1]?.id ?? null) : null;
+    const progress = await this.metricsService.getChallengeProgressForStudents(
+      reachedPseudoIds,
+      {
+        challengeId,
+        stage,
+        nextChallengeId,
+      },
+    );
 
-    const attemptsValues = Array.from(progress.values()).map((entry) => entry.attempts);
+    const attemptsValues = Array.from(progress.values()).map(
+      (entry) => entry.attempts,
+    );
     const studentsCompleted = Array.from(progress.values()).filter(
       (entry) => entry.status === 'completed',
     ).length;
@@ -187,12 +271,19 @@ export class MetricsAdminChallengeService {
       report.modifyInsights = await this.buildModifyInsights(challengeId);
     } else if (stage === 'use') {
       report.useInsights = await this.buildUseInsights(challengeId);
+    } else if (stage === 'create' && challenge.config.expectedModel) {
+      report.createInsights = await this.buildCreateInsights(
+        challengeId,
+        challenge.config.expectedModel,
+      );
     }
 
     return report;
   }
 
-  private async buildModifyInsights(challengeId: string): Promise<ModifyInsights> {
+  private async buildModifyInsights(
+    challengeId: string,
+  ): Promise<ModifyInsights> {
     const attempts = await this.eventsService.findModifyAttempts(challengeId);
     const byStudent = groupByStudent(attempts);
 
@@ -210,7 +301,8 @@ export class MetricsAdminChallengeService {
 
       studentAttempts.forEach((event, index) => {
         changedValuesFlat.push(...asStringArray(event.payload.changed_values));
-        const hasPrediction = asFiniteNumber(event.payload.prediction_given) !== null;
+        const hasPrediction =
+          asFiniteNumber(event.payload.prediction_given) !== null;
         const didMatch = event.payload.result_matched_prediction === true;
         if (hasPrediction) {
           withPrediction += 1;
@@ -231,7 +323,10 @@ export class MetricsAdminChallengeService {
       if (withPrediction > 0) {
         const ratePercent = (matched / withPrediction) * 100;
         perStudentRates.push(ratePercent);
-        scatter.push({ attempts: studentAttempts.length, matchRatePercent: ratePercent });
+        scatter.push({
+          attempts: studentAttempts.length,
+          matchRatePercent: ratePercent,
+        });
       }
     }
 
@@ -244,6 +339,68 @@ export class MetricsAdminChallengeService {
       },
       mostChangedFieldDistribution: frequencyTable(changedValuesFlat),
       attemptsVsMatchRateScatter: scatter,
+    };
+  }
+
+  // 3.17 — só chamado quando `expectedModel` existe (ver getChallengeReport
+  // acima); o cenário do professor (`scenarioLabel`/`testCases`) é o que
+  // dá o rótulo E a lista fixa de casos — mesmo desafio sem NENHUMA
+  // submissão ainda aparece com `perCase` completo (submissions: 0), nunca
+  // uma lista vazia que esconderia quais casos o cenário define.
+  private async buildCreateInsights(
+    challengeId: string,
+    expectedModel: WaterExpectedModel,
+  ): Promise<CreateInsights> {
+    const validations =
+      await this.eventsService.findWaterProgramValidations(challengeId);
+    const byStudent = groupByStudent(validations);
+
+    const perCase = new Map<string, CreateValidationCaseInsight>(
+      expectedModel.testCases.map((testCase) => [
+        `${testCase.temperatureC}:${testCase.expectedState}`,
+        {
+          temperatureC: testCase.temperatureC,
+          expectedState: testCase.expectedState,
+          passes: 0,
+          submissions: 0,
+        },
+      ]),
+    );
+
+    const perStudentRates: number[] = [];
+    let totalSubmissions = 0;
+    let totalAllPassed = 0;
+
+    for (const studentValidations of byStudent.values()) {
+      let studentAllPassed = 0;
+      for (const event of studentValidations) {
+        totalSubmissions += 1;
+        if (event.payload.all_passed === true) {
+          totalAllPassed += 1;
+          studentAllPassed += 1;
+        }
+        for (const result of asCaseResults(event.payload.case_results)) {
+          const tally = perCase.get(
+            `${result.temperatureC}:${result.expectedState}`,
+          );
+          if (!tally) continue; // caso de um `expectedModel` antigo, já trocado
+          tally.submissions += 1;
+          if (result.passed) tally.passes += 1;
+        }
+      }
+      perStudentRates.push(
+        (studentAllPassed / studentValidations.length) * 100,
+      );
+    }
+
+    return {
+      scenarioLabel: expectedModel.scenarioLabel,
+      allCasesPassedRate: {
+        aggregate: aggregateRate(totalAllPassed, totalSubmissions),
+        perStudent: summarizePerStudentRates(perStudentRates),
+        perStudentHistogram: bucketizePercentRate(perStudentRates),
+      },
+      perCase: Array.from(perCase.values()),
     };
   }
 

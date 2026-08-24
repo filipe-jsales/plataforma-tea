@@ -55,6 +55,8 @@ export function TeacherChallengeNew() {
     title: string;
     params: Record<string, unknown>;
     feedbackMessages: { retry: string; success: string };
+    predictQuestion: string;
+    investigationQuestion: string;
   }) {
     if (!templateDetail) return;
     await apiClient.post(`/challenge-templates/${templateDetail.id}/challenges`, input);
@@ -109,6 +111,8 @@ export function TeacherChallengeNew() {
             initialTitle={sourceChallenge ? `${sourceChallenge.title} (cópia)` : undefined}
             initialParams={sourceChallenge?.params}
             initialFeedbackMessages={sourceChallenge?.feedbackMessages}
+            initialPredictQuestion={sourceChallenge?.predictQuestion}
+            initialInvestigationQuestion={sourceChallenge?.investigationQuestion}
             submitLabel="Salvar desafio"
             onSubmit={handleSubmit}
           />

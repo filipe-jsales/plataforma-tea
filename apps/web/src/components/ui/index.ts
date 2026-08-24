@@ -13,6 +13,7 @@ export { Tabs, type TabsProps, type TabItem } from './Tabs';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedControlOption } from './SegmentedControl';
 export { Select, type SelectProps, type SelectOption } from './Select';
 export { TextField, type TextFieldProps } from './TextField';
+export { TextareaField, type TextareaFieldProps } from './TextareaField';
 export {
   Table,
   TableHead,

@@ -7,6 +7,15 @@ import { isChallengeConfig } from '../challenges/challenge-config.interface';
 import { ChallengesService } from '../challenges/challenges.service';
 import { Challenge } from '../challenges/entities/challenge.entity';
 import { sanitizeFeedbackMessages, validateFeedbackMessages } from '../challenges/feedback-messages';
+import {
+  getPrimmQuestionSuggestion,
+  sanitizePrimmQuestions,
+  validatePrimmQuestions,
+  type PrimmQuestionsInput,
+  type PrimmQuestionSuggestion,
+} from '../challenges/primm-questions';
+import { EventCategory } from '../common/enums/event-category.enum';
+import { EventsService } from '../events/events.service';
 import type { ChallengeTemplateHandler } from './handlers/challenge-template-handler.interface';
 import type {
   ResolvedTemplateParameterDefinition,
@@ -26,6 +35,12 @@ export interface ChallengeTemplateSummary {
 
 export interface ChallengeTemplateDetail extends ChallengeTemplateSummary {
   parameterSchema: ResolvedTemplateParameterDefinition[];
+  // 7.5 (AC2) — sugestão pré-escrita por template, editável pelo professor
+  // (nunca imposta) — o frontend pré-preenche os 2 campos com isto,
+  // nunca só um placeholder cinza (diferente de feedbackMessages), porque
+  // aqui a resposta vazia não é uma opção válida (as perguntas são
+  // obrigatórias).
+  primmQuestionSuggestion: PrimmQuestionSuggestion;
 }
 
 export interface TemplatePreviewResult {
@@ -53,6 +68,11 @@ export interface TeacherChallengeDetail {
   // customizou, nunca omitido — o formulário de edição precisa distinguir
   // "sem valor" de "campo ausente" pra decidir o que pré-preencher).
   feedbackMessages: ChallengeFeedbackMessages;
+  // 7.5 (AC3) — perguntas PRIMM já salvas neste desafio, pra pré-preencher
+  // o formulário de edição com o texto REAL (nunca a sugestão genérica de
+  // novo, que só serve pro fluxo de criação).
+  predictQuestion: string;
+  investigationQuestion: string;
 }
 
 export interface SaveTemplateChallengeInput {
@@ -62,6 +82,10 @@ export interface SaveTemplateChallengeInput {
   // 3.7 (AC4) — opcional: quando ausente/vazio, o desafio usa o conjunto de
   // mensagens-padrão sugeridas (ver DEFAULT_FEEDBACK_MESSAGES).
   feedbackMessages?: ChallengeFeedbackMessages;
+  // 7.5 (AC1) — obrigatórias (validadas em validateAndBuildConfig, não
+  // aqui — mesma decisão de manter a checagem PEDAGÓGICA fora do DTO).
+  predictQuestion?: string;
+  investigationQuestion?: string;
 }
 
 // 4.2 — Configuração de desafio via formulário guiado (Modo Template).
@@ -90,6 +114,7 @@ export class ChallengeTemplatesService {
     private readonly templatesRepository: Repository<ChallengeTemplate>,
     private readonly challengesService: ChallengesService,
     private readonly blocksService: BlocksService,
+    private readonly eventsService: EventsService,
   ) {}
 
   // AC1 — galeria: nome/ícone/descrição em linguagem simples, nunca o
@@ -108,7 +133,11 @@ export class ChallengeTemplatesService {
     const parameterSchema = await Promise.all(
       template.parameterSchema.map((param) => this.resolveParameter(param, introducedBlockTypes)),
     );
-    return { ...this.toSummary(template), parameterSchema };
+    return {
+      ...this.toSummary(template),
+      parameterSchema,
+      primmQuestionSuggestion: getPrimmQuestionSuggestion(template.key),
+    };
   }
 
   // AC3 (validação pedagógica, sempre 200 — `valid`/`errors` na resposta,
@@ -132,7 +161,7 @@ export class ChallengeTemplatesService {
   ): Promise<TeacherChallengeSummary> {
     const { template, handler } = await this.loadTemplateAndHandler(templateId);
     const context = { introducedBlockTypes: await this.getIntroducedBlockTypes(template.topicId) };
-    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, context);
+    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, input, context);
     const challenge = await this.challengesService.createFromTemplate({
       topicId: template.topicId,
       templateId: template.id,
@@ -148,6 +177,7 @@ export class ChallengeTemplatesService {
       // rastreabilidade de qual configuração curricular foi usada).
       templateParams: input.params,
     });
+    await this.logPrimmQuestionsConfigured(teacherId, challenge.id, config);
     return this.toTeacherSummary(challenge, template);
   }
 
@@ -177,6 +207,13 @@ export class ChallengeTemplatesService {
       // bruto, ver isChallengeConfig — desafio sem config válido ainda
       // devolve {}, nunca quebra a tela).
       feedbackMessages: isChallengeConfig(challenge.config) ? (challenge.config.feedbackMessages ?? {}) : {},
+      // 7.5 (AC3) — só existem quando `isChallengeConfig` (mesma guarda de
+      // `feedbackMessages` acima); string vazia (nunca `undefined`) pro
+      // formulário de edição continuar um input controlado.
+      predictQuestion: isChallengeConfig(challenge.config) ? (challenge.config.predictQuestion ?? '') : '',
+      investigationQuestion: isChallengeConfig(challenge.config)
+        ? (challenge.config.investigationQuestion ?? '')
+        : '',
     };
   }
 
@@ -188,13 +225,14 @@ export class ChallengeTemplatesService {
     const challenge = await this.findOwnedTemplateChallengeOrThrow(id, teacherId);
     const { template, handler } = await this.loadTemplateAndHandler(challenge.templateId as string);
     const context = { introducedBlockTypes: await this.getIntroducedBlockTypes(template.topicId) };
-    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, context);
+    const config = this.validateAndBuildConfig(handler, input.params, input.feedbackMessages, input, context);
     const updated = await this.challengesService.updateFromTemplate(challenge, {
       title: input.title,
       prompt: input.prompt?.trim() || this.buildDefaultPrompt(template, input.params),
       config: config as unknown as Record<string, unknown>,
       templateParams: input.params,
     });
+    await this.logPrimmQuestionsConfigured(teacherId, updated.id, config);
     return this.toTeacherSummary(updated, template);
   }
 
@@ -228,11 +266,18 @@ export class ChallengeTemplatesService {
     handler: ChallengeTemplateHandler,
     params: Record<string, unknown>,
     feedbackMessages: ChallengeFeedbackMessages | undefined,
+    primmQuestions: PrimmQuestionsInput,
     context: { introducedBlockTypes: string[] },
   ): ChallengeConfig {
     const handlerResult = handler.validateParameters(params, context);
     const feedbackErrors = validateFeedbackMessages(feedbackMessages);
-    const errors = [...handlerResult.errors, ...feedbackErrors];
+    // 7.5 (AC1) — validação bloqueante na publicação: como "Salvar" já É
+    // "Publicar" neste fluxo (nenhum estado de rascunho existe), este é o
+    // único e mesmo choke-point que já bloqueia por parâmetro pedagógico
+    // inválido/mensagem punitiva — nenhum caminho novo de "publicar"
+    // precisa ser criado.
+    const primmErrors = validatePrimmQuestions(primmQuestions);
+    const errors = [...handlerResult.errors, ...feedbackErrors, ...primmErrors];
     if (errors.length > 0) {
       // Mensagem continua pedagógica (as mesmas do handler/validador),
       // nunca "erro de validação"/"schema" genérico (regra não-negociável 9).
@@ -244,7 +289,42 @@ export class ChallengeTemplatesService {
     if (sanitized) {
       config.feedbackMessages = sanitized;
     }
+    const { predictQuestion, investigationQuestion } = sanitizePrimmQuestions(primmQuestions);
+    config.predictQuestion = predictQuestion;
+    config.investigationQuestion = investigationQuestion;
     return config;
+  }
+
+  // 7.5 (Dados/Eventos) — `challenge_primm_questions_configured` (RD-C),
+  // disparado a cada criação/edição de um desafio via template. Gravado
+  // SERVER-SIDE (`EventsService.recordTeacherEvent`), nunca via
+  // `logEvent`/`POST /events` do frontend: esse endpoint público exige
+  // `studentPseudoId` (um professor não tem pseudônimo de aluno pra
+  // fornecer), e o id real do professor já está disponível aqui
+  // (`teacherId`, resolvido do JWT pelo controller) sem precisar
+  // redeclarar nada no frontend. `has_predict_question`/
+  // `has_investigate_question` são sempre `true` hoje (as duas são
+  // obrigatórias pra chegar até aqui — validateAndBuildConfig já teria
+  // lançado 400 antes), mas ficam como booleanos explícitos no payload
+  // (não hardcoded `true`/omitidos) porque é a forma pedida pelo card e
+  // continua correta se a obrigatoriedade mudar no futuro.
+  private async logPrimmQuestionsConfigured(
+    teacherId: string,
+    challengeId: string,
+    config: ChallengeConfig,
+  ): Promise<void> {
+    await this.eventsService.recordTeacherEvent(
+      teacherId,
+      EventCategory.CURRICULAR,
+      'challenge_primm_questions_configured',
+      challengeId,
+      {
+        challenge_id: challengeId,
+        has_predict_question: Boolean(config.predictQuestion?.trim()),
+        has_investigate_question: Boolean(config.investigationQuestion?.trim()),
+        timestamp: new Date().toISOString(),
+      },
+    );
   }
 
   private async loadTemplateAndHandler(templateId: string) {

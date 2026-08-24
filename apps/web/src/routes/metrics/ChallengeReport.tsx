@@ -52,6 +52,25 @@ interface UseInsights {
   investigationResponses: { n: number };
 }
 
+type WaterState = 'SOLID' | 'LIQUID' | 'GAS';
+
+interface CreateValidationCaseInsight {
+  temperatureC: number;
+  expectedState: WaterState;
+  passes: number;
+  submissions: number;
+}
+
+// 3.17 — corretude vs. "modelo esperado" (cenário configurado pelo
+// professor, ex.: "Dia muito quente"), visível SÓ nesta tela (admin/
+// pesquisador) — nunca na resposta que o aluno recebe do desafio
+// (ChallengesController nunca inclui `expectedModel`).
+interface CreateInsights {
+  scenarioLabel: string;
+  allCasesPassedRate: RateReport;
+  perCase: CreateValidationCaseInsight[];
+}
+
 interface ChallengeDepthReport {
   challengeId: string;
   title: string;
@@ -66,7 +85,14 @@ interface ChallengeDepthReport {
   eventsByType: FrequencyBucket[];
   modifyInsights?: ModifyInsights;
   useInsights?: UseInsights;
+  createInsights?: CreateInsights;
 }
+
+const STATE_LABEL: Record<WaterState, string> = {
+  SOLID: 'sólido',
+  LIQUID: 'líquido',
+  GAS: 'gasoso',
+};
 
 const STAGE_LABEL: Record<ChallengeStage, string> = {
   use: 'Observar (Use)',
@@ -208,6 +234,7 @@ function ReportBody({ report }: { report: ChallengeDepthReport }) {
 
       {report.modifyInsights && <ModifySection insights={report.modifyInsights} threshold={threshold} />}
       {report.useInsights && <UseSection insights={report.useInsights} threshold={threshold} />}
+      {report.createInsights && <CreateSection insights={report.createInsights} threshold={threshold} />}
     </section>
   );
 }
@@ -265,6 +292,33 @@ function UseSection({ insights, threshold }: { insights: UseInsights; threshold:
           <p className="challenge-report__plain-stat">
             N={insights.investigationResponses.n} aluno(s) responderam.
           </p>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// 3.17 — corretude vs. modelo esperado (cenário do professor). Casos com
+// 0 submissões aparecem igual aos demais (nunca somem da lista) — "nenhum
+// aluno testou esta temperatura ainda" é, em si, um dado de pesquisa.
+function CreateSection({ insights, threshold }: { insights: CreateInsights; threshold: number }) {
+  return (
+    <div className="challenge-report__section">
+      <h3>Estágio Create — cenário "{insights.scenarioLabel}"</h3>
+      <div className="challenge-report__grid">
+        <RateCard
+          title="Taxa de submissões que acertaram os 3 estados"
+          rate={insights.allCasesPassedRate}
+          threshold={threshold}
+        />
+        <ChartCard title="Acertos por caso de teste (temperatura → estado esperado)">
+          <BarChart
+            data={insights.perCase.map((entry) => ({
+              label: `${entry.temperatureC}°C → ${STATE_LABEL[entry.expectedState]} (${entry.passes}/${entry.submissions})`,
+              count: entry.passes,
+            }))}
+            ariaLabel="Acertos por caso de teste do cenário"
+          />
         </ChartCard>
       </div>
     </div>

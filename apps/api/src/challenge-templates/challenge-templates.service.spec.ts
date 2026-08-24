@@ -4,6 +4,8 @@ import { BlockDefinition } from '../blocks/entities/block-definition.entity';
 import { BlocksService } from '../blocks/blocks.service';
 import { Challenge } from '../challenges/entities/challenge.entity';
 import { ChallengesService } from '../challenges/challenges.service';
+import { EventCategory } from '../common/enums/event-category.enum';
+import { EventsService } from '../events/events.service';
 import { ChallengeTemplatesService } from './challenge-templates.service';
 import { ChallengeTemplate } from './entities/challenge-template.entity';
 
@@ -12,6 +14,7 @@ describe('ChallengeTemplatesService', () => {
   let templatesRepository: jest.Mocked<Repository<ChallengeTemplate>>;
   let challengesService: jest.Mocked<ChallengesService>;
   let blocksService: jest.Mocked<BlocksService>;
+  let eventsService: jest.Mocked<EventsService>;
 
   const regularPolygonTemplate = {
     id: 'template-1',
@@ -59,6 +62,15 @@ describe('ChallengeTemplatesService', () => {
     blockSize: 'medium',
   };
 
+  // 7.5 — as duas perguntas PRIMM são obrigatórias pra createChallenge/
+  // updateMine terem sucesso desde esta feature; todo teste que espera
+  // sucesso precisa espalhar isto no input (mesmo racional de `validParams`
+  // acima pros parâmetros pedagógicos do handler).
+  const validPrimmQuestions = {
+    predictQuestion: 'Quantos lados você acha que essa figura vai ter?',
+    investigationQuestion: 'O que você percebeu sobre o ângulo de giro?',
+  };
+
   beforeEach(() => {
     templatesRepository = {
       find: jest.fn(),
@@ -73,8 +85,9 @@ describe('ChallengeTemplatesService', () => {
       remove: jest.fn(),
     } as unknown as jest.Mocked<ChallengesService>;
     blocksService = { findByTypes: jest.fn().mockResolvedValue([]) } as unknown as jest.Mocked<BlocksService>;
+    eventsService = { recordTeacherEvent: jest.fn() } as unknown as jest.Mocked<EventsService>;
 
-    service = new ChallengeTemplatesService(templatesRepository, challengesService, blocksService);
+    service = new ChallengeTemplatesService(templatesRepository, challengesService, blocksService, eventsService);
   });
 
   describe('listTemplates', () => {
@@ -195,6 +208,7 @@ describe('ChallengeTemplatesService', () => {
       await service.createChallenge('template-1', 'teacher-1', {
         title: 'Triângulos e seus ângulos',
         params: validParams,
+        ...validPrimmQuestions,
       });
 
       expect(challengesService.createFromTemplate).toHaveBeenCalledWith({
@@ -209,6 +223,8 @@ describe('ChallengeTemplatesService', () => {
           goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90, closureTolerancePx: 5 },
           snapTolerancePercent: 60,
           blockScale: 1.3,
+          predictQuestion: validPrimmQuestions.predictQuestion,
+          investigationQuestion: validPrimmQuestions.investigationQuestion,
         },
         templateParams: validParams,
       });
@@ -222,6 +238,7 @@ describe('ChallengeTemplatesService', () => {
         title: 'Título',
         params: validParams,
         feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?', success: '  ' },
+        ...validPrimmQuestions,
       });
 
       expect(challengesService.createFromTemplate).toHaveBeenCalledWith(
@@ -250,7 +267,11 @@ describe('ChallengeTemplatesService', () => {
       templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
       challengesService.createFromTemplate.mockResolvedValue({ id: 'c1', createdAt: new Date() } as Challenge);
 
-      await service.createChallenge('template-1', 'teacher-1', { title: 'Título', params: validParams });
+      await service.createChallenge('template-1', 'teacher-1', {
+        title: 'Título',
+        params: validParams,
+        ...validPrimmQuestions,
+      });
 
       const [[callArg]] = challengesService.createFromTemplate.mock.calls;
       expect(callArg.config).not.toHaveProperty('feedbackMessages');
@@ -264,11 +285,152 @@ describe('ChallengeTemplatesService', () => {
         title: 'Título',
         prompt: 'Desenhe um pentágono bem grande.',
         params: validParams,
+        ...validPrimmQuestions,
       });
 
       expect(challengesService.createFromTemplate).toHaveBeenCalledWith(
         expect.objectContaining({ prompt: 'Desenhe um pentágono bem grande.' }),
       );
+    });
+  });
+
+  describe('PRIMM questions (7.5)', () => {
+    it('AC1 — blocks publication (createChallenge) when predictQuestion is missing', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      await expect(
+        service.createChallenge('template-1', 'teacher-1', {
+          title: 'Título',
+          params: validParams,
+          investigationQuestion: validPrimmQuestions.investigationQuestion,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(challengesService.createFromTemplate).not.toHaveBeenCalled();
+    });
+
+    it('AC1 — blocks publication when investigationQuestion is missing', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      await expect(
+        service.createChallenge('template-1', 'teacher-1', {
+          title: 'Título',
+          params: validParams,
+          predictQuestion: validPrimmQuestions.predictQuestion,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(challengesService.createFromTemplate).not.toHaveBeenCalled();
+    });
+
+    it('AC1 — blocks publication (updateMine) exactly the same as createChallenge, no separate "publish" path', async () => {
+      challengesService.findByIdForOwner.mockResolvedValue({
+        id: 'c1',
+        templateId: 'template-1',
+      } as unknown as Challenge);
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      await expect(
+        service.updateMine('c1', 'teacher-1', { title: 'Título', params: validParams }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(challengesService.updateFromTemplate).not.toHaveBeenCalled();
+    });
+
+    it('AC2 — getTemplateDetail resolves a suggestion for the template, editable not just a placeholder', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+
+      const result = await service.getTemplateDetail('template-1');
+
+      expect(result.primmQuestionSuggestion.predictQuestion).toBeTruthy();
+      expect(result.primmQuestionSuggestion.investigationQuestion).toBeTruthy();
+    });
+
+    it('trims whitespace before persisting (sanitizePrimmQuestions)', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+      challengesService.createFromTemplate.mockResolvedValue({ id: 'c1', createdAt: new Date() } as Challenge);
+
+      await service.createChallenge('template-1', 'teacher-1', {
+        title: 'Título',
+        params: validParams,
+        predictQuestion: '  Quantos lados?  ',
+        investigationQuestion: '  O que notou?  ',
+      });
+
+      expect(challengesService.createFromTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            predictQuestion: 'Quantos lados?',
+            investigationQuestion: 'O que notou?',
+          }),
+        }),
+      );
+    });
+
+    it('Dados/Eventos — logs challenge_primm_questions_configured (RD-C) as a TEACHER event on create, never via studentPseudoId', async () => {
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+      challengesService.createFromTemplate.mockResolvedValue({ id: 'challenge-1', createdAt: new Date() } as Challenge);
+
+      await service.createChallenge('template-1', 'teacher-1', {
+        title: 'Título',
+        params: validParams,
+        ...validPrimmQuestions,
+      });
+
+      expect(eventsService.recordTeacherEvent).toHaveBeenCalledWith(
+        'teacher-1',
+        EventCategory.CURRICULAR,
+        'challenge_primm_questions_configured',
+        'challenge-1',
+        expect.objectContaining({
+          challenge_id: 'challenge-1',
+          has_predict_question: true,
+          has_investigate_question: true,
+        }),
+      );
+    });
+
+    it('Dados/Eventos — also logs on updateMine (re-publication), scoped to the edited challenge id', async () => {
+      challengesService.findByIdForOwner.mockResolvedValue({
+        id: 'c1',
+        templateId: 'template-1',
+      } as unknown as Challenge);
+      templatesRepository.findOne.mockResolvedValue(regularPolygonTemplate);
+      challengesService.updateFromTemplate.mockResolvedValue({ id: 'c1', createdAt: new Date() } as Challenge);
+
+      await service.updateMine('c1', 'teacher-1', {
+        title: 'Título',
+        params: validParams,
+        ...validPrimmQuestions,
+      });
+
+      expect(eventsService.recordTeacherEvent).toHaveBeenCalledWith(
+        'teacher-1',
+        EventCategory.CURRICULAR,
+        'challenge_primm_questions_configured',
+        'c1',
+        expect.any(Object),
+      );
+    });
+
+    it('AC3 — getMineOrThrow pre-fills the edit form with the saved questions, not the generic suggestion', async () => {
+      challengesService.findByIdForOwner.mockResolvedValue({
+        id: 'c1',
+        title: 'Título',
+        prompt: 'Enunciado',
+        templateId: 'template-1',
+        template: regularPolygonTemplate,
+        templateParams: validParams,
+        config: {
+          stage: 'create',
+          allowedBlockTypes: [],
+          goal: {},
+          predictQuestion: 'Pergunta salva?',
+          investigationQuestion: 'Resposta salva?',
+        },
+      } as unknown as Challenge);
+
+      const result = await service.getMineOrThrow('c1', 'teacher-1');
+
+      expect(result.predictQuestion).toBe('Pergunta salva?');
+      expect(result.investigationQuestion).toBe('Resposta salva?');
     });
   });
 
@@ -299,6 +461,8 @@ describe('ChallengeTemplatesService', () => {
         templateKey: 'regular_polygon',
         params: validParams,
         feedbackMessages: {},
+        predictQuestion: '',
+        investigationQuestion: '',
       });
     });
 

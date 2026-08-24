@@ -657,6 +657,425 @@ preenchendo o campo correspondente no seed; ganha Modify preenchendo
 `editableFields` com os campos do bloco que fazem sentido editar pro
 conceito curricular daquele desafio.
 
+## Trilha "Estados da Matéria" (`WaterStateChallengePage`, 3.12/3.13/3.14/3.16)
+
+Domínio `water_state` (`Topic.domain`), tela própria — **não** reaproveita
+`ChallengePage`, que é acoplada ao mundo de tartaruga/Pixi (goal com
+`sides`/`turnAngleDeg`, interpretador sem ramificação). Reaproveita só a
+infraestrutura genérica de `blocklyToolbox.ts`/`editableFields.ts`/
+`feedbackMessages.ts`/`logEvent.ts`. Duas rotas, o mesmo componente:
+`/water/:topicId` (entrada, sempre o Desafio 1) e
+`/water/challenge/:challengeId` (acesso direto, ex.: via "Avançar").
+
+### Bloco condicional com paleta configurável por fase (3.12)
+
+`conditional_if` (SE/ENTÃO/SENÃO) é o primeiro bloco do editor com
+ramificação real — `apps/web/src/lib/waterProgram.ts#evaluateBlock` percorre
+`inputs.DO_THEN`/`inputs.DO_ELSE` conforme `temperatureC > THRESHOLD`, nunca
+os dois ramos. Cada ramo é rotulado com ícone **e** texto direto no
+`message0`/`message1`/`message2` do bloco (`✅ ENTÃO`/`❌ SENÃO`,
+`apps/api/src/database/migrations/1786416943219-CreateConditionalBlock.ts`) —
+nunca só a cor (`colour: 210` igual nos dois ramos) diferencia os caminhos.
+
+A disponibilidade da toolbox por fase segue **o mesmo mecanismo genérico**
+de `ChallengePage.tsx#isCreate`/`toolboxConfiguration`, replicado aqui
+(antes desta feature, `WaterStateChallengePage` nunca calculava
+`isCreate`/`toolboxConfiguration` e por isso nenhuma fase mostrava toolbox
+alguma — corrigido nesta revisão):
+
+- **Use** (`stage: 'use'`): `challenge.locked` vem `true`
+  (`ChallengesController#buildDetailOrThrow`, `locked: config.stage ===
+  'use'`), o `program` pré-montado (`conditional_if` com limiar de
+  ebulição) vem travado (`workspaceConfiguration.readOnly`), e
+  `toolboxConfiguration` fica `undefined` — sem paleta visível, só
+  Executar/Repetir execução.
+- **Modify** (`stage: 'modify'`): mesmo racional de `ChallengePage`
+  (nenhuma fase Modify da plataforma usa toolbox arrastável, geometria
+  incluída) — o valor-limiar (`THRESHOLD`) é editável **inline**, direto no
+  campo do bloco já montado, via `applyModifyFieldLocking` (trava
+  estrutura/demais campos, libera só os listados em
+  `challenge.editableFields`). Isso satisfaz "só o parâmetro numérico é
+  manipulável, o condicional completo nunca aparece pra montar" sem
+  precisar de uma paleta com um bloco numérico avulso — não existiria onde
+  encaixá-lo, já que `THRESHOLD` é um campo do próprio `conditional_if`
+  (`FieldNumber`), não um input de valor separado.
+- **Create** (`stage: 'create'`, `SeedEstadosDaMateriaCreateChallenge`
+  migration — 3º desafio da trilha, sem `program`): `isCreate` computa
+  `toolboxConfiguration = buildToolboxConfiguration(challenge.toolbox.categories)`
+  a partir do MESMO `allowedBlockTypes: ["conditional_if",
+  "set_water_state"]` que Use/Modify já usam — paleta completa, aluno monta
+  o SE/ENTÃO/SENÃO do zero. `trashcan: isCreate` (só Create permite excluir
+  blocos livremente).
+
+### Interpretador com ramificação real (3.13/3.14)
+
+`waterProgram.ts#interpretWaterProgram(topBlock, temperatureC)` é **puro**:
+mesma entrada → mesma saída, sem efeito colateral, sem estado de módulo. Ao
+contrário de `blockProgram.ts` (turtle, achata tudo numa lista sequencial),
+aqui existe ramificação de verdade — só um dos dois ramos do
+`conditional_if` é percorrido. Reamostrar essa função em várias temperaturas
+intermediárias (ver seção de animação abaixo) nunca precisa conhecer o
+limiar do programa: basta variar `temperatureC` e comparar o resultado.
+
+### Desafio 2.1 — simulação guiada, fase Use (3.13)
+
+Desafio 1 da trilha (`stage: 'use'`): `program` pré-montado (o
+`conditional_if` com limiar de ebulição) chega travado — sem
+`toolboxConfiguration`, `readOnly: true` — o único controle é
+Executar/Repetir execução, igual à fase Use de Geometria.
+
+**Motor PRIMM Predict→Run→Investigate**: os 3 botões de predição
+(❄️ Sólido/💧 Líquido/☁️ Gasoso) travam o Executar até o aluno escolher um
+(`primmStage: 'predict' → 'run'`, `handlePredict`) — mesmo padrão de
+`ChallengePage.handlePredict`, incluindo a decisão de **não logar a
+predição sozinha**: o valor entra no evento `water_state_prediction` (RD-C)
+junto do resultado real, em `handleRun`, pra manter previsão+resultado como
+uma unidade logável só. O que `handlePredict` faz sozinho é marcar
+`predictedAtRef.current = Date.now()` — usado só pra medir a duração até
+Executar (ver evento novo abaixo), nunca pra logar a predição em si mais
+cedo.
+
+- **RD-I `predict_to_run_duration`** (novo nesta revisão — faltava a
+  métrica "tempo entre predição e Run" que o card pede): logado em
+  `handleRun`, só quando havia uma predição pendente pra esta rodada
+  (`predictedAtRef.current !== null` — fica `null` em desafios sem
+  `predictQuestion`, ex.: `create`). `payload.duration_ms =
+  Date.now() - predictedAtRef.current`.
+- **RD-I `temperature_slider_changed`**: só no `onValueCommit` do
+  `Slider` (ao soltar, nunca a cada pixel do arrasto) — já existia.
+- Transição renderizada por `WaterStateTransition` (3.16, ver abaixo)
+  sempre que o aluno Executa, qualquer que seja o limiar cruzado — não é
+  uma checagem especial pra "100°C", é o comportamento padrão do
+  componente pra qualquer mudança de estado resultante do `interpretWaterProgram`.
+- Feedback sempre descritivo, nunca "errado" (regra não-negociável 4):
+  "Você imaginou que a água ficaria {predição}, mas ela ficou {real}." —
+  mesmo mecanismo de `InlineFeedback` (3.7) que o resto da plataforma usa.
+
+### Desafio 2.2 — ajuste de limiares, fase Modify (3.14)
+
+Desafio 2 (`stage: 'modify'`): mesmo `program` do Desafio 1, mas
+`locked: false` e o campo `THRESHOLD` destravado via
+`applyModifyFieldLocking(workspace, challenge.editableFields)` — o aluno
+edita o valor-limiar inline, no próprio bloco já montado; a estrutura
+(bloco em si, `set_water_state` de cada ramo) fica `movable(false)` +
+`deletable(false)`, e nenhum outro campo é destravado.
+
+- **"Bloco condicional novo é exclusivo da fase Create" já é garantido por
+  ausência de toolbox** — a fase Modify nunca passa `toolboxConfiguration`
+  pro `BlocklyWorkspace` (mesma decisão documentada em 3.12 acima), então
+  não existe paleta de onde arrastar um `conditional_if` novo. Mais forte
+  que "permitir soltar e então bloquear": a ação simplesmente não está
+  disponível.
+- **Recálculo dinâmico**: `handleRun` sempre serializa o workspace atual
+  (`Blockly.serialization.blocks.save`) e chama
+  `interpretWaterProgram(serialized, temperatureC)` — o limiar usado é
+  sempre o que está no bloco NAQUELE momento, nunca um valor fixo
+  capturado no carregamento da página.
+- **`thresholdChanged` (RD-I)**: `handleWorkspaceFieldChange`, casado
+  contra `challenge.editableFields` (nunca hardcoded `"THRESHOLD"` —
+  qualquer `modify` futuro com outro nome de campo funciona sem mudança),
+  loga `previous_value`/`new_value` a cada edição do campo — já
+  implementado, nenhuma mudança necessária.
+
+### Desafio 2.3 — construção livre do ciclo da água, fase Create (3.15)
+
+Desafio 3 (`stage: 'create'`, `SeedEstadosDaMateriaCreateChallenge`, ver
+3.12 acima): editor livre, paleta completa (`conditional_if` +
+`set_water_state`), sem `program`/`predictQuestion` — o aluno monta a
+lógica dos 3 estados do zero.
+
+**Duas camadas de corretude coexistem aqui** (a primeira é o fallback já
+existente antes do card 3.17; a segunda é a implementação de 3.17 em si,
+ver "Validador de lógica condicional vs. modelo esperado (3.17)" em
+`backend.md` pra arquitetura completa):
+
+1. **Cobertura de estados (client-side, sempre roda)** — fallback
+   estrutural, "o programa cobre os 3 estados possíveis?" —
+   `waterProgram.ts#evaluateWaterStatesCoverage(topBlock, minTemperatureC,
+   maxTemperatureC)` amostra `interpretWaterProgram` grau a grau em toda a
+   faixa do slider (`TEMPERATURE_MIN_C..TEMPERATURE_MAX_C`, -20 a 150) e
+   devolve os estados alcançados. Um único `conditional_if` de 1 nível
+   nunca cobre os 3 (2 ramos ⇒ no máximo 2 estados) — o intérprete e a
+   toolbox já suportam aninhar um segundo `conditional_if` num dos ramos
+   sem caso especial (`waterProgram.spec.ts`, "supports a conditional_if
+   nested inside a branch"), então a estrutura necessária pra passar já
+   está disponível ao aluno hoje. É o que decide `displayedState`/feedback
+   NESTA tela — nunca depende do professor ter configurado um cenário.
+   Em `handleRun` (só quando `isCreate`):
+   - Loga `water_states_coverage` (RD-C) com `covered_states`/
+     `missing_states`/`all_covered`.
+   - Quando `all_covered`: loga `challenge.completed` (RD-C, **mesmo
+     `type`** que o Create de Geometria usa) — é o que
+     `StudentHome`/`HomeService` já contam como "desafios concluídos"
+     desde 2.1, domínio-agnóstico por `challengeId`.
+   - Feedback sempre descritivo (regra não-negociável 4): sucesso
+     reaproveita `resolveSuccessMessage`; caso contrário, nomeia
+     especificamente quais estados faltaram ("Seu programa ainda não
+     mostra a água em todos os estados possíveis — faltou: sólido. Que
+     tal ajustar os limiares pra cobrir os três?") — nunca
+     "errado"/"incompleto" sem contexto.
+2. **Validação backend contra o "modelo esperado" (3.17, autoridade
+   real)** — `handleRun` também dispara (fire-and-forget, `.catch(() =>
+   {})`, mesmo padrão do POST de "viewed") `POST /students/me/challenges/
+   :id/submit-program` com o programa serializado. O backend roda ESSE
+   MESMO programa contra o `expectedModel` do desafio (se o professor
+   configurou um — curado via migration hoje, ver backend.md) e grava o
+   resultado como evento `water_program_validated` (RD-C), lido só pelo
+   relatório do admin/pesquisador (`ChallengeReport.tsx`, seção "Estágio
+   Create"). A resposta pra esta tela é sempre só `{ validated: boolean }`
+   — nunca corretude, nunca "quantos acertou": essa informação nunca
+   chega no frontend do aluno, satisfazendo o AC2 de 3.17 ("visível
+   apenas ao professor, nunca erro/nota" pro aluno).
+
+**Gaps corrigidos nesta revisão pra destravar `predictionAccuracy`
+(RD-L)**: as queries genéricas de métricas (`findExecutionsWithPrediction`/
+`findUseCompletions`, ver `backend.md`) casam por FORMATO de payload/TYPE
+de evento, não por domínio — mas a água divergia em dois pontos que
+faziam a fase Use (2.1) ficar invisível pra elas, mesmo já tendo predição
+funcionando na tela:
+
+- `program_executed` da água nunca carregava `prediction_given`/
+  `result_matched_prediction` (só existiam no evento separado
+  `water_state_prediction`) — `findExecutionsWithPrediction` nunca achava
+  nada. Corrigido: `handleRun` agora espelha o mesmo payload opcional que
+  `ChallengePage` já usa (`prediction_given`/`result_matched_prediction`
+  só quando `challenge.predictQuestion && !isModify && predictedState !==
+  null` — ou seja, só na fase Use; Modify continua só no
+  `challenge_modify_attempt`, mesma decisão de sempre pra não duplicar o
+  comparativo).
+- `handleProceed` nunca logava `challenge_use_completed` — só
+  `challenge_time_in_phase` (RD-E). Corrigido: mesmo par de eventos
+  RD-P/RD-C que `ChallengePage.handleProceed` já loga quando
+  `challenge.locked`, disparado uma vez só (`attempts >= 1`, mesma
+  condição de sempre).
+- `water_state_prediction` (RD-C) agora só loga quando
+  `challenge.predictQuestion` existe — antes disparava incondicionalmente,
+  inclusive em `create` (que nunca tem predição pra comparar; o payload
+  saía com `prediction_given: null` sempre, um evento sem sentido pro
+  domínio daquele desafio).
+
+**`modifyExitedAt` (equivalente, sem novo evento)**: o card pede que a
+"saída" da fase Modify seja derivada do 1º evento do desafio seguinte, sem
+reabrir escopo de emissão de evento — isso já existe, genérico por
+`ChallengeStage`/`nextChallengeId` (não hardcoded pra Geometria), em
+`MetricsService.resolveCompletedStudents` (`stage === 'modify'` → aluno
+"saiu" quando tem qualquer evento no `nextChallengeId`, ver `backend.md`).
+Como o 2.3 de água já tem `position`/`topicId` corretos na sequência (a
+migration desta revisão), esse mecanismo já funciona pra água sem
+nenhuma mudança de código — só materializa um booleano de conclusão, não
+um timestamp nomeado `modifyExitedAt`; se o card exigir literalmente esse
+campo (não só a lógica equivalente), falta uma query nova reaproveitando
+`EventsService` (ver nota em `backend.md`).
+
+### Componente de transição com perfil sensorial (3.16)
+
+`components/challenge/WaterStateTransition.tsx` — ícone (❄️/💧/☁️) + rótulo
+textual sempre juntos (regra não-negociável 9), reaproveitado por todos os
+desafios da trilha via a mesma instância (`<WaterStateTransition state=...
+temperatureC=... />` em `WaterStateChallengePage`), sem lógica de swap
+duplicada em nenhum outro lugar.
+
+- **Movimento reduzido = troca estática, não "mais rápida"**: a
+  transição CSS (`opacity`/`transform: scale()`) usa
+  `var(--motion-duration)`/`var(--motion-easing)`; fora de
+  `data-motion="full"`, `sensory-theme.css` zera `animation-duration`/
+  `transition-duration` pra `0.001ms !important` (não apenas acelera) —
+  reforçado por `@media (prefers-reduced-motion: reduce)` independente do
+  toggle do aluno. O componente nunca reimplementa esse gate, só declara a
+  transição normalmente (mesmo padrão de `ToggleSwitch.css`).
+- **Som nunca toca por padrão**: `useSensoryProfileStore.soundEnabled`
+  nasce `false`; `playTransitionChime()` só é chamado
+  `if (soundEnabled && !isFirstRender.current)` — e nunca na primeira
+  renderização (estado inicial do desafio, não uma transição de verdade).
+- **Animação de temperatura entre execuções** (extensão desta revisão,
+  mesma técnica de passo-fixo de `PixiTurtleWorld`: loop com `sleep`
+  redesenhando a cada tique, sem lib de animação nova):
+  `WaterStateChallengePage#animateStateTransition` reamostra
+  `interpretWaterProgram` em `TEMPERATURE_ANIMATION_STEPS` (12) pontos
+  interpolados entre a temperatura da última execução e a nova, então o
+  ícone/temperatura "viaja" pelos estados intermediários (ex.: gelo a 0°C →
+  água a 20°C mostra o gelo derretendo no meio do caminho) em vez de trocar
+  instantaneamente. Só roda com `motionEnabled` (opt-in); com movimento
+  reduzido (**padrão**), a mesma fila de temperaturas fica em
+  `pendingStepsRef` e um botão "Próximo passo →" (`handleAdvanceWaterStep`,
+  mesmo texto/estilo do botão homônimo de `ChallengePage`) deixa o aluno
+  avançar tique a tique — nunca pula direto pro resultado final, mesmo
+  sem animação automática. Cancelamento por token (`animationTokenRef`,
+  mesmo padrão de `runToken`/`cancelled` do mundo da tartaruga) evita que
+  uma execução antiga sobreponha uma nova.
+
+## Motor base de mini jogos sérios (MJ1/MJ7)
+
+2ª metodologia ativa da plataforma (RQ1 — Serious Games, 39,13% dos
+estudos, atrás só de Visual Programming Environments), **complementar**
+ao editor de blocos (`ChallengePage`/`WaterStateChallengePage`), nunca um
+módulo desconectado — plano completo em `docs/ai/backlog/
+mini-jogos-serios.md` (cards MJ1–MJ8; só MJ1 e MJ7 estão implementados
+até aqui). Toda a infraestrutura vive fora do bundle principal (ver
+lazy-loading abaixo) e não importa nada de `ChallengePage`/Blockly.
+
+### Decisão de arquitetura: PixiJS, não Phaser
+
+O card original de MJ1 sugere Phaser 3. Implementado com **PixiJS**
+mesmo assim — é o motor que `PixiTurtleWorld.tsx` já usa em produção pro
+mundo de execução do desafio de blocos, e o próprio card reconhece o
+risco de manter duas stacks de renderização 2D ("por isso a recomendação
+é convergir... para ambos"). Introduzir Phaser agora criaria exatamente
+esse problema; reaproveitar PixiJS resolve o objetivo declarado sem
+migrar o mundo de tartaruga já em produção.
+
+### Ciclo PRIMM como arquitetura interna (regra não-negociável 3)
+
+`lib/primmLifecycle.ts` — `PRIMM_PHASES = ['predict', 'run',
+'investigate', 'modify', 'make']`, mais `nextPrimmPhase`/
+`isFinalPrimmPhase`. Vocabulário puro, sem I/O — nunca exposto como
+rótulo na UI do aluno (nenhuma cena mostra "Predict"/"Investigate"; a
+cena placeholder mostra só "Etapa N de 5", ver abaixo).
+
+### `createMiniGameStore` (factory, `stores/miniGameStore.ts`)
+
+Mesmo racional de `createTurtleExecutionStore` (3.2 AC1): factory, não
+singleton — cada mini jogo na tela (hoje, um por rota) tem sua própria
+instância, criada via `useMemo`. Guarda um único `activeScene: {
+sceneId, conceptId, phase, attempts, status, startedAt, phaseEnteredAt }
+| null`:
+
+- `startScene(sceneId, conceptId)` — sempre nasce na 1ª fase
+  (`'predict'`), 0 tentativas. Chamar de novo com um `sceneId` diferente
+  substitui a cena INTEIRA (nunca funde com a anterior) — é o que sustenta
+  "uma única cena carregada por vez" (AC de MJ1) junto com o motor (ver
+  `MiniGameEngine` abaixo).
+- `recordAttempt()` — incrementa tentativas na fase atual; no-op se não
+  houver cena ativa ou ela já estiver concluída (nunca ressuscita uma
+  cena terminada).
+- `advancePhase()` — avança pra próxima fase PRIMM, resetando
+  `attempts`/`phaseEnteredAt`; na última fase (`'make'`), marca
+  `status: 'completed'` em vez de tentar avançar pra uma fase inexistente.
+- `reset()` — limpa `activeScene` inteiro.
+
+Testado isolado do motor de renderização (`miniGameStore.spec.ts`) —
+lógica pura, sem depender de Pixi/DOM.
+
+### `MiniGameEngine` (`components/minigame/MiniGameEngine.tsx`)
+
+Mesmo padrão de `PixiTurtleWorld`: monta uma `Application` Pixi uma vez
+(`app.init()` assíncrono, `disposed`/`ready` guardando contra
+StrictMode montando/desmontando duas vezes em dev), comunica
+EXCLUSIVAMENTE via o `store` que recebe por prop — nunca conhece o
+conteúdo de uma cena específica.
+
+Contrato de cena (`MiniGameSceneDefinition`): `{ id, conceptId,
+mount({ app, store }): () => void }`. O motor:
+
+1. Ao montar (ou quando a prop `scene` muda), sempre chama a limpeza da
+   cena anterior + `app.stage.removeChildren()` **antes** de montar a
+   nova (`store.getState().startScene(...)` seguido de `scene.mount(...)`)
+   — garante que nunca há duas cenas coexistindo no mesmo stage, mesmo
+   trocando de cena rapidamente (AC "uma única cena por vez").
+2. Guarda a função de limpeza devolvida por `mount()` num ref, chamada
+   tanto na próxima troca de cena quanto no unmount do componente.
+
+### Cena placeholder (`components/minigame/scenes/placeholderScene.ts`)
+
+Prova o ciclo de vida ponta a ponta (montar → avançar as 5 fases →
+concluir → desmontar) sem ser conteúdo pedagógico de verdade — um botão
+Pixi que chama `store.getState().advancePhase()` a cada toque, com um
+texto "Etapa N de 5" (nunca os rótulos técnicos do PRIMM). MJ3/MJ4/MJ5
+(roteiro visual TEACCH, áreas de interação tolerantes, rotulagem
+redundante completa) são cards separados que qualquer cena de CONTEÚDO
+real precisa seguir — esta cena é deliberadamente a mais simples
+possível, só valida a infraestrutura.
+
+### Rota e lazy-loading (`routes/minigame/MiniGamePage.tsx`, `/minigame/:conceptId`)
+
+Único uso de `React.lazy`/`Suspense` no app hoje — `App.tsx` só importa
+`MiniGamePage` dinamicamente (`lazy(() => import(...))`), então
+`MiniGameEngine`/PixiJS-pro-mini-jogo só entra no bundle quando o aluno
+navega pra essa rota, nunca pesando na área principal de blocos (AC de
+MJ1). `conceptId` vem da URL — hoje uma string livre; o vínculo formal
+com o `Challenge`/`Topic` equivalente do desafio de blocos é MJ8
+(bloqueado, precisa de decisão de schema em conjunto — ver backlog).
+
+### Eventos de mini jogo (MJ7) — `lib/miniGameEvents.ts` + `lib/useMiniGameEventLogging.ts`
+
+Mesmas 5 categorias já definidas (RD-I/P/C/E/L), mesmo `logEvent`/
+`POST /events` — nenhuma taxonomia paralela, nenhuma mudança de schema
+de banco (payload jsonb já comporta os campos novos). `useMiniGameEventLogging(store, studentPseudoId)`
+observa `store.subscribe` (nunca lê Pixi) e traduz toda transição de
+`activeScene` num evento:
+
+| Evento | Categoria | Quando |
+|---|---|---|
+| `minigame_scene_started` | RD-P | cena nova monta (1ª vez ou troca de `sceneId`) |
+| `minigame_primm_phase_changed` | RD-I | `advancePhase()` avança pra uma fase não-final — payload com `from_phase`/`to_phase`/`attempts_in_phase`/`time_in_phase_ms` |
+| `minigame_step_retry` | RD-I | `recordAttempt()` dentro da MESMA fase |
+| `minigame_completed` | RD-C | `advancePhase()` na fase final marca `status: 'completed'` |
+| `minigame_abandoned` | RD-E | componente desmonta com a cena ainda `'active'` (nunca se já `'completed'`) |
+
+`concept_id` presente em TODO payload (não só nos metadados internos da
+cena) — é o campo que MJ8 (futuro) usa pra cruzar com eventos do desafio
+de blocos equivalente. `minigame_abandoned` (RD-E) só carrega
+`time_in_phase_ms`/`attempts_in_phase` — números brutos, nunca um campo
+tipo "possível dificuldade"/"sobrecarga" (regra não-negociável 7, testado
+explicitamente em `useMiniGameEventLogging.spec.ts`).
+
+## MJ2/MJ3/MJ4/MJ5 + "Fábrica de Pedaços Iguais" (1º mini jogo de conteúdo)
+
+Plano completo em `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`.
+MJ1/MJ7 (acima) eram só infraestrutura; MJ2/MJ4/MJ5 só fazem sentido sobre
+uma mecânica de verdade, então os quatro foram fechados junto com o
+primeiro jogo de conteúdo real (frações).
+
+**MJ2 — perfil sensorial no motor:** `MiniGameSceneContext`
+(`MiniGameEngine.tsx`) ganhou `getSensory(): { motionEnabled, soundEnabled
+}`, uma leitura AO VIVO de `useSensoryProfileStore` (não um valor
+congelado no mount) — uma cena de execução longa consulta no momento de
+decidir animar, então uma mudança de perfil no meio de uma rodada é
+respeitada imediatamente. `fractionsFactoryScene.ts` é o primeiro
+consumidor real: anima o corte só se `motionEnabled`, senão renderiza o
+estado final direto. Checklist QA em `docs/ai/qa/
+sensory-checklist-minigames.md`.
+
+**MJ3 — roteiro visual (TEACCH):** `components/minigame/
+MiniGameBriefing.tsx`, reutilizável — objetivo em linguagem simples,
+etapas com ícone+texto, marcação início/fim, botão "Ver roteiro" sempre
+visível durante a rodada que reabre o painel SEM resetar a store (a cena
+continua montada por baixo, só um overlay local). Aplicado tanto na cena
+placeholder de MJ1 (`MiniGamePage.tsx`) quanto no jogo de conteúdo
+(`FractionsGamePage.tsx`) — a regra vale pra toda cena, não só a nova.
+
+**MJ4 — áreas de interação tolerantes:** `components/minigame/
+CardSequenceEditor.tsx` reordena a sequência de cartões por botão ↑/↓
+(`Button` de `components/ui`, toque mínimo 56×56 já garantido), nunca
+drag-and-drop de precisão fina. `CardBank.tsx` (nível Create) é a paleta
+fixa de 5 cartões, clique adiciona ao fim — reordenação depois é sempre
+via os mesmos botões.
+
+**MJ5 — rotulagem redundante:** sem componente novo — `InlineFeedback`
+(`kind: 'success'|'retry'`) pro resultado da rodada, nunca cor sozinha; a
+peça "entregue" desenhada no Pixi (`fractionsFactoryScene.ts`) também
+ganha um ícone de check, nunca só opacidade/cor.
+
+**O jogo em si:** `apps/web/src/lib/fractionsFactory.ts` — lógica pura
+(`simulateSequence`/`matchesTarget`), zero I/O, testada isolada
+(`fractionsFactory.spec.ts`). `stores/fractionsRoundStore.ts` — factory
+Zustand separada do `MiniGameStore` genérico (que só guarda fase PRIMM):
+guarda o resultado da simulação (`totalParts`/`deliveredParts`) que a cena
+Pixi assina pra redesenhar. `routes/minigame/fractions/
+FractionsGamePage.tsx` (`/minigame/fractions/:stage`) orquestra tudo —
+mapeamento PRIMM sobre o `createMiniGameStore` já existente documentado
+inline no arquivo (divergência do mesmo tipo já registrada pro desafio de
+blocos, "Predict mora em 3.3 e 3.4"). A store da rodada é iniciada pela
+PRÓPRIA tela (`store.getState().startScene(...)` no efeito que carrega o
+nível), não delegada ao mount assíncrono de `MiniGameEngine` — assim
+"Executar" funciona de forma determinística independente do timing de
+inicialização do Pixi (e é testável mockando só `MiniGameEngine`, sem
+precisar de Canvas real em jsdom).
+
+Configuração pelo professor (`GET/PATCH /teacher/minigames/levels`) e
+métricas pro admin (`GET /metrics/admin/minigames[/:levelId]`) documentadas
+em `docs/ai/modules/backend.md` e no backlog do jogo.
+
 ## Feedback não-punitivo reutilizável (3.7)
 
 Antes desta feature, `ChallengePage` renderizava o feedback de Use/Create

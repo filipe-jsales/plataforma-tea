@@ -43,7 +43,11 @@ function endOfDayUtc(date: Date): Date {
 function toExportRow(event: InteractionEvent): ExportEventRow {
   return {
     id: event.id,
-    studentPseudoId: event.studentPseudoId,
+    // Nunca nulo na prática: `EventsService.findEventsForExport` já filtra
+    // `studentPseudoId IS NOT NULL` (nunca exporta evento de autoria do
+    // professor, ver InteractionEvent#teacherUserId) — TypeScript não
+    // enxerga essa garantia através do query builder, daí o `!`.
+    studentPseudoId: event.studentPseudoId!,
     category: event.category,
     type: event.type,
     payload: event.payload,
