@@ -1031,10 +1031,18 @@ primeiro jogo de conteúdo real (frações).
 }`, uma leitura AO VIVO de `useSensoryProfileStore` (não um valor
 congelado no mount) — uma cena de execução longa consulta no momento de
 decidir animar, então uma mudança de perfil no meio de uma rodada é
-respeitada imediatamente. `fractionsFactoryScene.ts` é o primeiro
-consumidor real: anima o corte só se `motionEnabled`, senão renderiza o
-estado final direto. Checklist QA em `docs/ai/qa/
-sensory-checklist-minigames.md`.
+respeitada imediatamente. `motionEnabled` não é só o toggle Zustand: é
+`profile.motionEnabled && !prefersReducedMotion()` (`lib/
+prefersReducedMotion.ts`, testado isolado) — o `@media
+(prefers-reduced-motion)` já aplicado a toda animação CSS da plataforma
+(`theme/sensory-theme.css`) não alcança o canvas Pixi, então esta é a
+réplica dessa mesma política (SO só pode desligar, nunca ligar por cima do
+toggle desligado) pro motor de jogo. `fractionsFactoryScene.ts` é o
+primeiro consumidor real: anima o corte só se `motionEnabled`, senão
+renderiza o estado final direto. Áudio: nenhum mini jogo toca som ainda —
+`getSensory().soundEnabled` já está disponível no contrato pra quando
+isso mudar, nunca "vamos logar/checar isso depois". Checklist QA em
+`docs/ai/qa/sensory-checklist-minigames.md`.
 
 **MJ3 — roteiro visual (TEACCH):** `components/minigame/
 MiniGameBriefing.tsx`, reutilizável — objetivo em linguagem simples,
@@ -1049,7 +1057,12 @@ CardSequenceEditor.tsx` reordena a sequência de cartões por botão ↑/↓
 (`Button` de `components/ui`, toque mínimo 56×56 já garantido), nunca
 drag-and-drop de precisão fina. `CardBank.tsx` (nível Create) é a paleta
 fixa de 5 cartões, clique adiciona ao fim — reordenação depois é sempre
-via os mesmos botões.
+via os mesmos botões. `CardSequenceEditor.spec.tsx`/`CardBank.spec.tsx`
+testam mouse (clique) E teclado (foco + `Enter`, sem nenhum clique) com o
+MESMO resultado — toque não tem teste dedicado nem código próprio, porque
+são `<button>` nativos/React Aria (mesma fundação de `components/ui` já
+usada na plataforma inteira), não uma zona de drop customizada que
+precisaria de tolerância própria.
 
 **MJ5 — rotulagem redundante:** sem componente novo — `InlineFeedback`
 (`kind: 'success'|'retry'`) pro resultado da rodada, nunca cor sozinha; a

@@ -1,5 +1,6 @@
 import { Application } from 'pixi.js';
 import { useEffect, useRef } from 'react';
+import { prefersReducedMotion } from '../../lib/prefersReducedMotion';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import type { MiniGameStore } from '../../stores/miniGameStore';
 import './MiniGameEngine.css';
@@ -12,6 +13,12 @@ const ENGINE_SIZE = 480;
 // valor congelado no mount) — uma cena de execução longa (ex.: animação de
 // corte) consulta no momento de decidir animar/tocar som, então uma
 // mudança de perfil no meio de uma rodada é respeitada imediatamente.
+// `motionEnabled` combina o toggle da plataforma (Zustand) COM
+// `prefers-reduced-motion` do SO (`lib/prefersReducedMotion.ts`) — o SO só
+// pode DESLIGAR animação, nunca ligar por cima do toggle desligado; mesma
+// política já aplicada a toda animação CSS em theme/sensory-theme.css,
+// replicada aqui porque o canvas Pixi não é afetado por `@media
+// (prefers-reduced-motion)` (isso só rege CSS).
 export interface MiniGameSensoryFlags {
   motionEnabled: boolean;
   soundEnabled: boolean;
@@ -127,7 +134,10 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
         store,
         getSensory: () => {
           const profile = useSensoryProfileStore.getState();
-          return { motionEnabled: profile.motionEnabled, soundEnabled: profile.soundEnabled };
+          return {
+            motionEnabled: profile.motionEnabled && !prefersReducedMotion(),
+            soundEnabled: profile.soundEnabled,
+          };
         },
       });
     })();
