@@ -85,6 +85,20 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
     return () => {
       disposed = true;
       ready.then(() => {
+        // React StrictMode (dev) monta/desmonta/remonta este efeito — a
+        // limpeza da PRIMEIRA instância só resolve depois que uma SEGUNDA
+        // já pode ter assumido `appRef.current` (app.init() é assíncrono).
+        // Sem esta checagem, a limpeza tardia da instância descartada
+        // derrubava a cena/subscrição da instância REALMENTE ativa (nula
+        // `sceneCleanupRef`/`appRef` que já não eram mais dela) — sintoma:
+        // o desenho inicial aparece, mas nunca mais redesenha depois de
+        // qualquer atualização de store (ex.: depois de "Executar" na
+        // Fábrica de Pedaços Iguais). Uma instância que nunca chegou a
+        // ficar ativa só se autodestrói, sem mexer nas refs.
+        if (appRef.current !== app) {
+          app.destroy(true);
+          return;
+        }
         sceneCleanupRef.current?.();
         sceneCleanupRef.current = null;
         appRef.current = null;
