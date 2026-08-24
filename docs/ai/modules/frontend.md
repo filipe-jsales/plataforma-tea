@@ -1047,10 +1047,24 @@ isso mudar, nunca "vamos logar/checar isso depois". Checklist QA em
 **MJ3 — roteiro visual (TEACCH):** `components/minigame/
 MiniGameBriefing.tsx`, reutilizável — objetivo em linguagem simples,
 etapas com ícone+texto, marcação início/fim, botão "Ver roteiro" sempre
-visível durante a rodada que reabre o painel SEM resetar a store (a cena
-continua montada por baixo, só um overlay local). Aplicado tanto na cena
+visível durante a rodada que reabre o painel. Aplicado tanto na cena
 placeholder de MJ1 (`MiniGamePage.tsx`) quanto no jogo de conteúdo
 (`FractionsGamePage.tsx`) — a regra vale pra toda cena, não só a nova.
+Ambas as telas desmontam `MiniGameEngine` enquanto o roteiro está visível
+(o painel substitui a área de jogo, não sobrepõe) — o que descobriu um bug
+real: remontar `MiniGameEngine` chamava `store.getState().startScene(...)`
+de novo incondicionalmente, resetando silenciosamente a fase PRIMM/
+tentativas da rodada em andamento (e duplicando o evento
+`minigame_scene_started`) toda vez que o roteiro era reaberto — violava
+literalmente o AC "sem perder o progresso". Corrigido com
+`shouldRestartScene(activeSceneId, nextSceneId)` (função pura exportada de
+`MiniGameEngine.tsx`, testada em `MiniGameEngine.spec.ts` — a Application
+Pixi real não inicializa em jsdom, então só a lógica de decisão é testada
+isolada, mesmo padrão de `statistics.ts` no backend): só reinicia a rodada
+quando o `sceneId` realmente muda, nunca quando é a MESMA cena remontando.
+Cobre qualquer mini jogo futuro que reabra o roteiro do mesmo jeito, não
+só a Fábrica de Pedaços Iguais. Regressão de ponta a ponta (estado visível
+da página, sem mexer no Pixi) coberta em `FractionsGamePage.spec.tsx`.
 
 **MJ4 — áreas de interação tolerantes:** `components/minigame/
 CardSequenceEditor.tsx` reordena a sequência de cartões por botão ↑/↓
@@ -1064,10 +1078,17 @@ são `<button>` nativos/React Aria (mesma fundação de `components/ui` já
 usada na plataforma inteira), não uma zona de drop customizada que
 precisaria de tolerância própria.
 
-**MJ5 — rotulagem redundante:** sem componente novo — `InlineFeedback`
-(`kind: 'success'|'retry'`) pro resultado da rodada, nunca cor sozinha; a
-peça "entregue" desenhada no Pixi (`fractionsFactoryScene.ts`) também
-ganha um ícone de check, nunca só opacidade/cor.
+**MJ5 — rotulagem redundante:** sem componente novo — verificado critério a
+critério contra o AC: `InlineFeedback` (`kind: 'success'|'retry'`) pro
+resultado da rodada, nunca cor sozinha, com linguagem descritiva e
+reversível ("quer ajustar a sequência?"), nunca "errado"/"falhou" (testado
+em `FractionsGamePage.spec.tsx`); a peça "entregue" desenhada no Pixi
+(`fractionsFactoryScene.ts`) também ganha um ícone de check, nunca só
+opacidade/cor; todo cartão/botão/dropdown do jogo (`CardBank`,
+`CardSequenceEditor`, "Ver roteiro"/"Executar"/"Novo pedido"/"Próximo
+nível") tem rótulo textual visível, nunca só ícone (`Button`/
+`SelectableCard` de `components/ui` já garantem isso por contrato — ver
+Button.spec.tsx "renders the text label even when an icon is given").
 
 **O jogo em si:** `apps/web/src/lib/fractionsFactory.ts` — lógica pura
 (`simulateSequence`/`matchesTarget`), zero I/O, testada isolada

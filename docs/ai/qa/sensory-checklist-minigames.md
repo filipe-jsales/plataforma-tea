@@ -37,8 +37,20 @@ regra não-negociável 1 e `docs/ai/backlog/mini-jogos-serios.md` → MJ2.
       comunicado por ícone + texto, nunca só cor (MJ5) — testado
       desligando a percepção de cor mentalmente ("faria sentido em
       preto e branco?").
-- [ ] Roteiro visual (MJ3) aparece antes da cena, com objetivo em
-      linguagem simples e marcação de início/fim.
+- [x] Roteiro visual (MJ3) aparece antes da cena, com objetivo em
+      linguagem simples, número de etapas (ícone+texto cada) e marcação
+      de início/fim — `components/minigame/MiniGameBriefing.tsx`,
+      mesmo componente/padrão visual em todo mini jogo (testado em
+      `MiniGameBriefing.spec.tsx`).
+- [x] Reabrir o roteiro ("Ver roteiro") a qualquer momento NÃO reseta o
+      progresso da rodada (fase PRIMM/tentativas/sequência montada) —
+      **checar isto especificamente em todo mini jogo novo**: remontar
+      `MiniGameEngine` (o que acontece ao reabrir o roteiro, já que o
+      painel substitui a área de jogo) chama `startScene` de novo por
+      padrão; `shouldRestartScene` (`MiniGameEngine.tsx`) só permite
+      isso quando o `sceneId` muda de verdade. Testado em
+      `MiniGameEngine.spec.ts` + regressão de ponta a ponta em
+      `FractionsGamePage.spec.tsx`.
 - [x] Testado com `prefers-reduced-motion` do sistema operacional
       ativado, além do toggle da plataforma — os dois devem produzir o
       mesmo resultado (sem animação). Coberto por

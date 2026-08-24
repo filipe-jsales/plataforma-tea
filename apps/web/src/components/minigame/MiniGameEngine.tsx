@@ -47,6 +47,15 @@ interface MiniGameEngineProps {
   scene: MiniGameSceneDefinition;
 }
 
+// MJ3 — extraída como função pura (testada em MiniGameEngine.spec.ts) pelo
+// mesmo motivo de statistics.ts no backend: a Application Pixi real não
+// inicializa em jsdom (sem canvas/WebGL), então a LÓGICA de decisão fica
+// isolada do componente pra continuar testável sem precisar de um canvas de
+// verdade. `null` (nenhuma cena ativa ainda, 1º mount) sempre reinicia.
+export function shouldRestartScene(activeSceneId: string | null, nextSceneId: string): boolean {
+  return activeSceneId !== nextSceneId;
+}
+
 // MJ1 — motor base de mini jogos sérios (2ª metodologia ativa, RQ1
 // 39,13%). PixiJS, não Phaser (ver nota de decisão de arquitetura em
 // docs/ai/backlog/mini-jogos-serios.md) — mesmo motor 2D já em produção
@@ -128,7 +137,18 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
       sceneCleanupRef.current?.();
       app.stage.removeChildren();
 
-      store.getState().startScene(scene.id, scene.conceptId);
+      // MJ3 (AC "aluno pode reabrir o roteiro a qualquer momento sem
+      // perder o progresso") — só reinicia a rodada (fase PRIMM zerada,
+      // tentativas a 0) quando é de fato uma cena NOVA (sceneId diferente
+      // da já ativa no store). O componente que mostra o roteiro visual
+      // (MiniGameBriefing, ver MiniGamePage.tsx/FractionsGamePage.tsx)
+      // desmonta/remonta este `MiniGameEngine` sem trocar `scene`/`store`
+      // — sem esta checagem, cada reabertura do roteiro chamaria
+      // `startScene` de novo e resetaria silenciosamente o progresso (e
+      // duplicaria o evento `minigame_scene_started`, RD-P).
+      if (shouldRestartScene(store.getState().activeScene?.sceneId ?? null, scene.id)) {
+        store.getState().startScene(scene.id, scene.conceptId);
+      }
       sceneCleanupRef.current = scene.mount({
         app,
         store,
