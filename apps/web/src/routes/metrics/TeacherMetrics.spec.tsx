@@ -25,6 +25,13 @@ function renderPage() {
 
 const classroom = { id: 'c1', name: 'Turma Azul', joinCode: 'AZUL-1', activeStudentsToday: 1 };
 
+const EMPTY_CONCEPT_COMPARISON = {
+  conceptId: 'fractions_equal_parts',
+  hasBlocksChallenge: false,
+  hasMiniGame: true,
+  students: [],
+};
+
 describe('TeacherMetrics', () => {
   it('shows an empty state when the teacher has no classroom assigned yet, never an error', async () => {
     mockedGet.mockResolvedValueOnce([]);
@@ -43,6 +50,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -80,6 +88,7 @@ describe('TeacherMetrics', () => {
       byStage: [{ stage: 'use', studentsCompleted: 1, studentsInProgress: 0, studentsNotStarted: 1 }],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -112,6 +121,7 @@ describe('TeacherMetrics', () => {
       byStage: [{ stage: 'create', studentsCompleted: 0, studentsInProgress: 0, studentsNotStarted: 1 }],
       helpButtonUsageRate: 40,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -131,6 +141,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -149,6 +160,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -176,5 +188,99 @@ describe('TeacherMetrics', () => {
     const back = await screen.findByRole('link', { name: /voltar/i });
     expect(back).toHaveAttribute('href', '/home');
     expect(back).toHaveClass('ui-button');
+  });
+
+  describe('"Blocos × jogo" view (MJ8)', () => {
+    it('fetches the concept-comparison endpoint with the fractions conceptId when a classroom is selected', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      await screen.findByRole('radiogroup', { name: 'Visão do painel da turma' });
+      expect(mockedGet).toHaveBeenCalledWith(
+        '/metrics/teacher/classrooms/c1/concept-comparison?conceptId=fractions_equal_parts',
+      );
+    });
+
+    it('shows a graceful message (never an error) when there is no blocks challenge for this concept yet, and still shows the mini-game signal', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce({
+        conceptId: 'fractions_equal_parts',
+        hasBlocksChallenge: false,
+        hasMiniGame: true,
+        students: [
+          {
+            studentPseudoId: 'p1',
+            displayName: 'Ana',
+            blocks: [],
+            miniGame: [{ levelId: 'l-use', title: 'Observe o pedido pronto', stage: 'use', status: 'completed' }],
+          },
+        ],
+      });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+      await userEvent.click(await screen.findByText('Blocos × jogo'));
+
+      expect(
+        await screen.findByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
+      ).toBeInTheDocument();
+      expect(await screen.findByText('Ana')).toBeInTheDocument();
+      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      expect(screen.getByText('Concluído')).toBeInTheDocument();
+    });
+
+    it('shows both signals side by side for the same student when both exist, never mixing rows', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce({
+        conceptId: 'fractions_equal_parts',
+        hasBlocksChallenge: true,
+        hasMiniGame: true,
+        students: [
+          {
+            studentPseudoId: 'p1',
+            displayName: 'Ana',
+            blocks: [{ challengeId: 'ch1', title: 'Monte a fração', stage: 'use', status: 'completed', attempts: 2 }],
+            miniGame: [{ levelId: 'l-use', title: 'Observe o pedido pronto', stage: 'use', status: 'in_progress' }],
+          },
+        ],
+      });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+      await userEvent.click(await screen.findByText('Blocos × jogo'));
+
+      expect(
+        screen.queryByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('🧩 Monte a fração')).toBeInTheDocument();
+      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      const row = (await screen.findByText('Ana')).closest('tr')!;
+      expect(row).toHaveTextContent('Concluído');
+      expect(row).toHaveTextContent('Em andamento');
+    });
   });
 });

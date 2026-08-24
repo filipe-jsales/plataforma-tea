@@ -1311,7 +1311,7 @@ limite, só a rota que expõe volume grande de dado por requisição precisa
 disso. Por IP (comportamento default da lib), não por admin autenticado —
 suficiente pro MVP, sem tracker customizado.
 
-## Mini jogo "Fábrica de Pedaços Iguais" — configuração e métricas (MJ2-MJ5)
+## Mini jogo "Fábrica de Pedaços Iguais" — configuração e métricas (MJ2-MJ5, MJ8)
 
 1º mini jogo de CONTEÚDO da plataforma (MJ1/MJ7 já eram infraestrutura),
 plano completo em `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`.
@@ -1343,6 +1343,34 @@ minigames` (lista) e `GET /metrics/admin/minigames/:levelId` (relatório
 completo: alunos alcançados/concluídos, rodadas por aluno, tempo até 1ª
 execução, eventos por categoria/tipo, abandono RD-E sempre como número
 bruto — regra não-negociável 7, taxa de resposta da predição opcional).
+
+### MJ8 — vínculo conceito-currículo (desafio de blocos × mini jogo)
+
+`Topic.conceptId` (varchar nullable, migration `AddConceptIdToTopics`) é o
+mesmo `conceptId` livre já usado em `MiniGameLevel.conceptId` (MJ7) — vive
+no TÓPICO (o assunto), nunca em `Challenge` (um desafio individual dentro
+da sequência Use→Modify→Create), porque o conceito é uma propriedade do
+assunto inteiro. `SubjectsService.findTopicByConceptId(conceptId)` devolve
+`null` quando nenhum tópico usa esse conceito ainda — estado normal hoje
+(nenhum tópico de blocos cobre frações), não um erro.
+
+`MetricsTeacherService.getConceptComparison(classroomId, teacherId,
+conceptId)` (`GET /metrics/teacher/classrooms/:classroomId/
+concept-comparison?conceptId=`, mesmo guard de titularidade de turma que
+6.3/6.4) devolve os dois sinais lado a lado por aluno: `blocks` (reusa o
+motor 6.1, `MetricsService.getChallengeProgressForStudents`, pro(s)
+desafio(s) do tópico que casa com `conceptId`) e `miniGame` (usa
+`EventsService.findStudentsWithMiniGameEvent`, equivalente de
+`findStudentsWithEvent` pro lado do mini jogo — mesmo vocabulário de
+status `not_started`/`in_progress`/`completed` dos dois lados, pra caber
+na mesma tela sem o professor aprender dois jeitos de ler). `
+hasBlocksChallenge`/`hasMiniGame` são flags explícitas na resposta (nunca
+inferidas de um array vazio) — hoje `hasBlocksChallenge` é sempre `false`,
+porque não existe tópico de blocos de frações ainda; a tela (`
+TeacherMetrics.tsx`, aba "Blocos × jogo") mostra um aviso descritivo
+nesse caso, nunca erro, e ainda renderiza o sinal do mini jogo. Nenhuma
+interpretação clínica é derivada da comparação (regra não-negociável 7) —
+só o vocabulário de status já usado no resto do painel do professor.
 
 ## Banco de dados
 

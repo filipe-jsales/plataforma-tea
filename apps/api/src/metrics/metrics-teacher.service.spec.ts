@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ChallengesService } from '../challenges/challenges.service';
 import { EventsService } from '../events/events.service';
+import { MinigamesService } from '../minigames/minigames.service';
 import { SchoolsService } from '../schools/schools.service';
 import { SubjectsService } from '../subjects/subjects.service';
 import { MetricsTeacherService } from './metrics-teacher.service';
@@ -17,6 +18,7 @@ describe('MetricsTeacherService', () => {
   let challengesService: jest.Mocked<ChallengesService>;
   let eventsService: jest.Mocked<EventsService>;
   let metricsService: jest.Mocked<MetricsService>;
+  let minigamesService: jest.Mocked<MinigamesService>;
 
   beforeEach(() => {
     schoolsService = {
@@ -25,6 +27,7 @@ describe('MetricsTeacherService', () => {
     } as unknown as jest.Mocked<SchoolsService>;
     subjectsService = {
       findAllTopics: jest.fn(),
+      findTopicByConceptId: jest.fn(),
     } as unknown as jest.Mocked<SubjectsService>;
     challengesService = {
       findByTopicIdOrdered: jest.fn(),
@@ -32,10 +35,14 @@ describe('MetricsTeacherService', () => {
     eventsService = {
       countDistinctStudentsActiveSince: jest.fn(),
       findStudentsWithEvent: jest.fn(),
+      findStudentsWithMiniGameEvent: jest.fn(),
     } as unknown as jest.Mocked<EventsService>;
     metricsService = {
       getChallengeProgressForStudents: jest.fn(),
     } as unknown as jest.Mocked<MetricsService>;
+    minigamesService = {
+      findByConceptId: jest.fn(),
+    } as unknown as jest.Mocked<MinigamesService>;
 
     service = new MetricsTeacherService(
       schoolsService,
@@ -43,6 +50,7 @@ describe('MetricsTeacherService', () => {
       challengesService,
       eventsService,
       metricsService,
+      minigamesService,
     );
   });
 
@@ -312,6 +320,90 @@ describe('MetricsTeacherService', () => {
       const [, since] = eventsService.countDistinctStudentsActiveSince.mock.calls[0];
       expect(since.getHours()).toBe(0);
       expect(since.getMinutes()).toBe(0);
+    });
+  });
+
+  describe('getConceptComparison (MJ8)', () => {
+    beforeEach(() => {
+      schoolsService.findClassroomById.mockResolvedValue({ id: 'c1', teacherId: 'teacher-1' } as any);
+      schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
+        { student: { pseudonymId: 'p1', displayName: 'Ana' }, enrolledAt: new Date('2026-01-01') } as any,
+      ]);
+    });
+
+    it('rejects a classroom that is not the teacher\'s own, same as the other endpoints', async () => {
+      schoolsService.findClassroomById.mockResolvedValue({ id: 'c1', teacherId: 'other-teacher' } as any);
+
+      await expect(
+        service.getConceptComparison('c1', 'teacher-1', 'fractions_equal_parts'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(schoolsService.findActiveStudentsInClassroom).not.toHaveBeenCalled();
+    });
+
+    it('hasBlocksChallenge is false and blocks is an empty array when no topic uses this conceptId yet (estado normal, não erro)', async () => {
+      subjectsService.findTopicByConceptId.mockResolvedValue(null);
+      minigamesService.findByConceptId.mockResolvedValue([
+        { id: 'l-use', title: 'Observe o pedido pronto', stage: 'use' } as any,
+      ]);
+      eventsService.findStudentsWithMiniGameEvent.mockResolvedValue(new Set());
+
+      const result = await service.getConceptComparison('c1', 'teacher-1', 'fractions_equal_parts');
+
+      expect(result.hasBlocksChallenge).toBe(false);
+      expect(result.students[0].blocks).toEqual([]);
+      expect(challengesService.findByTopicIdOrdered).not.toHaveBeenCalled();
+    });
+
+    it('hasMiniGame is false and miniGame is an empty array when no level uses this conceptId', async () => {
+      subjectsService.findTopicByConceptId.mockResolvedValue(null);
+      minigamesService.findByConceptId.mockResolvedValue([]);
+
+      const result = await service.getConceptComparison('c1', 'teacher-1', 'unknown_concept');
+
+      expect(result.hasMiniGame).toBe(false);
+      expect(result.students[0].miniGame).toEqual([]);
+    });
+
+    it('builds both signals side by side for the same student when both exist for the conceptId', async () => {
+      subjectsService.findTopicByConceptId.mockResolvedValue({ id: 'topic-1' } as any);
+      challengesService.findByTopicIdOrdered.mockResolvedValue([
+        { id: 'ch-use', title: 'Monte o quadrado', config: fakeConfig('use') } as any,
+      ]);
+      metricsService.getChallengeProgressForStudents.mockResolvedValue(
+        new Map([['p1', { status: 'completed', attempts: 2 }]]),
+      );
+      minigamesService.findByConceptId.mockResolvedValue([
+        { id: 'l-use', title: 'Observe o pedido pronto', stage: 'use' } as any,
+      ]);
+      eventsService.findStudentsWithMiniGameEvent.mockImplementation(async (pseudoIds, _levelId, type) => {
+        if (!type) return new Set(pseudoIds); // "qualquer evento" — chegou ao nível
+        return new Set(); // ainda não completou
+      });
+
+      const result = await service.getConceptComparison('c1', 'teacher-1', 'fractions_equal_parts');
+
+      expect(result.hasBlocksChallenge).toBe(true);
+      expect(result.hasMiniGame).toBe(true);
+      expect(result.students).toEqual([
+        {
+          studentPseudoId: 'p1',
+          displayName: 'Ana',
+          blocks: [{ challengeId: 'ch-use', title: 'Monte o quadrado', stage: 'use', status: 'completed', attempts: 2 }],
+          miniGame: [{ levelId: 'l-use', title: 'Observe o pedido pronto', stage: 'use', status: 'in_progress' }],
+        },
+      ]);
+    });
+
+    it('never derives a clinical interpretation — status is always the raw not_started/in_progress/completed vocabulary', async () => {
+      subjectsService.findTopicByConceptId.mockResolvedValue(null);
+      minigamesService.findByConceptId.mockResolvedValue([
+        { id: 'l-use', title: 'Observe o pedido pronto', stage: 'use' } as any,
+      ]);
+      eventsService.findStudentsWithMiniGameEvent.mockResolvedValue(new Set());
+
+      const result = await service.getConceptComparison('c1', 'teacher-1', 'fractions_equal_parts');
+
+      expect(JSON.stringify(result)).not.toMatch(/sobrecarga|dificuldade|diagn[oó]stico/i);
     });
   });
 });

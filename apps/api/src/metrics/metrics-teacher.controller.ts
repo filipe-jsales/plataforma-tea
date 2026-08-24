@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,5 +30,17 @@ export class MetricsTeacherController {
     @Request() req: { user: JwtPayload },
   ) {
     return this.metricsTeacherService.getClassroomSummary(classroomId, req.user.sub);
+  }
+
+  // MJ8 — os dois sinais (desafio de blocos × mini jogo) lado a lado, pro
+  // mesmo conceito, escopado à turma do professor autenticado (mesma
+  // titularidade que as rotas acima).
+  @Get('classrooms/:classroomId/concept-comparison')
+  getConceptComparison(
+    @Param('classroomId') classroomId: string,
+    @Query('conceptId') conceptId: string,
+    @Request() req: { user: JwtPayload },
+  ) {
+    return this.metricsTeacherService.getConceptComparison(classroomId, req.user.sub, conceptId);
   }
 }

@@ -1390,9 +1390,10 @@ progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
 propósito).
 
 Selecionar uma turma (`SelectableCard align="start"` com `meta` = código +
-alunos ativos, ver 3.11) busca as duas rotas de métrica em paralelo
-(`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
-entre duas visões via `SegmentedControl` (`components/ui/`,
+alunos ativos, ver 3.11) busca as três rotas de métrica em paralelo
+(`GET /metrics/teacher/classrooms/:id/students`, `.../summary` e —
+MJ8 — `.../concept-comparison?conceptId=fractions_equal_parts`) e alterna
+entre três visões via `SegmentedControl` (`components/ui/`,
 `@radix-ui/react-toggle-group` — antes de 3.11 era 2 `<button role="tab">`
 com `aria-selected` calculado à mão):
 
@@ -1417,6 +1418,19 @@ com `aria-selected` calculado à mão):
   única "tradução" de vocabulário técnico pra português, sem inferência
   nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
   percentual cru — regra não-negociável 7).
+- **"Blocos × jogo" (MJ8)** — 1 linha por aluno, 1 coluna por desafio de
+  blocos do conceito (ícone 🧩) seguida de 1 coluna por nível de mini jogo
+  do mesmo conceito (ícone 🎮), mesmo `Badge`/`STATUS_LABEL` das outras
+  abas — o professor lê os dois sinais com o MESMO vocabulário, nunca dois
+  jeitos diferentes de "completo"/"em andamento". Quando
+  `hasBlocksChallenge` vem `false` (situação atual — nenhum tópico de
+  blocos usa `conceptId: 'fractions_equal_parts'` ainda), mostra um aviso
+  descritivo acima da tabela em vez de esconder a aba ou quebrar: "Nenhum
+  desafio de blocos deste assunto cadastrado ainda — só o mini jogo
+  aparece abaixo" — e a coluna do mini jogo continua renderizando
+  normalmente. `CONCEPT_ID`/`CONCEPT_LABEL` são constantes fixas no
+  componente (único conceito com mini jogo hoje); vira `Select` quando
+  existir um 2º.
 
 **Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — mesmo
 racional de `AdminMetrics`/`StaffLogin`.

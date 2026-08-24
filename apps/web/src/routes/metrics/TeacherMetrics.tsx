@@ -56,6 +56,36 @@ interface ClassroomSummary {
   helpButtonUsageRate: number;
 }
 
+// MJ8 — os dois sinais (desafio de blocos × mini jogo) lado a lado, pro
+// mesmo conceito. Mesmo vocabulário de status (not_started/in_progress/
+// completed) dos dois lados, pra caber no mesmo Badge sem o professor
+// precisar aprender dois jeitos de ler a tela.
+interface ConceptComparisonSignal {
+  title: string;
+  stage: ChallengeStage;
+  status: ChallengeStatus;
+  attempts?: number;
+}
+
+interface ConceptComparisonStudent {
+  studentPseudoId: string;
+  displayName: string;
+  blocks: ConceptComparisonSignal[];
+  miniGame: ConceptComparisonSignal[];
+}
+
+interface ConceptComparison {
+  conceptId: string;
+  hasBlocksChallenge: boolean;
+  hasMiniGame: boolean;
+  students: ConceptComparisonStudent[];
+}
+
+// Único conceito com mini jogo hoje — sem seletor de propósito (nada além
+// disso pra escolher ainda). Vira um <Select> quando existir um 2º.
+const CONCEPT_ID = 'fractions_equal_parts';
+const CONCEPT_LABEL = 'Frações (Fábrica de Pedaços Iguais)';
+
 const STAGE_LABEL: Record<ChallengeStage, string> = {
   use: 'Observar (Use)',
   modify: 'Modificar (Modify)',
@@ -86,6 +116,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 const VIEW_OPTIONS = [
   { value: 'students', label: 'Por aluno' },
   { value: 'summary', label: 'Turma toda' },
+  { value: 'concept', label: 'Blocos × jogo' },
 ];
 
 function sortStudents(students: StudentProgressOverview[], sortKey: SortKey): StudentProgressOverview[] {
@@ -107,9 +138,10 @@ function sortStudents(students: StudentProgressOverview[], sortKey: SortKey): St
 export function TeacherMetrics() {
   const [classrooms, setClassrooms] = useState<TeacherClassroomOption[] | null>(null);
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | null>(null);
-  const [view, setView] = useState<'students' | 'summary'>('students');
+  const [view, setView] = useState<'students' | 'summary' | 'concept'>('students');
   const [students, setStudents] = useState<StudentProgressOverview[] | null>(null);
   const [summary, setSummary] = useState<ClassroomSummary | null>(null);
+  const [conceptComparison, setConceptComparison] = useState<ConceptComparison | null>(null);
   // AC de 6.3: ordenação default nunca é por desempenho — só nome ou data de
   // matrícula, e a troca é sempre uma escolha explícita do professor.
   const [sortKey, setSortKey] = useState<SortKey>('enrolledAt');
@@ -122,16 +154,23 @@ export function TeacherMetrics() {
     if (!selectedClassroomId) {
       setStudents(null);
       setSummary(null);
+      setConceptComparison(null);
       return;
     }
     setStudents(null);
     setSummary(null);
+    setConceptComparison(null);
     apiClient
       .get<StudentProgressOverview[]>(`/metrics/teacher/classrooms/${selectedClassroomId}/students`)
       .then(setStudents);
     apiClient
       .get<ClassroomSummary>(`/metrics/teacher/classrooms/${selectedClassroomId}/summary`)
       .then(setSummary);
+    apiClient
+      .get<ConceptComparison>(
+        `/metrics/teacher/classrooms/${selectedClassroomId}/concept-comparison?conceptId=${CONCEPT_ID}`,
+      )
+      .then(setConceptComparison);
   }, [selectedClassroomId]);
 
   const selectedClassroom = classrooms?.find((classroom) => classroom.id === selectedClassroomId) ?? null;
@@ -178,7 +217,7 @@ export function TeacherMetrics() {
           <SegmentedControl
             options={VIEW_OPTIONS}
             value={view}
-            onValueChange={(next) => setView(next as 'students' | 'summary')}
+            onValueChange={(next) => setView(next as 'students' | 'summary' | 'concept')}
             ariaLabel="Visão do painel da turma"
           />
 
@@ -263,6 +302,74 @@ export function TeacherMetrics() {
                       <StageBar key={stage.stage} stage={stage} total={summary.totalStudents} />
                     ))}
                   </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {view === 'concept' && (
+            <div className="teacher-metrics__concept-view">
+              {conceptComparison === null && <p className="teacher-metrics__loading">Carregando…</p>}
+
+              {conceptComparison !== null && (
+                <>
+                  <p className="teacher-metrics__subtitle">
+                    {CONCEPT_LABEL} — desafio de blocos e mini jogo lado a lado, pro mesmo aluno.
+                  </p>
+
+                  {!conceptComparison.hasBlocksChallenge && (
+                    <p className="teacher-metrics__empty">
+                      Nenhum desafio de blocos deste assunto cadastrado ainda — só o mini jogo aparece
+                      abaixo.
+                    </p>
+                  )}
+
+                  {conceptComparison.students.length === 0 && (
+                    <p className="teacher-metrics__empty">Nenhum aluno matriculado nesta turma ainda.</p>
+                  )}
+
+                  {conceptComparison.students.length > 0 && (
+                    <Table ariaLabel="Comparação entre desafio de blocos e mini jogo, por aluno">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeaderCell>Aluno</TableHeaderCell>
+                          {conceptComparison.students[0].blocks.map((signal, index) => (
+                            <TableHeaderCell key={`blocks-${index}`}>
+                              <span>🧩 {signal.title}</span>
+                              <span className="teacher-metrics__stage-tag">{STAGE_LABEL[signal.stage]}</span>
+                            </TableHeaderCell>
+                          ))}
+                          {conceptComparison.students[0].miniGame.map((signal, index) => (
+                            <TableHeaderCell key={`minigame-${index}`}>
+                              <span>🎮 {signal.title}</span>
+                              <span className="teacher-metrics__stage-tag">{STAGE_LABEL[signal.stage]}</span>
+                            </TableHeaderCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {conceptComparison.students.map((student) => (
+                          <TableRow key={student.studentPseudoId}>
+                            <TableCell>{student.displayName}</TableCell>
+                            {student.blocks.map((signal, index) => (
+                              <TableCell key={`blocks-${index}`}>
+                                <Badge variant={STATUS_VARIANT[signal.status]}>
+                                  {STATUS_LABEL[signal.status]}
+                                </Badge>
+                              </TableCell>
+                            ))}
+                            {student.miniGame.map((signal, index) => (
+                              <TableCell key={`minigame-${index}`}>
+                                <Badge variant={STATUS_VARIANT[signal.status]}>
+                                  {STATUS_LABEL[signal.status]}
+                                </Badge>
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </>
               )}
             </div>

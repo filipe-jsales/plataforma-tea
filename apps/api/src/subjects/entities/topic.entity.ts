@@ -45,6 +45,18 @@ export class Topic {
   @Column({ type: 'varchar', length: 40, default: 'blocks_turtle' })
   domain: string;
 
+  // MJ8 — mesmo `conceptId` livre já usado em `MiniGameLevel.conceptId`
+  // (ver mini-game-level-config.interface.ts). `null` pra todo tópico
+  // curado até agora — nenhum assunto de blocos cadastrado ainda cobre o
+  // mesmo conceito de um mini jogo (o único mini jogo hoje é frações, e o
+  // currículo de blocos é geometria/estados da matéria). Vira o vínculo
+  // real assim que um tópico de blocos do MESMO assunto for cadastrado —
+  // ver MetricsTeacherService.getConceptComparison, que já funciona com
+  // `null` (mostra "sem desafio de blocos deste assunto ainda", nunca
+  // erro).
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  conceptId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

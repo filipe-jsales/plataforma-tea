@@ -408,6 +408,33 @@ export class EventsService {
     return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
   }
 
+  // MJ8 — equivalente de `findStudentsWithEvent` (linha do desafio de
+  // blocos), pro lado do mini jogo: quais alunos do recorte têm pelo menos
+  // 1 evento neste nível, opcionalmente restrito a um `type`. Usado por
+  // MetricsTeacherService.getConceptComparison pra derivar status
+  // not_started/in_progress/completed do mini jogo, mesmo racional do
+  // desafio de blocos (sem evento = not_started; qualquer evento =
+  // in_progress; `minigame_completed` = completed).
+  async findStudentsWithMiniGameEvent(
+    pseudoIds: string[],
+    miniGameLevelId: string,
+    type?: string,
+  ): Promise<Set<string>> {
+    if (pseudoIds.length === 0) {
+      return new Set();
+    }
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId });
+    if (type) {
+      query.andWhere('event.type = :type', { type });
+    }
+    const rows = await query.getRawMany<{ studentPseudoId: string }>();
+    return new Set(rows.map((row) => row.studentPseudoId));
+  }
+
   findMiniGameCompletions(miniGameLevelId: string): Promise<InteractionEvent[]> {
     return this.eventsRepository.find({
       where: { miniGameLevelId, type: 'minigame_completed' },

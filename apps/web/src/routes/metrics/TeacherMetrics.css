@@ -39,7 +39,8 @@
 }
 
 .teacher-metrics__students-view,
-.teacher-metrics__summary-view {
+.teacher-metrics__summary-view,
+.teacher-metrics__concept-view {
   margin-top: var(--space-4);
 }
 

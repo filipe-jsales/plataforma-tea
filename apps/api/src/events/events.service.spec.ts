@@ -535,6 +535,47 @@ describe('EventsService', () => {
     });
   });
 
+  describe('findStudentsWithMiniGameEvent (MJ8)', () => {
+    it('short-circuits to an empty set without querying when pseudoIds is empty', async () => {
+      const result = await service.findStudentsWithMiniGameEvent([], 'level-1');
+
+      expect(result).toEqual(new Set());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('returns the distinct students with any event on the level when no type is given', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findStudentsWithMiniGameEvent(['p1', 'p2', 'p3'], 'level-1');
+
+      expect(result).toEqual(new Set(['p1', 'p2']));
+      // Sem `type`: só studentPseudoId + miniGameLevelId no andWhere.
+      expect(queryBuilder.andWhere).toHaveBeenCalledTimes(1);
+    });
+
+    it('scopes to a specific type when given (ex.: minigame_completed)', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.findStudentsWithMiniGameEvent(['p1'], 'level-1', 'minigame_completed');
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'minigame_completed',
+      });
+    });
+  });
+
   describe('findDistinctStudentsForMiniGameLevel', () => {
     it('returns the distinct pseudoIds with any event on the level', async () => {
       const queryBuilder = {

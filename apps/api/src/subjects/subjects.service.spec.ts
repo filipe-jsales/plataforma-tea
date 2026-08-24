@@ -10,7 +10,7 @@ describe('SubjectsService', () => {
 
   beforeEach(() => {
     subjectsRepository = { find: jest.fn() } as unknown as jest.Mocked<Repository<Subject>>;
-    topicsRepository = { find: jest.fn() } as unknown as jest.Mocked<Repository<Topic>>;
+    topicsRepository = { find: jest.fn(), findOne: jest.fn() } as unknown as jest.Mocked<Repository<Topic>>;
 
     service = new SubjectsService(subjectsRepository, topicsRepository);
   });
@@ -40,5 +40,25 @@ describe('SubjectsService', () => {
     await service.findAllSubjects();
 
     expect(subjectsRepository.find).toHaveBeenCalledWith();
+  });
+
+  describe('findTopicByConceptId (MJ8)', () => {
+    it('queries the topic by conceptId', async () => {
+      topicsRepository.findOne.mockResolvedValue(null);
+
+      await service.findTopicByConceptId('fractions_equal_parts');
+
+      expect(topicsRepository.findOne).toHaveBeenCalledWith({
+        where: { conceptId: 'fractions_equal_parts' },
+      });
+    });
+
+    it('returns null when no topic uses this conceptId yet (estado normal, não erro)', async () => {
+      topicsRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.findTopicByConceptId('fractions_equal_parts');
+
+      expect(result).toBeNull();
+    });
   });
 });
