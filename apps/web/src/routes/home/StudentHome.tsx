@@ -4,7 +4,7 @@ import { apiClient } from '../../lib/apiClient';
 import { logEvent } from '../../lib/logEvent';
 import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { Button } from '../../components/ui';
+import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
 
 interface StudentHomeData {
@@ -47,6 +47,12 @@ export function StudentHome() {
           máximo 2 ações principais" (AC1), é uma ação de escape sempre
           disponível mas discreta. */}
       <div className="home__topbar">
+        {/* 3.9 — mesmo racional de "Sair": ação de escape sempre
+            disponível, mas discreta, fora das "no máximo 2 ações
+            principais" (AC1). */}
+        <LinkButton to="/settings/sensory" variant="ghost" icon="⚙️">
+          Configurações
+        </LinkButton>
         <Button variant="ghost" icon="🚪" onClick={handleLogout}>
           Sair
         </Button>

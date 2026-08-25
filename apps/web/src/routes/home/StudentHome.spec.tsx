@@ -55,3 +55,12 @@ describe('StudentHome — logout (1.5.1)', () => {
     expect(await screen.findByText('Tela de login')).toBeInTheDocument();
   });
 });
+
+describe('StudentHome — sensory settings link (3.9)', () => {
+  it('offers a discreet, always-available link to revisit sensory settings', async () => {
+    renderPage();
+
+    const settingsLink = await screen.findByRole('link', { name: /configurações/i });
+    expect(settingsLink).toHaveAttribute('href', '/settings/sensory');
+  });
+});

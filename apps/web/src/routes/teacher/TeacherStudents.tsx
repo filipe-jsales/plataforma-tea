@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../../lib/apiClient';
 import { getIllustrationAsset } from '../../lib/illustrationAssets';
 import type { ClassroomRosterStudent } from '../../lib/enrollmentTypes';
+import type { ResetCredentialResult } from '../../lib/studentAccountTypes';
 import {
   Button,
   Dialog,
@@ -37,6 +38,13 @@ export function TeacherStudents() {
   const [destinationClassroomId, setDestinationClassroomId] = useState('');
   const [transferSaving, setTransferSaving] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
+
+  // 1.3 — recuperação de acesso: professor titular da turma gera uma
+  // sequência de login NOVA pro aluno que esqueceu a credencial.
+  const [resettingStudent, setResettingStudent] = useState<ClassroomRosterStudent | null>(null);
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<ResetCredentialResult | null>(null);
 
   useEffect(() => {
     apiClient.get<TeacherClassroomOption[]>('/home/teacher').then((list) => {
@@ -78,6 +86,29 @@ export function TeacherStudents() {
       setTransferError(caught instanceof ApiError ? caught.message : 'Não foi possível transferir o aluno.');
     } finally {
       setTransferSaving(false);
+    }
+  }
+
+  function openReset(student: ClassroomRosterStudent) {
+    setResettingStudent(student);
+    setResetResult(null);
+    setResetError(null);
+  }
+
+  async function handleReset() {
+    if (!resettingStudent) return;
+    setResetSaving(true);
+    setResetError(null);
+    try {
+      const result = await apiClient.post<ResetCredentialResult>(
+        `/teacher/students/${resettingStudent.id}/reset-credential`,
+        {},
+      );
+      setResetResult(result);
+    } catch (caught) {
+      setResetError(caught instanceof ApiError ? caught.message : 'Não foi possível gerar uma nova credencial.');
+    } finally {
+      setResetSaving(false);
     }
   }
 
@@ -143,6 +174,9 @@ export function TeacherStudents() {
                   >
                     Transferir de turma
                   </Button>
+                  <Button variant="ghost" icon="🔑" onClick={() => openReset(student)}>
+                    Recuperar acesso
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -171,6 +205,45 @@ export function TeacherStudents() {
               {transferSaving ? 'Transferindo…' : 'Confirmar transferência'}
             </Button>
           </form>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={resettingStudent !== null}
+        onOpenChange={(open) => !open && setResettingStudent(null)}
+        title={resettingStudent ? `Recuperar acesso — ${resettingStudent.displayName}` : 'Recuperar acesso'}
+        description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+      >
+        {resettingStudent && !resetResult && (
+          <div className="teacher-students__reset-body">
+            <p>
+              {resettingStudent.displayName} não vai conseguir mais entrar com a sequência de imagens antiga
+              depois desta ação. Confirme só se o aluno realmente esqueceu a credencial.
+            </p>
+            {resetError && <InlineFeedback kind="retry">{resetError}</InlineFeedback>}
+            <Button onClick={handleReset} disabled={resetSaving}>
+              {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
+            </Button>
+          </div>
+        )}
+
+        {resetResult && (
+          <div className="teacher-students__reset-body">
+            <InlineFeedback kind="success">
+              Nova credencial gerada. Mostre a sequência abaixo pro aluno anotar/memorizar.
+            </InlineFeedback>
+            <div className="teacher-students__credential-images">
+              {resetResult.credential.loginImages.map((image, index) => (
+                <div key={index} className="teacher-students__credential-image">
+                  <img src={getIllustrationAsset(image.assetRef)} alt={image.label} />
+                  <span aria-hidden="true">{index + 1}</span>
+                </div>
+              ))}
+            </div>
+            <Button variant="secondary" onClick={() => setResettingStudent(null)}>
+              Fechar
+            </Button>
+          </div>
         )}
       </Dialog>
     </main>

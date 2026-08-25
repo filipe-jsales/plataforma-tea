@@ -38,8 +38,8 @@ export class AdminActionLog {
   @Column({ type: 'enum', enum: Role })
   actorRole: Role;
 
-  // create | edit | activate | deactivate — vocabulário controlado pelo
-  // service, nunca texto livre vindo de fora.
+  // create | edit | activate | deactivate | reset_student_credential —
+  // vocabulário controlado pelo service, nunca texto livre vindo de fora.
   @Column({ type: 'varchar', length: 40 })
   actionType: string;
 

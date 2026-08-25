@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { IllustrationKind } from '../common/enums/illustration-kind.enum';
 import { Role } from '../common/enums/role.enum';
@@ -26,6 +27,7 @@ describe('StudentAccountsService', () => {
   let illustrationsService: jest.Mocked<IllustrationsService>;
   let eventsService: jest.Mocked<EventsService>;
   let guardianConsentsService: jest.Mocked<GuardianConsentsService>;
+  let auditService: jest.Mocked<AuditService>;
 
   const ownClassroom = {
     id: 'classroom-1',
@@ -82,6 +84,9 @@ describe('StudentAccountsService', () => {
       activateStudentCredential: jest
         .fn()
         .mockResolvedValue({ ...pendingStudent, active: true }),
+      resetLoginImageSequence: jest
+        .fn()
+        .mockResolvedValue({ ...pendingStudent, active: true }),
       findById: jest.fn().mockResolvedValue(pendingStudent),
     } as unknown as jest.Mocked<UsersService>;
     schoolsService = {
@@ -105,6 +110,9 @@ describe('StudentAccountsService', () => {
       hasConsent: jest.fn().mockResolvedValue(true),
       recordConsent: jest.fn().mockResolvedValue({}),
     } as unknown as jest.Mocked<GuardianConsentsService>;
+    auditService = {
+      recordUserAction: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AuditService>;
 
     service = new StudentAccountsService(
       usersService,
@@ -112,6 +120,7 @@ describe('StudentAccountsService', () => {
       illustrationsService,
       eventsService,
       guardianConsentsService,
+      auditService,
     );
   });
 
@@ -366,6 +375,79 @@ describe('StudentAccountsService', () => {
 
       const credentialJson = JSON.stringify(result.credential);
       expect(credentialJson).not.toMatch(/Aluno Teste/);
+    });
+  });
+
+  describe('resetCredential (1.3)', () => {
+    const activeStudent = { ...pendingStudent, active: true };
+
+    beforeEach(() => {
+      usersService.findById.mockResolvedValue(activeStudent);
+    });
+
+    it('throws NotFoundException when the student does not exist', async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.resetCredential('missing', { id: 'teacher-1', role: Role.TEACHER }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(usersService.resetLoginImageSequence).not.toHaveBeenCalled();
+    });
+
+    it('rejects a student whose credential was never activated — points to the activation flow instead', async () => {
+      usersService.findById.mockResolvedValue(pendingStudent);
+
+      await expect(
+        service.resetCredential('student-1', { id: 'teacher-1', role: Role.TEACHER }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(usersService.resetLoginImageSequence).not.toHaveBeenCalled();
+    });
+
+    it('AC — a teacher can only reset credentials of students in their own classroom', async () => {
+      schoolsService.findClassroomById.mockResolvedValue(otherTeacherClassroom);
+
+      await expect(
+        service.resetCredential('student-1', { id: 'teacher-1', role: Role.TEACHER }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(usersService.resetLoginImageSequence).not.toHaveBeenCalled();
+    });
+
+    it('an admin can reset the credential of a student in any classroom', async () => {
+      schoolsService.findClassroomById.mockResolvedValue(otherTeacherClassroom);
+
+      await expect(
+        service.resetCredential('student-1', { id: 'admin-1', role: Role.ADMIN }),
+      ).resolves.toBeDefined();
+    });
+
+    it('generates a brand new login image sequence and never regenerates the avatar', async () => {
+      const result = await service.resetCredential('student-1', {
+        id: 'teacher-1',
+        role: Role.TEACHER,
+      });
+
+      expect(illustrationsService.pickRandomLoginImageSequence).toHaveBeenCalled();
+      expect(usersService.resetLoginImageSequence).toHaveBeenCalledWith('student-1', [
+        'img-1',
+        'img-2',
+        'img-3',
+      ]);
+      expect(result.credential.avatar).toEqual({ label: 'Gato', assetRef: 'gato.svg' });
+      expect(result.credential.loginImages).toHaveLength(3);
+    });
+
+    it('records the action in AdminActionLog (A4), never as an interaction_event', async () => {
+      await service.resetCredential('student-1', { id: 'teacher-1', role: Role.TEACHER });
+
+      expect(auditService.recordUserAction).toHaveBeenCalledWith({
+        actorUserId: 'teacher-1',
+        actorRole: Role.TEACHER,
+        actionType: 'reset_student_credential',
+        targetUserId: 'student-1',
+        targetRole: Role.STUDENT,
+        metadata: { class_id: 'classroom-1' },
+      });
+      expect(eventsService.record).not.toHaveBeenCalled();
     });
   });
 });

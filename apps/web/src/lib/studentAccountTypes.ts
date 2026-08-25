@@ -20,3 +20,8 @@ export interface StudentAccountCredential {
     loginImages: { label: string; assetRef: string }[];
   };
 }
+
+// 1.3 — mesma forma que StudentAccountCredential: `POST
+// /teacher/students/:id/reset-credential` devolve uma sequência de login
+// NOVA pra um aluno já ativo que esqueceu a credencial.
+export type ResetCredentialResult = StudentAccountCredential;

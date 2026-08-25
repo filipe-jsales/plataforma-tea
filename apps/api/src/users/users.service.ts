@@ -164,6 +164,25 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  // 1.3 — recuperação de acesso: gera uma NOVA sequência de login pra um
+  // aluno que JÁ está ativo (esqueceu a credencial), sem tocar `active`
+  // nem `sensoryOnboardingCompletedAt` — distinto de
+  // activateStudentCredential (que ativa a conta pela primeira vez, A2).
+  // Invalida a sequência antiga na hora, silenciosamente (mesmo racional
+  // documentado em StudentAccountsService.activateCredential pra nunca
+  // regenerar uma credencial ativa "por engano" — aqui é intencional).
+  async resetLoginImageSequence(
+    id: string,
+    loginImageSequence: string[],
+  ): Promise<User | null> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      return null;
+    }
+    user.loginImageSequence = loginImageSequence;
+    return this.usersRepository.save(user);
+  }
+
   // 1.4 — "editar dados cadastrais de qualquer usuário, exceto credencial
   // de aluno" — este método nunca toca avatarId/loginImageSequence/
   // passwordHash/totpSecret, só os campos cadastrais comuns a qualquer

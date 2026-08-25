@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../../lib/apiClient';
+import { getIllustrationAsset } from '../../lib/illustrationAssets';
 import type { GuardianConsentAdminView } from '../../lib/adminGuardianConsentTypes';
 import type { AdminUserProfile, CreateStaffUserResponse, PaginatedAdminUsers, UserRole } from '../../lib/adminUserTypes';
+import type { ResetCredentialResult } from '../../lib/studentAccountTypes';
 import {
   Badge,
   Button,
@@ -72,6 +74,14 @@ export function AdminUsers() {
   // consegue visualizar quando e por quem o consentimento foi coletado".
   const [consentStudent, setConsentStudent] = useState<AdminUserProfile | null>(null);
   const [consentData, setConsentData] = useState<GuardianConsentAdminView | null>(null);
+
+  // 1.3 — recuperação de acesso: admin gera uma sequência de login nova
+  // pro aluno que esqueceu a credencial (mesmo endpoint que o painel do
+  // professor usa — ver StudentAccountsController, @Roles(TEACHER, ADMIN)).
+  const [resettingStudent, setResettingStudent] = useState<AdminUserProfile | null>(null);
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<ResetCredentialResult | null>(null);
 
   function reload() {
     setData(null);
@@ -156,6 +166,29 @@ export function AdminUsers() {
     apiClient.get<GuardianConsentAdminView>(`/admin/students/${user.id}/guardian-consent`).then(setConsentData);
   }
 
+  function openReset(user: AdminUserProfile) {
+    setResettingStudent(user);
+    setResetResult(null);
+    setResetError(null);
+  }
+
+  async function handleReset() {
+    if (!resettingStudent) return;
+    setResetSaving(true);
+    setResetError(null);
+    try {
+      const result = await apiClient.post<ResetCredentialResult>(
+        `/teacher/students/${resettingStudent.id}/reset-credential`,
+        {},
+      );
+      setResetResult(result);
+    } catch (caught) {
+      setResetError(caught instanceof ApiError ? caught.message : 'Não foi possível gerar uma nova credencial.');
+    } finally {
+      setResetSaving(false);
+    }
+  }
+
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
@@ -208,6 +241,11 @@ export function AdminUsers() {
                     {user.role === 'student' && (
                       <Button variant="secondary" icon="🛡️" onClick={() => openConsent(user)}>
                         Consentimento
+                      </Button>
+                    )}
+                    {user.role === 'student' && user.active && (
+                      <Button variant="ghost" icon="🔑" onClick={() => openReset(user)}>
+                        Recuperar acesso
                       </Button>
                     )}
                     <Button
@@ -336,8 +374,8 @@ export function AdminUsers() {
             )}
             {editingUser.role === 'student' && (
               <p className="admin-users__hint">
-                Credencial de aluno (avatar/sequência de imagens) segue o fluxo próprio (1.3) — aqui só o nome
-                é editável.
+                Credencial de aluno (avatar/sequência de imagens) segue o fluxo próprio (1.3, botão "Recuperar
+                acesso" na lista) — aqui só o nome é editável.
               </p>
             )}
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
@@ -373,6 +411,45 @@ export function AdminUsers() {
             <dt>Registrado por</dt>
             <dd>{consentData.collectedByDisplayName ?? '—'}</dd>
           </dl>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={resettingStudent !== null}
+        onOpenChange={(open) => !open && setResettingStudent(null)}
+        title={resettingStudent ? `Recuperar acesso — ${resettingStudent.displayName}` : 'Recuperar acesso'}
+        description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+      >
+        {resettingStudent && !resetResult && (
+          <div className="admin-users__reset-body">
+            <p>
+              {resettingStudent.displayName} não vai conseguir mais entrar com a sequência de imagens antiga
+              depois desta ação. Confirme só se o aluno realmente esqueceu a credencial.
+            </p>
+            {resetError && <InlineFeedback kind="retry">{resetError}</InlineFeedback>}
+            <Button onClick={handleReset} disabled={resetSaving}>
+              {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
+            </Button>
+          </div>
+        )}
+
+        {resetResult && (
+          <div className="admin-users__reset-body">
+            <InlineFeedback kind="success">
+              Nova credencial gerada. Mostre a sequência abaixo pro aluno anotar/memorizar.
+            </InlineFeedback>
+            <div className="admin-users__credential-images">
+              {resetResult.credential.loginImages.map((image, index) => (
+                <div key={index} className="admin-users__credential-image">
+                  <img src={getIllustrationAsset(image.assetRef)} alt={image.label} />
+                  <span aria-hidden="true">{index + 1}</span>
+                </div>
+              ))}
+            </div>
+            <Button variant="secondary" onClick={() => setResettingStudent(null)}>
+              Fechar
+            </Button>
+          </div>
         )}
       </Dialog>
     </main>

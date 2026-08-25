@@ -84,6 +84,7 @@ apps/web/src/
 │   │   ├── StudentLogin.css         # alvo de toque grande, grade de posição fixa
 │   │   └── StaffLogin.css           # formulário padrão (sem restrição sensorial — ver nota abaixo)
 │   ├── OnboardingSensorial.tsx      # 2.2 — só aluno, só antes do onboarding concluído
+│   ├── StudentSensorySettings.tsx   # 3.9 — /settings/sensory, mesmas opções, revisitável a qualquer hora
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
 │   ├── challenge/
 │   │   └── ChallengePage.tsx        # /subjects/:topicId e /challenge/:challengeId — ver seção própria
@@ -164,11 +165,23 @@ via seletor `:root[data-motion='full']` etc.
 
 Esse store é só a camada CSS-facing — a fonte da verdade pro aluno é o
 backend (`User.soundEnabled`/`animationEnabled`, ver `backend.md`).
-`OnboardingSensorial` e qualquer tela futura que altere isso devem sempre
-fazer as duas coisas juntas: `PATCH /users/:id/sensory-profile` **e**
-atualizar `useSensoryProfileStore` — nunca só uma. `main.tsx` hidrata o
-store a partir da sessão persistida assim que o módulo carrega, antes da
-primeira renderização.
+`OnboardingSensorial` e qualquer tela que altere isso devem sempre fazer as
+duas coisas juntas: `PATCH /users/:id/sensory-profile` **e** atualizar
+`useSensoryProfileStore` — nunca só uma. `main.tsx` hidrata o store a
+partir da sessão persistida assim que o módulo carrega, antes da primeira
+renderização.
+
+**3.9 — `StudentSensorySettings` (`/settings/sensory`)** é a segunda tela
+que faz isso, depois de `OnboardingSensorial` — reaproveita literalmente os
+mesmos dois `ToggleSwitch` e o mesmo endpoint, mas os toggles nascem
+pré-preenchidos com `useAuthStore().user.soundEnabled`/`animationEnabled`
+em vez de sempre `false` (o aluno já tem um perfil; isto não é um segundo
+onboarding), e "Salvar" não navega — fica na tela com uma
+`InlineFeedback kind="success"` ("Salvo."). Acessível a qualquer momento
+via link "⚙️ Configurações" no topbar de `StudentHome`, ao lado de "Sair"
+(mesmo padrão de ação de escape discreta, fora das "no máximo 2 ações
+principais" de 2.1/AC1) — nunca dentro do onboarding em si, que continua
+rodando só uma vez (`sensoryOnboardingCompletedAt`).
 
 **Ao criar um componente que anima ou toca som:** ler
 `useSensoryProfileStore` (ou os atributos `data-*` do `<html>`, se for
@@ -436,8 +449,8 @@ clique+clique nos testes correspondentes.
 Wrapper fino sobre `POST /events` — nunca chamar `fetch` direto pra logging.
 Segue o mesmo escopo do backend (ver "Padrão: eventos RD-* são escopados ao
 aluno" em `backend.md`): só telas do aluno chamam `logEvent`
-(`StudentHome`, `OnboardingSensorial`, `SubjectSelector`); `TeacherHome`/
-`AdminHome` não emitem eventos RD-*.
+(`StudentHome`, `OnboardingSensorial`, `StudentSensorySettings`,
+`SubjectSelector`); `TeacherHome`/`AdminHome` não emitem eventos RD-*.
 
 ## Editor de blocos do desafio (`ChallengePage`, RQ4/RQ1/RQ2)
 

@@ -52,8 +52,8 @@ apps/api/src/
 │   └── schools.module.ts
 ├── student-accounts/            # 1.2 — criação de conta de aluno, ver seção própria
 │   ├── dto/create-student-account.dto.ts
-│   ├── student-accounts.service.ts
-│   ├── student-accounts.controller.ts  # POST /teacher/students
+│   ├── student-accounts.service.ts  # + resetCredential (1.3, recuperação de acesso)
+│   ├── student-accounts.controller.ts  # POST /teacher/students[...]/reset-credential
 │   └── student-accounts.module.ts
 ├── enrollments/                 # 1.5 — matrícula/transferência, ver seção própria
 │   ├── dto/transfer-student.dto.ts
@@ -108,7 +108,7 @@ apps/api/src/
 │   └── settings.module.ts
 ├── audit/
 │   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
-│   ├── entities/admin-action-log.entity.ts  # 1.4 — append-only, CRUD de usuário (quem/quando/o quê)
+│   ├── entities/admin-action-log.entity.ts  # 1.4/1.3 — append-only, CRUD de usuário + reset de credencial (quem/quando/o quê)
 │   ├── audit.service.ts
 │   └── audit.module.ts
 ├── metrics/
@@ -202,6 +202,24 @@ completo (nunca `passwordHash`/`totpSecret`/`loginImageSequence` — ver
 usuário (`sub === id`) ou `teacher`/`admin` alterando o de qualquer aluno —
 autorização mais fina (só o professor *daquela* turma) fica para quando o
 painel de turma existir de verdade.
+
+**3.9 — configurações sensoriais acessíveis ao próprio aluno.** O endpoint
+acima já aceitava `isSelf` desde 2.2; o que faltava era uma tela pro aluno
+REVISITAR a escolha depois da primeira sessão (o onboarding em si só roda
+uma vez, guardado por `sensoryOnboardingCompletedAt`). `apps/web/src/
+routes/StudentSensorySettings.tsx` (rota `/settings/sensory`) reaproveita
+100% o mesmo endpoint/campos de `OnboardingSensorial.tsx` — a única
+diferença é que os toggles nascem PRÉ-PREENCHIDOS com o perfil atual do
+aluno (`user.soundEnabled`/`animationEnabled`), não sempre `false`, e
+salvar não navega pra lugar nenhum (fica na própria tela, com confirmação
+"Salvo."). `UsersService.updateSensoryProfile` já protegia
+`sensoryOnboardingCompletedAt` de ser sobrescrito numa 2ª chamada — nenhuma
+mudança de backend precisou entrar pra isso. Acesso: link discreto
+"⚙️ Configurações" no topbar de `StudentHome`, mesmo racional do "Sair"
+(1.5.1) — ação de escape sempre disponível, fora das "no máximo 2 ações
+principais" (AC1 de 2.1). Emite `sensory_settings_updated` (RD-E) — evento
+NOVO, distinto de `sensory_onboarding_completed` (2.2), pra distinguir na
+análise "primeira escolha" de "ajuste posterior" sem perder o dado.
 
 `GET /home/{student,teacher,admin}` (`HomeModule`) — uma rota por papel,
 cada uma com sua própria regra de "o que pode aparecer":
@@ -1586,6 +1604,56 @@ credencial → bloqueio sem aceite explícito → credencial só depois do
 consentimento) e `AdminUsers.spec.tsx` cobre a tela de auditoria (AC4):
 "Consentimento" só aparece pra linha de aluno, estado pendente vs.
 registrado (quem/quando).
+
+### Recuperação de acesso via professor/admin (1.3)
+
+Aluno não tem e-mail/senha (login por turma+avatar+sequência de imagens,
+ver "Login por papel..." em `coding-rule.md`) — não existe "esqueci minha
+senha" autoatendido possível pra esse papel. Quando o aluno esquece a
+sequência de login, quem recupera é sempre professor titular da turma ou
+admin, nunca o próprio aluno.
+
+`StudentAccountsService.resetCredential(studentId, actor)` — `POST
+/teacher/students/:id/reset-credential` (mesmo controller/prefixo de
+1.2/A2, mesmo guard `@Roles(TEACHER, ADMIN)`):
+
+1. Exige credencial JÁ ativa (`student.active === true`) — distinto de
+   `activateCredential` (A2, passo 3), que libera a credencial pela
+   PRIMEIRA vez; usar o endpoint errado devolve `BadRequestException`
+   apontando pro fluxo certo.
+2. Mesma checagem de ownership de `createPending`: professor só reseta
+   credencial de aluno matriculado na PRÓPRIA turma
+   (`classroom.teacherId === actor.id`); admin sem restrição.
+3. `IllustrationsService.pickRandomLoginImageSequence` sorteia uma
+   sequência NOVA e `UsersService.resetLoginImageSequence` grava — método
+   dedicado, não uma chamada a `activateStudentCredential`, porque este
+   nunca deve tocar `active`/reabrir onboarding, só a credencial em si. A
+   sequência antiga para de funcionar imediatamente (nunca as duas
+   coexistindo) — mesmo racional de "nunca regenerar em silêncio" de A2,
+   só que aqui a regeneração é o objetivo explícito da ação, não um erro a
+   evitar.
+4. Registrado em `AdminActionLog` (`actionType: 'reset_student_credential'`,
+   ver A4/1.4 abaixo) — nunca em `interaction_events`: é telemetria de
+   ação de STAFF sobre outro usuário, mesmo racional de
+   `AdminUsersService.setActive`/`create`/`update`, não uma interação
+   pedagógica do aluno.
+
+Resposta: mesma forma de `StudentAccountCredential` (passo 3 de A2) —
+`{ student, classroom, credential: { avatar, loginImages } }`. Frontend
+reaproveita o MESMO endpoint em dois lugares: `TeacherStudents.tsx`
+("Recuperar acesso" na lista de alunos da turma) e `AdminUsers.tsx`
+(mesmo botão, só pra linha de aluno já ativo — `AdminUsersService` não
+ganhou um endpoint espelhado próprio de propósito, evitar duas
+implementações divergentes do que significa "resetar credencial").
+
+Testes: `student-accounts.service.spec.ts` (`describe('resetCredential
+(1.3)')`) cobre aluno inexistente, aluno ainda não ativado (aponta pro
+fluxo de ativação), ownership de turma (professor de outra turma rejeitado,
+admin sem restrição), geração de sequência nova sem regenerar avatar, e o
+registro em `AdminActionLog` (nunca em `interaction_events`). Frontend:
+`TeacherStudents.spec.tsx`/`AdminUsers.spec.tsx` cobrem o fluxo de UI
+(botão só aparece pra aluno ativo em `AdminUsers`, chamada ao endpoint,
+exibição da sequência nova).
 
 ### Matrícula/transferência de turma (1.5)
 
