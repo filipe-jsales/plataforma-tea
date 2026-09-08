@@ -6,13 +6,15 @@ import { apiClient } from '../../lib/apiClient';
 import { TeacherMetrics } from './TeacherMetrics';
 
 vi.mock('../../lib/apiClient', () => ({
-  apiClient: { get: vi.fn() },
+  apiClient: { get: vi.fn(), patch: vi.fn() },
 }));
 
 const mockedGet = vi.mocked(apiClient.get);
+const mockedPatch = vi.mocked(apiClient.patch);
 
 beforeEach(() => {
   mockedGet.mockReset();
+  mockedPatch.mockReset().mockResolvedValue({ classroomId: 'c1', enabled: true });
 });
 
 function renderPage() {
@@ -23,7 +25,20 @@ function renderPage() {
   );
 }
 
-const classroom = { id: 'c1', name: 'Turma Azul', joinCode: 'AZUL-1', activeStudentsToday: 1 };
+const classroom = {
+  id: 'c1',
+  name: 'Turma Azul',
+  joinCode: 'AZUL-1',
+  activeStudentsToday: 1,
+  comparisonEnabled: false,
+};
+
+const EMPTY_CONCEPT_COMPARISON = {
+  conceptId: 'fractions_equal_parts',
+  hasBlocksChallenge: false,
+  hasMiniGame: true,
+  students: [],
+};
 
 describe('TeacherMetrics', () => {
   it('shows an empty state when the teacher has no classroom assigned yet, never an error', async () => {
@@ -43,6 +58,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -80,6 +96,7 @@ describe('TeacherMetrics', () => {
       byStage: [{ stage: 'use', studentsCompleted: 1, studentsInProgress: 0, studentsNotStarted: 1 }],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -112,6 +129,7 @@ describe('TeacherMetrics', () => {
       byStage: [{ stage: 'create', studentsCompleted: 0, studentsInProgress: 0, studentsNotStarted: 1 }],
       helpButtonUsageRate: 40,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -131,6 +149,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -149,6 +168,7 @@ describe('TeacherMetrics', () => {
       byStage: [],
       helpButtonUsageRate: 0,
     });
+    mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
 
     renderPage();
 
@@ -176,5 +196,158 @@ describe('TeacherMetrics', () => {
     const back = await screen.findByRole('link', { name: /voltar/i });
     expect(back).toHaveAttribute('href', '/home');
     expect(back).toHaveClass('ui-button');
+  });
+
+  describe('"Blocos × jogo" view (MJ8)', () => {
+    it('fetches the concept-comparison endpoint with the fractions conceptId when a classroom is selected', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      await screen.findByRole('radiogroup', { name: 'Visão do painel da turma' });
+      expect(mockedGet).toHaveBeenCalledWith(
+        '/metrics/teacher/classrooms/c1/concept-comparison?conceptId=fractions_equal_parts',
+      );
+    });
+
+    it('shows a graceful message (never an error) when there is no blocks challenge for this concept yet, and still shows the mini-game signal', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce({
+        conceptId: 'fractions_equal_parts',
+        hasBlocksChallenge: false,
+        hasMiniGame: true,
+        students: [
+          {
+            studentPseudoId: 'p1',
+            displayName: 'Ana',
+            blocks: [],
+            miniGame: [{ levelId: 'l-use', title: 'Observe o pedido pronto', stage: 'use', status: 'completed' }],
+          },
+        ],
+      });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+      await userEvent.click(await screen.findByText('Blocos × jogo'));
+
+      expect(
+        await screen.findByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
+      ).toBeInTheDocument();
+      expect(await screen.findByText('Ana')).toBeInTheDocument();
+      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      expect(screen.getByText('Concluído')).toBeInTheDocument();
+    });
+
+    it('shows both signals side by side for the same student when both exist, never mixing rows', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({
+        totalStudents: 0,
+        activeStudentsToday: 0,
+        byStage: [],
+        helpButtonUsageRate: 0,
+      });
+      mockedGet.mockResolvedValueOnce({
+        conceptId: 'fractions_equal_parts',
+        hasBlocksChallenge: true,
+        hasMiniGame: true,
+        students: [
+          {
+            studentPseudoId: 'p1',
+            displayName: 'Ana',
+            blocks: [{ challengeId: 'ch1', title: 'Monte a fração', stage: 'use', status: 'completed', attempts: 2 }],
+            miniGame: [{ levelId: 'l-use', title: 'Observe o pedido pronto', stage: 'use', status: 'in_progress' }],
+          },
+        ],
+      });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+      await userEvent.click(await screen.findByText('Blocos × jogo'));
+
+      expect(
+        screen.queryByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('🧩 Monte a fração')).toBeInTheDocument();
+      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      const row = (await screen.findByText('Ana')).closest('tr')!;
+      expect(row).toHaveTextContent('Concluído');
+      expect(row).toHaveTextContent('Em andamento');
+    });
+  });
+
+  describe('comparação entre alunos (4.3/7.3)', () => {
+    it('shows the toggle OFF by default for a classroom that never activated it', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      const toggle = await screen.findByRole('switch', { name: /comparação entre alunos/i });
+      expect(toggle).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('requires confirmation before turning comparison ON, and only PATCHes after confirming', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      await userEvent.click(await screen.findByRole('switch', { name: /comparação entre alunos/i }));
+
+      expect(
+        await screen.findByText(/Ativar comparação entre alunos\?/i),
+      ).toBeInTheDocument();
+      expect(mockedPatch).not.toHaveBeenCalled();
+
+      await userEvent.click(await screen.findByRole('button', { name: /ativar comparação/i }));
+
+      expect(mockedPatch).toHaveBeenCalledWith('/teacher/classrooms/c1/comparison-setting', {
+        enabled: true,
+      });
+    });
+
+    it('turns comparison OFF immediately, with no confirmation dialog', async () => {
+      mockedGet.mockResolvedValueOnce([{ ...classroom, comparisonEnabled: true }]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+      mockedPatch.mockResolvedValueOnce({ classroomId: 'c1', enabled: false });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      const toggle = await screen.findByRole('switch', { name: /comparação entre alunos/i });
+      expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+      await userEvent.click(toggle);
+
+      expect(screen.queryByText(/Ativar comparação entre alunos\?/i)).not.toBeInTheDocument();
+      expect(mockedPatch).toHaveBeenCalledWith('/teacher/classrooms/c1/comparison-setting', {
+        enabled: false,
+      });
+    });
   });
 });

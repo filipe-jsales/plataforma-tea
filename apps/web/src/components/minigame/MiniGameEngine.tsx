@@ -1,5 +1,6 @@
 import { Application } from 'pixi.js';
 import { useEffect, useRef } from 'react';
+import { prefersReducedMotion } from '../../lib/prefersReducedMotion';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import type { MiniGameStore } from '../../stores/miniGameStore';
 import './MiniGameEngine.css';
@@ -12,6 +13,12 @@ const ENGINE_SIZE = 480;
 // valor congelado no mount) — uma cena de execução longa (ex.: animação de
 // corte) consulta no momento de decidir animar/tocar som, então uma
 // mudança de perfil no meio de uma rodada é respeitada imediatamente.
+// `motionEnabled` combina o toggle da plataforma (Zustand) COM
+// `prefers-reduced-motion` do SO (`lib/prefersReducedMotion.ts`) — o SO só
+// pode DESLIGAR animação, nunca ligar por cima do toggle desligado; mesma
+// política já aplicada a toda animação CSS em theme/sensory-theme.css,
+// replicada aqui porque o canvas Pixi não é afetado por `@media
+// (prefers-reduced-motion)` (isso só rege CSS).
 export interface MiniGameSensoryFlags {
   motionEnabled: boolean;
   soundEnabled: boolean;
@@ -38,6 +45,15 @@ export interface MiniGameSceneDefinition {
 interface MiniGameEngineProps {
   store: MiniGameStore;
   scene: MiniGameSceneDefinition;
+}
+
+// MJ3 — extraída como função pura (testada em MiniGameEngine.spec.ts) pelo
+// mesmo motivo de statistics.ts no backend: a Application Pixi real não
+// inicializa em jsdom (sem canvas/WebGL), então a LÓGICA de decisão fica
+// isolada do componente pra continuar testável sem precisar de um canvas de
+// verdade. `null` (nenhuma cena ativa ainda, 1º mount) sempre reinicia.
+export function shouldRestartScene(activeSceneId: string | null, nextSceneId: string): boolean {
+  return activeSceneId !== nextSceneId;
 }
 
 // MJ1 — motor base de mini jogos sérios (2ª metodologia ativa, RQ1
@@ -121,13 +137,27 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
       sceneCleanupRef.current?.();
       app.stage.removeChildren();
 
-      store.getState().startScene(scene.id, scene.conceptId);
+      // MJ3 (AC "aluno pode reabrir o roteiro a qualquer momento sem
+      // perder o progresso") — só reinicia a rodada (fase PRIMM zerada,
+      // tentativas a 0) quando é de fato uma cena NOVA (sceneId diferente
+      // da já ativa no store). O componente que mostra o roteiro visual
+      // (MiniGameBriefing, ver MiniGamePage.tsx/FractionsGamePage.tsx)
+      // desmonta/remonta este `MiniGameEngine` sem trocar `scene`/`store`
+      // — sem esta checagem, cada reabertura do roteiro chamaria
+      // `startScene` de novo e resetaria silenciosamente o progresso (e
+      // duplicaria o evento `minigame_scene_started`, RD-P).
+      if (shouldRestartScene(store.getState().activeScene?.sceneId ?? null, scene.id)) {
+        store.getState().startScene(scene.id, scene.conceptId);
+      }
       sceneCleanupRef.current = scene.mount({
         app,
         store,
         getSensory: () => {
           const profile = useSensoryProfileStore.getState();
-          return { motionEnabled: profile.motionEnabled, soundEnabled: profile.soundEnabled };
+          return {
+            motionEnabled: profile.motionEnabled && !prefersReducedMotion(),
+            soundEnabled: profile.soundEnabled,
+          };
         },
       });
     })();

@@ -71,3 +71,27 @@
 .admin-users__consent-details dd {
   margin: 0;
 }
+
+.admin-users__reset-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 280px;
+}
+
+.admin-users__credential-images {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.admin-users__credential-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.admin-users__credential-image img {
+  width: 64px;
+  height: 64px;
+}

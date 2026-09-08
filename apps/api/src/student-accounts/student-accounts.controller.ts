@@ -57,4 +57,17 @@ export class StudentAccountsController {
   ): Promise<StudentAccountCredential> {
     return this.studentAccountsService.activateCredential(id);
   }
+
+  // 1.3 — recuperação de acesso: aluno já ativo esqueceu a credencial
+  // (sequência de imagens). Só professor titular da turma ou admin.
+  @Post(':id/reset-credential')
+  resetCredential(
+    @Param('id') id: string,
+    @Request() req: { user: JwtPayload },
+  ): Promise<StudentAccountCredential> {
+    return this.studentAccountsService.resetCredential(id, {
+      id: req.user.sub,
+      role: req.user.role,
+    });
+  }
 }

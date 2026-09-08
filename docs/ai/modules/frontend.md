@@ -84,6 +84,7 @@ apps/web/src/
 │   │   ├── StudentLogin.css         # alvo de toque grande, grade de posição fixa
 │   │   └── StaffLogin.css           # formulário padrão (sem restrição sensorial — ver nota abaixo)
 │   ├── OnboardingSensorial.tsx      # 2.2 — só aluno, só antes do onboarding concluído
+│   ├── StudentSensorySettings.tsx   # 3.9 — /settings/sensory, mesmas opções, revisitável a qualquer hora
 │   ├── SubjectSelector.tsx          # 2.3 — seletor de matéria/módulo
 │   ├── challenge/
 │   │   └── ChallengePage.tsx        # /subjects/:topicId e /challenge/:challengeId — ver seção própria
@@ -164,11 +165,23 @@ via seletor `:root[data-motion='full']` etc.
 
 Esse store é só a camada CSS-facing — a fonte da verdade pro aluno é o
 backend (`User.soundEnabled`/`animationEnabled`, ver `backend.md`).
-`OnboardingSensorial` e qualquer tela futura que altere isso devem sempre
-fazer as duas coisas juntas: `PATCH /users/:id/sensory-profile` **e**
-atualizar `useSensoryProfileStore` — nunca só uma. `main.tsx` hidrata o
-store a partir da sessão persistida assim que o módulo carrega, antes da
-primeira renderização.
+`OnboardingSensorial` e qualquer tela que altere isso devem sempre fazer as
+duas coisas juntas: `PATCH /users/:id/sensory-profile` **e** atualizar
+`useSensoryProfileStore` — nunca só uma. `main.tsx` hidrata o store a
+partir da sessão persistida assim que o módulo carrega, antes da primeira
+renderização.
+
+**3.9 — `StudentSensorySettings` (`/settings/sensory`)** é a segunda tela
+que faz isso, depois de `OnboardingSensorial` — reaproveita literalmente os
+mesmos dois `ToggleSwitch` e o mesmo endpoint, mas os toggles nascem
+pré-preenchidos com `useAuthStore().user.soundEnabled`/`animationEnabled`
+em vez de sempre `false` (o aluno já tem um perfil; isto não é um segundo
+onboarding), e "Salvar" não navega — fica na tela com uma
+`InlineFeedback kind="success"` ("Salvo."). Acessível a qualquer momento
+via link "⚙️ Configurações" no topbar de `StudentHome`, ao lado de "Sair"
+(mesmo padrão de ação de escape discreta, fora das "no máximo 2 ações
+principais" de 2.1/AC1) — nunca dentro do onboarding em si, que continua
+rodando só uma vez (`sensoryOnboardingCompletedAt`).
 
 **Ao criar um componente que anima ou toca som:** ler
 `useSensoryProfileStore` (ou os atributos `data-*` do `<html>`, se for
@@ -436,8 +449,8 @@ clique+clique nos testes correspondentes.
 Wrapper fino sobre `POST /events` — nunca chamar `fetch` direto pra logging.
 Segue o mesmo escopo do backend (ver "Padrão: eventos RD-* são escopados ao
 aluno" em `backend.md`): só telas do aluno chamam `logEvent`
-(`StudentHome`, `OnboardingSensorial`, `SubjectSelector`); `TeacherHome`/
-`AdminHome` não emitem eventos RD-*.
+(`StudentHome`, `OnboardingSensorial`, `StudentSensorySettings`,
+`SubjectSelector`); `TeacherHome`/`AdminHome` não emitem eventos RD-*.
 
 ## Editor de blocos do desafio (`ChallengePage`, RQ4/RQ1/RQ2)
 
@@ -1031,30 +1044,64 @@ primeiro jogo de conteúdo real (frações).
 }`, uma leitura AO VIVO de `useSensoryProfileStore` (não um valor
 congelado no mount) — uma cena de execução longa consulta no momento de
 decidir animar, então uma mudança de perfil no meio de uma rodada é
-respeitada imediatamente. `fractionsFactoryScene.ts` é o primeiro
-consumidor real: anima o corte só se `motionEnabled`, senão renderiza o
-estado final direto. Checklist QA em `docs/ai/qa/
-sensory-checklist-minigames.md`.
+respeitada imediatamente. `motionEnabled` não é só o toggle Zustand: é
+`profile.motionEnabled && !prefersReducedMotion()` (`lib/
+prefersReducedMotion.ts`, testado isolado) — o `@media
+(prefers-reduced-motion)` já aplicado a toda animação CSS da plataforma
+(`theme/sensory-theme.css`) não alcança o canvas Pixi, então esta é a
+réplica dessa mesma política (SO só pode desligar, nunca ligar por cima do
+toggle desligado) pro motor de jogo. `fractionsFactoryScene.ts` é o
+primeiro consumidor real: anima o corte só se `motionEnabled`, senão
+renderiza o estado final direto. Áudio: nenhum mini jogo toca som ainda —
+`getSensory().soundEnabled` já está disponível no contrato pra quando
+isso mudar, nunca "vamos logar/checar isso depois". Checklist QA em
+`docs/ai/qa/sensory-checklist-minigames.md`.
 
 **MJ3 — roteiro visual (TEACCH):** `components/minigame/
 MiniGameBriefing.tsx`, reutilizável — objetivo em linguagem simples,
 etapas com ícone+texto, marcação início/fim, botão "Ver roteiro" sempre
-visível durante a rodada que reabre o painel SEM resetar a store (a cena
-continua montada por baixo, só um overlay local). Aplicado tanto na cena
+visível durante a rodada que reabre o painel. Aplicado tanto na cena
 placeholder de MJ1 (`MiniGamePage.tsx`) quanto no jogo de conteúdo
 (`FractionsGamePage.tsx`) — a regra vale pra toda cena, não só a nova.
+Ambas as telas desmontam `MiniGameEngine` enquanto o roteiro está visível
+(o painel substitui a área de jogo, não sobrepõe) — o que descobriu um bug
+real: remontar `MiniGameEngine` chamava `store.getState().startScene(...)`
+de novo incondicionalmente, resetando silenciosamente a fase PRIMM/
+tentativas da rodada em andamento (e duplicando o evento
+`minigame_scene_started`) toda vez que o roteiro era reaberto — violava
+literalmente o AC "sem perder o progresso". Corrigido com
+`shouldRestartScene(activeSceneId, nextSceneId)` (função pura exportada de
+`MiniGameEngine.tsx`, testada em `MiniGameEngine.spec.ts` — a Application
+Pixi real não inicializa em jsdom, então só a lógica de decisão é testada
+isolada, mesmo padrão de `statistics.ts` no backend): só reinicia a rodada
+quando o `sceneId` realmente muda, nunca quando é a MESMA cena remontando.
+Cobre qualquer mini jogo futuro que reabra o roteiro do mesmo jeito, não
+só a Fábrica de Pedaços Iguais. Regressão de ponta a ponta (estado visível
+da página, sem mexer no Pixi) coberta em `FractionsGamePage.spec.tsx`.
 
 **MJ4 — áreas de interação tolerantes:** `components/minigame/
 CardSequenceEditor.tsx` reordena a sequência de cartões por botão ↑/↓
 (`Button` de `components/ui`, toque mínimo 56×56 já garantido), nunca
 drag-and-drop de precisão fina. `CardBank.tsx` (nível Create) é a paleta
 fixa de 5 cartões, clique adiciona ao fim — reordenação depois é sempre
-via os mesmos botões.
+via os mesmos botões. `CardSequenceEditor.spec.tsx`/`CardBank.spec.tsx`
+testam mouse (clique) E teclado (foco + `Enter`, sem nenhum clique) com o
+MESMO resultado — toque não tem teste dedicado nem código próprio, porque
+são `<button>` nativos/React Aria (mesma fundação de `components/ui` já
+usada na plataforma inteira), não uma zona de drop customizada que
+precisaria de tolerância própria.
 
-**MJ5 — rotulagem redundante:** sem componente novo — `InlineFeedback`
-(`kind: 'success'|'retry'`) pro resultado da rodada, nunca cor sozinha; a
-peça "entregue" desenhada no Pixi (`fractionsFactoryScene.ts`) também
-ganha um ícone de check, nunca só opacidade/cor.
+**MJ5 — rotulagem redundante:** sem componente novo — verificado critério a
+critério contra o AC: `InlineFeedback` (`kind: 'success'|'retry'`) pro
+resultado da rodada, nunca cor sozinha, com linguagem descritiva e
+reversível ("quer ajustar a sequência?"), nunca "errado"/"falhou" (testado
+em `FractionsGamePage.spec.tsx`); a peça "entregue" desenhada no Pixi
+(`fractionsFactoryScene.ts`) também ganha um ícone de check, nunca só
+opacidade/cor; todo cartão/botão/dropdown do jogo (`CardBank`,
+`CardSequenceEditor`, "Ver roteiro"/"Executar"/"Novo pedido"/"Próximo
+nível") tem rótulo textual visível, nunca só ícone (`Button`/
+`SelectableCard` de `components/ui` já garantem isso por contrato — ver
+Button.spec.tsx "renders the text label even when an icon is given").
 
 **O jogo em si:** `apps/web/src/lib/fractionsFactory.ts` — lógica pura
 (`simulateSequence`/`matchesTarget`), zero I/O, testada isolada
@@ -1356,9 +1403,10 @@ progresso por turma" em `backend.md`, mas a tela não dá esse vetor de
 propósito).
 
 Selecionar uma turma (`SelectableCard align="start"` com `meta` = código +
-alunos ativos, ver 3.11) busca as duas rotas de métrica em paralelo
-(`GET /metrics/teacher/classrooms/:id/students` e `.../summary`) e alterna
-entre duas visões via `SegmentedControl` (`components/ui/`,
+alunos ativos, ver 3.11) busca as três rotas de métrica em paralelo
+(`GET /metrics/teacher/classrooms/:id/students`, `.../summary` e —
+MJ8 — `.../concept-comparison?conceptId=fractions_equal_parts`) e alterna
+entre três visões via `SegmentedControl` (`components/ui/`,
 `@radix-ui/react-toggle-group` — antes de 3.11 era 2 `<button role="tab">`
 com `aria-selected` calculado à mão):
 
@@ -1383,9 +1431,61 @@ com `aria-selected` calculado à mão):
   única "tradução" de vocabulário técnico pra português, sem inferência
   nenhuma sobre o número (ex.: nunca "turma com dificuldade", só o
   percentual cru — regra não-negociável 7).
+- **"Blocos × jogo" (MJ8)** — 1 linha por aluno, 1 coluna por desafio de
+  blocos do conceito (ícone 🧩) seguida de 1 coluna por nível de mini jogo
+  do mesmo conceito (ícone 🎮), mesmo `Badge`/`STATUS_LABEL` das outras
+  abas — o professor lê os dois sinais com o MESMO vocabulário, nunca dois
+  jeitos diferentes de "completo"/"em andamento". Quando
+  `hasBlocksChallenge` vem `false` (situação atual — nenhum tópico de
+  blocos usa `conceptId: 'fractions_equal_parts'` ainda), mostra um aviso
+  descritivo acima da tabela em vez de esconder a aba ou quebrar: "Nenhum
+  desafio de blocos deste assunto cadastrado ainda — só o mini jogo
+  aparece abaixo" — e a coluna do mini jogo continua renderizando
+  normalmente. `CONCEPT_ID`/`CONCEPT_LABEL` são constantes fixas no
+  componente (único conceito com mini jogo hoje); vira `Select` quando
+  existir um 2º.
 
 **Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — mesmo
 racional de `AdminMetrics`/`StaffLogin`.
+
+### Toggle "comparação entre alunos" (4.3/7.3)
+
+Fica dentro de `<section className="teacher-metrics__detail">`, **fora**
+das 3 abas de `SegmentedControl` acima (é configuração da turma, não uma
+visão de dado) — sempre visível assim que uma turma é selecionada, antes
+das visões "Por aluno"/"Turma toda"/"Blocos × jogo".
+
+- **`ToggleSwitch`** (`components/ui/`) lê `selectedClassroom.
+  comparisonEnabled`, campo que já vem em `GET /home/teacher` (mesma
+  chamada que a tela já fazia pra listar turmas, 2.1 — nenhuma rota nova só
+  pra ler o estado do toggle).
+- **Ligar exige confirmação** (AC de 7.3: "evita ativação acidental") — um
+  `Dialog` (`components/ui/`) explica em linguagem simples o que muda na
+  experiência do aluno antes de qualquer requisição sair; só o clique em
+  "Ativar comparação" dentro do dialog dispara o `PATCH`.
+- **Desligar é imediato**, sem confirmação — só remove um elemento da tela
+  do aluno, nunca introduz um novo, então não tem o risco que a confirmação
+  existe pra mitigar.
+- **`PATCH /teacher/classrooms/:id/comparison-setting`** (`{ enabled }`) —
+  no sucesso, `setClassrooms` atualiza só o campo `comparisonEnabled` da
+  turma selecionada no estado local (`current?.map(...)`), sem refazer
+  nenhuma das buscas de métrica já carregadas — o toggle é independente do
+  resto do painel.
+- **Nunca mostra nome de aluno** — o texto de apoio abaixo do toggle e a
+  descrição do `Dialog` são só sobre o QUE muda (uma mensagem agregada
+  possível na tela do aluno), nunca uma prévia com dado real de um aluno
+  específico.
+
+Do lado do aluno, ver "Comparação opcional entre alunos (4.3/7.3)" em
+`backend.md` pra como `StudentHome` consome `classComparison` — a mensagem
+("Você está entre os alunos que mais praticaram esta semana.") só aparece
+dentro do bloco "Meu progresso" já existente (2.1), nunca como elemento
+próprio/novo na home, e nunca acompanhada de número. Um evento dedicado
+`class_comparison_shown` (RD-I, distinto de `home_viewed`) é emitido uma
+vez quando o dado da home chega, com `{ shown: boolean }` — `true` só
+quando `classComparison` não é `null` (turma ativou E há colega suficiente
+pra comparar), nunca o valor de `amongMostActiveThisWeek` em si (isso já
+fica visível na própria tela quando `true`, não precisa duplicar no log).
 
 ## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
 

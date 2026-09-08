@@ -3,6 +3,9 @@ import { ChallengeStage, isChallengeConfig } from '../challenges/challenge-confi
 import { ChallengesService } from '../challenges/challenges.service';
 import { Challenge } from '../challenges/entities/challenge.entity';
 import { EventsService } from '../events/events.service';
+import { MiniGameLevel } from '../minigames/entities/mini-game-level.entity';
+import { MinigamesService } from '../minigames/minigames.service';
+import type { MiniGameStage } from '../minigames/mini-game-level-config.interface';
 import { SchoolsService } from '../schools/schools.service';
 import { SubjectsService } from '../subjects/subjects.service';
 import { ChallengeProgress, ChallengeStatus, MetricsService } from './metrics.service';
@@ -48,6 +51,38 @@ interface ChallengeStep {
 
 const ALL_STAGES: ChallengeStage[] = ['use', 'modify', 'create'];
 
+// MJ8 — sinal do mini jogo pro mesmo `conceptId`, por nível (Use/Modify/
+// Create) — mesmo formato de status (`not_started`/`in_progress`/
+// `completed`) do lado do desafio de blocos, pra ficar lado a lado na
+// mesma tela sem o professor precisar aprender dois vocabulários.
+export interface StudentMiniGameProgress {
+  levelId: string;
+  title: string;
+  stage: MiniGameStage;
+  status: ChallengeStatus;
+}
+
+export interface ConceptComparisonStudent {
+  studentPseudoId: string;
+  displayName: string;
+  blocks: StudentChallengeProgress[];
+  miniGame: StudentMiniGameProgress[];
+}
+
+// AC de MJ8: "existe um concept_id compartilhado" é sobre o SCHEMA — a
+// resposta abaixo funciona (e não quebra) mesmo quando um dos dois lados
+// ainda não existe pra este conceito (`hasBlocksChallenge`/`hasMiniGame`
+// explícitos, nunca inferidos de um array vazio) — hoje nenhum tópico de
+// blocos usa `conceptId: 'fractions_equal_parts'` ainda, então
+// `hasBlocksChallenge` é `false` na prática até um tópico de blocos do
+// mesmo assunto ser cadastrado.
+export interface ConceptComparisonResponse {
+  conceptId: string;
+  hasBlocksChallenge: boolean;
+  hasMiniGame: boolean;
+  students: ConceptComparisonStudent[];
+}
+
 // 6.3/6.4 — painel do professor. Reaproveita o motor 6.1 (MetricsService)
 // pra status/tentativas por desafio, escopado sempre pelos alunos
 // matriculados ativos da turma do professor autenticado — nunca a escola
@@ -60,6 +95,7 @@ export class MetricsTeacherService {
     private readonly challengesService: ChallengesService,
     private readonly eventsService: EventsService,
     private readonly metricsService: MetricsService,
+    private readonly minigamesService: MinigamesService,
   ) {}
 
   // 6.3 — progresso por aluno da própria turma na sequência Use→Modify→
@@ -147,6 +183,113 @@ export class MetricsTeacherService {
     };
   }
 
+  // MJ8 — os dois sinais (desafio de blocos × mini jogo) lado a lado, pro
+  // mesmo aluno e mesmo `conceptId`, sem exigir conhecimento técnico do
+  // professor (mesmo formato de status/Badge já usado em 6.3). Nenhuma
+  // interpretação clínica é derivada aqui — só dado bruto (status +
+  // tentativas), mesma disciplina de MetricsService/EventsService no resto
+  // do módulo (regra não-negociável 7).
+  async getConceptComparison(
+    classroomId: string,
+    teacherId: string,
+    conceptId: string,
+  ): Promise<ConceptComparisonResponse> {
+    await this.assertOwnClassroom(classroomId, teacherId);
+
+    const [enrollments, topic, miniGameLevels] = await Promise.all([
+      this.schoolsService.findActiveStudentsInClassroom(classroomId),
+      this.subjectsService.findTopicByConceptId(conceptId),
+      this.minigamesService.findByConceptId(conceptId),
+    ]);
+
+    const sortedEnrollments = [...enrollments].sort(
+      (a, b) => a.enrolledAt.getTime() - b.enrolledAt.getTime(),
+    );
+    const pseudoIds = sortedEnrollments.map((enrollment) => enrollment.student.pseudonymId);
+
+    const blocksSteps = topic
+      ? this.toChallengeSteps(await this.challengesService.findByTopicIdOrdered(topic.id))
+      : [];
+
+    const [progressByChallenge, miniGameProgress] = await Promise.all([
+      this.computeProgressByChallenge(pseudoIds, blocksSteps),
+      this.computeMiniGameProgress(pseudoIds, miniGameLevels),
+    ]);
+
+    return {
+      conceptId,
+      hasBlocksChallenge: blocksSteps.length > 0,
+      hasMiniGame: miniGameLevels.length > 0,
+      students: sortedEnrollments.map((enrollment) => {
+        const pseudoId = enrollment.student.pseudonymId;
+        return {
+          studentPseudoId: pseudoId,
+          displayName: enrollment.student.displayName,
+          blocks: blocksSteps.map((step) => {
+            const progress = progressByChallenge.get(step.challengeId)?.get(pseudoId) ?? {
+              status: 'not_started' as ChallengeStatus,
+              attempts: 0,
+            };
+            return {
+              challengeId: step.challengeId,
+              title: step.title,
+              stage: step.stage,
+              status: progress.status,
+              attempts: progress.attempts,
+            };
+          }),
+          miniGame: miniGameLevels.map((level) => ({
+            levelId: level.id,
+            title: level.title,
+            stage: level.stage,
+            status: miniGameProgress.get(level.id)?.get(pseudoId) ?? 'not_started',
+          })),
+        };
+      }),
+    };
+  }
+
+  private async computeMiniGameProgress(
+    pseudoIds: string[],
+    levels: MiniGameLevel[],
+  ): Promise<Map<string, Map<string, ChallengeStatus>>> {
+    const entries = await Promise.all(
+      levels.map(async (level) => {
+        const [anyEvent, completed] = await Promise.all([
+          this.eventsService.findStudentsWithMiniGameEvent(pseudoIds, level.id),
+          this.eventsService.findStudentsWithMiniGameEvent(pseudoIds, level.id, 'minigame_completed'),
+        ]);
+        const statusByStudent = new Map<string, ChallengeStatus>();
+        for (const pseudoId of pseudoIds) {
+          statusByStudent.set(
+            pseudoId,
+            completed.has(pseudoId) ? 'completed' : anyEvent.has(pseudoId) ? 'in_progress' : 'not_started',
+          );
+        }
+        return [level.id, statusByStudent] as const;
+      }),
+    );
+    return new Map(entries);
+  }
+
+  // Mesma transformação Challenge[] → ChallengeStep[] que `loadChallengeSequence`
+  // já faz pra TODO tópico — extraída pra reusar aqui escopada a UM tópico
+  // (o que casa com `conceptId`), sem duplicar a lógica de `nextChallengeId`/
+  // filtro de config incompleta.
+  private toChallengeSteps(challenges: Challenge[]): ChallengeStep[] {
+    const steps: ChallengeStep[] = [];
+    challenges.forEach((challenge, index) => {
+      if (!isChallengeConfig(challenge.config)) return;
+      steps.push({
+        challengeId: challenge.id,
+        title: challenge.title,
+        stage: challenge.config.stage,
+        nextChallengeId: challenges[index + 1]?.id ?? null,
+      });
+    });
+    return steps;
+  }
+
   private async assertOwnClassroom(classroomId: string, teacherId: string): Promise<void> {
     const classroom = await this.schoolsService.findClassroomById(classroomId);
     if (!classroom) {
@@ -229,20 +372,7 @@ export class MetricsTeacherService {
 
     const steps: ChallengeStep[] = [];
     for (const challenges of sequencesByTopic) {
-      challenges.forEach((challenge: Challenge, index) => {
-        if (!isChallengeConfig(challenge.config)) {
-          // Desafio cadastrado mas ainda sem toolbox configurada — nada pra
-          // mostrar no painel ainda (mesmo estado que ChallengesController
-          // trata como "conteúdo incompleto").
-          return;
-        }
-        steps.push({
-          challengeId: challenge.id,
-          title: challenge.title,
-          stage: challenge.config.stage,
-          nextChallengeId: challenges[index + 1]?.id ?? null,
-        });
-      });
+      steps.push(...this.toChallengeSteps(challenges));
     }
     return steps;
   }

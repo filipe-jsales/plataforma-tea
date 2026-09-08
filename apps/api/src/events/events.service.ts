@@ -72,6 +72,32 @@ export class EventsService {
     return Number(raw?.count ?? 0);
   }
 
+  // 7.3 — comparação agregada/anônima entre alunos ("você está entre os
+  // alunos que mais praticaram esta semana"), só usada quando o professor
+  // ativa `Classroom.comparisonEnabled` explicitamente. Conta TODO evento
+  // RD-* como proxy de prática (RD-E, engajamento-proxy) — não é
+  // comparação de acerto/desempenho, só volume de atividade, mesmo
+  // racional neutro de `countDistinctStudentsActiveSince`. `HomeService` é
+  // quem decide, a partir do Map devolvido, quem entra no grupo "mais
+  // praticou" — esta query nunca ordena/ranqueia sozinha.
+  async countEventsByStudentsSince(
+    pseudoIds: string[],
+    since: Date,
+  ): Promise<Map<string, number>> {
+    if (pseudoIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.createdAt >= :since', { since })
+      .groupBy('event.studentPseudoId')
+      .getRawMany<{ studentPseudoId: string; count: string }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
+  }
+
   // Home do aluno (2.1): "meu progresso" — contagem de desafios concluídos
   // pelo próprio aluno, nunca comparado a outros alunos.
   countByStudentCategoryType(
@@ -406,6 +432,33 @@ export class EventsService {
       .groupBy('event.studentPseudoId')
       .getRawMany<{ studentPseudoId: string; count: string }>();
     return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
+  }
+
+  // MJ8 — equivalente de `findStudentsWithEvent` (linha do desafio de
+  // blocos), pro lado do mini jogo: quais alunos do recorte têm pelo menos
+  // 1 evento neste nível, opcionalmente restrito a um `type`. Usado por
+  // MetricsTeacherService.getConceptComparison pra derivar status
+  // not_started/in_progress/completed do mini jogo, mesmo racional do
+  // desafio de blocos (sem evento = not_started; qualquer evento =
+  // in_progress; `minigame_completed` = completed).
+  async findStudentsWithMiniGameEvent(
+    pseudoIds: string[],
+    miniGameLevelId: string,
+    type?: string,
+  ): Promise<Set<string>> {
+    if (pseudoIds.length === 0) {
+      return new Set();
+    }
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .select('DISTINCT event.studentPseudoId', 'studentPseudoId')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.miniGameLevelId = :miniGameLevelId', { miniGameLevelId });
+    if (type) {
+      query.andWhere('event.type = :type', { type });
+    }
+    const rows = await query.getRawMany<{ studentPseudoId: string }>();
+    return new Set(rows.map((row) => row.studentPseudoId));
   }
 
   findMiniGameCompletions(miniGameLevelId: string): Promise<InteractionEvent[]> {

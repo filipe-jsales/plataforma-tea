@@ -52,8 +52,8 @@ apps/api/src/
 │   └── schools.module.ts
 ├── student-accounts/            # 1.2 — criação de conta de aluno, ver seção própria
 │   ├── dto/create-student-account.dto.ts
-│   ├── student-accounts.service.ts
-│   ├── student-accounts.controller.ts  # POST /teacher/students
+│   ├── student-accounts.service.ts  # + resetCredential (1.3, recuperação de acesso)
+│   ├── student-accounts.controller.ts  # POST /teacher/students[...]/reset-credential
 │   └── student-accounts.module.ts
 ├── enrollments/                 # 1.5 — matrícula/transferência, ver seção própria
 │   ├── dto/transfer-student.dto.ts
@@ -108,7 +108,7 @@ apps/api/src/
 │   └── settings.module.ts
 ├── audit/
 │   ├── entities/export-audit-log.entity.ts  # 6.6 — append-only, "quem exportou o quê, quando"
-│   ├── entities/admin-action-log.entity.ts  # 1.4 — append-only, CRUD de usuário (quem/quando/o quê)
+│   ├── entities/admin-action-log.entity.ts  # 1.4/1.3 — append-only, CRUD de usuário + reset de credencial (quem/quando/o quê)
 │   ├── audit.service.ts
 │   └── audit.module.ts
 ├── metrics/
@@ -202,6 +202,24 @@ completo (nunca `passwordHash`/`totpSecret`/`loginImageSequence` — ver
 usuário (`sub === id`) ou `teacher`/`admin` alterando o de qualquer aluno —
 autorização mais fina (só o professor *daquela* turma) fica para quando o
 painel de turma existir de verdade.
+
+**3.9 — configurações sensoriais acessíveis ao próprio aluno.** O endpoint
+acima já aceitava `isSelf` desde 2.2; o que faltava era uma tela pro aluno
+REVISITAR a escolha depois da primeira sessão (o onboarding em si só roda
+uma vez, guardado por `sensoryOnboardingCompletedAt`). `apps/web/src/
+routes/StudentSensorySettings.tsx` (rota `/settings/sensory`) reaproveita
+100% o mesmo endpoint/campos de `OnboardingSensorial.tsx` — a única
+diferença é que os toggles nascem PRÉ-PREENCHIDOS com o perfil atual do
+aluno (`user.soundEnabled`/`animationEnabled`), não sempre `false`, e
+salvar não navega pra lugar nenhum (fica na própria tela, com confirmação
+"Salvo."). `UsersService.updateSensoryProfile` já protegia
+`sensoryOnboardingCompletedAt` de ser sobrescrito numa 2ª chamada — nenhuma
+mudança de backend precisou entrar pra isso. Acesso: link discreto
+"⚙️ Configurações" no topbar de `StudentHome`, mesmo racional do "Sair"
+(1.5.1) — ação de escape sempre disponível, fora das "no máximo 2 ações
+principais" (AC1 de 2.1). Emite `sensory_settings_updated` (RD-E) — evento
+NOVO, distinto de `sensory_onboarding_completed` (2.2), pra distinguir na
+análise "primeira escolha" de "ajuste posterior" sem perder o dado.
 
 `GET /home/{student,teacher,admin}` (`HomeModule`) — uma rota por papel,
 cada uma com sua própria regra de "o que pode aparecer":
@@ -1311,7 +1329,7 @@ limite, só a rota que expõe volume grande de dado por requisição precisa
 disso. Por IP (comportamento default da lib), não por admin autenticado —
 suficiente pro MVP, sem tracker customizado.
 
-## Mini jogo "Fábrica de Pedaços Iguais" — configuração e métricas (MJ2-MJ5)
+## Mini jogo "Fábrica de Pedaços Iguais" — configuração e métricas (MJ2-MJ5, MJ8)
 
 1º mini jogo de CONTEÚDO da plataforma (MJ1/MJ7 já eram infraestrutura),
 plano completo em `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`.
@@ -1343,6 +1361,34 @@ minigames` (lista) e `GET /metrics/admin/minigames/:levelId` (relatório
 completo: alunos alcançados/concluídos, rodadas por aluno, tempo até 1ª
 execução, eventos por categoria/tipo, abandono RD-E sempre como número
 bruto — regra não-negociável 7, taxa de resposta da predição opcional).
+
+### MJ8 — vínculo conceito-currículo (desafio de blocos × mini jogo)
+
+`Topic.conceptId` (varchar nullable, migration `AddConceptIdToTopics`) é o
+mesmo `conceptId` livre já usado em `MiniGameLevel.conceptId` (MJ7) — vive
+no TÓPICO (o assunto), nunca em `Challenge` (um desafio individual dentro
+da sequência Use→Modify→Create), porque o conceito é uma propriedade do
+assunto inteiro. `SubjectsService.findTopicByConceptId(conceptId)` devolve
+`null` quando nenhum tópico usa esse conceito ainda — estado normal hoje
+(nenhum tópico de blocos cobre frações), não um erro.
+
+`MetricsTeacherService.getConceptComparison(classroomId, teacherId,
+conceptId)` (`GET /metrics/teacher/classrooms/:classroomId/
+concept-comparison?conceptId=`, mesmo guard de titularidade de turma que
+6.3/6.4) devolve os dois sinais lado a lado por aluno: `blocks` (reusa o
+motor 6.1, `MetricsService.getChallengeProgressForStudents`, pro(s)
+desafio(s) do tópico que casa com `conceptId`) e `miniGame` (usa
+`EventsService.findStudentsWithMiniGameEvent`, equivalente de
+`findStudentsWithEvent` pro lado do mini jogo — mesmo vocabulário de
+status `not_started`/`in_progress`/`completed` dos dois lados, pra caber
+na mesma tela sem o professor aprender dois jeitos de ler). `
+hasBlocksChallenge`/`hasMiniGame` são flags explícitas na resposta (nunca
+inferidas de um array vazio) — hoje `hasBlocksChallenge` é sempre `false`,
+porque não existe tópico de blocos de frações ainda; a tela (`
+TeacherMetrics.tsx`, aba "Blocos × jogo") mostra um aviso descritivo
+nesse caso, nunca erro, e ainda renderiza o sinal do mini jogo. Nenhuma
+interpretação clínica é derivada da comparação (regra não-negociável 7) —
+só o vocabulário de status já usado no resto do painel do professor.
 
 ## Banco de dados
 
@@ -1558,6 +1604,56 @@ credencial → bloqueio sem aceite explícito → credencial só depois do
 consentimento) e `AdminUsers.spec.tsx` cobre a tela de auditoria (AC4):
 "Consentimento" só aparece pra linha de aluno, estado pendente vs.
 registrado (quem/quando).
+
+### Recuperação de acesso via professor/admin (1.3)
+
+Aluno não tem e-mail/senha (login por turma+avatar+sequência de imagens,
+ver "Login por papel..." em `coding-rule.md`) — não existe "esqueci minha
+senha" autoatendido possível pra esse papel. Quando o aluno esquece a
+sequência de login, quem recupera é sempre professor titular da turma ou
+admin, nunca o próprio aluno.
+
+`StudentAccountsService.resetCredential(studentId, actor)` — `POST
+/teacher/students/:id/reset-credential` (mesmo controller/prefixo de
+1.2/A2, mesmo guard `@Roles(TEACHER, ADMIN)`):
+
+1. Exige credencial JÁ ativa (`student.active === true`) — distinto de
+   `activateCredential` (A2, passo 3), que libera a credencial pela
+   PRIMEIRA vez; usar o endpoint errado devolve `BadRequestException`
+   apontando pro fluxo certo.
+2. Mesma checagem de ownership de `createPending`: professor só reseta
+   credencial de aluno matriculado na PRÓPRIA turma
+   (`classroom.teacherId === actor.id`); admin sem restrição.
+3. `IllustrationsService.pickRandomLoginImageSequence` sorteia uma
+   sequência NOVA e `UsersService.resetLoginImageSequence` grava — método
+   dedicado, não uma chamada a `activateStudentCredential`, porque este
+   nunca deve tocar `active`/reabrir onboarding, só a credencial em si. A
+   sequência antiga para de funcionar imediatamente (nunca as duas
+   coexistindo) — mesmo racional de "nunca regenerar em silêncio" de A2,
+   só que aqui a regeneração é o objetivo explícito da ação, não um erro a
+   evitar.
+4. Registrado em `AdminActionLog` (`actionType: 'reset_student_credential'`,
+   ver A4/1.4 abaixo) — nunca em `interaction_events`: é telemetria de
+   ação de STAFF sobre outro usuário, mesmo racional de
+   `AdminUsersService.setActive`/`create`/`update`, não uma interação
+   pedagógica do aluno.
+
+Resposta: mesma forma de `StudentAccountCredential` (passo 3 de A2) —
+`{ student, classroom, credential: { avatar, loginImages } }`. Frontend
+reaproveita o MESMO endpoint em dois lugares: `TeacherStudents.tsx`
+("Recuperar acesso" na lista de alunos da turma) e `AdminUsers.tsx`
+(mesmo botão, só pra linha de aluno já ativo — `AdminUsersService` não
+ganhou um endpoint espelhado próprio de propósito, evitar duas
+implementações divergentes do que significa "resetar credencial").
+
+Testes: `student-accounts.service.spec.ts` (`describe('resetCredential
+(1.3)')`) cobre aluno inexistente, aluno ainda não ativado (aponta pro
+fluxo de ativação), ownership de turma (professor de outra turma rejeitado,
+admin sem restrição), geração de sequência nova sem regenerar avatar, e o
+registro em `AdminActionLog` (nunca em `interaction_events`). Frontend:
+`TeacherStudents.spec.tsx`/`AdminUsers.spec.tsx` cobrem o fluxo de UI
+(botão só aparece pra aluno ativo em `AdminUsers`, chamada ao endpoint,
+exibição da sequência nova).
 
 ### Matrícula/transferência de turma (1.5)
 
@@ -2070,6 +2166,97 @@ errado. `logout.spec.ts` cobre o evento RD-L só pra aluno. Cada home
 ganhou um teste mínimo confirmando que "Sair" limpa a sessão e navega pro
 login — sem duplicar cobertura entre os 3 (a lógica em si já está
 integralmente coberta por `logout.spec.ts`).
+
+## Comparação opcional entre alunos (4.3/7.3)
+
+Toggle explícito do professor pra habilitar, por turma, uma comparação
+agregada/anônima na tela "Meu progresso" do aluno. Regra não-negociável 5
+("sem ranqueamento público... salvo ativação explícita pelo professor") e
+RQ4 — ansiedade social/RSD (13,04%) — a mitigação definida é literalmente
+opt-in explícito, nunca padrão.
+
+- **`Classroom.comparisonEnabled`** (migration `AddClassComparisonSetting`)
+  — nasce `false` em toda turma, nova ou já existente (DEFAULT no banco
+  cobre o backfill). Só muda via `ClassroomSettingsService`, nunca por CRUD
+  administrativo direto de `Classroom`.
+- **`ClassroomSettingsModule`** — módulo pequeno e dedicado (mesma
+  granularidade de `ChallengeValidationModule`): não é sobre matrícula
+  (`EnrollmentsModule`) nem sobre métrica (`MetricsModule`), é configuração
+  de turma. `PATCH /teacher/classrooms/:classroomId/comparison-setting`
+  (`{ enabled: boolean }`), mesmo prefixo de rota que
+  `ClassroomRosterController` (`EnrollmentsModule`) — sufixo literal
+  diferente, sem conflito de rota dinâmica. Só professor titular da turma
+  ou admin (`ClassroomSettingsService.setComparisonEnabled`, mesmo racional
+  de `MetricsTeacherService.assertOwnClassroom`/`EnrollmentsService.
+  assertCanManageClassroom` — reimplementado aqui porque nenhum dos dois
+  serviços é dependência natural deste módulo pequeno).
+- **`ClassComparisonSettingLog`** (`AuditModule`, tabela
+  `class_comparison_setting_logs`) — "quem, quando, ligou/desligou",
+  gravado a cada `PATCH` bem-sucedido. Deliberadamente FORA de
+  `interaction_events`, mesmo racional de `AdminActionLog`/
+  `ExportAuditLog`: é ação de PROFESSOR sobre a turma, não uma interação de
+  aluno (`interaction_events.studentPseudoId` é NOT NULL por design — ver
+  "Padrão: eventos RD-* são escopados ao aluno" acima). O card da feature
+  rotula o evento como `class_comparison_setting_changed (RD-I)`; RD-I não
+  se aplica aqui (é sobre interação DE ALUNO) — esta feature segue o
+  precedente já estabelecido (log de auditoria dedicado) em vez do rótulo
+  literal do card.
+- **`GET /home/teacher`** (`HomeService.getTeacherHome`) devolve
+  `comparisonEnabled` por turma — o professor lê o estado atual do toggle
+  sem uma 2ª chamada de rede; `TeacherMetrics` (frontend) atualiza esse
+  campo localmente após um `PATCH` bem-sucedido, também sem refazer a
+  busca.
+- **`GET /home/student`** (`HomeService.getStudentHome`) ganha
+  `classComparison: { amongMostActiveThisWeek: boolean } | null`. `null`
+  cobre TODOS os casos de "não mostrar nada" (turma nunca ativou, aluno sem
+  matrícula ativa, turma com só 1 aluno ativo — nada pra comparar contra)
+  sem o frontend precisar adivinhar qual foi. `computeClassComparison`
+  (privado) resolve turma via `SchoolsService.findSingleActiveEnrollment` +
+  `findClassroomById`, e só segue adiante se `comparisonEnabled` e há ≥ 2
+  colegas ativos.
+- **`amongMostActiveThisWeek`** — nunca um número/rank/nome de colega (AC
+  de 7.3: "sempre agregada e anônima"). `EventsService.
+  countEventsByStudentsSince(pseudoIds, since)` conta TODO evento RD-* por
+  aluno desde `since` (proxy de engajamento RD-E, não de acerto/desempenho
+  — mesmo racional neutro de `countDistinctStudentsActiveSince`).
+  `class-comparison.ts` (função pura, testada isoladamente):
+  - `startOfCurrentWeek(reference)` — segunda-feira 00:00 da semana de
+    `reference`, fuso local do servidor (mesmo racional de `startOfToday`
+    já usado em `HomeService`/`MetricsTeacherService`, sem UTC explícito).
+  - `computeAmongMostActiveThisWeek(classroomActivityCounts,
+    ownActivityCount)` — "entre os que mais praticaram" = metade de cima da
+    turma por contagem de atividade, empate a favor do aluno (`>=`
+    threshold, não `>` estrito — numa turma pequena/homogênea, ninguém
+    ficaria "entre os que mais praticaram" só por causa de um empate).
+    Nunca `true` se `ownActivityCount === 0` nem se a turma inteira tem 0
+    atividade (não há prática nenhuma pra estar "entre").
+- **Confirmação antes de ativar (AC de 7.3)** — responsabilidade do
+  FRONTEND (`TeacherMetrics.tsx`, ver frontend.md): `Dialog` explicando o
+  que muda na experiência do aluno, só exigido pra LIGAR (desligar é
+  imediato, sem confirmação — só remove um elemento da tela do aluno, não
+  introduz um novo).
+- **"Sem precisar recarregar sessão" (AC de 7.3)** — não existe push/
+  websocket nesta plataforma; o que garante isso na prática é
+  `StudentHome` já refazer `GET /home/student` a cada visita à tela (não
+  há cache local do `classComparison`), então desligar no painel do
+  professor reflete no aluno na próxima vez que a home carrega, sem exigir
+  logout/login.
+
+### Testes
+
+`classroom-settings.service.spec.ts` cobre: liga com sucesso + audita quem
+mudou, `ForbiddenException` pra professor mexendo em turma alheia, admin
+sem essa restrição, `NotFoundException` pra turma inexistente.
+`class-comparison.spec.ts` (função pura) cobre zero atividade própria,
+turma inteira sem atividade, aluno no topo/na base da metade, empate a
+favor do aluno, turma de 1 só, e os dois lados de `startOfCurrentWeek`
+(meio de semana, domingo). `home.service.spec.ts` ganhou os 4 casos de
+`classComparison` (sem matrícula, sem ativação, sem colega, e o caso
+positivo — com asserção explícita de que o pseudônimo do colega nunca
+aparece na resposta serializada). `events.service.spec.ts` ganhou
+`countEventsByStudentsSince` (short-circuit com lista vazia + contagem
+agrupada). `audit.service.spec.ts` ganhou
+`recordClassComparisonSettingChange`.
 
 ## Próximos passos (fora do escopo já implementado)
 

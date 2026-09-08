@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module';
 import { EventsModule } from '../events/events.module';
 import { GuardianConsentsModule } from '../guardian-consents/guardian-consents.module';
 import { IllustrationsModule } from '../illustrations/illustrations.module';
@@ -14,6 +15,7 @@ import { StudentAccountsService } from './student-accounts.service';
     IllustrationsModule,
     EventsModule,
     GuardianConsentsModule,
+    AuditModule,
   ],
   controllers: [StudentAccountsController],
   providers: [StudentAccountsService],

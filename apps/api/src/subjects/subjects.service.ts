@@ -30,4 +30,11 @@ export class SubjectsService {
   findAllTopics(): Promise<Topic[]> {
     return this.topicsRepository.find({ relations: { subject: true } });
   }
+
+  // MJ8 — lado "desafio de blocos" do vínculo conceito-currículo. `null`
+  // quando nenhum tópico usa este `conceptId` ainda (estado normal hoje,
+  // não um erro — ver comentário em Topic.conceptId).
+  findTopicByConceptId(conceptId: string): Promise<Topic | null> {
+    return this.topicsRepository.findOne({ where: { conceptId } });
+  }
 }

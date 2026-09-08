@@ -122,6 +122,42 @@ describe('EventsService', () => {
     });
   });
 
+  describe('countEventsByStudentsSince', () => {
+    it('short-circuits to an empty map without querying when pseudoIds is empty', async () => {
+      const result = await service.countEventsByStudentsSince([], new Date());
+
+      expect(result).toEqual(new Map());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('returns a per-student activity count map, grouped and parsed from the raw rows', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { studentPseudoId: 'p1', count: '7' },
+          { studentPseudoId: 'p2', count: '2' },
+        ]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.countEventsByStudentsSince(['p1', 'p2'], new Date());
+
+      expect(result).toEqual(
+        new Map([
+          ['p1', 7],
+          ['p2', 2],
+        ]),
+      );
+      expect(queryBuilder.where).toHaveBeenCalledWith('event.studentPseudoId IN (:...pseudoIds)', {
+        pseudoIds: ['p1', 'p2'],
+      });
+    });
+  });
+
   describe('countByStudentCategoryType', () => {
     it('scopes the count to the given student, category and type', async () => {
       repository.count.mockResolvedValue(5);
@@ -532,6 +568,47 @@ describe('EventsService', () => {
         'ASC',
       );
       expect(queryBuilder.addOrderBy).toHaveBeenCalledWith('event.id', 'ASC');
+    });
+  });
+
+  describe('findStudentsWithMiniGameEvent (MJ8)', () => {
+    it('short-circuits to an empty set without querying when pseudoIds is empty', async () => {
+      const result = await service.findStudentsWithMiniGameEvent([], 'level-1');
+
+      expect(result).toEqual(new Set());
+      expect(repository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('returns the distinct students with any event on the level when no type is given', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }, { studentPseudoId: 'p2' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      const result = await service.findStudentsWithMiniGameEvent(['p1', 'p2', 'p3'], 'level-1');
+
+      expect(result).toEqual(new Set(['p1', 'p2']));
+      // Sem `type`: só studentPseudoId + miniGameLevelId no andWhere.
+      expect(queryBuilder.andWhere).toHaveBeenCalledTimes(1);
+    });
+
+    it('scopes to a specific type when given (ex.: minigame_completed)', async () => {
+      const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([{ studentPseudoId: 'p1' }]),
+      } as unknown as jest.Mocked<SelectQueryBuilder<InteractionEvent>>;
+      repository.createQueryBuilder.mockReturnValue(queryBuilder);
+
+      await service.findStudentsWithMiniGameEvent(['p1'], 'level-1', 'minigame_completed');
+
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
+        type: 'minigame_completed',
+      });
     });
   });
 

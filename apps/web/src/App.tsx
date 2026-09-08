@@ -17,6 +17,7 @@ import { MiniGameReport } from './routes/metrics/MiniGameReport'
 import { TeacherMetrics } from './routes/metrics/TeacherMetrics'
 import { TeacherMiniGameSettings } from './routes/teacher/TeacherMiniGameSettings'
 import { OnboardingSensorial } from './routes/OnboardingSensorial'
+import { StudentSensorySettings } from './routes/StudentSensorySettings'
 import { RequireAuth } from './routes/RequireAuth'
 import { RootRedirect } from './routes/RootRedirect'
 import { SubjectSelector } from './routes/SubjectSelector'
@@ -59,6 +60,16 @@ function App() {
         element={
           <RequireAuth>
             <HomeRouter />
+          </RequireAuth>
+        }
+      />
+      {/* 3.9 — mesmas opções sensoriais do onboarding (2.2), mas
+          revisitáveis pelo aluno a qualquer momento, não só uma vez. */}
+      <Route
+        path="/settings/sensory"
+        element={
+          <RequireAuth roles={['student']}>
+            <StudentSensorySettings />
           </RequireAuth>
         }
       />

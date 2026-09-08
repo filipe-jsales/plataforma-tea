@@ -10,6 +10,7 @@ import { ChallengeTemplatesModule } from './challenge-templates/challenge-templa
 import { ChallengeAllocationsModule } from './challenge-allocations/challenge-allocations.module';
 import { ChallengeDraftsModule } from './challenge-drafts/challenge-drafts.module';
 import { ChallengeValidationModule } from './challenge-validation/challenge-validation.module';
+import { ClassroomSettingsModule } from './classroom-settings/classroom-settings.module';
 import { EventsModule } from './events/events.module';
 import { GuardianConsentsModule } from './guardian-consents/guardian-consents.module';
 import { HomeModule } from './home/home.module';
@@ -64,6 +65,7 @@ import { UsersModule } from './users/users.module';
     GuardianConsentsModule,
     ChallengeDraftsModule,
     ChallengeValidationModule,
+    ClassroomSettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

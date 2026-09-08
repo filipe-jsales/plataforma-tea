@@ -14,7 +14,7 @@ export class HomeController {
   @Get('student')
   @Roles(Role.STUDENT)
   getStudentHome(@Request() req: { user: JwtPayload }) {
-    return this.homeService.getStudentHome(req.user.pseudonymId);
+    return this.homeService.getStudentHome(req.user.sub, req.user.pseudonymId);
   }
 
   @Get('teacher')

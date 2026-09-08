@@ -35,12 +35,12 @@ trade-offs" no fim deste documento.
 |---|---|
 | MJ1 — Motor base | **Implementado** (ver `docs/ai/modules/frontend.md` → "Motor base de mini jogos sérios (MJ1)") |
 | MJ7 — Schema de eventos | **Implementado** (ver mesma seção — vocabulário de eventos do motor) |
-| MJ2 — Perfil sensorial aplicado por padrão | **Implementado** — `MiniGameEngine` lê `useSensoryProfileStore` ao vivo (`getSensory()` no contexto de cena) e repassa pra cena decidir animar/tocar som; checklist QA em `docs/ai/qa/sensory-checklist-minigames.md`. |
-| MJ3 — Roteiro visual estruturado | **Implementado** — `components/minigame/MiniGameBriefing.tsx`, reutilizável, aplicado tanto na cena placeholder (`MiniGamePage.tsx`) quanto no jogo de conteúdo (`FractionsGamePage.tsx`); botão "Ver roteiro" reabre sem perder progresso. |
-| MJ4 — Áreas de interação grandes e tolerantes | **Implementado**, entregue junto com o 1º jogo de conteúdo — `components/minigame/CardSequenceEditor.tsx` reordena por botão ↑/↓ (nunca drag-and-drop), sem timer obrigatório em nenhuma mecânica. |
-| MJ5 — Rotulagem redundante | **Implementado** — reaproveita `InlineFeedback`/`Button` (`components/ui`); resultado da rodada nunca é só cor (a peça entregue no Pixi também ganha ícone de check). |
-| MJ6 — Comparação de progresso (opt-in) | Não implementado — depende de #37/#27 (comparação entre alunos no desafio de blocos), que também não existem ainda |
-| MJ8 — Vínculo conceito-currículo | Não implementado — MJ7 já faz cada evento de mini jogo carregar `concept_id` no payload (pré-requisito de dado), mas a comparação lado a lado no painel do professor é trabalho futuro à parte |
+| MJ2 — Perfil sensorial aplicado por padrão | **Implementado** — `MiniGameEngine` lê `useSensoryProfileStore` ao vivo (`getSensory()` no contexto de cena) e repassa pra cena decidir animar/tocar som; `motionEnabled` combina o toggle da plataforma com `prefers-reduced-motion` do SO (`lib/prefersReducedMotion.ts`) — o canvas Pixi não é coberto pelo `@media` já usado em CSS, então esta combinação é o que fecha o AC "respeita o SO automaticamente" pro motor de jogo. Checklist QA em `docs/ai/qa/sensory-checklist-minigames.md`. |
+| MJ3 — Roteiro visual estruturado | **Implementado** — `components/minigame/MiniGameBriefing.tsx`, reutilizável, aplicado tanto na cena placeholder (`MiniGamePage.tsx`) quanto no jogo de conteúdo (`FractionsGamePage.tsx`); botão "Ver roteiro" reabre. Verificação encontrou e corrigiu um bug real: remontar `MiniGameEngine` ao reabrir o roteiro resetava silenciosamente a fase PRIMM/tentativas (violava "sem perder o progresso") — corrigido com `shouldRestartScene` (testado em `MiniGameEngine.spec.ts` + regressão de ponta a ponta em `FractionsGamePage.spec.tsx`, e confirmado num navegador real, screenshot antes/depois de reabrir). |
+| MJ4 — Áreas de interação grandes e tolerantes | **Implementado**, entregue junto com o 1º jogo de conteúdo — `components/minigame/CardSequenceEditor.tsx` reordena por botão ↑/↓ (nunca drag-and-drop), sem timer obrigatório em nenhuma mecânica. Testado com mouse E teclado (Tab+Enter, sem clique nenhum) em `CardSequenceEditor.spec.tsx`/`CardBank.spec.tsx`; touch não exige código próprio (mesmos `<button>` nativos/React Aria da plataforma inteira). |
+| MJ5 — Rotulagem redundante | **Implementado**, verificado critério a critério — `InlineFeedback`/`Button`/`SelectableCard` (`components/ui`) garantem ícone+texto por contrato; resultado da rodada nunca é só cor (a peça entregue no Pixi também ganha ícone de check); feedback de erro é sempre descritivo/reversível, nunca "errado" (testado). |
+| MJ6 — Comparação de progresso (opt-in) | **Verificado, continua não implementado — bloqueio confirmado.** A flag "comparação entre alunos" que MJ6 diz reaproveitar (#37/#27) não existe em NENHUM lugar do código hoje, nem pro desafio de blocos. MJ6 exige explicitamente reusar essa flag, nunca criar uma segunda — construir uma flag só pro mini jogo violaria essa regra do próprio card. Decisão registrada com o produto (2026-08-24): manter bloqueado/documentado em vez de implementar uma comparação de alunos nova e isolada. |
+| MJ8 — Vínculo conceito-currículo | **Implementado** (infraestrutura pronta, ainda sem par real). `Topic.conceptId` (nullable, migration `AddConceptIdToTopics`) é o lado que faltava — `MiniGameLevel.conceptId` (MJ7) já existia. `MetricsTeacherService.getConceptComparison` + `GET /metrics/teacher/classrooms/:id/concept-comparison?conceptId=` devolvem os dois sinais lado a lado por aluno; tela em `TeacherMetrics.tsx`, aba "Blocos × jogo". Hoje nenhum tópico de blocos usa `conceptId: 'fractions_equal_parts'` (`hasBlocksChallenge: false`), então a tela mostra só o sinal do mini jogo com um aviso descritivo — sem erro, sem dado fabricado. Vira comparação real assim que um tópico de blocos do mesmo assunto for cadastrado, sem precisar de mudança de código. |
 
 **1º mini jogo de conteúdo real:** "Fábrica de Pedaços Iguais" (frações),
 ver `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`. MJ4/MJ5 acima só
@@ -198,6 +198,16 @@ estudos. Regra não-negociável 5.
 **Bloqueado por:** #37/#27 (a flag de comparação em si ainda não existe
 pro desafio de blocos — nada a reaproveitar ainda).
 
+**Status: verificado em 2026-08-24, continua bloqueado.** Confirmado por
+busca no código inteiro (`comparison`/`ranking`/`leaderboard`/campo
+`allowComparison` em `Classroom` ou qualquer entidade) — a flag não existe
+em lugar nenhum, nem pro desafio de blocos. Opções levantadas com o
+produto: (a) construir a flag completa pros dois lados (escopo maior que
+este card, envolveria decisão de UX pro painel de blocos que ninguém pediu
+ainda), ou (b) manter documentado como bloqueado. Decisão: (b) — evita
+criar "um segundo sistema de comparação" isolado só pro mini jogo, que é
+exatamente o que este card proíbe.
+
 **Bibliotecas sugeridas:** Nenhuma — reuso de estado/configuração já
 existente (Zustand).
 
@@ -242,19 +252,53 @@ lacuna). Dois sinais triangulados sobre o mesmo conceito é um passo
 concreto nessa direção, sem exigir instrumento formal externo.
 
 **Critérios de aceite:**
-- `concept_id` (ou equivalente) compartilhado no schema de dados entre
-  desafio de blocos e mini jogo do mesmo assunto — hoje o desafio de
-  blocos (`Challenge`/`Topic`) não tem esse campo ainda; MJ7 já emite
-  `concept_id` do LADO do mini jogo, mas falta o lado do desafio de
-  blocos pra cruzar de verdade.
-- Painel do professor (ou consulta futura) mostra os dois sinais lado a
+- [x] `concept_id` (ou equivalente) compartilhado no schema de dados entre
+  desafio de blocos e mini jogo do mesmo assunto.
+- [x] Painel do professor (ou consulta futura) mostra os dois sinais lado a
   lado pro mesmo aluno/conceito, sem exigir conhecimento técnico.
-- Nenhuma interpretação clínica derivada automaticamente da comparação —
+- [x] Nenhuma interpretação clínica derivada automaticamente da comparação —
   dado bruto, não diagnóstico.
 
-**Bloqueado por:** decisão de produto sobre onde `concept_id` vive no
-schema de `Challenge`/`Topic` (hoje o desafio de blocos não tem esse
-campo — precisa ser adicionado em conjunto, não só do lado do mini jogo).
+**Status: ✅ Implementado** (2026-08-24) — decisão de produto sobre onde
+`concept_id` vive resolvida: **`Topic.conceptId`** (varchar nullable,
+migration `AddConceptIdToTopics1787400200000`), espelhando
+`MiniGameLevel.conceptId` (MJ7) — nunca em `Challenge`, porque o conceito
+é do ASSUNTO (nível tópico), não de um desafio individual dentro da
+sequência Use→Modify→Create.
+
+- `apps/api/src/subjects/subjects.service.ts#findTopicByConceptId` —
+  lado "desafio de blocos", devolve `null` quando nenhum tópico usa o
+  `conceptId` ainda (estado normal hoje, nunca erro).
+- `apps/api/src/events/events.service.ts#findStudentsWithMiniGameEvent` —
+  equivalente de `findStudentsWithEvent` (blocos) pro lado do mini jogo,
+  usado pra derivar status `not_started`/`in_progress`/`completed` do
+  nível de mini jogo por aluno, mesmo vocabulário dos dois lados.
+- `MetricsTeacherService.getConceptComparison(classroomId, teacherId,
+  conceptId)` — reaproveita `computeProgressByChallenge`/
+  `getChallengeProgressForStudents` (motor 6.1) pro lado de blocos e o
+  método novo acima pro lado do mini jogo; mesma checagem de titularidade
+  de turma (`assertOwnClassroom`) das outras rotas de 6.3/6.4. Resposta
+  inclui `hasBlocksChallenge`/`hasMiniGame` explícitos (nunca inferidos de
+  array vazio) — hoje `hasBlocksChallenge: false` sempre, porque nenhum
+  tópico de blocos usa `conceptId: 'fractions_equal_parts'` ainda.
+- `GET /metrics/teacher/classrooms/:classroomId/concept-comparison
+  ?conceptId=` (`@Roles(Role.TEACHER)`, mesmo guard das outras rotas de
+  `MetricsTeacherController`).
+- Tela: `apps/web/src/routes/metrics/TeacherMetrics.tsx`, 3ª aba do
+  `SegmentedControl` ("Blocos × jogo") — tabela por aluno com uma coluna
+  por desafio/nível (ícone 🧩 pro desafio de blocos, 🎮 pro mini jogo,
+  `Badge` de status igual ao das outras abas). Quando `hasBlocksChallenge`
+  é `false` (situação atual), mostra um aviso descritivo acima da tabela
+  ("nenhum desafio de blocos deste assunto cadastrado ainda") e ainda
+  assim renderiza as colunas do mini jogo — nunca esconde o dado que
+  existe só porque o outro lado está vazio.
+- **Limitação conhecida, documentada de propósito:** a infraestrutura
+  está pronta e funcional, mas não há hoje nenhum tópico de blocos
+  cadastrado com `conceptId: 'fractions_equal_parts'` — a comparação "lado
+  a lado" só mostra dado real dos dois lados quando um tópico de blocos do
+  mesmo assunto (frações) for criado e receber esse `conceptId`. Isso é
+  uma decisão de conteúdo curricular (fora do escopo deste card), não uma
+  lacuna de código.
 
 **Bibliotecas sugeridas:** Nenhuma — modelagem de dados (PostgreSQL) no
 backend NestJS já previsto.

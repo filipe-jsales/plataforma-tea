@@ -150,6 +150,30 @@ describe('FractionsGamePage — nível Modify', () => {
   });
 });
 
+describe('FractionsGamePage — MJ3 (reabrir o roteiro sem perder o progresso)', () => {
+  it('reopening the briefing ("Ver roteiro") preserves the edited sequence and result, never resets to the preset', async () => {
+    renderGame('modify');
+    await dismissBriefing();
+
+    // Corrige o cartão errado e executa — chega num estado de sucesso.
+    const partsSelect = screen.getByRole('combobox', { name: /Quantas partes/ });
+    await userEvent.click(partsSelect);
+    await userEvent.click(await screen.findByRole('option', { name: '4' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Executar' }));
+    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+
+    // Reabre o roteiro (MJ3) e continua.
+    await userEvent.click(screen.getByRole('button', { name: /Ver roteiro/ }));
+    expect(await screen.findByRole('button', { name: 'Continuar' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    // O resultado da rodada e a sequência corrigida (4, não o preset com 3)
+    // continuam lá — nada foi resetado ao reabrir/fechar o roteiro.
+    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: /Quantas partes/ })).toHaveTextContent('4');
+  });
+});
+
 describe('FractionsGamePage — nível Create', () => {
   it('starts with an empty sequence and disables Executar until at least one card is added', async () => {
     renderGame('create');

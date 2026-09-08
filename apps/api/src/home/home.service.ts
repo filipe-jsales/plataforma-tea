@@ -4,10 +4,18 @@ import { EventCategory } from '../common/enums/event-category.enum';
 import { EventsService } from '../events/events.service';
 import { SchoolsService } from '../schools/schools.service';
 import { UsersService } from '../users/users.service';
+import { computeAmongMostActiveThisWeek, startOfCurrentWeek } from './class-comparison';
 
+// 7.3 — só existe quando o professor ativou `Classroom.comparisonEnabled`
+// (nasce OFF, regra não-negociável 5) E há ao menos 1 colega ativo pra
+// comparar contra — `null` cobre os dois casos de "não mostrar nada" sem o
+// frontend precisar adivinhar qual foi. Sempre agregado/anônimo:
+// `amongMostActiveThisWeek` nunca vem acompanhado de nome/avatar/posição de
+// outro aluno (AC de 7.3).
 export interface StudentHome {
   continueChallenge: { id: string; title: string } | null;
   progress: { completedChallengesCount: number };
+  classComparison: { amongMostActiveThisWeek: boolean } | null;
 }
 
 export interface TeacherHomeClassroom {
@@ -15,6 +23,9 @@ export interface TeacherHomeClassroom {
   name: string;
   joinCode: string;
   activeStudentsToday: number;
+  // 4.3/7.3 — estado atual do toggle "comparação entre alunos" desta turma,
+  // pra `TeacherMetrics` renderizar o controle sem uma 2ª chamada de rede.
+  comparisonEnabled: boolean;
 }
 
 export interface AdminHome {
@@ -39,19 +50,22 @@ export class HomeService {
 
   // Regra não-negociável 5 / RQ4 ansiedade social: no máximo as duas ações
   // já definidas ("continuar" e "progresso"), nunca número comparativo a
-  // outros alunos.
-  async getStudentHome(studentPseudoId: string): Promise<StudentHome> {
-    const [challenge, completedChallengesCount] = await Promise.all([
+  // outros alunos — salvo `classComparison`, e mesmo essa é sempre agregada/
+  // anônima e só existe com ativação explícita do professor (7.3).
+  async getStudentHome(studentId: string, studentPseudoId: string): Promise<StudentHome> {
+    const [challenge, completedChallengesCount, classComparison] = await Promise.all([
       this.challengesService.findFirst(),
       this.eventsService.countByStudentCategoryType(
         studentPseudoId,
         EventCategory.CURRICULAR,
         CHALLENGE_COMPLETED_EVENT_TYPE,
       ),
+      this.computeClassComparison(studentId, studentPseudoId),
     ]);
     return {
       continueChallenge: challenge ? { id: challenge.id, title: challenge.title } : null,
       progress: { completedChallengesCount },
+      classComparison,
     };
   }
 
@@ -74,9 +88,43 @@ export class HomeService {
           name: classroom.name,
           joinCode: classroom.joinCode,
           activeStudentsToday,
+          comparisonEnabled: classroom.comparisonEnabled,
         };
       }),
     );
+  }
+
+  // 7.3 — `null` quando: o professor nunca ativou a comparação pra esta
+  // turma, o aluno não tem matrícula ativa, ou não há nenhum colega ativo
+  // pra comparar contra (turma de 1 só) — os três casos renderizam "nada"
+  // pro aluno, nunca um erro/estado quebrado.
+  private async computeClassComparison(
+    studentId: string,
+    studentPseudoId: string,
+  ): Promise<{ amongMostActiveThisWeek: boolean } | null> {
+    const enrollment = await this.schoolsService.findSingleActiveEnrollment(studentId);
+    if (!enrollment) {
+      return null;
+    }
+    const classroom = await this.schoolsService.findClassroomById(enrollment.classroomId);
+    if (!classroom || !classroom.comparisonEnabled) {
+      return null;
+    }
+
+    const classmates = await this.schoolsService.findActiveStudentsInClassroom(classroom.id);
+    const pseudoIds = classmates.map((classmate) => classmate.student.pseudonymId);
+    if (pseudoIds.length < 2) {
+      return null;
+    }
+
+    const since = startOfCurrentWeek(new Date());
+    const activityByStudent = await this.eventsService.countEventsByStudentsSince(pseudoIds, since);
+    const classroomActivityCounts = pseudoIds.map((id) => activityByStudent.get(id) ?? 0);
+    const ownActivityCount = activityByStudent.get(studentPseudoId) ?? 0;
+
+    return {
+      amongMostActiveThisWeek: computeAmongMostActiveThisWeek(classroomActivityCounts, ownActivityCount),
+    };
   }
 
   // Só contagens agregadas — nunca dado no nível de aluno individual nesta

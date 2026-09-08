@@ -37,6 +37,8 @@ const studentUser = {
   createdAt: '2026-01-02T00:00:00Z',
 };
 
+const activeStudentUser = { ...studentUser, id: 'u3', displayName: 'Aluno Dois', active: true };
+
 beforeEach(() => {
   mockedGet.mockReset();
   mockedPost.mockReset();
@@ -183,5 +185,44 @@ describe('AdminUsers', () => {
     expect(screen.getByText('Mãe')).toBeInTheDocument();
     expect(screen.getByText('11999990000')).toBeInTheDocument();
     expect(screen.getByText('Prof. Ana')).toBeInTheDocument();
+  });
+
+  it('1.3 — "Recuperar acesso" only appears for ACTIVE student rows (no credential to reset otherwise)', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [studentUser, activeStudentUser], total: 2, page: 1, pageSize: 20 });
+
+    renderPage();
+    await screen.findByText('Aluno Dois');
+
+    const rows = screen.getAllByRole('row');
+    const pendingRow = rows.find((row) => within(row).queryByText('Aluno Um'));
+    const activeRow = rows.find((row) => within(row).queryByText('Aluno Dois'));
+    expect(pendingRow && within(pendingRow).queryByRole('button', { name: /recuperar acesso/i })).toBeFalsy();
+    expect(activeRow && within(activeRow).getByRole('button', { name: /recuperar acesso/i })).toBeTruthy();
+  });
+
+  it('1.3 — resets the credential via POST /teacher/students/:id/reset-credential and shows the new sequence', async () => {
+    mockedGet.mockResolvedValueOnce({ items: [activeStudentUser], total: 1, page: 1, pageSize: 20 });
+    mockedPost.mockResolvedValueOnce({
+      student: { id: 'u3', displayName: 'Aluno Dois', pseudonymId: 'p3' },
+      classroom: { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-1' },
+      credential: {
+        avatar: { label: 'Gato', assetRef: 'avatar-cat' },
+        loginImages: [
+          { label: 'Sol', assetRef: 'sol.svg' },
+          { label: 'Lua', assetRef: 'lua.svg' },
+          { label: 'Estrela', assetRef: 'estrela.svg' },
+        ],
+      },
+    });
+
+    renderPage();
+    await screen.findByText('Aluno Dois');
+    await userEvent.click(screen.getByRole('button', { name: /recuperar acesso/i }));
+
+    const dialog = await screen.findByRole('dialog', { name: /recuperar acesso — aluno dois/i });
+    await userEvent.click(within(dialog).getByRole('button', { name: /gerar nova credencial/i }));
+
+    expect(mockedPost).toHaveBeenCalledWith('/teacher/students/u3/reset-credential', {});
+    expect(await within(dialog).findByText(/nova credencial gerada/i)).toBeInTheDocument();
   });
 });

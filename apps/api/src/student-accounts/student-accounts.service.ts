@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { IllustrationKind } from '../common/enums/illustration-kind.enum';
 import { Role } from '../common/enums/role.enum';
@@ -51,6 +52,7 @@ export class StudentAccountsService {
     private readonly illustrationsService: IllustrationsService,
     private readonly eventsService: EventsService,
     private readonly guardianConsentsService: GuardianConsentsService,
+    private readonly auditService: AuditService,
   ) {}
 
   // Passo 1 (A2, AC1) — a etapa de responsável legal é obrigatória DEPOIS
@@ -206,6 +208,89 @@ export class StudentAccountsService {
       studentId,
       loginImages.map((image) => image.id),
     );
+
+    return {
+      student: {
+        id: student.id,
+        displayName: student.displayName,
+        pseudonymId: student.pseudonymId,
+      },
+      classroom: {
+        id: classroom.id,
+        name: classroom.name,
+        joinCode: classroom.joinCode,
+      },
+      credential: {
+        avatar: {
+          label: student.avatar.label,
+          assetRef: student.avatar.assetRef,
+        },
+        loginImages: loginImages.map((image) => ({
+          label: image.label,
+          assetRef: image.assetRef,
+        })),
+      },
+    };
+  }
+
+  // 1.3 — "recuperação de acesso via professor/admin": o aluno esqueceu a
+  // sequência de login (credencial JÁ ativa, ao contrário de
+  // activateCredential/A2, que libera a credencial pela primeira vez).
+  // Nunca autoatendimento — aluno não tem e-mail/senha pra provar
+  // identidade sozinho, então só professor titular da turma ou admin
+  // aciona isto (mesma restrição de ownership de createPending). Gera uma
+  // sequência NOVA (invalida a antiga na hora) e registra em
+  // AdminActionLog (A4), nunca em interaction_events — é telemetria de
+  // ação de staff sobre outro usuário, não interação do aluno.
+  async resetCredential(
+    studentId: string,
+    actor: { id: string; role: Role },
+  ): Promise<StudentAccountCredential> {
+    const student = await this.usersService.findById(studentId);
+    if (!student || student.role !== Role.STUDENT) {
+      throw new NotFoundException('Aluno não encontrado.');
+    }
+    if (!student.active) {
+      throw new BadRequestException(
+        'Este aluno ainda não tem uma credencial ativa — use o fluxo de ativação (A2) em vez de recuperação.',
+      );
+    }
+
+    const enrollment =
+      await this.schoolsService.findSingleActiveEnrollment(studentId);
+    if (!enrollment) {
+      throw new NotFoundException('Aluno sem matrícula ativa.');
+    }
+    const classroom = await this.schoolsService.findClassroomById(
+      enrollment.classroomId,
+    );
+    if (!classroom) {
+      throw new NotFoundException('Turma não encontrada.');
+    }
+    if (actor.role === Role.TEACHER && classroom.teacherId !== actor.id) {
+      throw new ForbiddenException(
+        'Você não é o professor titular desta turma.',
+      );
+    }
+    if (!student.avatar) {
+      throw new BadRequestException('Aluno sem avatar definido.');
+    }
+
+    const loginImages =
+      await this.illustrationsService.pickRandomLoginImageSequence();
+    await this.usersService.resetLoginImageSequence(
+      studentId,
+      loginImages.map((image) => image.id),
+    );
+
+    await this.auditService.recordUserAction({
+      actorUserId: actor.id,
+      actorRole: actor.role,
+      actionType: 'reset_student_credential',
+      targetUserId: studentId,
+      targetRole: Role.STUDENT,
+      metadata: { class_id: enrollment.classroomId },
+    });
 
     return {
       student: {
