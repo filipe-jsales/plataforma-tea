@@ -10,6 +10,9 @@ import './Home.css';
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
   progress: { completedChallengesCount: number };
+  // 7.3 — `null` sempre que a turma não ativou a comparação (padrão) ou não
+  // há colega pra comparar contra. Nunca nome/rank/número de outro aluno.
+  classComparison: { amongMostActiveThisWeek: boolean } | null;
 }
 
 // 2.1 — home do aluno. No máximo 2 ações principais (AC1), nenhum número
@@ -30,8 +33,21 @@ export function StudentHome() {
       type: 'home_viewed',
       payload: { role: user.role },
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // 7.3 — loga uma vez quando o dado chega, nunca a cada clique em "Meu
+  // progresso" (o AC é sobre o dado estar/não estar disponível, não sobre
+  // o aluno ter revelado a seção).
+  useEffect(() => {
+    if (!user || !data) return;
+    logEvent({
+      studentPseudoId: user.pseudonymId,
+      category: 'RD-I',
+      type: 'class_comparison_shown',
+      payload: { shown: data.classComparison !== null },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   function handleLogout() {
     if (!user) return;
@@ -78,6 +94,15 @@ export function StudentHome() {
       {showProgress && data && (
         <p className="home__progress-detail">
           Você concluiu {data.progress.completedChallengesCount} desafio(s) até agora.
+        </p>
+      )}
+
+      {/* 7.3 — só aparece quando o PROFESSOR ativou a comparação pra esta
+          turma (padrão: desligado). Sempre agregado/anônimo — nunca nome,
+          avatar ou posição de um colega específico (regra não-negociável 5). */}
+      {showProgress && data?.classComparison?.amongMostActiveThisWeek && (
+        <p className="home__progress-detail home__progress-comparison">
+          Você está entre os alunos que mais praticaram esta semana. 🎉
         </p>
       )}
     </main>

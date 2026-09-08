@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
 import { AdminActionLog } from './entities/admin-action-log.entity';
+import { ClassComparisonSettingLog } from './entities/class-comparison-setting-log.entity';
 import { ExportAuditLog } from './entities/export-audit-log.entity';
 import { AuditService } from './audit.service';
 
@@ -8,6 +9,9 @@ describe('AuditService', () => {
   let service: AuditService;
   let repository: jest.Mocked<Repository<ExportAuditLog>>;
   let adminActionLogRepository: jest.Mocked<Repository<AdminActionLog>>;
+  let classComparisonSettingLogRepository: jest.Mocked<
+    Repository<ClassComparisonSettingLog>
+  >;
 
   beforeEach(() => {
     repository = {
@@ -18,8 +22,16 @@ describe('AuditService', () => {
       create: jest.fn(),
       save: jest.fn(),
     } as unknown as jest.Mocked<Repository<AdminActionLog>>;
+    classComparisonSettingLogRepository = {
+      create: jest.fn(),
+      save: jest.fn(),
+    } as unknown as jest.Mocked<Repository<ClassComparisonSettingLog>>;
 
-    service = new AuditService(repository, adminActionLogRepository);
+    service = new AuditService(
+      repository,
+      adminActionLogRepository,
+      classComparisonSettingLogRepository,
+    );
   });
 
   describe('recordExport', () => {
@@ -84,6 +96,32 @@ describe('AuditService', () => {
         metadata: {},
       });
       expect(adminActionLogRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('recordClassComparisonSettingChange', () => {
+    it('4.3/7.3 — persists who toggled comparison, for which classroom, on or off', async () => {
+      classComparisonSettingLogRepository.create.mockImplementation(
+        (entity) => entity as ClassComparisonSettingLog,
+      );
+      classComparisonSettingLogRepository.save.mockImplementation(
+        async (entity) => entity as ClassComparisonSettingLog,
+      );
+
+      await service.recordClassComparisonSettingChange({
+        classroomId: 'classroom-1',
+        enabled: true,
+        changedByUserId: 'teacher-1',
+        changedByRole: Role.TEACHER,
+      });
+
+      expect(classComparisonSettingLogRepository.create).toHaveBeenCalledWith({
+        classroomId: 'classroom-1',
+        enabled: true,
+        changedByUserId: 'teacher-1',
+        changedByRole: Role.TEACHER,
+      });
+      expect(classComparisonSettingLogRepository.save).toHaveBeenCalled();
     });
   });
 });

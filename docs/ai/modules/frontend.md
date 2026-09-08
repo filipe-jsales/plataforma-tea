@@ -1448,6 +1448,45 @@ com `aria-selected` calculado à mão):
 **Sem as restrições sensoriais do aluno** (`.staff-theme`, 3.11) — mesmo
 racional de `AdminMetrics`/`StaffLogin`.
 
+### Toggle "comparação entre alunos" (4.3/7.3)
+
+Fica dentro de `<section className="teacher-metrics__detail">`, **fora**
+das 3 abas de `SegmentedControl` acima (é configuração da turma, não uma
+visão de dado) — sempre visível assim que uma turma é selecionada, antes
+das visões "Por aluno"/"Turma toda"/"Blocos × jogo".
+
+- **`ToggleSwitch`** (`components/ui/`) lê `selectedClassroom.
+  comparisonEnabled`, campo que já vem em `GET /home/teacher` (mesma
+  chamada que a tela já fazia pra listar turmas, 2.1 — nenhuma rota nova só
+  pra ler o estado do toggle).
+- **Ligar exige confirmação** (AC de 7.3: "evita ativação acidental") — um
+  `Dialog` (`components/ui/`) explica em linguagem simples o que muda na
+  experiência do aluno antes de qualquer requisição sair; só o clique em
+  "Ativar comparação" dentro do dialog dispara o `PATCH`.
+- **Desligar é imediato**, sem confirmação — só remove um elemento da tela
+  do aluno, nunca introduz um novo, então não tem o risco que a confirmação
+  existe pra mitigar.
+- **`PATCH /teacher/classrooms/:id/comparison-setting`** (`{ enabled }`) —
+  no sucesso, `setClassrooms` atualiza só o campo `comparisonEnabled` da
+  turma selecionada no estado local (`current?.map(...)`), sem refazer
+  nenhuma das buscas de métrica já carregadas — o toggle é independente do
+  resto do painel.
+- **Nunca mostra nome de aluno** — o texto de apoio abaixo do toggle e a
+  descrição do `Dialog` são só sobre o QUE muda (uma mensagem agregada
+  possível na tela do aluno), nunca uma prévia com dado real de um aluno
+  específico.
+
+Do lado do aluno, ver "Comparação opcional entre alunos (4.3/7.3)" em
+`backend.md` pra como `StudentHome` consome `classComparison` — a mensagem
+("Você está entre os alunos que mais praticaram esta semana.") só aparece
+dentro do bloco "Meu progresso" já existente (2.1), nunca como elemento
+próprio/novo na home, e nunca acompanhada de número. Um evento dedicado
+`class_comparison_shown` (RD-I, distinto de `home_viewed`) é emitido uma
+vez quando o dado da home chega, com `{ shown: boolean }` — `true` só
+quando `classComparison` não é `null` (turma ativou E há colega suficiente
+pra comparar), nunca o valor de `amongMostActiveThisWeek` em si (isso já
+fica visível na própria tela quando `true`, não precisa duplicar no log).
+
 ## Relatório de profundidade por desafio (`ChallengeReport`, 6.5)
 
 `/admin/reports` (`RequireAuth roles={['admin']}`), link a partir de

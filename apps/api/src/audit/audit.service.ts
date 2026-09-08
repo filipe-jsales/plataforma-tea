@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
 import { AdminActionLog } from './entities/admin-action-log.entity';
+import { ClassComparisonSettingLog } from './entities/class-comparison-setting-log.entity';
 import { ExportAuditLog } from './entities/export-audit-log.entity';
 
 export interface RecordExportParams {
@@ -20,6 +21,13 @@ export interface RecordUserActionParams {
   metadata?: Record<string, unknown>;
 }
 
+export interface RecordClassComparisonSettingChangeParams {
+  classroomId: string;
+  enabled: boolean;
+  changedByUserId: string;
+  changedByRole: Role;
+}
+
 // 6.6 — grava a auditoria de exportação. Módulo próprio (não dentro de
 // MetricsModule) porque telemetria de staff é uma preocupação transversal
 // — qualquer feature futura de admin/professor que precise do mesmo padrão
@@ -32,6 +40,8 @@ export class AuditService {
     private readonly exportAuditLogRepository: Repository<ExportAuditLog>,
     @InjectRepository(AdminActionLog)
     private readonly adminActionLogRepository: Repository<AdminActionLog>,
+    @InjectRepository(ClassComparisonSettingLog)
+    private readonly classComparisonSettingLogRepository: Repository<ClassComparisonSettingLog>,
   ) {}
 
   recordExport(params: RecordExportParams): Promise<ExportAuditLog> {
@@ -56,5 +66,20 @@ export class AuditService {
       metadata: params.metadata ?? {},
     });
     return this.adminActionLogRepository.save(log);
+  }
+
+  // 4.3/7.3 — "quem, quando, ligou/desligou" a comparação entre alunos de
+  // uma turma. Ver nota de pesquisa na entidade sobre por que isto não é um
+  // evento RD-I em `interaction_events`.
+  recordClassComparisonSettingChange(
+    params: RecordClassComparisonSettingChangeParams,
+  ): Promise<ClassComparisonSettingLog> {
+    const log = this.classComparisonSettingLogRepository.create({
+      classroomId: params.classroomId,
+      enabled: params.enabled,
+      changedByUserId: params.changedByUserId,
+      changedByRole: params.changedByRole,
+    });
+    return this.classComparisonSettingLogRepository.save(log);
   }
 }

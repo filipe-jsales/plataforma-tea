@@ -54,6 +54,14 @@ export class Classroom extends SoftDeletableEntity {
   @CreateDateColumn()
   createdAt: Date;
 
+  // 4.3/7.3 — toggle explícito do professor pra habilitar comparação
+  // agregada/anônima entre alunos na tela "Meu progresso" (regra
+  // não-negociável 5). Nasce `false` em toda turma (DEFAULT no banco cobre
+  // turma nova e já existente) — só liga/desliga via
+  // `ClassroomSettingsService`, nunca direto por CRUD administrativo.
+  @Column({ type: 'boolean', default: false })
+  comparisonEnabled: boolean;
+
   @BeforeInsert()
   generateJoinCode(): void {
     if (!this.joinCode) {

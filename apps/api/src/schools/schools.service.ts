@@ -59,6 +59,18 @@ export class SchoolsService {
     return this.classroomsRepository.find({ where: { teacherId } });
   }
 
+  // 4.3/7.3 — liga/desliga a comparação agregada/anônima entre alunos.
+  // `update` direto (não `findOne`+`save`), mesmo racional de
+  // `setClassroomActive`: é só este único campo, sem outro estado derivado
+  // pra recalcular.
+  async setClassroomComparisonEnabled(
+    id: string,
+    enabled: boolean,
+  ): Promise<Classroom | null> {
+    await this.classroomsRepository.update(id, { comparisonEnabled: enabled });
+    return this.findClassroomById(id);
+  }
+
   countSchools(): Promise<number> {
     return this.schoolsRepository.count();
   }

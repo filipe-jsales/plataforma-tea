@@ -2167,6 +2167,97 @@ ganhou um teste mínimo confirmando que "Sair" limpa a sessão e navega pro
 login — sem duplicar cobertura entre os 3 (a lógica em si já está
 integralmente coberta por `logout.spec.ts`).
 
+## Comparação opcional entre alunos (4.3/7.3)
+
+Toggle explícito do professor pra habilitar, por turma, uma comparação
+agregada/anônima na tela "Meu progresso" do aluno. Regra não-negociável 5
+("sem ranqueamento público... salvo ativação explícita pelo professor") e
+RQ4 — ansiedade social/RSD (13,04%) — a mitigação definida é literalmente
+opt-in explícito, nunca padrão.
+
+- **`Classroom.comparisonEnabled`** (migration `AddClassComparisonSetting`)
+  — nasce `false` em toda turma, nova ou já existente (DEFAULT no banco
+  cobre o backfill). Só muda via `ClassroomSettingsService`, nunca por CRUD
+  administrativo direto de `Classroom`.
+- **`ClassroomSettingsModule`** — módulo pequeno e dedicado (mesma
+  granularidade de `ChallengeValidationModule`): não é sobre matrícula
+  (`EnrollmentsModule`) nem sobre métrica (`MetricsModule`), é configuração
+  de turma. `PATCH /teacher/classrooms/:classroomId/comparison-setting`
+  (`{ enabled: boolean }`), mesmo prefixo de rota que
+  `ClassroomRosterController` (`EnrollmentsModule`) — sufixo literal
+  diferente, sem conflito de rota dinâmica. Só professor titular da turma
+  ou admin (`ClassroomSettingsService.setComparisonEnabled`, mesmo racional
+  de `MetricsTeacherService.assertOwnClassroom`/`EnrollmentsService.
+  assertCanManageClassroom` — reimplementado aqui porque nenhum dos dois
+  serviços é dependência natural deste módulo pequeno).
+- **`ClassComparisonSettingLog`** (`AuditModule`, tabela
+  `class_comparison_setting_logs`) — "quem, quando, ligou/desligou",
+  gravado a cada `PATCH` bem-sucedido. Deliberadamente FORA de
+  `interaction_events`, mesmo racional de `AdminActionLog`/
+  `ExportAuditLog`: é ação de PROFESSOR sobre a turma, não uma interação de
+  aluno (`interaction_events.studentPseudoId` é NOT NULL por design — ver
+  "Padrão: eventos RD-* são escopados ao aluno" acima). O card da feature
+  rotula o evento como `class_comparison_setting_changed (RD-I)`; RD-I não
+  se aplica aqui (é sobre interação DE ALUNO) — esta feature segue o
+  precedente já estabelecido (log de auditoria dedicado) em vez do rótulo
+  literal do card.
+- **`GET /home/teacher`** (`HomeService.getTeacherHome`) devolve
+  `comparisonEnabled` por turma — o professor lê o estado atual do toggle
+  sem uma 2ª chamada de rede; `TeacherMetrics` (frontend) atualiza esse
+  campo localmente após um `PATCH` bem-sucedido, também sem refazer a
+  busca.
+- **`GET /home/student`** (`HomeService.getStudentHome`) ganha
+  `classComparison: { amongMostActiveThisWeek: boolean } | null`. `null`
+  cobre TODOS os casos de "não mostrar nada" (turma nunca ativou, aluno sem
+  matrícula ativa, turma com só 1 aluno ativo — nada pra comparar contra)
+  sem o frontend precisar adivinhar qual foi. `computeClassComparison`
+  (privado) resolve turma via `SchoolsService.findSingleActiveEnrollment` +
+  `findClassroomById`, e só segue adiante se `comparisonEnabled` e há ≥ 2
+  colegas ativos.
+- **`amongMostActiveThisWeek`** — nunca um número/rank/nome de colega (AC
+  de 7.3: "sempre agregada e anônima"). `EventsService.
+  countEventsByStudentsSince(pseudoIds, since)` conta TODO evento RD-* por
+  aluno desde `since` (proxy de engajamento RD-E, não de acerto/desempenho
+  — mesmo racional neutro de `countDistinctStudentsActiveSince`).
+  `class-comparison.ts` (função pura, testada isoladamente):
+  - `startOfCurrentWeek(reference)` — segunda-feira 00:00 da semana de
+    `reference`, fuso local do servidor (mesmo racional de `startOfToday`
+    já usado em `HomeService`/`MetricsTeacherService`, sem UTC explícito).
+  - `computeAmongMostActiveThisWeek(classroomActivityCounts,
+    ownActivityCount)` — "entre os que mais praticaram" = metade de cima da
+    turma por contagem de atividade, empate a favor do aluno (`>=`
+    threshold, não `>` estrito — numa turma pequena/homogênea, ninguém
+    ficaria "entre os que mais praticaram" só por causa de um empate).
+    Nunca `true` se `ownActivityCount === 0` nem se a turma inteira tem 0
+    atividade (não há prática nenhuma pra estar "entre").
+- **Confirmação antes de ativar (AC de 7.3)** — responsabilidade do
+  FRONTEND (`TeacherMetrics.tsx`, ver frontend.md): `Dialog` explicando o
+  que muda na experiência do aluno, só exigido pra LIGAR (desligar é
+  imediato, sem confirmação — só remove um elemento da tela do aluno, não
+  introduz um novo).
+- **"Sem precisar recarregar sessão" (AC de 7.3)** — não existe push/
+  websocket nesta plataforma; o que garante isso na prática é
+  `StudentHome` já refazer `GET /home/student` a cada visita à tela (não
+  há cache local do `classComparison`), então desligar no painel do
+  professor reflete no aluno na próxima vez que a home carrega, sem exigir
+  logout/login.
+
+### Testes
+
+`classroom-settings.service.spec.ts` cobre: liga com sucesso + audita quem
+mudou, `ForbiddenException` pra professor mexendo em turma alheia, admin
+sem essa restrição, `NotFoundException` pra turma inexistente.
+`class-comparison.spec.ts` (função pura) cobre zero atividade própria,
+turma inteira sem atividade, aluno no topo/na base da metade, empate a
+favor do aluno, turma de 1 só, e os dois lados de `startOfCurrentWeek`
+(meio de semana, domingo). `home.service.spec.ts` ganhou os 4 casos de
+`classComparison` (sem matrícula, sem ativação, sem colega, e o caso
+positivo — com asserção explícita de que o pseudônimo do colega nunca
+aparece na resposta serializada). `events.service.spec.ts` ganhou
+`countEventsByStudentsSince` (short-circuit com lista vazia + contagem
+agrupada). `audit.service.spec.ts` ganhou
+`recordClassComparisonSettingChange`.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Transporte de e-mail de verdade pro link de definição de senha de 1.4

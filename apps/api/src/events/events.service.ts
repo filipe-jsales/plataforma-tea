@@ -72,6 +72,32 @@ export class EventsService {
     return Number(raw?.count ?? 0);
   }
 
+  // 7.3 — comparação agregada/anônima entre alunos ("você está entre os
+  // alunos que mais praticaram esta semana"), só usada quando o professor
+  // ativa `Classroom.comparisonEnabled` explicitamente. Conta TODO evento
+  // RD-* como proxy de prática (RD-E, engajamento-proxy) — não é
+  // comparação de acerto/desempenho, só volume de atividade, mesmo
+  // racional neutro de `countDistinctStudentsActiveSince`. `HomeService` é
+  // quem decide, a partir do Map devolvido, quem entra no grupo "mais
+  // praticou" — esta query nunca ordena/ranqueia sozinha.
+  async countEventsByStudentsSince(
+    pseudoIds: string[],
+    since: Date,
+  ): Promise<Map<string, number>> {
+    if (pseudoIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.eventsRepository
+      .createQueryBuilder('event')
+      .select('event.studentPseudoId', 'studentPseudoId')
+      .addSelect('COUNT(*)', 'count')
+      .where('event.studentPseudoId IN (:...pseudoIds)', { pseudoIds })
+      .andWhere('event.createdAt >= :since', { since })
+      .groupBy('event.studentPseudoId')
+      .getRawMany<{ studentPseudoId: string; count: string }>();
+    return new Map(rows.map((row) => [row.studentPseudoId, Number(row.count)]));
+  }
+
   // Home do aluno (2.1): "meu progresso" — contagem de desafios concluídos
   // pelo próprio aluno, nunca comparado a outros alunos.
   countByStudentCategoryType(

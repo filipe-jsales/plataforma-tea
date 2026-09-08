@@ -17,12 +17,15 @@ describe('HomeService', () => {
     eventsService = {
       countByStudentCategoryType: jest.fn(),
       countDistinctStudentsActiveSince: jest.fn(),
+      countEventsByStudentsSince: jest.fn(),
     } as unknown as jest.Mocked<EventsService>;
     schoolsService = {
       findClassroomsByTeacher: jest.fn(),
       findActiveStudentsInClassroom: jest.fn(),
       countSchools: jest.fn(),
       countClassrooms: jest.fn(),
+      findSingleActiveEnrollment: jest.fn().mockResolvedValue(null),
+      findClassroomById: jest.fn(),
     } as unknown as jest.Mocked<SchoolsService>;
     usersService = { countAll: jest.fn() } as unknown as jest.Mocked<UsersService>;
 
@@ -34,11 +37,12 @@ describe('HomeService', () => {
       challengesService.findFirst.mockResolvedValue(null);
       eventsService.countByStudentCategoryType.mockResolvedValue(0);
 
-      const result = await service.getStudentHome('pseudo-1');
+      const result = await service.getStudentHome('user-1', 'pseudo-1');
 
       expect(result).toEqual({
         continueChallenge: null,
         progress: { completedChallengesCount: 0 },
+        classComparison: null,
       });
     });
 
@@ -46,7 +50,7 @@ describe('HomeService', () => {
       challengesService.findFirst.mockResolvedValue({ id: 'c1', title: 'Desafio 1' } as any);
       eventsService.countByStudentCategoryType.mockResolvedValue(4);
 
-      const result = await service.getStudentHome('pseudo-1');
+      const result = await service.getStudentHome('user-1', 'pseudo-1');
 
       expect(eventsService.countByStudentCategoryType).toHaveBeenCalledWith(
         'pseudo-1',
@@ -56,6 +60,80 @@ describe('HomeService', () => {
       expect(result).toEqual({
         continueChallenge: { id: 'c1', title: 'Desafio 1' },
         progress: { completedChallengesCount: 4 },
+        classComparison: null,
+      });
+    });
+
+    describe('classComparison (7.3)', () => {
+      beforeEach(() => {
+        challengesService.findFirst.mockResolvedValue(null);
+        eventsService.countByStudentCategoryType.mockResolvedValue(0);
+      });
+
+      it('is null when the student has no active enrollment', async () => {
+        schoolsService.findSingleActiveEnrollment.mockResolvedValue(null);
+
+        const result = await service.getStudentHome('user-1', 'pseudo-1');
+
+        expect(result.classComparison).toBeNull();
+        expect(schoolsService.findClassroomById).not.toHaveBeenCalled();
+      });
+
+      it('is null when the classroom never had comparison activated by the teacher (default off)', async () => {
+        schoolsService.findSingleActiveEnrollment.mockResolvedValue({
+          classroomId: 'classroom-1',
+        } as any);
+        schoolsService.findClassroomById.mockResolvedValue({
+          id: 'classroom-1',
+          comparisonEnabled: false,
+        } as any);
+
+        const result = await service.getStudentHome('user-1', 'pseudo-1');
+
+        expect(result.classComparison).toBeNull();
+      });
+
+      it('is null when there is no classmate to compare against, even with comparison enabled', async () => {
+        schoolsService.findSingleActiveEnrollment.mockResolvedValue({
+          classroomId: 'classroom-1',
+        } as any);
+        schoolsService.findClassroomById.mockResolvedValue({
+          id: 'classroom-1',
+          comparisonEnabled: true,
+        } as any);
+        schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
+          { student: { pseudonymId: 'pseudo-1' } },
+        ] as any);
+
+        const result = await service.getStudentHome('user-1', 'pseudo-1');
+
+        expect(result.classComparison).toBeNull();
+        expect(eventsService.countEventsByStudentsSince).not.toHaveBeenCalled();
+      });
+
+      it('returns an aggregate/anonymous flag, never a name/rank/number of a classmate', async () => {
+        schoolsService.findSingleActiveEnrollment.mockResolvedValue({
+          classroomId: 'classroom-1',
+        } as any);
+        schoolsService.findClassroomById.mockResolvedValue({
+          id: 'classroom-1',
+          comparisonEnabled: true,
+        } as any);
+        schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
+          { student: { pseudonymId: 'pseudo-1' } },
+          { student: { pseudonymId: 'pseudo-2' } },
+        ] as any);
+        eventsService.countEventsByStudentsSince.mockResolvedValue(
+          new Map([
+            ['pseudo-1', 10],
+            ['pseudo-2', 2],
+          ]),
+        );
+
+        const result = await service.getStudentHome('user-1', 'pseudo-1');
+
+        expect(result.classComparison).toEqual({ amongMostActiveThisWeek: true });
+        expect(JSON.stringify(result)).not.toContain('pseudo-2');
       });
     });
   });
@@ -63,7 +141,7 @@ describe('HomeService', () => {
   describe('getTeacherHome', () => {
     it('never returns which students were active, only an aggregate count', async () => {
       schoolsService.findClassroomsByTeacher.mockResolvedValue([
-        { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-7' } as any,
+        { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-7', comparisonEnabled: false } as any,
       ]);
       schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
         { student: { pseudonymId: 'p1' } },
@@ -74,14 +152,20 @@ describe('HomeService', () => {
       const result = await service.getTeacherHome('teacher-1');
 
       expect(result).toEqual([
-        { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-7', activeStudentsToday: 2 },
+        {
+          id: 'classroom-1',
+          name: 'Turma A',
+          joinCode: 'AZUL-7',
+          activeStudentsToday: 2,
+          comparisonEnabled: false,
+        },
       ]);
       expect(JSON.stringify(result)).not.toContain('p1');
     });
 
     it('passes the pseudonym ids of the classroom roster, not user ids', async () => {
       schoolsService.findClassroomsByTeacher.mockResolvedValue([
-        { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-7' } as any,
+        { id: 'classroom-1', name: 'Turma A', joinCode: 'AZUL-7', comparisonEnabled: false } as any,
       ]);
       schoolsService.findActiveStudentsInClassroom.mockResolvedValue([
         { student: { pseudonymId: 'p1' } },

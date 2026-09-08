@@ -23,7 +23,11 @@ const studentUser = {
 };
 
 beforeEach(() => {
-  mockedGet.mockReset().mockResolvedValue({ continueChallenge: null, progress: { completedChallengesCount: 0 } });
+  mockedGet.mockReset().mockResolvedValue({
+    continueChallenge: null,
+    progress: { completedChallengesCount: 0 },
+    classComparison: null,
+  });
   useAuthStore.setState({ token: 'token', user: studentUser });
 });
 
@@ -62,5 +66,46 @@ describe('StudentHome — sensory settings link (3.9)', () => {
 
     const settingsLink = await screen.findByRole('link', { name: /configurações/i });
     expect(settingsLink).toHaveAttribute('href', '/settings/sensory');
+  });
+});
+
+describe('StudentHome — class comparison (7.3)', () => {
+  it('never shows a comparison when the teacher never enabled it (classComparison: null)', async () => {
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: /meu progresso/i }));
+
+    expect(screen.queryByText(/entre os alunos que mais praticaram/i)).not.toBeInTheDocument();
+  });
+
+  it('shows an aggregate, anonymous message when enabled and the student is among the most active', async () => {
+    mockedGet.mockReset().mockResolvedValue({
+      continueChallenge: null,
+      progress: { completedChallengesCount: 0 },
+      classComparison: { amongMostActiveThisWeek: true },
+    });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: /meu progresso/i }));
+
+    const comparison = await screen.findByText(/entre os alunos que mais praticaram/i);
+    expect(comparison).toBeInTheDocument();
+    // Never a name, avatar, or a colleague's number — text only.
+    expect(comparison.textContent).not.toMatch(/\d/);
+  });
+
+  it('never shows the comparison text when the student is not among the most active', async () => {
+    mockedGet.mockReset().mockResolvedValue({
+      continueChallenge: null,
+      progress: { completedChallengesCount: 0 },
+      classComparison: { amongMostActiveThisWeek: false },
+    });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByRole('button', { name: /meu progresso/i }));
+
+    expect(screen.queryByText(/entre os alunos que mais praticaram/i)).not.toBeInTheDocument();
   });
 });

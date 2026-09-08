@@ -6,13 +6,15 @@ import { apiClient } from '../../lib/apiClient';
 import { TeacherMetrics } from './TeacherMetrics';
 
 vi.mock('../../lib/apiClient', () => ({
-  apiClient: { get: vi.fn() },
+  apiClient: { get: vi.fn(), patch: vi.fn() },
 }));
 
 const mockedGet = vi.mocked(apiClient.get);
+const mockedPatch = vi.mocked(apiClient.patch);
 
 beforeEach(() => {
   mockedGet.mockReset();
+  mockedPatch.mockReset().mockResolvedValue({ classroomId: 'c1', enabled: true });
 });
 
 function renderPage() {
@@ -23,7 +25,13 @@ function renderPage() {
   );
 }
 
-const classroom = { id: 'c1', name: 'Turma Azul', joinCode: 'AZUL-1', activeStudentsToday: 1 };
+const classroom = {
+  id: 'c1',
+  name: 'Turma Azul',
+  joinCode: 'AZUL-1',
+  activeStudentsToday: 1,
+  comparisonEnabled: false,
+};
 
 const EMPTY_CONCEPT_COMPARISON = {
   conceptId: 'fractions_equal_parts',
@@ -281,6 +289,65 @@ describe('TeacherMetrics', () => {
       const row = (await screen.findByText('Ana')).closest('tr')!;
       expect(row).toHaveTextContent('Concluído');
       expect(row).toHaveTextContent('Em andamento');
+    });
+  });
+
+  describe('comparação entre alunos (4.3/7.3)', () => {
+    it('shows the toggle OFF by default for a classroom that never activated it', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      const toggle = await screen.findByRole('switch', { name: /comparação entre alunos/i });
+      expect(toggle).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('requires confirmation before turning comparison ON, and only PATCHes after confirming', async () => {
+      mockedGet.mockResolvedValueOnce([classroom]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      await userEvent.click(await screen.findByRole('switch', { name: /comparação entre alunos/i }));
+
+      expect(
+        await screen.findByText(/Ativar comparação entre alunos\?/i),
+      ).toBeInTheDocument();
+      expect(mockedPatch).not.toHaveBeenCalled();
+
+      await userEvent.click(await screen.findByRole('button', { name: /ativar comparação/i }));
+
+      expect(mockedPatch).toHaveBeenCalledWith('/teacher/classrooms/c1/comparison-setting', {
+        enabled: true,
+      });
+    });
+
+    it('turns comparison OFF immediately, with no confirmation dialog', async () => {
+      mockedGet.mockResolvedValueOnce([{ ...classroom, comparisonEnabled: true }]);
+      mockedGet.mockResolvedValueOnce([]);
+      mockedGet.mockResolvedValueOnce({ totalStudents: 0, activeStudentsToday: 0, byStage: [], helpButtonUsageRate: 0 });
+      mockedGet.mockResolvedValueOnce(EMPTY_CONCEPT_COMPARISON);
+      mockedPatch.mockResolvedValueOnce({ classroomId: 'c1', enabled: false });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Turma Azul'));
+
+      const toggle = await screen.findByRole('switch', { name: /comparação entre alunos/i });
+      expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+      await userEvent.click(toggle);
+
+      expect(screen.queryByText(/Ativar comparação entre alunos\?/i)).not.toBeInTheDocument();
+      expect(mockedPatch).toHaveBeenCalledWith('/teacher/classrooms/c1/comparison-setting', {
+        enabled: false,
+      });
     });
   });
 });
