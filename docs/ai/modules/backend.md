@@ -2347,6 +2347,48 @@ campos não tocados, propaga a mensagem de erro do validador sem
 regressão, e lança `InternalServerErrorException` (sem chamar
 `repository.save`) pra um `gameKey` não registrado.
 
+## Mini jogo "Ferramentas do Mundo do Trabalho" (MJ10)
+
+2º mini jogo de CONTEÚDO da plataforma (1º foi "Fábrica de Pedaços
+Iguais"), plano completo em `docs/ai/backlog/
+mini-jogo-ferramentas-mundo-trabalho.md`. Combina "ligar" (cenário do
+mundo do trabalho ↔ ferramenta digital correta) com verdadeiro-ou-falso
+(afirmações de uso/custo-benefício), BNCC EM13CO09. Categoria **Educação
+em Computação** (CC1) — ensina sobre tecnologia, não uma disciplina da
+educação básica, diferente de frações/geometria/estados da matéria.
+
+- **`WorkToolsScenario`/`WorkToolsTool`/`WorkToolsMatchPair`/
+  `WorkToolsStatement`/`WorkToolsLevelConfig`** (`mini-game-level-config.
+  interface.ts`) — mesmo racional de nada-oculto de frações:
+  `correctMatches`/`isTrue` são exatamente o que a validação no cliente
+  compara contra, o backend só guarda e serve `config` inteiro.
+  `WorkToolsStatement.explanation` é o texto de apoio do feedback
+  não-punitivo (regra não-negociável 4) — nunca só "certo"/"errado".
+- **`MiniGameKey`** ganha `'work_tools_match'` — mas **sem validador
+  registrado ainda** (MJ11, configuração pelo professor, é quem vai
+  precisar disso; `PATCH /teacher/minigames/levels/:id` continua não
+  suportando este jogo até lá — `getMiniGameLevelValidator('work_tools_
+  match')` devolve `undefined` de propósito).
+- **Seed** (`CreateWorkToolsMiniGame`, `conceptId: 'digital_tools_
+  workplace'`) — 3 linhas Use→Modify→Create, `gameKey`/`category`
+  gravados explicitamente (nem `gameKey` tem default, nem faz sentido
+  confiar no default `informatica_educacional` de `category` aqui).
+  `correctMatches` é o gabarito COMPLETO (cobre também os cenários do
+  `scenarioPool` do Create, não só os 4 do Use/Modify). Nível Modify tem 1
+  par errado + 1 afirmação errada de propósito (aluno cenário
+  "brainstorm" ligado à ferramenta errada de propósito, mesma técnica do
+  "cartão errado" de frações).
+- **Zero mudança em `MinigamesController`/`TeacherMinigamesController`/
+  `MetricsAdminMiniGameService`** — endpoints genéricos já servem o novo
+  `conceptId` sem nenhum código novo (confirmado por leitura: nenhum dos
+  três tem lógica específica de jogo).
+
+### Testes
+
+`mini-game-level-config.interface.spec.ts` cobre `isWorkToolsLevelConfig`
+(shape mínimo válido, rejeição de cada um dos 4 arrays obrigatórios
+ausente, aceitação dos campos opcionais).
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Transporte de e-mail de verdade pro link de definição de senha de 1.4

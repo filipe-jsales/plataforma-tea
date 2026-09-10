@@ -38,6 +38,10 @@ const MiniGamePage = lazy(() => import('./routes/minigame/MiniGamePage'))
 // 1º mini jogo de CONTEÚDO ("Fábrica de Pedaços Iguais", frações) — mesmo
 // racional de lazy-loading do MiniGamePage acima.
 const FractionsGamePage = lazy(() => import('./routes/minigame/fractions/FractionsGamePage'))
+// MJ10 — 2º mini jogo de CONTEÚDO ("Ferramentas do Mundo do Trabalho",
+// BNCC EM13CO09, categoria Educação em Computação) — mesmo racional de
+// lazy-loading.
+const WorkToolsGamePage = lazy(() => import('./routes/minigame/work-tools/WorkToolsGamePage'))
 
 function App() {
   return (
@@ -137,6 +141,16 @@ function App() {
           <RequireAuth roles={['student']}>
             <Suspense fallback={null}>
               <FractionsGamePage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/minigame/work-tools/:stage"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <WorkToolsGamePage />
             </Suspense>
           </RequireAuth>
         }

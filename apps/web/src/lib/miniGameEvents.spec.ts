@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { logEvent } from './logEvent';
-import { logMiniGamePredictAnswered, logMiniGameRoundExecuted } from './miniGameEvents';
+import {
+  logMiniGamePredictAnswered,
+  logMiniGameRoundExecuted,
+  logWorkToolsMatchMade,
+  logWorkToolsStatementAnswered,
+} from './miniGameEvents';
 import type { MiniGameSceneState } from '../stores/miniGameStore';
 
 vi.mock('./logEvent', () => ({ logEvent: vi.fn() }));
@@ -50,6 +55,53 @@ describe('logMiniGamePredictAnswered', () => {
         category: 'RD-C',
         type: 'minigame_predict_answered',
         payload: expect.objectContaining({ predicted_parts: 4 }),
+      }),
+    );
+  });
+});
+
+describe('logWorkToolsMatchMade (MJ10)', () => {
+  it('logs RD-P with the scenario/tool pair and whether it was correct', () => {
+    logWorkToolsMatchMade('pseudo-1', 'level-1', fakeScene({ conceptId: 'digital_tools_workplace' }), {
+      scenarioId: 's-3d-print',
+      toolId: 't-3d-printer',
+      correct: true,
+    });
+
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studentPseudoId: 'pseudo-1',
+        miniGameLevelId: 'level-1',
+        category: 'RD-P',
+        type: 'work_tools_match_made',
+        payload: expect.objectContaining({
+          concept_id: 'digital_tools_workplace',
+          scenario_id: 's-3d-print',
+          tool_id: 't-3d-printer',
+          correct: true,
+        }),
+      }),
+    );
+  });
+});
+
+describe('logWorkToolsStatementAnswered (MJ10)', () => {
+  it('logs RD-C with the statement id, the answer given, and whether it was correct', () => {
+    logWorkToolsStatementAnswered('pseudo-1', 'level-1', fakeScene({ conceptId: 'digital_tools_workplace' }), {
+      statementId: 'st-tractor-print',
+      answeredTrue: false,
+      correct: true,
+    });
+
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'RD-C',
+        type: 'work_tools_statement_answered',
+        payload: expect.objectContaining({
+          statement_id: 'st-tractor-print',
+          answered_true: false,
+          correct: true,
+        }),
       }),
     );
   });

@@ -201,13 +201,13 @@ describe('SubjectSelector — categorização Informática Educacional × Educa�
     expect(gameSection).toHaveTextContent('Matérias da escola');
   });
 
-  it('shows a graceful placeholder in "Sobre tecnologia" when there is no content yet, never an empty broken section', async () => {
+  it('MJ10 — "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Sobre tecnologia", not with the school subjects', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
 
     renderPage();
 
-    const techSection = (await screen.findByText('Sobre tecnologia')).closest('section');
-    expect(techSection).toHaveTextContent('Em breve, novidades por aqui.');
+    const gameSection = (await screen.findByText('Ferramentas do Mundo do Trabalho')).closest('section');
+    expect(gameSection).toHaveTextContent('Sobre tecnologia');
   });
 });

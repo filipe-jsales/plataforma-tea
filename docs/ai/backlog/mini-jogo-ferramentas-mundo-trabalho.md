@@ -288,12 +288,25 @@ descritivo do porquê]".
 
 ## Status de implementação
 
-**Não implementado — este documento é o plano do jogo em si (MJ10/MJ11).**
+**MJ9 (infra) e MJ10 (conteúdo do jogo) implementados. MJ11 (configuração
+pelo professor) continua não implementada.**
 
-A seção "Infra necessária: suporte a múltiplos 'tipos' de mini jogo" (MJ9)
-**já está implementada** — `MiniGameLevel.gameKey`, `validators/`
-(`MiniGameLevelValidator`, `FractionsFactoryValidator`,
-`validator-registry.ts`) e `MinigamesService.updateLevelConfig` despachando
-por `gameKey`, ver "Suporte a múltiplos jogos de conteúdo no motor de mini
-jogos (MJ9)" em `docs/ai/modules/backend.md`. O pré-requisito bloqueante de
-MJ10/MJ11 está resolvido — falta só o conteúdo do jogo em si.
+- **MJ9** — `MiniGameLevel.gameKey`, `validators/` (`MiniGameLevelValidator`,
+  `FractionsFactoryValidator`, `validator-registry.ts`) e `MinigamesService.
+  updateLevelConfig` despachando por `gameKey`, ver "Suporte a múltiplos
+  jogos de conteúdo no motor de mini jogos (MJ9)" em `docs/ai/modules/
+  backend.md`.
+- **MJ10** — tipos `WorkTools*` (`mini-game-level-config.interface.ts`),
+  seed `CreateWorkToolsMiniGame` (3 níveis, `conceptId: 'digital_tools_
+  workplace'`), `WorkToolsGamePage.tsx` (mecânica de ligar + verdadeiro-
+  falso, sem Pixi — ver "Mini jogo 'Ferramentas do Mundo do Trabalho'
+  (MJ10)" em `docs/ai/modules/backend.md`/`frontend.md` pro detalhe
+  completo). Entrada pro aluno: `lib/miniGamesCatalog.ts` → seção "Sobre
+  tecnologia" do `SubjectSelector`.
+- **MJ11 — não implementado.** `MiniGameKey` inclui `'work_tools_match'`,
+  mas nenhum validador foi registrado pra ele ainda — `PATCH /teacher/
+  minigames/levels/:id` continua não suportando este jogo (devolveria
+  `InternalServerErrorException`, mesmo comportamento documentado em MJ9
+  pra "linha de catálogo sem validador correspondente"). Conteúdo do jogo
+  hoje é fixo via seed, só editável por migration nova, igual frações
+  antes de MJ11 existir pra elas.

@@ -26,4 +26,13 @@ export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
     entryPath: '/minigame/fractions/use',
     category: 'informatica_educacional',
   },
+  // MJ10 — 1º conteúdo de Educação em Computação da plataforma (BNCC
+  // EM13CO09) — preenche a seção que, até aqui, só mostrava o placeholder
+  // "Em breve, novidades por aqui." no SubjectSelector.
+  {
+    key: 'digital_tools_workplace',
+    title: 'Ferramentas do Mundo do Trabalho',
+    entryPath: '/minigame/work-tools/use',
+    category: 'educacao_computacao',
+  },
 ];

@@ -1689,6 +1689,88 @@ o placeholder gracioso de "Sobre tecnologia" vazia. `TeacherChallengeNew.
 spec.tsx`/`TeacherMiniGameSettings.spec.tsx` ganharam um caso cada
 confirmando que o rótulo da categoria aparece na tela.
 
+## Mini jogo "Ferramentas do Mundo do Trabalho" (`WorkToolsGamePage`, MJ10)
+
+2º mini jogo de CONTEÚDO (1º foi "Fábrica de Pedaços Iguais"), categoria
+Educação em Computação (CC1) — BNCC EM13CO09. Duas rotas, mesmo componente:
+`/minigame/work-tools/:stage`. Plano completo em `docs/ai/backlog/
+mini-jogo-ferramentas-mundo-trabalho.md`.
+
+### Decisão de design: sem `MiniGameEngine`/Pixi
+
+Diferente de "Fábrica de Pedaços Iguais" (que desenha o objeto sendo
+montado num canvas Pixi), este jogo não tem um "mundo visual" pra
+desenhar — a mecânica é ligar cartões e julgar afirmações, inerentemente
+melhor servida por `components/ui` (SelectableCard/SegmentedControl/
+InlineFeedback, com teclado e leitor de tela de graça) do que por um
+canvas. `createMiniGameStore()` (fase PRIMM/tentativas) e
+`useMiniGameEventLogging` continuam usados normalmente — só o motor de
+RENDERIZAÇÃO Pixi não se aplica; nem todo mini jogo precisa dele.
+
+### Mecânica
+
+- **`lib/workToolsLevelTypes.ts`** — mesma forma do `config` que a API
+  devolve (`WorkToolsScenario`/`Tool`/`MatchPair`/`Statement`/
+  `LevelConfig`), arquivo PRÓPRIO, separado de `miniGameLevelTypes.ts`
+  (que tipa `config` concretamente pro shape de frações) — evita
+  transformar aquele tipo num union que `TeacherMiniGameSettings.tsx`
+  precisaria discriminar por `gameKey` sem necessidade nesta entrega
+  (isso é MJ11).
+- **`lib/workToolsMatch.ts`** — lógica pura (mesmo racional de
+  `fractionsFactory.ts`): `isMatchCorrect`, `isStatementAnswerCorrect`,
+  `allScenariosCorrectlyMatched` (AC: todo cenário precisa de par E o par
+  precisa estar CERTO, nunca só "tem algum par"), `allStatementsAnswered
+  Correctly`, `pickRandomScenarios` ("Novo cenário").
+- **`stores/workToolsRoundStore.ts`** — estado da rodada (pares ligados +
+  respostas V/F), separado do `MiniGameStore` genérico, mesmo racional de
+  `fractionsRoundStore.ts`. Aceita um `seed` opcional na criação —
+  `presetMatches`/`presetStatementAnswers` do nível Use/Modify entram por
+  aqui.
+- **Ligar por seleção (MJ4, nunca drag-and-drop)**: tocar um `Selectable
+  Card` de cenário (seleciona), depois um de ferramenta (confirma o par
+  IMEDIATAMENTE — reatribuir substitui o par anterior, nunca acumula
+  dois). Um botão "Desfazer" por par formado, fora da área clicável do
+  card (nunca aninhar elemento interativo dentro de outro `role="button"`).
+- **Verdadeiro/falso liberado só com todos os pares corretos**
+  (`statementsUnlocked = allScenariosCorrectlyMatched(...)`) — evita expor
+  as duas mecânicas novas ao mesmo tempo na mesma tela. Cada afirmação usa
+  `SegmentedControl` (Verdadeiro/Falso) + `InlineFeedback` com
+  `statement.explanation` (nunca "errado").
+- **3 níveis**: Use (`readOnly`, tudo pré-resolvido, lista só-leitura +
+  botão único "Conferir"), Modify (interativo, preset com 1 par e 1
+  afirmação errados de propósito — mesma estrutura de Use/Modify, nunca
+  adiciona/remove cenário), Create (interativo, começa sem pares,
+  `scenarios` é estado local que "Novo cenário" substitui por uma amostra
+  de `scenarioPool`).
+- **PRIMM**: `predict → run` na 1ª interação real (seleção de par ou
+  resposta de afirmação — a pergunta de predição opcional nunca bloqueia,
+  "Pular" sempre disponível); toda correção incorreta fica em `run` via
+  `recordAttempt()`; ao acertar tudo (pares E afirmações),
+  `run→investigate→modify→make` em sequência marca `completed`.
+- **`lib/miniGamesCatalog.ts`** ganha a entrada `digital_tools_workplace`
+  (categoria `educacao_computacao`) — preenche a seção "Sobre tecnologia"
+  do `SubjectSelector`, que até aqui só mostrava o placeholder "Em breve".
+
+### Eventos novos (`lib/miniGameEvents.ts`, mesmo arquivo dos de frações)
+
+`logWorkToolsMatchMade` (RD-P, `work_tools_match_made`:
+`scenario_id`/`tool_id`/`correct`) e `logWorkToolsStatementAnswered`
+(RD-C, `work_tools_statement_answered`: `statement_id`/`answered_true`/
+`correct`) — chamados diretamente pela tela (mesmo padrão de
+`logMiniGameRoundExecuted`/`logMiniGamePredictAnswered`), os 5 eventos
+genéricos continuam vindo de `useMiniGameEventLogging` sem mudança.
+
+### Testes
+
+`workToolsMatch.spec.ts` (lógica pura), `workToolsRoundStore.spec.ts`
+(factory, seed, `setMatch` substitui em vez de acumular, `removeMatch`,
+`reset` com/sem novo seed), `miniGameEvents.spec.ts` ganhou os 2 loggers
+novos, `WorkToolsGamePage.spec.tsx` cobre os 3 níveis (Use conclui via
+"Conferir"; Modify mostra retentativa não-punitiva pro par errado e
+libera/completa as afirmações após a correção; Create liga um par do
+zero e confirma o evento RD-P). `SubjectSelector.spec.tsx` ganhou o caso
+do jogo aparecendo em "Sobre tecnologia".
+
 ## Próximos passos (fora do escopo já implementado)
 
 - O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)
