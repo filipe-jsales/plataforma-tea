@@ -288,4 +288,12 @@ descritivo do porquê]".
 
 ## Status de implementação
 
-**Não implementado — este documento é o plano.**
+**Não implementado — este documento é o plano do jogo em si (MJ10/MJ11).**
+
+A seção "Infra necessária: suporte a múltiplos 'tipos' de mini jogo" (MJ9)
+**já está implementada** — `MiniGameLevel.gameKey`, `validators/`
+(`MiniGameLevelValidator`, `FractionsFactoryValidator`,
+`validator-registry.ts`) e `MinigamesService.updateLevelConfig` despachando
+por `gameKey`, ver "Suporte a múltiplos jogos de conteúdo no motor de mini
+jogos (MJ9)" em `docs/ai/modules/backend.md`. O pré-requisito bloqueante de
+MJ10/MJ11 está resolvido — falta só o conteúdo do jogo em si.

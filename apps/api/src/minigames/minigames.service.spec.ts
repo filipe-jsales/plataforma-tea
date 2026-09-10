@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { MiniGameLevel } from './entities/mini-game-level.entity';
 import { MinigamesService } from './minigames.service';
@@ -50,8 +50,17 @@ describe('MinigamesService', () => {
     });
   });
 
+  // MJ9 — a validação semântica por jogo (tema/fração/pool) mudou de lugar
+  // pra `validators/fractions-factory.validator.spec.ts` (testada em
+  // isolamento, sem repositório). O que este describe cobre agora é só o
+  // DISPATCH: `updateLevelConfig` resolve o validador certo pelo `gameKey`
+  // da linha, delega a ele, e nunca mais sabe o shape de config de nenhum
+  // jogo específico.
   describe('updateLevelConfig', () => {
-    function makeLevel(config: Record<string, unknown> = {}): MiniGameLevel {
+    function makeLevel(
+      config: Record<string, unknown> = {},
+      gameKey: MiniGameLevel['gameKey'] = 'fractions_factory',
+    ): MiniGameLevel {
       return {
         id: 'level-1',
         conceptId: 'fractions_equal_parts',
@@ -60,6 +69,7 @@ describe('MinigamesService', () => {
         title: 'Nível',
         prompt: 'Prepare 3/4',
         config,
+        gameKey,
         updatedByUserId: null,
         updatedBy: null,
         createdAt: new Date(),
@@ -67,52 +77,7 @@ describe('MinigamesService', () => {
       } as MiniGameLevel;
     }
 
-    it('rejects an invalid theme with a descriptive message', async () => {
-      repository.findOne.mockResolvedValue(makeLevel());
-
-      await expect(
-        service.updateLevelConfig('level-1', 'teacher-1', { theme: 'space' }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects a target fraction with denominator outside 2-8', async () => {
-      repository.findOne.mockResolvedValue(makeLevel());
-
-      await expect(
-        service.updateLevelConfig('level-1', 'teacher-1', {
-          targetFraction: { numerator: 1, denominator: 12 },
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects a numerator equal to the denominator', async () => {
-      repository.findOne.mockResolvedValue(makeLevel());
-
-      await expect(
-        service.updateLevelConfig('level-1', 'teacher-1', {
-          targetFraction: { numerator: 4, denominator: 4 },
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects an empty fraction pool', async () => {
-      repository.findOne.mockResolvedValue(makeLevel());
-
-      await expect(
-        service.updateLevelConfig('level-1', 'teacher-1', { fractionPool: [] }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('rejects a fraction pool with more than 5 options', async () => {
-      repository.findOne.mockResolvedValue(makeLevel());
-      const pool = Array.from({ length: 6 }, (_, i) => ({ numerator: 1, denominator: 2 + i }));
-
-      await expect(
-        service.updateLevelConfig('level-1', 'teacher-1', { fractionPool: pool }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('merges valid fields into config, preserving untouched fields, and records the editor', async () => {
+    it('dispatches to the validator matching the level gameKey, preserving untouched fields, and records the editor', async () => {
       const level = makeLevel({ theme: 'pizza', targetFraction: { numerator: 1, denominator: 4 } });
       repository.findOne.mockResolvedValue(level);
       repository.save.mockImplementation(async (entity) => entity as MiniGameLevel);
@@ -126,6 +91,23 @@ describe('MinigamesService', () => {
         targetFraction: { numerator: 1, denominator: 4 },
       });
       expect(result.updatedByUserId).toBe('teacher-1');
+    });
+
+    it('still rejects an invalid field with a descriptive message — no regression from the pre-registry behavior', async () => {
+      repository.findOne.mockResolvedValue(makeLevel());
+
+      await expect(
+        service.updateLevelConfig('level-1', 'teacher-1', { theme: 'space' }),
+      ).rejects.toThrow('Tema inválido — escolha barra de chocolate, pizza ou jardim.');
+    });
+
+    it('throws InternalServerErrorException for a catalog row whose gameKey has no registered validator', async () => {
+      repository.findOne.mockResolvedValue(makeLevel({}, 'work_tools_match' as never));
+
+      await expect(
+        service.updateLevelConfig('level-1', 'teacher-1', { theme: 'chocolate_bar' }),
+      ).rejects.toThrow(InternalServerErrorException);
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 });

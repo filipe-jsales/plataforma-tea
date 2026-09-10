@@ -6,7 +6,8 @@ import type {
   ChallengeTemplateSummary,
   TeacherChallengeDetail,
 } from '../../lib/challengeTemplateTypes';
-import { LinkButton, SelectableCard } from '../../components/ui';
+import { Badge, LinkButton, SelectableCard } from '../../components/ui';
+import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
 import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
 import './TeacherChallengeNew.css';
 
@@ -90,7 +91,12 @@ export function TeacherChallengeNew() {
                   key={template.id}
                   icon={template.icon}
                   align="start"
-                  meta={template.description}
+                  meta={
+                    <>
+                      {template.description}{' '}
+                      <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[template.category]}</Badge>
+                    </>
+                  }
                   onSelect={() => setSelectedTemplateId(template.id)}
                 >
                   {template.name}
@@ -106,6 +112,9 @@ export function TeacherChallengeNew() {
           <h2>
             <span aria-hidden="true">{templateDetail.icon}</span> {templateDetail.name}
           </h2>
+          {/* CC1 — categoria só leitura (curada via seed/Topic.category,
+              nunca escolhida pelo professor aqui). */}
+          <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[templateDetail.category]}</Badge>
           <TemplateChallengeForm
             template={templateDetail}
             initialTitle={sourceChallenge ? `${sourceChallenge.title} (cópia)` : undefined}

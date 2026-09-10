@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { ContentCategory } from '../../common/enums/content-category.enum';
 import { Subject } from './subject.entity';
 
 // Assunto dentro de uma disciplina (ex.: "angulos_formas" dentro de
@@ -56,6 +57,13 @@ export class Topic {
   // erro).
   @Column({ type: 'varchar', length: 100, nullable: true })
   conceptId: string | null;
+
+  // CC1 — Informática Educacional × Educação em Computação (ver
+  // common/enums/content-category.enum.ts). Default cobre todo tópico
+  // cadastrado até hoje (todos ensinam disciplina da educação básica) —
+  // curado via seed/migration, nunca escolhido pelo professor.
+  @Column({ type: 'varchar', length: 40, default: ContentCategory.INFORMATICA_EDUCACIONAL })
+  category: ContentCategory;
 
   @CreateDateColumn()
   createdAt: Date;

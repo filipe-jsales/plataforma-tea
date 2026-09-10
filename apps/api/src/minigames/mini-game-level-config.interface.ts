@@ -12,6 +12,14 @@
 // turtleWorld.ts (fechamento geométrico calculado no frontend).
 export type MiniGameStage = 'use' | 'modify' | 'create';
 
+// MJ9 — chave pequena e fechada identificando QUAL jogo uma linha de
+// `mini_game_levels` pertence (mesmo racional de `Topic.domain`). É o
+// único acoplamento entre a linha de catálogo (dado) e o validador de
+// config correspondente (ver validators/validator-registry.ts) — cadastrar
+// um jogo novo é 1 valor novo aqui + 1 validador + 1 entrada no registry,
+// nenhum outro arquivo do módulo muda.
+export type MiniGameKey = 'fractions_factory';
+
 export type FractionsFactoryTheme = 'chocolate_bar' | 'pizza' | 'garden';
 
 // 5 cartões fixos da paleta (RQ4 — sobrecarga cognitiva, 39,13%: paleta

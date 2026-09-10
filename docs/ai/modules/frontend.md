@@ -1636,6 +1636,59 @@ estado em `beforeEach` (`useStore.setState({...})`), nunca assume estado
 limpo por padrão. Ver regra "Testes" em `docs/ai/rules/coding-rule.md` para
 o padrão esperado em código novo.
 
+## Categorização do catálogo — Informática Educacional × Educação em Computação (CC1)
+
+Ver "Categorização do catálogo" em `backend.md` pro schema
+(`ContentCategory`, `Topic.category`/`MiniGameLevel.category`). Do lado do
+frontend:
+
+- **`lib/contentCategory.ts`** — tipo `ContentCategory` (mesma forma da API)
+  + dois dicionários de rótulo: `CONTENT_CATEGORY_LABEL` (termos técnicos,
+  pro professor/admin — área de staff, sem restrição de linguagem) e
+  `CONTENT_CATEGORY_STUDENT_LABEL` (linguagem simples pro aluno — "Matérias
+  da escola"/"Sobre tecnologia", nunca os termos técnicos crus, regra
+  não-negociável 9 aplicada também ao vocabulário do aluno).
+- **`SubjectSelector.tsx`** — as duas seções que já existiam visualmente
+  separadas (tópicos curriculares × "Mini jogos") viram DUAS seções por
+  CATEGORIA (`CATEGORY_ORDER`), nunca uma 3ª área nova (regra
+  não-negociável 2). Cada seção mistura tópicos (`SelectableCard`, exige
+  confirmação) e mini jogos (`LinkButton`, navega direto) da MESMA
+  categoria — a decisão de agrupar por "o que ensina" em vez de "qual
+  mecanismo renderiza" é deliberada: "Fábrica de Pedaços Iguais" (mini
+  jogo) é Informática Educacional (ensina frações), então fica na MESMA
+  seção que `angulos_formas`/`water_state`, não numa seção "mini jogos"
+  à parte. Um tópico sem `category` (resposta de API antiga/teste) cai em
+  Informática Educacional — mesmo default do backend, nunca um 3º grupo
+  "sem categoria" na tela. Categoria "Sobre tecnologia" mostra um texto
+  descritivo ("Em breve, novidades por aqui.") enquanto vazia — nunca uma
+  seção quebrada/ausente (mesmo racional de estado vazio gracioso já usado
+  no resto da plataforma), até o 1º conteúdo de Educação em Computação
+  (MJ10) existir.
+- **`lib/miniGamesCatalog.ts`** — catálogo de mini jogos do lado do aluno
+  continua hardcoded no frontend (mesma decisão que já existia antes desta
+  feature: nunca houve endpoint "liste todos os mini jogos disponíveis"
+  porque só existe 1 jogo). O que muda é só a categoria carregada junto
+  (`MiniGameCatalogEntry.category`), permitindo o `SubjectSelector` decidir
+  em qual seção cada jogo entra sem inventar uma API nova. Um jogo novo
+  (MJ10) é 1 linha nova aqui.
+- **`TeacherChallengeNew.tsx`** — categoria do template (derivada do tópico,
+  só leitura) aparece como `Badge` na meta da galeria e de novo ao lado do
+  título do formulário guiado, com o rótulo TÉCNICO (`CONTENT_CATEGORY_
+  LABEL`, área de staff).
+- **`TeacherMiniGameSettings.tsx`** — mesmo racional, `Badge` com a
+  categoria do jogo logo abaixo do título (as 3 linhas de um `conceptId`
+  compartilham categoria, a 1ª já basta pra ler).
+
+### Testes
+
+`SubjectSelector.spec.tsx` ganhou os casos de categorização: rótulos
+amigáveis (nunca os códigos técnicos), fallback pra Informática Educacional
+quando `category` está ausente, um tópico `educacao_computacao` agrupado
+corretamente, "Fábrica de Pedaços Iguais" dentro de "Matérias da escola", e
+o placeholder gracioso de "Sobre tecnologia" vazia. `TeacherChallengeNew.
+spec.tsx`/`TeacherMiniGameSettings.spec.tsx` ganharam um caso cada
+confirmando que o rótulo da categoria aparece na tela.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)

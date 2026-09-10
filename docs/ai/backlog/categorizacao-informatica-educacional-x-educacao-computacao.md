@@ -116,6 +116,16 @@ espalhado em código de tela":
 Nenhum evento novo — isto é metadado de catálogo (curricular), não
 interação de aluno. Nenhuma emissão em `interaction_events` muda.
 
+## Status de implementação
+
+**Implementado** (backend: `ContentCategory` enum, `Topic.category`/
+`MiniGameLevel.category`, migration `AddContentCategoryToCatalog`,
+`ChallengeTemplatesService` devolvendo `category` derivada do tópico;
+frontend: `SubjectSelector` reagrupado em 2 seções por categoria,
+`lib/miniGamesCatalog.ts`, badge de categoria em `TeacherChallengeNew`/
+`TeacherMiniGameSettings`) — ver "Categorização do catálogo" em
+`docs/ai/modules/backend.md`/`frontend.md` pro detalhe final.
+
 ## Riscos e trade-offs
 
 - Duas categorias fixas podem não bastar pra sempre (ex.: um futuro "letramento

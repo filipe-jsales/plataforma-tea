@@ -17,6 +17,9 @@ export class SubjectsController {
       // 3.13/3.16 — decide pro frontend qual página abrir ao confirmar este
       // módulo (SubjectSelector.handleConfirm); nunca inferido do slug/nome.
       domain: topic.domain,
+      // CC1 — decide em qual seção (Informática Educacional × Educação em
+      // Computação) o SubjectSelector agrupa este módulo.
+      category: topic.category,
     }));
   }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiClient, ApiError } from '../../lib/apiClient';
 import type { FractionsFactoryFraction, MiniGameLevelDto } from '../../lib/miniGameLevelTypes';
-import { Button, InlineFeedback, LinkButton, Select, TextField } from '../../components/ui';
+import { Badge, Button, InlineFeedback, LinkButton, Select, TextField } from '../../components/ui';
+import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
 import './TeacherMiniGameSettings.css';
 
 const CONCEPT_ID = 'fractions_equal_parts';
@@ -95,6 +96,12 @@ export function TeacherMiniGameSettings() {
         Voltar
       </LinkButton>
       <h1>Fábrica de Pedaços Iguais — configuração</h1>
+      {/* CC1 — categoria só leitura (curada via seed/MiniGameLevel.category,
+          nunca escolhida pelo professor aqui); as 3 linhas do jogo
+          compartilham a mesma categoria, então a 1ª já basta. */}
+      {levels && levels.length > 0 && (
+        <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[levels[0].category]}</Badge>
+      )}
       <p>
         Escolha o tema e a fração-alvo de cada nível. No nível 3 (Create), "Novo pedido" sorteia
         uma fração desta lista a cada rodada.
