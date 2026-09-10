@@ -47,6 +47,18 @@ ver `docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md`. MJ4/MJ5 acima só
 fazem sentido sobre uma mecânica de verdade — este jogo é o veículo que
 fechou as duas.
 
+**2º mini jogo de conteúdo (planejado, não implementado):** "Ferramentas
+do Mundo do Trabalho" — mecânica de "ligar" + verdadeiro ou falso, BNCC
+EM13CO09 ("identificar tecnologias digitais... no mundo do trabalho"),
+categoria **Educação em Computação** (não uma disciplina da educação
+básica, diferente dos dois módulos de blocos e da "Fábrica de Pedaços
+Iguais" — ver `docs/ai/backlog/categorizacao-informatica-educacional-x-
+educacao-computacao.md`). Plano completo em
+`docs/ai/backlog/mini-jogo-ferramentas-mundo-trabalho.md`, incluindo a
+generalização de infraestrutura necessária (`MiniGameLevel.gameKey` +
+dispatch de validação por tipo de jogo) antes do conteúdo em si — hoje
+`MinigamesService` só sabe validar o shape de frações.
+
 ---
 
 ## MJ1 — Motor base de mini jogos sérios como segunda metodologia ativa
