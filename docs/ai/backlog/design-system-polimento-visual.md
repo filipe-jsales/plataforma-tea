@@ -248,3 +248,137 @@ Baixa — não é bloqueante, é auditoria de dívida de design system.
 
 Não aplicável a menos que um uso real específico seja escolhido — nesse
 caso, seguir o padrão de logging já existente na tela escolhida.
+
+---
+
+## DS5–DS9 — Troca de emoji por `lucide-react` + alinhamento ícone/texto
+
+### Contexto e decisão (reabre nota de 3.11)
+
+`docs/ai/modules/frontend.md` registrava emoji como "sistema de ícone"
+deliberado, com a nota explícita "introduzir um set de ícone SVG dedicado
+contradiria a proibição explícita do card [3.11] ('não uma biblioteca
+nova')". Esta frente **reabre essa decisão intencionalmente** — decisão do
+usuário, não uma constatação de bug — trocando por `lucide-react`
+(~1500 ícones, traço único consistente 24×24/stroke 2px, MIT, tree-shakeable).
+
+Justificativa (RQ4 — acessibilidade de interface, 26,09%, mesma barreira
+que já motivava "ícone nunca substitui texto"): emoji varia de renderização
+entre SO/navegador, carrega cor e peso emocional/cultural imprevisível
+(nem sempre neutro), e não tem tamanho auditável contra `--hit-area-min`.
+Um set de traço único, monocromático (herda `currentColor`, segue o token
+de cor do texto ao lado) e tamanho fixo é mais previsível — menos ruído
+visual não solicitado, não mais. Isto não afrouxa a regra "ícone + texto
+sempre juntos" (4/`Button`/`InlineFeedback` seguem exigindo os dois) — só
+troca o glifo.
+
+Emoji aparece hoje em ~44 arquivos (`components/ui/*` + telas de aluno,
+professor, admin, mini-jogos). Dividido em 5 cards pra poder ser
+distribuído a alguém júnior um de cada vez, sem depender de dominar o
+sistema inteiro de uma vez.
+
+### DS5 — Fundação: dependência + `components/ui/Icon` + mapeamento (NÃO júnior)
+
+Card de base, feito por quem já conhece o sistema de design — os demais
+(DS6–DS9) dependem deste.
+
+Critérios de Aceite:
+- `lucide-react` adicionado via `npm install --workspace apps/web
+  lucide-react` (nunca instalado dentro de `apps/web` isolado — regra do
+  monorepo).
+- Novo `components/ui/Icon.tsx` (wrapper fino: tamanho fixo por token
+  novo, ex. `--icon-size: 20px`, cor sempre `currentColor` — nunca cor
+  hardcoded no ícone, pra herdar automaticamente `--color-primary`/
+  `--color-on-dark`/etc. de onde for usado) + `Icon.spec.tsx`.
+- Tabela de mapeamento emoji → componente Lucide (ex.: `⚙️` →
+  `Settings`, `←` → `ArrowLeft`, `✓`/`✅` → `Check`, `❌` → `X`, `🔎` →
+  `Search`, `❄️`/`💧`/`☁️` → `Snowflake`/`Droplet`/`Cloud`) documentada em
+  `docs/ai/modules/frontend.md`, seção de ícone — é a referência que os
+  cards DS6–DS9 seguem, pra não cada um escolher um ícone diferente pro
+  mesmo conceito.
+- `Button`/`LinkButton`/`InlineFeedback`/`Dialog`/`Card` (os 5 componentes
+  de `components/ui/` que hoje aceitam/renderizam emoji) migrados pra
+  `Icon`, com os ícones default de `InlineFeedback` (sucesso/retry)
+  atualizados na mesma migração — são o contrato que toda tela nova (e as
+  migrações DS6–DS9) vai consumir.
+- Nenhuma mudança de comportamento — só o glifo do ícone.
+
+### DS6 — Trocar emoji por `Icon` na área do aluno (júnior)
+
+Escopo: `routes/home/StudentHome.tsx`, `routes/login/StudentLogin.tsx`,
+`routes/StudentSensorySettings.tsx`, `routes/challenge/ChallengePage.tsx`,
+`routes/challenge/WaterStateChallengePage.tsx`,
+`components/challenge/WaterStateTransition.tsx`, `routes/RootRedirect.tsx`,
+`routes/RequireAuth.tsx`.
+
+Critérios de Aceite:
+- Todo emoji nesses arquivos substituído pelo `Icon` correspondente do
+  mapeamento de DS5 (nenhum ícone novo fora da tabela — se faltar um
+  conceito na tabela, perguntar antes de adivinhar).
+- Alinhamento verificado visualmente: ícone e texto lado a lado usam
+  `display:flex; align-items:center; gap: var(--space-1)` (nunca
+  `vertical-align` solto) — o glifo SVG tem geometria diferente do glifo
+  emoji, então todo lugar que antes "parecia alinhado por acaso" com
+  emoji precisa ser checado de novo com o ícone novo.
+- `WaterStateTransition` mantém "ícone + rótulo textual sempre juntos"
+  (regra não-negociável 9) — só troca o glifo, nunca remove o texto.
+- Testes existentes (`ChallengePage.spec.tsx`,
+  `WaterStateTransition.spec.tsx`, etc.) atualizados só onde afirmavam o
+  caractere emoji literal (ex. `getByText('❄️')`) — trocar pela asserção
+  equivalente no ícone (`getByRole('img', { hidden: true })`/testid do
+  `Icon`, combinado com o texto do rótulo, que continua igual).
+
+### DS7 — Trocar emoji por `Icon` na área do professor (júnior)
+
+Escopo: `routes/teacher/TeacherChallengeNew.tsx`,
+`TeacherChallengeEdit.tsx`, `TeacherChallenges.tsx`,
+`TeacherMiniGameSettings.tsx`, `TeacherStudents.tsx`,
+`TeacherAddStudent.tsx`, `routes/metrics/TeacherMetrics.tsx`,
+`routes/home/AdminHome.tsx` (atalhos compartilhados com professor, se
+aplicável).
+
+Critérios de Aceite: mesmos de DS6 (mapeamento único, alinhamento flex
+verificado, testes ajustados só na asserção do glifo) — nunca reabrir a
+lógica de negócio dessas telas nesta troca.
+
+### DS8 — Trocar emoji por `Icon` na área do admin e relatórios (júnior)
+
+Escopo: `routes/admin/AdminUsers.tsx`, `AdminSchools.tsx`,
+`AdminSchoolClassrooms.tsx`, `routes/metrics/AdminSettings.tsx`,
+`AdminMetrics.tsx`, `AdminExport.tsx`, `ChallengeReport.tsx`,
+`MiniGameReport.tsx`, `components/charts/BarChart.tsx` (se usar emoji em
+legenda/eixo).
+
+Critérios de Aceite: mesmos de DS6/DS7.
+
+### DS9 — Trocar emoji por `Icon` nos mini jogos (júnior)
+
+Escopo: `routes/minigame/MiniGamePage.tsx`,
+`routes/minigame/fractions/FractionsGamePage.tsx`,
+`routes/minigame/work-tools/WorkToolsGamePage.tsx`.
+
+Atenção extra (única diferença real dos outros 3 cards): parte do
+"ícone" aqui é desenhado dentro do canvas Pixi (`fractionsFactoryScene.ts`
+etc.), não em JSX/CSS — **fora de escopo** desta troca (Pixi não consome
+`lucide-react`/SVG do DOM da mesma forma; trocar ícone desenhado em canvas
+é tarefa própria, não mecânica, não indicada pra júnior sem orientação).
+Only o JSX ao redor do canvas (botões, roteiro/`MiniGameBriefing`, texto de
+feedback) entra neste card.
+
+### Rastreabilidade (comum a DS5–DS9)
+
+RQ4 — acessibilidade de interface (26,09%): consistência visual e
+previsibilidade de tamanho/cor do ícone. Regra não-negociável 1 (filtro
+sensorial antes do estético): `Icon` nunca ganha cor/animação própria fora
+do que o token/`.staff-theme` já define — segue exatamente o mesmo
+mecanismo que `Button`/`Card` já usam.
+
+### Prioridade
+
+Baixa individualmente (cosmético, mecânico) — adequado pra distribuir
+como primeiras tarefas de alguém júnior no projeto, um card por vez,
+sempre depois de DS5 estar mesclado.
+
+### Dados/Eventos
+
+Nenhum evento novo em nenhum dos 5 cards — troca de glifo visual.
