@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../lib/apiClient';
+import { computeConnectorLinePoints, type ConnectorLinePoints } from '../../../lib/matchConnectorGeometry';
 import { logWorkToolsMatchMade, logWorkToolsStatementAnswered } from '../../../lib/miniGameEvents';
 import {
   allScenariosCorrectlyMatched,
@@ -84,6 +85,21 @@ export function WorkToolsGamePage() {
   const [predictResolved, setPredictResolved] = useState(false);
   const [completedOnce, setCompletedOnce] = useState(false);
 
+  // Traçado visível da ligação situação↔ferramenta (substitui "só uma
+  // flag no texto" por uma seta real entre os dois cartões) — puramente
+  // geométrico, `computeConnectorLinePoints` (lib/matchConnectorGeometry.ts)
+  // é a única parte testável isoladamente, já que jsdom não calcula layout
+  // de verdade. `columnsRef` é o container relativo a que as coordenadas
+  // se referem; os dois Maps guardam 1 elemento por cartão, indexado por
+  // id, preenchidos via ref callback no JSX abaixo.
+  const columnsRef = useRef<HTMLDivElement | null>(null);
+  const scenarioRowRefs = useRef(new Map<string, HTMLDivElement>());
+  const toolRowRefs = useRef(new Map<string, HTMLDivElement>());
+  const arrowMarkerId = useId();
+  const [connectorLines, setConnectorLines] = useState<
+    Array<ConnectorLinePoints & { id: string; correct: boolean }>
+  >([]);
+
   useEffect(() => {
     apiClient.get<WorkToolsMiniGameLevelDto[]>(`/minigames/levels?conceptId=${CONCEPT_ID}`).then(setLevels);
   }, []);
@@ -121,6 +137,37 @@ export function WorkToolsGamePage() {
   // depois que `level` existir.
   const matches = roundStore((state) => state.matches);
   const statementAnswers = roundStore((state) => state.statementAnswers);
+
+  // Mesma regra de posição de hook do comentário acima — `level` pode ser
+  // `null` aqui ainda (guard só vem depois), então a checagem fica dentro
+  // do callback, nunca condicionando a chamada do hook em si.
+  useLayoutEffect(() => {
+    function recomputeConnectorLines() {
+      const container = columnsRef.current;
+      if (!container || !level) {
+        setConnectorLines([]);
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      const lines = matches.flatMap((match) => {
+        const fromEl = scenarioRowRefs.current.get(match.scenarioId);
+        const toEl = toolRowRefs.current.get(match.toolId);
+        if (!fromEl || !toEl) return [];
+        const points = computeConnectorLinePoints(
+          containerRect,
+          fromEl.getBoundingClientRect(),
+          toEl.getBoundingClientRect(),
+        );
+        return [{ id: `${match.scenarioId}-${match.toolId}`, correct: isMatchCorrect(match, level.config.correctMatches), ...points }];
+      });
+      setConnectorLines(lines);
+    }
+
+    recomputeConnectorLines();
+    window.addEventListener('resize', recomputeConnectorLines);
+    return () => window.removeEventListener('resize', recomputeConnectorLines);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level, matches, scenarios, predictResolved, showBriefing]);
 
   if (!validStage || !user) {
     return null;
@@ -312,7 +359,59 @@ export function WorkToolsGamePage() {
                 })}
               </ul>
             ) : (
-              <div className="work-tools-game-page__columns">
+              <div className="work-tools-game-page__columns" ref={columnsRef}>
+                {/* Seta visível ligando cartão de situação ↔ cartão de
+                    ferramenta (troca a "flag" no texto por uma linha real
+                    entre os dois) — puramente decorativo/redundante:
+                    `aria-hidden`, a informação "Ligado a: X" continua no
+                    texto do `meta` abaixo pra quem usa leitor de tela ou
+                    tela estreita (a seta some por CSS nesse caso, ver
+                    WorkToolsGamePage.css). */}
+                <svg className="work-tools-game-page__connectors" aria-hidden="true" focusable="false">
+                  <defs>
+                    <marker
+                      id={`${arrowMarkerId}-neutral`}
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto-start-reverse"
+                    >
+                      <path d="M0,0 L10,5 L0,10 z" className="work-tools-game-page__connector-arrowhead" />
+                    </marker>
+                    <marker
+                      id={`${arrowMarkerId}-correct`}
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto-start-reverse"
+                    >
+                      <path
+                        d="M0,0 L10,5 L0,10 z"
+                        className="work-tools-game-page__connector-arrowhead work-tools-game-page__connector-arrowhead--correct"
+                      />
+                    </marker>
+                  </defs>
+                  {connectorLines.map((line) => (
+                    <line
+                      key={line.id}
+                      x1={line.x1}
+                      y1={line.y1}
+                      x2={line.x2}
+                      y2={line.y2}
+                      className={[
+                        'work-tools-game-page__connector-line',
+                        line.correct && 'work-tools-game-page__connector-line--correct',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      markerEnd={`url(#${arrowMarkerId}-${line.correct ? 'correct' : 'neutral'})`}
+                    />
+                  ))}
+                </svg>
                 <div className="work-tools-game-page__column">
                   <Text tone="muted" size="sm">
                     Situações
@@ -322,7 +421,14 @@ export function WorkToolsGamePage() {
                     const matchedTool = match ? tools.find((candidate) => candidate.id === match.toolId) : null;
                     const correct = match ? isMatchCorrect(match, correctMatches) : null;
                     return (
-                      <div key={scenario.id} className="work-tools-game-page__row">
+                      <div
+                        key={scenario.id}
+                        className="work-tools-game-page__row"
+                        ref={(el) => {
+                          if (el) scenarioRowRefs.current.set(scenario.id, el);
+                          else scenarioRowRefs.current.delete(scenario.id);
+                        }}
+                      >
                         <SelectableCard
                           icon={scenario.icon}
                           align="start"
@@ -355,15 +461,18 @@ export function WorkToolsGamePage() {
                     Ferramentas
                   </Text>
                   {tools.map((tool) => (
-                    <SelectableCard
+                    <div
                       key={tool.id}
-                      icon={tool.icon}
-                      align="start"
-                      selected={false}
-                      onSelect={() => handleSelectTool(tool.id)}
+                      className="work-tools-game-page__tool-row"
+                      ref={(el) => {
+                        if (el) toolRowRefs.current.set(tool.id, el);
+                        else toolRowRefs.current.delete(tool.id);
+                      }}
                     >
-                      {tool.label}
-                    </SelectableCard>
+                      <SelectableCard icon={tool.icon} align="start" selected={false} onSelect={() => handleSelectTool(tool.id)}>
+                        {tool.label}
+                      </SelectableCard>
+                    </div>
                   ))}
                 </div>
               </div>

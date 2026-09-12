@@ -29,6 +29,7 @@
 }
 
 .work-tools-game-page__columns {
+  position: relative;
   display: flex;
   gap: var(--space-4);
   flex-wrap: wrap;
@@ -47,6 +48,52 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+.work-tools-game-page__tool-row {
+  display: flex;
+}
+
+/* Seta ligando cartão de situação ↔ cartão de ferramenta (ver DS — troca
+   da "flag" no texto por uma linha visível). Puramente decorativo/
+   redundante (aria-hidden no JSX): a mesma informação continua em texto
+   no `meta` do cartão de situação, então some sem perda em telas estreitas
+   (abaixo do ponto em que as colunas empilham por `flex-wrap`, ver
+   `.work-tools-game-page__columns` acima) e nunca é a única fonte da
+   ligação. Estático — sem transição/animação própria, não precisa reagir
+   a `data-motion` (não é o tipo de estímulo que a regra sensorial filtra,
+   é informação, não decoração). */
+.work-tools-game-page__connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+@media (max-width: 40rem) {
+  .work-tools-game-page__connectors {
+    display: none;
+  }
+}
+
+.work-tools-game-page__connector-line {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  fill: none;
+}
+
+.work-tools-game-page__connector-line--correct {
+  stroke: var(--color-success);
+}
+
+.work-tools-game-page__connector-arrowhead {
+  fill: var(--color-primary);
+}
+
+.work-tools-game-page__connector-arrowhead--correct {
+  fill: var(--color-success);
 }
 
 .work-tools-game-page__readonly-list {
