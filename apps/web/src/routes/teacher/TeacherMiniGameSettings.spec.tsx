@@ -28,6 +28,7 @@ const USE_LEVEL: MiniGameLevelDto = {
   title: 'Observe o pedido pronto',
   prompt: 'Separe metade da barra.',
   config: { theme: 'chocolate_bar', targetFraction: { numerator: 1, denominator: 2 } },
+  category: 'informatica_educacional',
 };
 
 const CREATE_LEVEL: MiniGameLevelDto = {
@@ -42,6 +43,7 @@ const CREATE_LEVEL: MiniGameLevelDto = {
     targetFraction: { numerator: 3, denominator: 4 },
     fractionPool: [{ numerator: 3, denominator: 4 }],
   },
+  category: 'informatica_educacional',
 };
 
 beforeEach(() => {
@@ -50,6 +52,16 @@ beforeEach(() => {
 });
 
 describe('TeacherMiniGameSettings', () => {
+  it('CC1 — shows the game category as read-only metadata', async () => {
+    render(
+      <MemoryRouter>
+        <TeacherMiniGameSettings />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Informática Educacional')).toBeInTheDocument();
+  });
+
   it('loads the levels and saves an edited target fraction for the Use level', async () => {
     mockedPatch.mockResolvedValue({ ...USE_LEVEL, config: { ...USE_LEVEL.config, targetFraction: { numerator: 1, denominator: 4 } } });
     render(

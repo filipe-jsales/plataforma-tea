@@ -1,6 +1,8 @@
 // Mesma forma que apps/api/src/minigames devolve. Duplicado aqui de
 // propósito (mesmo padrão de challengeAllocationTypes.ts — não há pacote
 // compartilhado entre as duas apps neste monorepo).
+import type { ContentCategory } from './contentCategory';
+
 export type MiniGameStage = 'use' | 'modify' | 'create';
 export type FractionsFactoryTheme = 'chocolate_bar' | 'pizza' | 'garden';
 
@@ -31,4 +33,7 @@ export interface MiniGameLevelDto {
   title: string;
   prompt: string;
   config: FractionsFactoryLevelConfig;
+  // CC1 — categoria do jogo (as 3 linhas de um mesmo conceptId compartilham
+  // o mesmo valor).
+  category: ContentCategory;
 }

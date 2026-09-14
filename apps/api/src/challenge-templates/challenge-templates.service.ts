@@ -14,6 +14,7 @@ import {
   type PrimmQuestionsInput,
   type PrimmQuestionSuggestion,
 } from '../challenges/primm-questions';
+import { ContentCategory } from '../common/enums/content-category.enum';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { EventsService } from '../events/events.service';
 import type { ChallengeTemplateHandler } from './handlers/challenge-template-handler.interface';
@@ -31,6 +32,9 @@ export interface ChallengeTemplateSummary {
   name: string;
   description: string;
   icon: string;
+  // CC1 — categoria do TÓPICO ao qual este template está vinculado (só
+  // leitura pro professor, curada via seed — ver `Topic.category`).
+  category: ContentCategory;
 }
 
 export interface ChallengeTemplateDetail extends ChallengeTemplateSummary {
@@ -120,7 +124,10 @@ export class ChallengeTemplatesService {
   // AC1 — galeria: nome/ícone/descrição em linguagem simples, nunca o
   // blockType/estrutura Blockly do template.
   async listTemplates(): Promise<ChallengeTemplateSummary[]> {
-    const templates = await this.templatesRepository.find({ order: { position: 'ASC' } });
+    const templates = await this.templatesRepository.find({
+      order: { position: 'ASC' },
+      relations: { topic: true },
+    });
     return templates.map((template) => this.toSummary(template));
   }
 
@@ -341,7 +348,14 @@ export class ChallengeTemplatesService {
   }
 
   private async findTemplateOrThrow(id: string): Promise<ChallengeTemplate> {
-    const template = await this.templatesRepository.findOne({ where: { id } });
+    // relations: { topic: true } — toSummary() precisa de template.topic.
+    // category (CC1); todo chamador deste método (getTemplateDetail,
+    // loadTemplateAndHandler → preview/createChallenge/update) recebe o
+    // topic carregado de graça, mesmo quando não usa a categoria.
+    const template = await this.templatesRepository.findOne({
+      where: { id },
+      relations: { topic: true },
+    });
     if (!template) {
       throw new NotFoundException('Template não encontrado.');
     }
@@ -389,6 +403,7 @@ export class ChallengeTemplatesService {
       name: template.name,
       description: template.description,
       icon: template.icon,
+      category: template.topic.category,
     };
   }
 

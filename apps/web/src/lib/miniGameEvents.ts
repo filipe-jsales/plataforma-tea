@@ -163,3 +163,59 @@ export function logMiniGamePredictAnswered(
     },
   });
 }
+
+// MJ10 — 2º mini jogo de CONTEÚDO ("Ferramentas do Mundo do Trabalho", ver
+// docs/ai/backlog/mini-jogo-ferramentas-mundo-trabalho.md). Mesmo racional
+// dos 2 eventos de frações acima: ações explícitas do jogo, sem uma
+// transição de fase 1:1, chamadas diretamente pela tela do jogo
+// (WorkToolsGamePage), não pelo hook genérico. Mesmas 5 categorias RD-*,
+// nenhuma taxonomia paralela (regra não-negociável 6).
+
+// RD-P — produto: o par cenário↔ferramenta que o aluno acabou de ligar
+// (correto ou não — o dado bruto é o que importa, a interpretação de
+// "certo"/"errado" é derivada no momento da leitura, nunca decidida aqui).
+export function logWorkToolsMatchMade(
+  studentPseudoId: string,
+  miniGameLevelId: string,
+  scene: MiniGameSceneState,
+  details: { scenarioId: string; toolId: string; correct: boolean },
+): void {
+  logEvent({
+    studentPseudoId,
+    miniGameLevelId,
+    category: 'RD-P',
+    type: 'work_tools_match_made',
+    payload: {
+      concept_id: scene.conceptId,
+      scene_id: scene.sceneId,
+      scenario_id: details.scenarioId,
+      tool_id: details.toolId,
+      correct: details.correct,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
+
+// RD-C — curricular: julgamento verdadeiro/falso do aluno sobre uma
+// afirmação de uso/custo-benefício de uma ferramenta.
+export function logWorkToolsStatementAnswered(
+  studentPseudoId: string,
+  miniGameLevelId: string,
+  scene: MiniGameSceneState,
+  details: { statementId: string; answeredTrue: boolean; correct: boolean },
+): void {
+  logEvent({
+    studentPseudoId,
+    miniGameLevelId,
+    category: 'RD-C',
+    type: 'work_tools_statement_answered',
+    payload: {
+      concept_id: scene.conceptId,
+      scene_id: scene.sceneId,
+      statement_id: details.statementId,
+      answered_true: details.answeredTrue,
+      correct: details.correct,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}

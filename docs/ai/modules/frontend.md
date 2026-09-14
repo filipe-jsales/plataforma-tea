@@ -1636,6 +1636,141 @@ estado em `beforeEach` (`useStore.setState({...})`), nunca assume estado
 limpo por padrão. Ver regra "Testes" em `docs/ai/rules/coding-rule.md` para
 o padrão esperado em código novo.
 
+## Categorização do catálogo — Informática Educacional × Educação em Computação (CC1)
+
+Ver "Categorização do catálogo" em `backend.md` pro schema
+(`ContentCategory`, `Topic.category`/`MiniGameLevel.category`). Do lado do
+frontend:
+
+- **`lib/contentCategory.ts`** — tipo `ContentCategory` (mesma forma da API)
+  + dois dicionários de rótulo: `CONTENT_CATEGORY_LABEL` (termos técnicos,
+  pro professor/admin — área de staff, sem restrição de linguagem) e
+  `CONTENT_CATEGORY_STUDENT_LABEL` (linguagem simples pro aluno — "Matérias
+  da escola"/"Sobre tecnologia", nunca os termos técnicos crus, regra
+  não-negociável 9 aplicada também ao vocabulário do aluno).
+- **`SubjectSelector.tsx`** — as duas seções que já existiam visualmente
+  separadas (tópicos curriculares × "Mini jogos") viram DUAS seções por
+  CATEGORIA (`CATEGORY_ORDER`), nunca uma 3ª área nova (regra
+  não-negociável 2). Cada seção mistura tópicos (`SelectableCard`, exige
+  confirmação) e mini jogos (`LinkButton`, navega direto) da MESMA
+  categoria — a decisão de agrupar por "o que ensina" em vez de "qual
+  mecanismo renderiza" é deliberada: "Fábrica de Pedaços Iguais" (mini
+  jogo) é Informática Educacional (ensina frações), então fica na MESMA
+  seção que `angulos_formas`/`water_state`, não numa seção "mini jogos"
+  à parte. Um tópico sem `category` (resposta de API antiga/teste) cai em
+  Informática Educacional — mesmo default do backend, nunca um 3º grupo
+  "sem categoria" na tela. Categoria "Sobre tecnologia" mostra um texto
+  descritivo ("Em breve, novidades por aqui.") enquanto vazia — nunca uma
+  seção quebrada/ausente (mesmo racional de estado vazio gracioso já usado
+  no resto da plataforma), até o 1º conteúdo de Educação em Computação
+  (MJ10) existir.
+- **`lib/miniGamesCatalog.ts`** — catálogo de mini jogos do lado do aluno
+  continua hardcoded no frontend (mesma decisão que já existia antes desta
+  feature: nunca houve endpoint "liste todos os mini jogos disponíveis"
+  porque só existe 1 jogo). O que muda é só a categoria carregada junto
+  (`MiniGameCatalogEntry.category`), permitindo o `SubjectSelector` decidir
+  em qual seção cada jogo entra sem inventar uma API nova. Um jogo novo
+  (MJ10) é 1 linha nova aqui.
+- **`TeacherChallengeNew.tsx`** — categoria do template (derivada do tópico,
+  só leitura) aparece como `Badge` na meta da galeria e de novo ao lado do
+  título do formulário guiado, com o rótulo TÉCNICO (`CONTENT_CATEGORY_
+  LABEL`, área de staff).
+- **`TeacherMiniGameSettings.tsx`** — mesmo racional, `Badge` com a
+  categoria do jogo logo abaixo do título (as 3 linhas de um `conceptId`
+  compartilham categoria, a 1ª já basta pra ler).
+
+### Testes
+
+`SubjectSelector.spec.tsx` ganhou os casos de categorização: rótulos
+amigáveis (nunca os códigos técnicos), fallback pra Informática Educacional
+quando `category` está ausente, um tópico `educacao_computacao` agrupado
+corretamente, "Fábrica de Pedaços Iguais" dentro de "Matérias da escola", e
+o placeholder gracioso de "Sobre tecnologia" vazia. `TeacherChallengeNew.
+spec.tsx`/`TeacherMiniGameSettings.spec.tsx` ganharam um caso cada
+confirmando que o rótulo da categoria aparece na tela.
+
+## Mini jogo "Ferramentas do Mundo do Trabalho" (`WorkToolsGamePage`, MJ10)
+
+2º mini jogo de CONTEÚDO (1º foi "Fábrica de Pedaços Iguais"), categoria
+Educação em Computação (CC1) — BNCC EM13CO09. Duas rotas, mesmo componente:
+`/minigame/work-tools/:stage`. Plano completo em `docs/ai/backlog/
+mini-jogo-ferramentas-mundo-trabalho.md`.
+
+### Decisão de design: sem `MiniGameEngine`/Pixi
+
+Diferente de "Fábrica de Pedaços Iguais" (que desenha o objeto sendo
+montado num canvas Pixi), este jogo não tem um "mundo visual" pra
+desenhar — a mecânica é ligar cartões e julgar afirmações, inerentemente
+melhor servida por `components/ui` (SelectableCard/SegmentedControl/
+InlineFeedback, com teclado e leitor de tela de graça) do que por um
+canvas. `createMiniGameStore()` (fase PRIMM/tentativas) e
+`useMiniGameEventLogging` continuam usados normalmente — só o motor de
+RENDERIZAÇÃO Pixi não se aplica; nem todo mini jogo precisa dele.
+
+### Mecânica
+
+- **`lib/workToolsLevelTypes.ts`** — mesma forma do `config` que a API
+  devolve (`WorkToolsScenario`/`Tool`/`MatchPair`/`Statement`/
+  `LevelConfig`), arquivo PRÓPRIO, separado de `miniGameLevelTypes.ts`
+  (que tipa `config` concretamente pro shape de frações) — evita
+  transformar aquele tipo num union que `TeacherMiniGameSettings.tsx`
+  precisaria discriminar por `gameKey` sem necessidade nesta entrega
+  (isso é MJ11).
+- **`lib/workToolsMatch.ts`** — lógica pura (mesmo racional de
+  `fractionsFactory.ts`): `isMatchCorrect`, `isStatementAnswerCorrect`,
+  `allScenariosCorrectlyMatched` (AC: todo cenário precisa de par E o par
+  precisa estar CERTO, nunca só "tem algum par"), `allStatementsAnswered
+  Correctly`, `pickRandomScenarios` ("Novo cenário").
+- **`stores/workToolsRoundStore.ts`** — estado da rodada (pares ligados +
+  respostas V/F), separado do `MiniGameStore` genérico, mesmo racional de
+  `fractionsRoundStore.ts`. Aceita um `seed` opcional na criação —
+  `presetMatches`/`presetStatementAnswers` do nível Use/Modify entram por
+  aqui.
+- **Ligar por seleção (MJ4, nunca drag-and-drop)**: tocar um `Selectable
+  Card` de cenário (seleciona), depois um de ferramenta (confirma o par
+  IMEDIATAMENTE — reatribuir substitui o par anterior, nunca acumula
+  dois). Um botão "Desfazer" por par formado, fora da área clicável do
+  card (nunca aninhar elemento interativo dentro de outro `role="button"`).
+- **Verdadeiro/falso liberado só com todos os pares corretos**
+  (`statementsUnlocked = allScenariosCorrectlyMatched(...)`) — evita expor
+  as duas mecânicas novas ao mesmo tempo na mesma tela. Cada afirmação usa
+  `SegmentedControl` (Verdadeiro/Falso) + `InlineFeedback` com
+  `statement.explanation` (nunca "errado").
+- **3 níveis**: Use (`readOnly`, tudo pré-resolvido, lista só-leitura +
+  botão único "Conferir"), Modify (interativo, preset com 1 par e 1
+  afirmação errados de propósito — mesma estrutura de Use/Modify, nunca
+  adiciona/remove cenário), Create (interativo, começa sem pares,
+  `scenarios` é estado local que "Novo cenário" substitui por uma amostra
+  de `scenarioPool`).
+- **PRIMM**: `predict → run` na 1ª interação real (seleção de par ou
+  resposta de afirmação — a pergunta de predição opcional nunca bloqueia,
+  "Pular" sempre disponível); toda correção incorreta fica em `run` via
+  `recordAttempt()`; ao acertar tudo (pares E afirmações),
+  `run→investigate→modify→make` em sequência marca `completed`.
+- **`lib/miniGamesCatalog.ts`** ganha a entrada `digital_tools_workplace`
+  (categoria `educacao_computacao`) — preenche a seção "Sobre tecnologia"
+  do `SubjectSelector`, que até aqui só mostrava o placeholder "Em breve".
+
+### Eventos novos (`lib/miniGameEvents.ts`, mesmo arquivo dos de frações)
+
+`logWorkToolsMatchMade` (RD-P, `work_tools_match_made`:
+`scenario_id`/`tool_id`/`correct`) e `logWorkToolsStatementAnswered`
+(RD-C, `work_tools_statement_answered`: `statement_id`/`answered_true`/
+`correct`) — chamados diretamente pela tela (mesmo padrão de
+`logMiniGameRoundExecuted`/`logMiniGamePredictAnswered`), os 5 eventos
+genéricos continuam vindo de `useMiniGameEventLogging` sem mudança.
+
+### Testes
+
+`workToolsMatch.spec.ts` (lógica pura), `workToolsRoundStore.spec.ts`
+(factory, seed, `setMatch` substitui em vez de acumular, `removeMatch`,
+`reset` com/sem novo seed), `miniGameEvents.spec.ts` ganhou os 2 loggers
+novos, `WorkToolsGamePage.spec.tsx` cobre os 3 níveis (Use conclui via
+"Conferir"; Modify mostra retentativa não-punitiva pro par errado e
+libera/completa as afirmações após a correção; Create liga um par do
+zero e confirma o evento RD-P). `SubjectSelector.spec.tsx` ganhou o caso
+do jogo aparecendo em "Sobre tecnologia".
+
 ## Próximos passos (fora do escopo já implementado)
 
 - O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)

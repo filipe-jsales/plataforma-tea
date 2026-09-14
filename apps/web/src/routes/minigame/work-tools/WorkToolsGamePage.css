@@ -1,0 +1,126 @@
+.work-tools-game-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  max-width: 60rem;
+  margin: 0 auto;
+}
+
+.work-tools-game-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.work-tools-game-page__predict {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.work-tools-game-page__predict-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.work-tools-game-page__columns {
+  position: relative;
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.work-tools-game-page__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 16rem;
+  min-width: 14rem;
+}
+
+.work-tools-game-page__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.work-tools-game-page__tool-row {
+  display: flex;
+}
+
+/* Seta ligando cartão de situação ↔ cartão de ferramenta (ver DS — troca
+   da "flag" no texto por uma linha visível). Puramente decorativo/
+   redundante (aria-hidden no JSX): a mesma informação continua em texto
+   no `meta` do cartão de situação, então some sem perda em telas estreitas
+   (abaixo do ponto em que as colunas empilham por `flex-wrap`, ver
+   `.work-tools-game-page__columns` acima) e nunca é a única fonte da
+   ligação. Estático — sem transição/animação própria, não precisa reagir
+   a `data-motion` (não é o tipo de estímulo que a regra sensorial filtra,
+   é informação, não decoração). */
+.work-tools-game-page__connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+@media (max-width: 40rem) {
+  .work-tools-game-page__connectors {
+    display: none;
+  }
+}
+
+.work-tools-game-page__connector-line {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  fill: none;
+}
+
+.work-tools-game-page__connector-line--correct {
+  stroke: var(--color-success);
+}
+
+.work-tools-game-page__connector-arrowhead {
+  fill: var(--color-primary);
+}
+
+.work-tools-game-page__connector-arrowhead--correct {
+  fill: var(--color-success);
+}
+
+.work-tools-game-page__readonly-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.work-tools-game-page__statements {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.work-tools-game-page__statement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.work-tools-game-page__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

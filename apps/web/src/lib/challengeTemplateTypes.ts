@@ -3,6 +3,8 @@
 // Duplicado aqui de propósito (mesmo padrão de ChallengeConfig/
 // SerializedBlockState — não há pacote compartilhado entre as duas apps
 // neste monorepo, ver challenge-config.interface.ts no backend).
+import type { ContentCategory } from './contentCategory';
+
 export type TemplateParameterType = 'integer' | 'percentage' | 'boolean' | 'blockSelection' | 'select';
 
 export type TemplateParameterVisualPreview = 'polygonSides' | 'angleWedge' | 'toleranceGauge' | 'none';
@@ -35,6 +37,8 @@ export interface ChallengeTemplateSummary {
   name: string;
   description: string;
   icon: string;
+  // CC1 — categoria do tópico ao qual este template pertence, só leitura.
+  category: ContentCategory;
 }
 
 // 7.5 (AC2) — sugestão pré-escrita por template, editável (nunca só um

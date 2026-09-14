@@ -1,15 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MiniGameLevel } from './entities/mini-game-level.entity';
 import { UpdateMiniGameLevelDto } from './dto/update-mini-game-level.dto';
-import {
-  isValidFraction,
-  isValidTheme,
-  type FractionsFactoryLevelConfig,
-} from './mini-game-level-config.interface';
-
-const MAX_FRACTION_POOL_SIZE = 5;
+import { getMiniGameLevelValidator } from './validators/validator-registry';
 
 @Injectable()
 export class MinigamesService {
@@ -40,56 +34,32 @@ export class MinigamesService {
     return level;
   }
 
-  // Configurável pelo professor (pedido explícito do produto): edita tema +
-  // fração-alvo (níveis 'use'/'modify') e/ou o pool de frações sorteadas na
-  // fase Make (nível 'create'), sem exigir conhecimento técnico (regra
-  // não-negociável 9) — mensagens de erro descrevem exatamente o campo e o
-  // limite pedagógico, nunca um 400 genérico de validação de schema.
+  // MJ9 — configurável pelo professor (pedido explícito do produto), agora
+  // despachado por `gameKey` (mesma técnica de registry já usada em
+  // `challenge-templates`): este service nunca mais precisa saber o shape
+  // de config de nenhum jogo específico, cadastrar um jogo novo não toca
+  // este arquivo. Validação semântica real continua vivendo no validador
+  // de cada jogo, sem exigir conhecimento técnico do professor (regra
+  // não-negociável 9) — mensagens de erro descritivas por campo, nunca um
+  // 400 genérico de schema.
   async updateLevelConfig(
     id: string,
     userId: string,
     dto: UpdateMiniGameLevelDto,
   ): Promise<MiniGameLevel> {
     const level = await this.findOneOrThrow(id);
-    const current = level.config as Partial<FractionsFactoryLevelConfig>;
-    const next: Partial<FractionsFactoryLevelConfig> = { ...current };
-
-    if (dto.theme !== undefined) {
-      if (!isValidTheme(dto.theme)) {
-        throw new BadRequestException(
-          'Tema inválido — escolha barra de chocolate, pizza ou jardim.',
-        );
-      }
-      next.theme = dto.theme;
+    const validator = getMiniGameLevelValidator(level.gameKey);
+    if (!validator) {
+      // Linha de catálogo sem validador correspondente registrado — erro de
+      // dado/deploy (jogo cadastrado sem o código do validador acompanhar),
+      // nunca algo que o professor causou preenchendo o formulário. Mesmo
+      // racional de `ChallengeTemplatesService.loadTemplateAndHandler`.
+      throw new InternalServerErrorException(
+        'Este jogo está temporariamente indisponível pra configuração.',
+      );
     }
 
-    if (dto.targetFraction !== undefined) {
-      if (!isValidFraction(dto.targetFraction)) {
-        throw new BadRequestException(
-          'Fração-alvo inválida — o denominador deve estar entre 2 e 8, e o numerador entre 1 e o denominador menos 1.',
-        );
-      }
-      next.targetFraction = dto.targetFraction;
-    }
-
-    if (dto.fractionPool !== undefined) {
-      if (
-        dto.fractionPool.length === 0 ||
-        dto.fractionPool.length > MAX_FRACTION_POOL_SIZE
-      ) {
-        throw new BadRequestException(
-          `O pool de frações deve ter entre 1 e ${MAX_FRACTION_POOL_SIZE} opções.`,
-        );
-      }
-      if (!dto.fractionPool.every(isValidFraction)) {
-        throw new BadRequestException(
-          'Toda fração do pool precisa ter denominador entre 2 e 8 e numerador entre 1 e o denominador menos 1.',
-        );
-      }
-      next.fractionPool = dto.fractionPool;
-    }
-
-    level.config = next;
+    level.config = validator.applyUpdate(level.config, dto);
     level.updatedByUserId = userId;
     return this.levelsRepository.save(level);
   }

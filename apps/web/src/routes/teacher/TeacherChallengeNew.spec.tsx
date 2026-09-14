@@ -22,6 +22,7 @@ const templateSummary = {
   name: 'Desenhar um polígono regular',
   description: 'O aluno monta um desenho com o número de lados escolhido por você.',
   icon: '🔷',
+  category: 'informatica_educacional' as const,
 };
 
 const templateDetail = {
@@ -59,6 +60,24 @@ describe('TeacherChallengeNew', () => {
     expect(await screen.findByText('Desenhar um polígono regular')).toBeInTheDocument();
     expect(screen.getByText('O aluno monta um desenho com o número de lados escolhido por você.')).toBeInTheDocument();
     expect(screen.queryByText('regular_polygon')).not.toBeInTheDocument();
+  });
+
+  it('CC1 — the gallery shows the template category as read-only metadata', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+
+    renderPage();
+
+    expect(await screen.findByText(/Informática Educacional/i)).toBeInTheDocument();
+  });
+
+  it('CC1 — the selected template form also shows the category as a read-only badge', async () => {
+    mockedGet.mockResolvedValueOnce([templateSummary]);
+    mockedGet.mockResolvedValueOnce(templateDetail);
+
+    renderPage();
+    await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+
+    expect(await screen.findByText('Informática Educacional')).toBeInTheDocument();
   });
 
   it('AC2 — selecting a template opens its guided parameter form', async () => {

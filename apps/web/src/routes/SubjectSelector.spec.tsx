@@ -153,3 +153,61 @@ describe('SubjectSelector', () => {
     expect(navigateMock).toHaveBeenCalledWith('/water/t2');
   });
 });
+
+describe('SubjectSelector — categorização Informática Educacional × Educação em Computação (CC1)', () => {
+  it('shows two friendly category sections, never the raw technical category codes', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    expect(await screen.findByText('Matérias da escola')).toBeInTheDocument();
+    expect(screen.getByText('Sobre tecnologia')).toBeInTheDocument();
+    expect(screen.queryByText(/informatica_educacional|educacao_computacao/)).not.toBeInTheDocument();
+  });
+
+  it('a topic with no category (old API response) falls back to Informática Educacional, never a 3rd section', async () => {
+    mockedGet.mockResolvedValueOnce([{ topicId: 't1', subjectId: 's1', name: 'Ângulos e formas' }]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const section = (await screen.findByText('Ângulos e formas')).closest('section');
+    expect(section).toHaveTextContent('Matérias da escola');
+  });
+
+  it('groups a topic classified as educacao_computacao under "Sobre tecnologia", not with the school subjects', async () => {
+    mockedGet.mockResolvedValueOnce([
+      { topicId: 't1', subjectId: 's1', name: 'Ângulos e formas', category: 'informatica_educacional' },
+      { topicId: 't3', subjectId: 's3', name: 'Ferramentas digitais', category: 'educacao_computacao' },
+    ]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const techSection = (await screen.findByText('Ferramentas digitais')).closest('section');
+    expect(techSection).toHaveTextContent('Sobre tecnologia');
+    const schoolSection = (await screen.findByText('Ângulos e formas')).closest('section');
+    expect(schoolSection).toHaveTextContent('Matérias da escola');
+  });
+
+  it('"Fábrica de Pedaços Iguais" (mini jogo) appears under "Matérias da escola", not "Sobre tecnologia"', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const gameSection = (await screen.findByText('Fábrica de Pedaços Iguais')).closest('section');
+    expect(gameSection).toHaveTextContent('Matérias da escola');
+  });
+
+  it('MJ10 — "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Sobre tecnologia", not with the school subjects', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+
+    const gameSection = (await screen.findByText('Ferramentas do Mundo do Trabalho')).closest('section');
+    expect(gameSection).toHaveTextContent('Sobre tecnologia');
+  });
+});

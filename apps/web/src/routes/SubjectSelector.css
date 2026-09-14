@@ -4,6 +4,18 @@
   padding: var(--space-4);
 }
 
+/* CC1 — cada seção de categoria (Informática Educacional × Educação em
+   Computação) fica claramente separada, mesmo espaçamento de seção já
+   usado por "Desafios da sua turma" abaixo. */
+.subject-selector__category {
+  margin-bottom: var(--space-5);
+}
+
+.subject-selector__category-empty {
+  opacity: 0.75;
+  font-style: italic;
+}
+
 .subject-selector__list {
   list-style: none;
   padding: 0;

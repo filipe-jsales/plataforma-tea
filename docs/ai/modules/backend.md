@@ -2258,6 +2258,137 @@ aparece na resposta serializada). `events.service.spec.ts` ganhou
 agrupada). `audit.service.spec.ts` ganhou
 `recordClassComparisonSettingChange`.
 
+## Categorização do catálogo — Informática Educacional × Educação em Computação (CC1)
+
+Classificação explícita, ortogonal ao motor de renderização (blocos vs.
+mini jogo) e a `Topic.domain` (que só decide qual TELA abre) — depende do
+ASSUNTO ensinado. Plano completo em `docs/ai/backlog/categorizacao-
+informatica-educacional-x-educacao-computacao.md`.
+
+- **`ContentCategory`** (`common/enums/content-category.enum.ts`) —
+  `informatica_educacional | educacao_computacao`, mesmo padrão de
+  `Role`/`EventCategory` (enum compartilhado, coluna pequena e fechada).
+- **`Topic.category`** e **`MiniGameLevel.category`** (migration
+  `AddContentCategoryToCatalog`) — `DEFAULT 'informatica_educacional'`
+  classifica corretamente TODO conteúdo pré-existente
+  (`angulos_formas`/`water_state`/"Fábrica de Pedaços Iguais" são todos
+  Informática Educacional), sem UPDATE explícito necessário. As 3 linhas de
+  um mesmo `MiniGameLevel.conceptId` sempre compartilham categoria —
+  redundância barata, evita uma tabela "família de jogo" só pra isto.
+- **`GET /subjects/topics`** devolve `category` por tópico (mesma resposta
+  já usada pelo `SubjectSelector`, ver frontend.md).
+- **`ChallengeTemplatesService.toSummary`** devolve `category` derivada de
+  `template.topic.category` — `listTemplates`/`findTemplateOrThrow` passam
+  a carregar `relations: { topic: true }`. Só leitura pro professor
+  (categoria é do TÓPICO, curada via seed — nunca escolhida ao criar um
+  desafio via template).
+- **Sem tabela nova, sem evento novo** — é metadado de catálogo curricular,
+  não interação de aluno; nenhuma emissão em `interaction_events` muda.
+
+### Testes
+
+`subjects.controller.spec.ts` cobre `category` no mapeamento de
+`GET /subjects/topics`. `challenge-templates.service.spec.ts` cobre
+`category` derivada do `topic` carregado em `listTemplates`.
+
+## Suporte a múltiplos jogos de conteúdo no motor de mini jogos (MJ9)
+
+Pré-requisito pro 2º jogo de conteúdo (MJ10, "Ferramentas do Mundo do
+Trabalho", ver `docs/ai/backlog/mini-jogo-ferramentas-mundo-trabalho.md`).
+Antes desta feature, `MinigamesService.updateLevelConfig` estava hardcoded
+pro shape de `FractionsFactoryLevelConfig` — funcionava porque só existia 1
+jogo. Mesmo ponto de inflexão que já motivou o handler-registry de
+`challenge-templates` (4.2, "por que dado+handler-por-key, não 100% dado").
+
+- **`MiniGameLevel.gameKey`** (`MiniGameKey`, hoje só `'fractions_factory'`
+  — ver `mini-game-level-config.interface.ts`; migration
+  `AddGameKeyToMiniGameLevels`) — mesmo racional de `Topic.domain`. Coluna
+  nasce nullable, migration faz `UPDATE` explícito classificando as 3
+  linhas de frações existentes, só então vira `NOT NULL` — **sem
+  `DEFAULT`** de propósito (diferente de `category`/CC1 acima, onde o
+  default sozinho já classificava certo todo dado existente): aqui um
+  default seria só um acidente de sorte por só existir 1 jogo hoje: o
+  próximo jogo/migration precisa gravar o valor explicitamente, nunca cair
+  num implícito.
+- **`validators/` (`apps/api/src/minigames/validators/`)** — registry
+  MUITO mais simples que `ChallengeTemplateHandler`: não existe aqui uma
+  etapa de "traduzir parâmetros de formulário em config" (o professor edita
+  campos que já SÃO o formato final), só validar e aplicar a mudança.
+  - `MiniGameLevelValidator` (interface): `applyUpdate(currentConfig, dto)
+    → novo config`, lança `BadRequestException` com mensagem pedagógica
+    descritiva pra qualquer valor inválido — mesmo contrato que já existia
+    solto dentro de `MinigamesService` antes desta refatoração.
+  - `FractionsFactoryValidator` — a validação de tema/fração/pool
+    extraída de `MinigamesService`, comportamento idêntico (mesmos casos
+    de teste, agora isolados em `fractions-factory.validator.spec.ts`, sem
+    precisar de repositório mockado).
+  - `validator-registry.ts` (`getMiniGameLevelValidator(gameKey)`) — único
+    arquivo que muda ao cadastrar um jogo novo (+ a classe do validador) —
+    nenhum outro arquivo do módulo (`service`/`controller`) muda.
+- **`MinigamesService.updateLevelConfig`** passa a resolver o validador
+  pelo `gameKey` da linha e delegar a ele — o service nunca mais precisa
+  saber o shape de config de nenhum jogo específico. Linha de catálogo sem
+  validador correspondente (erro de dado/deploy, nunca causado pelo
+  professor) lança `InternalServerErrorException`, mesmo racional de
+  `ChallengeTemplatesService.loadTemplateAndHandler`.
+- **`GET /metrics/admin/minigames[/:levelId]` não muda** — já era
+  inteiramente genérico sobre `mini_game_levels`/eventos (confirmado por
+  leitura direta do código antes de implementar esta feature); este
+  trabalho é só sobre a validação de config do professor.
+
+### Testes
+
+`fractions-factory.validator.spec.ts` cobre a validação semântica
+(tema/fração/pool) isoladamente, sem repositório. `validator-registry.
+spec.ts` cobre resolução por `gameKey` conhecido e `undefined` pra um
+`gameKey` sem validador registrado. `minigames.service.spec.ts` foi
+reduzido pra cobrir só o DISPATCH: delega ao validador certo preservando
+campos não tocados, propaga a mensagem de erro do validador sem
+regressão, e lança `InternalServerErrorException` (sem chamar
+`repository.save`) pra um `gameKey` não registrado.
+
+## Mini jogo "Ferramentas do Mundo do Trabalho" (MJ10)
+
+2º mini jogo de CONTEÚDO da plataforma (1º foi "Fábrica de Pedaços
+Iguais"), plano completo em `docs/ai/backlog/
+mini-jogo-ferramentas-mundo-trabalho.md`. Combina "ligar" (cenário do
+mundo do trabalho ↔ ferramenta digital correta) com verdadeiro-ou-falso
+(afirmações de uso/custo-benefício), BNCC EM13CO09. Categoria **Educação
+em Computação** (CC1) — ensina sobre tecnologia, não uma disciplina da
+educação básica, diferente de frações/geometria/estados da matéria.
+
+- **`WorkToolsScenario`/`WorkToolsTool`/`WorkToolsMatchPair`/
+  `WorkToolsStatement`/`WorkToolsLevelConfig`** (`mini-game-level-config.
+  interface.ts`) — mesmo racional de nada-oculto de frações:
+  `correctMatches`/`isTrue` são exatamente o que a validação no cliente
+  compara contra, o backend só guarda e serve `config` inteiro.
+  `WorkToolsStatement.explanation` é o texto de apoio do feedback
+  não-punitivo (regra não-negociável 4) — nunca só "certo"/"errado".
+- **`MiniGameKey`** ganha `'work_tools_match'` — mas **sem validador
+  registrado ainda** (MJ11, configuração pelo professor, é quem vai
+  precisar disso; `PATCH /teacher/minigames/levels/:id` continua não
+  suportando este jogo até lá — `getMiniGameLevelValidator('work_tools_
+  match')` devolve `undefined` de propósito).
+- **Seed** (`CreateWorkToolsMiniGame`, `conceptId: 'digital_tools_
+  workplace'`) — 3 linhas Use→Modify→Create, `gameKey`/`category`
+  gravados explicitamente (nem `gameKey` tem default, nem faz sentido
+  confiar no default `informatica_educacional` de `category` aqui).
+  `correctMatches` é o gabarito COMPLETO (cobre também os cenários do
+  `scenarioPool` do Create, não só os 4 do Use/Modify). Nível Modify tem 1
+  par errado + 1 afirmação errada de propósito (aluno cenário
+  "brainstorm" ligado à ferramenta errada de propósito, mesma técnica do
+  "cartão errado" de frações).
+- **Zero mudança em `MinigamesController`/`TeacherMinigamesController`/
+  `MetricsAdminMiniGameService`** — endpoints genéricos já servem o novo
+  `conceptId` sem nenhum código novo (confirmado por leitura: nenhum dos
+  três tem lógica específica de jogo).
+
+### Testes
+
+`mini-game-level-config.interface.spec.ts` cobre `isWorkToolsLevelConfig`
+(shape mínimo válido, rejeição de cada um dos 4 arrays obrigatórios
+ausente, aceitação dos campos opcionais).
+
 ## Próximos passos (fora do escopo já implementado)
 
 - Transporte de e-mail de verdade pro link de definição de senha de 1.4

@@ -23,6 +23,7 @@ describe('ChallengeTemplatesService', () => {
     description: 'O aluno monta um desenho com o número de lados escolhido por você.',
     icon: '🔷',
     topicId: 'topic-1',
+    topic: { category: 'informatica_educacional' },
     position: 1,
     parameterSchema: [
       {
@@ -103,6 +104,7 @@ describe('ChallengeTemplatesService', () => {
           name: 'Desenhar um polígono regular',
           description: 'O aluno monta um desenho com o número de lados escolhido por você.',
           icon: '🔷',
+          category: 'informatica_educacional',
         },
       ]);
     });

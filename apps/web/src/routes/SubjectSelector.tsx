@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import type { AvailableChallengeForStudent } from '../lib/challengeAllocationTypes';
+import type { ContentCategory } from '../lib/contentCategory';
+import { CONTENT_CATEGORY_STUDENT_LABEL } from '../lib/contentCategory';
+import { MINI_GAMES_CATALOG } from '../lib/miniGamesCatalog';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
@@ -15,7 +18,25 @@ interface TopicOption {
   // antigos, testes existentes) cai no domínio original de tartaruga —
   // nunca inferido do slug/nome do tópico.
   domain?: string;
+  // CC1 — categoria curricular (Informática Educacional × Educação em
+  // Computação). Ausente (testes existentes, resposta de API antiga) cai
+  // em Informática Educacional — mesmo default do backend
+  // (`Topic.category`), nunca um 3º grupo "sem categoria" na tela.
+  category?: ContentCategory;
 }
+
+// CC1 — as duas categorias existem hoje como 2 blocos visuais já
+// separados (tópicos × "Mini jogos", ver histórico deste componente) —
+// esta é a MESMA quantidade de áreas, só agrupadas pelo que o produto
+// realmente distingue (o assunto ensinado), não por qual motor renderiza
+// (blocos vs. mini jogo). Regra não-negociável 2 ("no máximo 1 paleta nova
+// por tela") continua satisfeita: nenhuma 3ª área nova.
+const CATEGORY_ORDER: ContentCategory[] = ['informatica_educacional', 'educacao_computacao'];
+const CATEGORY_ICON: Record<ContentCategory, string> = {
+  informatica_educacional: '📐',
+  educacao_computacao: '💻',
+};
+const DEFAULT_CATEGORY: ContentCategory = 'informatica_educacional';
 
 // 2.3 — seletor de matéria/módulo. Componente genérico pra N itens (AC1);
 // com 1 item só, ainda exige confirmação explícita — não pula sozinho
@@ -65,40 +86,58 @@ export function SubjectSelector() {
     <main className="subject-selector">
       <h1>Onde você quer entrar?</h1>
 
-      {topics && (
-        <ul className="subject-selector__list">
-          {topics.map((topic) => (
-            <li key={topic.topicId}>
-              <SelectableCard
-                icon="📐"
-                selected={selected?.topicId === topic.topicId}
-                onSelect={() => setSelected(topic)}
-              >
-                {topic.name}
-              </SelectableCard>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* CC1 — duas seções fixas (nunca uma 3ª), agrupadas pelo assunto
+          ensinado (Informática Educacional × Educação em Computação) —
+          um tópico curricular e um mini jogo da MESMA categoria aparecem
+          juntos, mesmo vindo de fontes diferentes (API × catálogo local
+          de mini jogos, ver lib/miniGamesCatalog.ts). */}
+      {CATEGORY_ORDER.map((category) => {
+        const categoryTopics = (topics ?? []).filter(
+          (topic) => (topic.category ?? DEFAULT_CATEGORY) === category,
+        );
+        const categoryMiniGames = MINI_GAMES_CATALOG.filter((game) => game.category === category);
+        const hasItems = categoryTopics.length > 0 || categoryMiniGames.length > 0;
+
+        return (
+          <section key={category} className="subject-selector__category">
+            <h2>
+              <span aria-hidden="true">{CATEGORY_ICON[category]}</span>{' '}
+              {CONTENT_CATEGORY_STUDENT_LABEL[category]}
+            </h2>
+
+            {topics !== null && !hasItems && (
+              <p className="subject-selector__category-empty">Em breve, novidades por aqui.</p>
+            )}
+
+            {hasItems && (
+              <ul className="subject-selector__list">
+                {categoryTopics.map((topic) => (
+                  <li key={topic.topicId}>
+                    <SelectableCard
+                      icon="📐"
+                      selected={selected?.topicId === topic.topicId}
+                      onSelect={() => setSelected(topic)}
+                    >
+                      {topic.name}
+                    </SelectableCard>
+                  </li>
+                ))}
+                {categoryMiniGames.map((game) => (
+                  <li key={game.key}>
+                    <LinkButton to={game.entryPath} variant="secondary" icon="🎮">
+                      {game.title}
+                    </LinkButton>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
 
       <Button onClick={handleConfirm} disabled={!selected}>
         Confirmar
       </Button>
-
-      {/* MJ1/MJ3 — 2ª metodologia ativa (mini jogo sério), complementar aos
-          módulos curriculares acima pro mesmo assunto (frações). Entrada
-          sempre pelo nível 1 (Use) — a própria tela do jogo oferece
-          "Próximo nível" ao concluir cada um. */}
-      <section className="subject-selector__minigames">
-        <h2>Mini jogos</h2>
-        <ul className="subject-selector__list">
-          <li>
-            <LinkButton to="/minigame/fractions/use" variant="secondary" icon="🎮">
-              Fábrica de Pedaços Iguais
-            </LinkButton>
-          </li>
-        </ul>
-      </section>
 
       {classroomChallenges && classroomChallenges.length > 0 && (
         <section className="subject-selector__classroom-challenges">

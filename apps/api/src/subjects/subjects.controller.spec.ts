@@ -18,6 +18,7 @@ describe('SubjectsController', () => {
         subjectId: 's1',
         name: 'Ângulos e formas',
         domain: 'blocks_turtle',
+        category: 'informatica_educacional',
         subject: { name: 'Geometria' },
       } as unknown as Topic,
       {
@@ -25,6 +26,7 @@ describe('SubjectsController', () => {
         subjectId: 's2',
         name: 'Estados da matéria',
         domain: 'water_state',
+        category: 'informatica_educacional',
         subject: { name: 'Ciências' },
       } as unknown as Topic,
     ]);
@@ -32,8 +34,20 @@ describe('SubjectsController', () => {
     const result = await controller.listTopics();
 
     expect(result).toEqual([
-      { topicId: 't1', subjectId: 's1', name: 'Geometria — Ângulos e formas', domain: 'blocks_turtle' },
-      { topicId: 't2', subjectId: 's2', name: 'Ciências — Estados da matéria', domain: 'water_state' },
+      {
+        topicId: 't1',
+        subjectId: 's1',
+        name: 'Geometria — Ângulos e formas',
+        domain: 'blocks_turtle',
+        category: 'informatica_educacional',
+      },
+      {
+        topicId: 't2',
+        subjectId: 's2',
+        name: 'Ciências — Estados da matéria',
+        domain: 'water_state',
+        category: 'informatica_educacional',
+      },
     ]);
   });
 });
