@@ -303,67 +303,85 @@ Critérios de Aceite:
   migrações DS6–DS9) vai consumir.
 - Nenhuma mudança de comportamento — só o glifo do ícone.
 
-### DS6 — Trocar emoji por `Icon` na área do aluno (júnior)
+### Regras comuns a DS6–DS9
 
-Escopo: `routes/home/StudentHome.tsx`, `routes/login/StudentLogin.tsx`,
-`routes/StudentSensorySettings.tsx`, `routes/challenge/ChallengePage.tsx`,
-`routes/challenge/WaterStateChallengePage.tsx`,
-`components/challenge/WaterStateTransition.tsx`, `routes/RootRedirect.tsx`,
-`routes/RequireAuth.tsx`.
+- Trocar cada emoji listado pelo `Icon` (Lucide) correspondente na tabela
+  de mapeamento de DS5 (`docs/ai/modules/frontend.md`). Conceito sem
+  ícone mapeado ainda? Perguntar antes de escolher um por conta própria.
+- Só troca de glifo — nada de lógica, endpoint, evento ou texto além do
+  emoji.
+- Teste que afirma o emoji literal (ex. `getByText('🔁')`) é atualizado
+  pra afirmar o ícone novo, resto do teste não muda.
+- Fazer sempre depois de DS5 estar mesclado.
 
-Critérios de Aceite:
-- Todo emoji nesses arquivos substituído pelo `Icon` correspondente do
-  mapeamento de DS5 (nenhum ícone novo fora da tabela — se faltar um
-  conceito na tabela, perguntar antes de adivinhar).
-- Alinhamento verificado visualmente: ícone e texto lado a lado usam
-  `display:flex; align-items:center; gap: var(--space-1)` (nunca
-  `vertical-align` solto) — o glifo SVG tem geometria diferente do glifo
-  emoji, então todo lugar que antes "parecia alinhado por acaso" com
-  emoji precisa ser checado de novo com o ícone novo.
-- `WaterStateTransition` mantém "ícone + rótulo textual sempre juntos"
-  (regra não-negociável 9) — só troca o glifo, nunca remove o texto.
-- Testes existentes (`ChallengePage.spec.tsx`,
-  `WaterStateTransition.spec.tsx`, etc.) atualizados só onde afirmavam o
-  caractere emoji literal (ex. `getByText('❄️')`) — trocar pela asserção
-  equivalente no ícone (`getByRole('img', { hidden: true })`/testid do
-  `Icon`, combinado com o texto do rótulo, que continua igual).
+### DS6 — Trocar emoji por `Icon`: área do aluno (júnior)
 
-### DS7 — Trocar emoji por `Icon` na área do professor (júnior)
+| Tela | Emojis a trocar |
+|---|---|
+| `routes/login/RoleSelect.tsx` | 🎒 🍎 🛠️ |
+| `routes/home/StudentHome.tsx` | 🚪 ⚙️ 📈 🎉 |
+| `routes/StudentSensorySettings.tsx` | 🔊 ✨ |
+| `routes/SubjectSelector.tsx` | 📐 💻 🎮 🧩 |
+| `routes/challenge/ChallengePage.tsx` | 🔁 ▶️ 🔎 |
+| `routes/challenge/WaterStateChallengePage.tsx` | ❄️ 💧 ☁️ 🔁 ▶️ |
+| `components/challenge/WaterStateTransition.tsx` | ❄️ 💧 ☁️ |
+| `routes/login/StudentLogin.tsx`, `routes/RootRedirect.tsx`, `routes/RequireAuth.tsx` | nenhum emoji encontrado — conferir mesmo assim |
 
-Escopo: `routes/teacher/TeacherChallengeNew.tsx`,
-`TeacherChallengeEdit.tsx`, `TeacherChallenges.tsx`,
-`TeacherMiniGameSettings.tsx`, `TeacherStudents.tsx`,
-`TeacherAddStudent.tsx`, `routes/metrics/TeacherMetrics.tsx`,
-`routes/home/AdminHome.tsx` (atalhos compartilhados com professor, se
-aplicável).
+Critérios de Aceite: todos os emojis da tabela trocados pelo `Icon`
+correspondente; testes que afirmam o emoji literal ajustados; suíte de
+testes passando.
 
-Critérios de Aceite: mesmos de DS6 (mapeamento único, alinhamento flex
-verificado, testes ajustados só na asserção do glifo) — nunca reabrir a
-lógica de negócio dessas telas nesta troca.
+### DS7 — Trocar emoji por `Icon`: área do professor (júnior)
 
-### DS8 — Trocar emoji por `Icon` na área do admin e relatórios (júnior)
+| Tela | Emojis a trocar |
+|---|---|
+| `routes/home/TeacherHome.tsx` | 🚪 ➕ 🧑‍🤝‍🧑 📈 🧩 🎮 |
+| `routes/teacher/TeacherChallenges.tsx` | ➕ 🏫 ✏️ 🧬 🗑️ |
+| `routes/teacher/TeacherMiniGameSettings.tsx` | 🗑️ ➕ |
+| `routes/teacher/TeacherStudents.tsx` | 🔄 🔑 |
+| `routes/teacher/TeacherAddStudent.tsx` | 🖨️ ➕ |
+| `routes/metrics/TeacherMetrics.tsx` | 📚 📊 🧩 🎮 |
+| `routes/teacher/TeacherChallengeNew.tsx`, `TeacherChallengeEdit.tsx` | nenhum emoji hardcoded encontrado (ícone vem do template, dado do banco) — conferir mesmo assim |
 
-Escopo: `routes/admin/AdminUsers.tsx`, `AdminSchools.tsx`,
-`AdminSchoolClassrooms.tsx`, `routes/metrics/AdminSettings.tsx`,
-`AdminMetrics.tsx`, `AdminExport.tsx`, `ChallengeReport.tsx`,
-`MiniGameReport.tsx`, `components/charts/BarChart.tsx` (se usar emoji em
-legenda/eixo).
+Critérios de Aceite: todos os emojis da tabela trocados pelo `Icon`
+correspondente; testes que afirmam o emoji literal ajustados; suíte de
+testes passando.
 
-Critérios de Aceite: mesmos de DS6/DS7.
+### DS8 — Trocar emoji por `Icon`: área do admin e relatórios (júnior)
 
-### DS9 — Trocar emoji por `Icon` nos mini jogos (júnior)
+| Tela | Emojis a trocar |
+|---|---|
+| `routes/home/AdminHome.tsx` | 🚪 👤 🏫 📊 🔬 🎮 ⚙️ |
+| `routes/admin/AdminUsers.tsx` | ➕ ✏️ 🛡️ 🔑 🚫 ✅ |
+| `routes/admin/AdminSchools.tsx` | ➕ 🏫 ✏️ 🚫 ✅ |
+| `routes/admin/AdminSchoolClassrooms.tsx` | ➕ ✏️ 🚫 ✅ |
+| `routes/metrics/AdminMetrics.tsx` | 🏫 |
+| `routes/metrics/AdminSettings.tsx`, `AdminExport.tsx`, `ChallengeReport.tsx`, `MiniGameReport.tsx`, `components/charts/BarChart.tsx` | nenhum emoji encontrado — conferir mesmo assim |
 
-Escopo: `routes/minigame/MiniGamePage.tsx`,
-`routes/minigame/fractions/FractionsGamePage.tsx`,
-`routes/minigame/work-tools/WorkToolsGamePage.tsx`.
+Critérios de Aceite: todos os emojis da tabela trocados pelo `Icon`
+correspondente; testes que afirmam o emoji literal ajustados; suíte de
+testes passando.
 
-Atenção extra (única diferença real dos outros 3 cards): parte do
-"ícone" aqui é desenhado dentro do canvas Pixi (`fractionsFactoryScene.ts`
-etc.), não em JSX/CSS — **fora de escopo** desta troca (Pixi não consome
-`lucide-react`/SVG do DOM da mesma forma; trocar ícone desenhado em canvas
-é tarefa própria, não mecânica, não indicada pra júnior sem orientação).
-Only o JSX ao redor do canvas (botões, roteiro/`MiniGameBriefing`, texto de
-feedback) entra neste card.
+### DS9 — Trocar emoji por `Icon`: mini-jogos (júnior)
+
+⚠️ Fora de escopo: emoji desenhado **dentro do canvas Pixi**
+(`components/minigame/scenes/fractionsFactoryScene.ts`,
+`components/minigame/scenes/placeholderScene.ts`) — não é JSX/CSS, não dá
+pra trocar pelo `Icon` da mesma forma. Não tocar nesses 2 arquivos.
+
+| Tela | Emojis a trocar |
+|---|---|
+| `routes/minigame/MiniGamePage.tsx` | ➡️ 📋 |
+| `routes/minigame/fractions/FractionsGamePage.tsx` | 👀 🔍 ✏️ 🧩 📋 ➡️ ✓ |
+| `routes/minigame/work-tools/WorkToolsGamePage.tsx` | 👀 🔎 ✅ ✏️ 👉 🔁 📋 ➡️ |
+| `components/minigame/MiniGameBriefing.tsx` | 🚩 🏁 |
+| `components/minigame/cardLabels.ts` | 🧺 ✂️ 🔁 🎁 📦 |
+| `components/minigame/CardSequenceEditor.tsx` | 🗑️ |
+
+Critérios de Aceite: todos os emojis da tabela trocados pelo `Icon`
+correspondente; `fractionsFactoryScene.ts`/`placeholderScene.ts` não
+alterados; testes que afirmam o emoji literal ajustados; suíte de testes
+passando.
 
 ### Rastreabilidade (comum a DS5–DS9)
 
