@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft, Sparkles, Volume2 } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import { useAuthStore, type SessionUser } from '../stores/useAuthStore';
@@ -55,7 +56,7 @@ export function StudentSensorySettings() {
 
   return (
     <main className="onboarding-sensorial">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft size={20} />}>
         Voltar
       </LinkButton>
       <h1>Minhas configurações</h1>
@@ -64,7 +65,7 @@ export function StudentSensorySettings() {
       <div className="onboarding-sensorial__options">
         <ToggleSwitch
           id="settings-sound"
-          icon="🔊"
+          icon={<Volume2 size={20} />}
           label="Quer som?"
           checked={soundEnabled}
           onCheckedChange={setSoundChoice}
@@ -72,7 +73,7 @@ export function StudentSensorySettings() {
 
         <ToggleSwitch
           id="settings-animation"
-          icon="✨"
+          icon={<Sparkles size={20} />}
           label="Quer animação?"
           checked={animationEnabled}
           onCheckedChange={setAnimationChoice}

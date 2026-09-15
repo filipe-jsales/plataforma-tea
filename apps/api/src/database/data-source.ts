@@ -4,7 +4,10 @@ import { DataSource } from 'typeorm';
 
 // Usado apenas pelo CLI do TypeORM (migration:generate/run/revert). O NestJS em
 // runtime usa TypeOrmModule.forRootAsync (ver app.module.ts) — não este arquivo.
-config();
+// `quiet: true` — dotenv 17+ imprime uma dica promocional aleatória (linkando
+// pros próprios produtos, dotenvx.com/vestauth.com) toda vez que carrega o
+// .env; silenciado aqui, não afeta o carregamento das variáveis.
+config({ quiet: true });
 
 // Export único: o CLI do TypeORM rejeita o arquivo se houver mais de uma
 // exportação de instância de DataSource (mesmo apontando pro mesmo objeto).

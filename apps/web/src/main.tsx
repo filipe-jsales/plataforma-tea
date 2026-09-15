@@ -6,6 +6,7 @@ import './theme/staff-theme.css'
 import { useSensoryProfileStore } from './stores/useSensoryProfileStore'
 import { useAuthStore } from './stores/useAuthStore'
 import './index.css'
+import './theme/utilities.css'
 import App from './App.tsx'
 
 // Sessão persistida (ex.: F5 na tela) já traz o perfil sensorial salvo do

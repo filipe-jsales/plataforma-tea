@@ -184,3 +184,30 @@ npm run build:api
 | `npm run dev:api` | Roda o backend em modo dev |
 | `npm run dev:web` | Roda o frontend em modo dev |
 | `npm run build:api` / `npm run build:web` | Builds de produção |
+
+## Contas demo
+
+Semeadas automaticamente pela migration `AddLoginMechanisms` (passo 2, `npm
+run migration:run`) — nunca usar fora de ambiente local:
+
+| Papel | Login | Credencial |
+|---|---|---|
+| Professor | `professor.demo@escolaexemplo.test` (`/login/teacher`) | senha `demo-professor-2026` |
+| Admin | `admin.demo@plataforma-tea.test` (`/login/admin`) | senha `demo-admin-2026` + TOTP (secret `4PQTUDCGD7VD7ZMXKB5YLDAO5WO2QY6W`) |
+| Aluno | turma `AZUL-1`, avatar "Gato" (`/login/student`) | sequência de imagens **Sol → Lua → Estrela** |
+
+
+
+- melhorar visualmente o texto onde indica 
+
+'Uma situação está ligada à ferramenta errada, e uma afirmação está marcada errado. Encontre e corrija.'
+
+melhorar o formato que está o verdadeiro/falso 
+
+melhorar texto 'Ligue cada situação à ferramenta certa'
+
+aumentar o situações e ferramentas
+
+melhorar botões de desfazer
+
+https://claude.ai/code/artifact/afa5f15f-1343-404e-a249-136aceea6546

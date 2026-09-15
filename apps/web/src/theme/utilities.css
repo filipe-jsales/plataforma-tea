@@ -1,0 +1,66 @@
+
+/* ---------- layout ---------- */
+.u-flex { display: flex; }
+.u-inline-flex { display: inline-flex; }
+.u-flex-col { flex-direction: column; }
+.u-flex-wrap { flex-wrap: wrap; }
+.u-items-center { align-items: center; }
+.u-items-start { align-items: flex-start; }
+.u-items-end { align-items: flex-end; }
+.u-justify-start { justify-content: flex-start; }
+.u-justify-center { justify-content: center; }
+.u-justify-end { justify-content: flex-end; }
+.u-justify-between { justify-content: space-between; }
+
+/* ---------- espaçamento (gap — nunca margin solto entre irmãos, mesma
+   regra de "Let layout do the spacing" já seguida no resto do produto) --- */
+.u-gap-1 { gap: var(--space-1); }
+.u-gap-2 { gap: var(--space-2); }
+.u-gap-3 { gap: var(--space-3); }
+.u-gap-4 { gap: var(--space-4); }
+.u-gap-5 { gap: var(--space-5); }
+
+.u-p-1 { padding: var(--space-1); }
+.u-p-2 { padding: var(--space-2); }
+.u-p-3 { padding: var(--space-3); }
+.u-p-4 { padding: var(--space-4); }
+.u-p-5 { padding: var(--space-5); }
+
+.u-px-2 { padding-inline: var(--space-2); }
+.u-px-3 { padding-inline: var(--space-3); }
+.u-px-4 { padding-inline: var(--space-4); }
+.u-py-2 { padding-block: var(--space-2); }
+.u-py-3 { padding-block: var(--space-3); }
+.u-py-4 { padding-block: var(--space-4); }
+
+/* ---------- cor de texto ---------- */
+.u-text-default { color: var(--color-text); }
+.u-text-primary { color: var(--color-primary); }
+.u-text-success { color: var(--color-success); }
+.u-text-warning { color: var(--color-warning); }
+/* Texto secundário — nunca um hex solto (`#5a6472`) nem um token
+   `--color-text-muted` que não existe (ver DS12): opacidade sobre
+   `--color-text` herda qualquer override de tema/alto-contraste de
+   graça, mesmo mecanismo de `components/ui/Card.css` (`.ui-card__meta`)
+   e `Typography.css` (`.ui-text--muted`). */
+.u-text-muted { color: var(--color-text); opacity: 0.75; }
+
+/* ---------- tamanho de texto (mesma escala de Heading/Text — usar aqui só
+   quando o elemento não puder ser <Heading>/<Text>, ex. um <span> dentro
+   de outro componente) ---------- */
+.u-text-sm { font-size: var(--font-size-small); }
+.u-text-body { font-size: var(--font-size-body); }
+.u-text-lg { font-size: 1.15rem; }
+.u-font-heading { font-weight: var(--font-weight-heading); }
+.u-font-body { font-weight: var(--font-weight-body); }
+
+/* ---------- superfície ---------- */
+.u-bg-surface { background: var(--color-surface); }
+.u-bg-primary { background: var(--color-primary); color: var(--color-bg); }
+.u-border { border: 1px solid var(--color-border); }
+.u-rounded { border-radius: var(--radius-md); }
+.u-shadow-card { box-shadow: var(--shadow-card); }
+
+/* ---------- interação (RQ4 coordenação motora fina — mesmo token que
+   Button.css/Card.css usam, nunca um px inventado na tela) ---------- */
+.u-hit-area { min-width: var(--hit-area-min); min-height: var(--hit-area-min); }
