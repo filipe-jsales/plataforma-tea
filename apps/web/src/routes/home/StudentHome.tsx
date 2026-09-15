@@ -7,7 +7,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
 import { Camera } from 'lucide-react';
-import { LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react'; 
+import { Play } from 'lucide-react';
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -81,7 +82,7 @@ export function StudentHome() {
       <div className="home__actions">
         <Button
           variant="secondary"
-          icon="▶️"
+          icon={<Play color="#000000" strokeWidth={1.75} />}
           onClick={() => navigate('/subjects')}
           disabled={!data}
         >
