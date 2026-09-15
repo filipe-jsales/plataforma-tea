@@ -9,6 +9,7 @@ import { MINI_GAMES_CATALOG } from '../lib/miniGamesCatalog';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
+import { BookOpenCheck, Gamepad2, Laptop } from 'lucide-react';
 
 interface TopicOption {
   topicId: string;
@@ -32,9 +33,9 @@ interface TopicOption {
 // (blocos vs. mini jogo). Regra não-negociável 2 ("no máximo 1 paleta nova
 // por tela") continua satisfeita: nenhuma 3ª área nova.
 const CATEGORY_ORDER: ContentCategory[] = ['informatica_educacional', 'educacao_computacao'];
-const CATEGORY_ICON: Record<ContentCategory, string> = {
-  informatica_educacional: '📐',
-  educacao_computacao: '💻',
+const CATEGORY_ICON: Record<ContentCategory, React.ReactNode> = {
+  informatica_educacional: <BookOpenCheck color="#000000" strokeWidth={1.75} />,
+  educacao_computacao: <Laptop color="#000000" strokeWidth={1.75} />
 };
 const DEFAULT_CATEGORY: ContentCategory = 'informatica_educacional';
 
@@ -114,7 +115,7 @@ export function SubjectSelector() {
                 {categoryTopics.map((topic) => (
                   <li key={topic.topicId}>
                     <SelectableCard
-                      icon="📐"
+                      icon={<BookOpenCheck color="#000000" strokeWidth={1.75} />}
                       selected={selected?.topicId === topic.topicId}
                       onSelect={() => setSelected(topic)}
                     >
@@ -124,7 +125,7 @@ export function SubjectSelector() {
                 ))}
                 {categoryMiniGames.map((game) => (
                   <li key={game.key}>
-                    <LinkButton to={game.entryPath} variant="secondary" icon="🎮">
+                    <LinkButton to={game.entryPath} variant="secondary" icon={<Gamepad2 color="#000000" strokeWidth={1.75} />}>
                       {game.title}
                     </LinkButton>
                   </li>
