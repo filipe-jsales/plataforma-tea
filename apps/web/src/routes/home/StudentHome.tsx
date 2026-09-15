@@ -6,6 +6,8 @@ import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
+import { Camera } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -69,8 +71,8 @@ export function StudentHome() {
         <LinkButton to="/settings/sensory" variant="ghost" icon="⚙️">
           Configurações
         </LinkButton>
-        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
-          Sair
+        <Button variant="ghost" icon={< LogOut color="#000000" strokeWidth={1.75} />} onClick={handleLogout}>
+          Sair 
         </Button>
       </div>
 
@@ -86,8 +88,8 @@ export function StudentHome() {
           Continuar{data?.continueChallenge ? `: ${data.continueChallenge.title}` : ''}
         </Button>
 
-        <Button variant="secondary" icon="📈" onClick={() => setShowProgress((value) => !value)}>
-          Meu progresso
+        <Button variant="secondary" icon={<Camera size={20} />} onClick={() => setShowProgress((value) => !value)}>
+          Meu progresso 
         </Button>
       </div>
 

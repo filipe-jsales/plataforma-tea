@@ -12,5 +12,8 @@
     "build:api": "npm run build --workspace apps/api",
     "test:web": "npm run test --workspace apps/web",
     "test:api": "npm run test --workspace apps/api"
+  },
+  "dependencies": {
+    "lucide-react": "^1.46.0"
   }
 }
