@@ -400,3 +400,131 @@ sempre depois de DS5 estar mesclado.
 ### Dados/Eventos
 
 Nenhum evento novo em nenhum dos 5 cards — troca de glifo visual.
+
+---
+
+## DS10 — Corrigir sublinhado herdado em todo `LinkButton` (bug, não cosmético por design)
+
+### Descrição
+
+Auditoria visual (screenshots reais das telas de aluno/professor/admin,
+14/09/2026) encontrou a causa raiz de vários botões "parecerem link":
+`.ui-button` (a classe base em `components/ui/Button.css`) nunca reseta
+`text-decoration`. Isso não afeta `Button` (elemento `<button>`, sem
+sublinhado nativo do navegador), mas afeta **todo `LinkButton`** (elemento
+`<a>` do react-router) — confirmado comparando o CSS computado:
+
+```
+LinkButton (<a>, qualquer variant): textDecorationLine = "underline"  ← bug
+Button (<button>, qualquer variant): textDecorationLine = "none"      ← correto
+```
+
+Isso não é só os botões `ghost` tipo "Voltar" — afeta também botões
+`primary`/`secondary` sólidos que navegam em vez de disparar ação: "Adicionar
+aluno"/"Meus alunos"/"Meus desafios" (`TeacherHome`), "Criar desafio"
+(`TeacherChallenges`), "Editar"/"Duplicar" (`TeacherChallenges`), e os
+itens de mini-jogo/desafio em `SubjectSelector.tsx` (já são `LinkButton
+variant="secondary"`, não falta estilo — é o mesmo bug do sublinhado).
+Contradiz o próprio racional documentado em `LinkButton.tsx` ("Entrar"
+(Button) e "← Voltar" (LinkButton) nascem visualmente idênticos").
+
+### Critérios de Aceite
+
+- `.ui-button` em `Button.css` ganha `text-decoration: none` na regra
+  base (não em cada variant — é a mesma classe pra `Button` e
+  `LinkButton`).
+- Conferido visualmente (`npm run dev:web`) que nenhum `LinkButton` do
+  app aparece sublinhado: "Voltar" (qualquer tela), "Configurações"
+  (`StudentHome`), os botões de `TeacherHome`, "Criar desafio"/"Editar"/
+  "Duplicar" (`TeacherChallenges`), mini-jogos/desafios em
+  `SubjectSelector`.
+- `Button` (elemento `<button>`) continua sem sublinhado — sem mudança
+  visual ali.
+- Testes existentes continuam passando (mudança é só decoração visual,
+  não afeta texto/role/comportamento).
+
+### Rastreabilidade
+
+RQ4 — acessibilidade de interface (26,09%): consistência visual entre
+elementos com a mesma função (navegação) é parte da previsibilidade que a
+barreira exige. Regra não-negociável 1: fundação de componente
+compartilhada (`Button.css`) é o único lugar que devia decidir isso — a
+inconsistência veio de uma omissão nessa fundação, não de uma tela
+individual.
+
+### Prioridade
+
+Alta — é bug (contradiz o próprio contrato documentado do componente),
+correção de 1 linha, conserta a aparência de dezenas de botões em todas
+as áreas do produto de uma vez.
+
+### Dados/Eventos
+
+Nenhum evento novo — mudança de CSS.
+
+---
+
+## DS11 — "Sair"/"Configurações"/"Voltar" sem fundo: trocar `ghost` → `secondary`
+
+### Descrição
+
+Decisão do usuário: essas 3 ações (hoje `variant="ghost"` — fundo
+transparente por design, ver `Button.css`) devem ganhar fundo
+(`secondary`: fundo `--color-surface`, borda `--color-border`) pra parar
+de parecer um link de texto solto, mesmo depois do fix de DS10. Trocar só
+a prop `variant`, sem tocar em `icon`/rota/handler.
+
+⚠️ Fazer depois de DS10 mesclado, pra já conferir o resultado final (fundo
++ sem sublinhado) de uma vez.
+
+### Telas a trocar
+
+**"Voltar" (`LinkButton variant="ghost"` → `"secondary"`):**
+`routes/admin/AdminUsers.tsx`, `AdminSchools.tsx`,
+`AdminSchoolClassrooms.tsx` ("Voltar para escolas"), `routes/
+StudentSensorySettings.tsx`, `routes/teacher/TeacherAddStudent.tsx` (3
+ocorrências), `TeacherChallengeEdit.tsx`, `TeacherChallengeNew.tsx`,
+`TeacherChallenges.tsx`, `TeacherStudents.tsx`,
+`TeacherMiniGameSettings.tsx`, `routes/metrics/TeacherMetrics.tsx`,
+`AdminMetrics.tsx`, `AdminSettings.tsx`, `AdminExport.tsx`,
+`ChallengeReport.tsx`, `MiniGameReport.tsx`, `routes/minigame/
+MiniGamePage.tsx`, `routes/minigame/fractions/FractionsGamePage.tsx` (2
+ocorrências), `routes/minigame/work-tools/WorkToolsGamePage.tsx` (2
+ocorrências).
+
+**"Sair" (`Button variant="ghost"` → `"secondary"`):** `routes/home/
+AdminHome.tsx`, `StudentHome.tsx`, `TeacherHome.tsx`.
+
+**"Configurações" (`LinkButton variant="ghost"` → `"secondary"`):**
+`routes/home/StudentHome.tsx` (a de `AdminHome.tsx` já é `secondary`,
+não mexer).
+
+⚠️ Fora de escopo: os "Voltar" com elemento `<Link>` puro (não
+`LinkButton`) em `routes/challenge/ChallengePage.tsx` e
+`WaterStateChallengePage.tsx` — já cobertos por DS1 (migração dessas
+telas pra `components/ui/`), não duplicar aqui.
+
+### Critérios de Aceite
+
+- Todas as ocorrências listadas trocam `variant="ghost"` por
+  `variant="secondary"` (nenhuma outra prop tocada).
+- Conferido visualmente que "Voltar"/"Sair"/"Configurações" agora têm
+  fundo (`--color-surface`) e borda em toda tela onde aparecem.
+- Nenhuma mudança de comportamento/rota/evento.
+- Testes existentes continuam passando (nenhum deles depende do
+  `variant` como seletor).
+
+### Rastreabilidade
+
+RQ4 — acessibilidade de interface (26,09%): affordance de "isto é
+clicável" mais forte com fundo+borda do que com texto solto, mesmo
+depois do fix de sublinhado de DS10.
+
+### Prioridade
+
+Baixa-média — cosmético, mecânico, mas visível (ações presentes em quase
+toda tela do produto).
+
+### Dados/Eventos
+
+Nenhum evento novo — troca de variant visual.
