@@ -6,6 +6,7 @@ import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
+import { LogOut, Play, TrendingUp, Settings } from 'lucide-react';
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -66,11 +67,11 @@ export function StudentHome() {
         {/* 3.9 — mesmo racional de "Sair": ação de escape sempre
             disponível, mas discreta, fora das "no máximo 2 ações
             principais" (AC1). */}
-        <LinkButton to="/settings/sensory" variant="ghost" icon="⚙️">
+        <LinkButton to="/settings/sensory" variant="ghost" icon={<Settings color="#000000" strokeWidth={1.75} />}>
           Configurações
         </LinkButton>
-        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
-          Sair
+        <Button variant="ghost" icon={< LogOut color="#000000" strokeWidth={1.75} />} onClick={handleLogout}>
+          Sair 
         </Button>
       </div>
 
@@ -79,15 +80,15 @@ export function StudentHome() {
       <div className="home__actions">
         <Button
           variant="secondary"
-          icon="▶️"
+          icon={<Play color="#000000" strokeWidth={1.75} />}
           onClick={() => navigate('/subjects')}
           disabled={!data}
         >
           Continuar{data?.continueChallenge ? `: ${data.continueChallenge.title}` : ''}
         </Button>
 
-        <Button variant="secondary" icon="📈" onClick={() => setShowProgress((value) => !value)}>
-          Meu progresso
+        <Button variant="secondary" icon={<TrendingUp color="#000000" strokeWidth={1.75} />} onClick={() => setShowProgress((value) => !value)}>
+          Meu progresso 
         </Button>
       </div>
 
