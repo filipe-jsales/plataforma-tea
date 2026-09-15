@@ -20,6 +20,12 @@
   /* Sem transition/animation aqui de propósito — data-motion controla isso
      globalmente (sensory-theme.css); um componente novo nunca declara a
      própria curva de animação por fora desse mecanismo. */
+  /* DS10 — `.ui-button` também é a classe de `LinkButton` (elemento <a>),
+     que herda `text-decoration: underline` do navegador por padrão; sem
+     este reset, todo LinkButton (não só variant="ghost") sai sublinhado,
+     mesmo os primary/secondary sólidos — contradiz o contrato do próprio
+     componente ("Entrar" e "← Voltar" nascem visualmente idênticos"). */
+  text-decoration: none;
 }
 
 .ui-button + .ui-button {

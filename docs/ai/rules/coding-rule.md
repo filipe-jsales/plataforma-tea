@@ -199,6 +199,13 @@ decisão a cada feature:
   aplica aqui" — ela ainda usa `components/ui/`, só sem a restrição
   sensorial do aluno. Ver "Sistema de design compartilhado (professor/
   admin, 3.11)" em `docs/ai/modules/frontend.md`.
+- **Toda tela nova (ou tela existente tocada por outro motivo) segue o
+  guia de referência do design system** —
+  <https://claude.ai/code/artifact/afa5f15f-1343-404e-a249-136aceea6546>
+  (tokens/componentes reais renderizados ao vivo, não uma proposta). Ver
+  "Guia de referência do design system (v1)" em
+  `docs/ai/modules/frontend.md` — `StudentSensorySettings.tsx` é a
+  primeira tela integrada de ponta a ponta, usar como referência.
 
 ### Geral
 
