@@ -31,7 +31,14 @@
 .work-tools-game-page__columns {
   position: relative;
   display: flex;
-  gap: var(--space-4);
+  /* Gap bem maior que o token padrão (--space-4: 24px) de propósito: a
+     seta que liga situação↔ferramenta (WorkToolsGamePage.tsx, ver
+     matchConnectorGeometry.ts) sai da borda direita do cartão de origem
+     pra borda esquerda do cartão de destino — o percurso horizontal da
+     linha é EXATAMENTE este gap. Com --space-4 a linha ficava quase
+     vertical (ângulo muito íngreme) sempre que os dois cartões pareados
+     estavam em linhas bem diferentes das duas colunas. */
+  gap: 6rem;
   flex-wrap: wrap;
   align-items: flex-start;
 }

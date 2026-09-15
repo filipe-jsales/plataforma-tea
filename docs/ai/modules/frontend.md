@@ -378,6 +378,59 @@ Introduzir um set de ícone SVG dedicado contradiria a proibição explícita
 do card ("não uma biblioteca nova"); decisão registrada aqui, não um
 esquecimento.
 
+⚠️ **Decisão reaberta em 2026-09** (`docs/ai/backlog/
+design-system-polimento-visual.md`, DS5–DS9): emoji está sendo trocado por
+`lucide-react` — decisão explícita do usuário, não uma reversão silenciosa
+da nota acima. Ver "Guia de referência do design system (v1)" a seguir.
+
+## Guia de referência do design system (v1, 2026-09-15)
+
+O sistema de design da plataforma (3.10/3.11 acima) ganhou uma
+**documentação viva navegável**, publicada como Artifact:
+<https://claude.ai/code/artifact/afa5f15f-1343-404e-a249-136aceea6546>
+(card DS2 do backlog de design system). Extrai os valores reais de
+`theme/sensory-theme.css`/`theme/staff-theme.css`/`components/ui/*.css` —
+cor, tipografia, espaçamento, área de toque/foco, botões, cards, badges,
+elevação — com os componentes renderizados ao vivo, não só descritos em
+prosa. É a referência oficial pra qualquer tela nova ou retrabalhada a
+partir de agora.
+
+**`StudentSensorySettings.tsx`** (`/settings/sensory`) é a primeira tela
+integrada de ponta a ponta a este guia — usar como referência de
+implementação pras próximas:
+- Ícones trocados de emoji pra `lucide-react` (`ArrowLeft`, `Volume2`,
+  `Sparkles`) — import direto do pacote por enquanto (`import { ArrowLeft }
+  from 'lucide-react'`), até o wrapper `components/ui/Icon` de DS5 existir.
+- `LinkButton to="/home"` (Voltar) trocado de `variant="ghost"` pra
+  `variant="secondary"` (DS11) — ação de navegação precisa de affordance de
+  botão (fundo+borda), não só texto.
+- `Button.css`/`.ui-button` ganhou `text-decoration: none` na regra base
+  (DS10) — bug real: `LinkButton` (elemento `<a>`) herdava sublinhado do
+  navegador em qualquer variant, não só `ghost`; corrigido globalmente,
+  então toda tela que usa `LinkButton` já se beneficia, não só esta.
+
+**Regra daqui pra frente**: toda tela nova, e toda tela existente que for
+tocada por outro motivo (mesmo critério de "quando migrar" já usado em
+3.10/3.11 — nunca um PR só de refactor visual gigante), deve conferir os
+tokens/componentes do guia acima antes de escrever CSS/JSX novo. As
+issues DS12–DS25 (`docs/ai/backlog/design-system-polimento-visual.md` e
+GitHub) já mapeiam os gaps conhecidos tela-a-tela — consultar antes de
+descobrir o mesmo problema de novo.
+
+**`theme/utilities.css`** — classes utilitárias (`.u-*`) que consomem os
+tokens acima diretamente, no estilo Tailwind (`u-flex`, `u-gap-3`,
+`u-text-muted`, `u-p-4`...), pra layout/espaçamento/cor cru numa tela sem
+precisar escrever uma regra CSS nova nem reinventar um valor solto (era
+assim que `--color-text-muted, #5a6472` — token que não existe — e
+`--color-border, #d7dbe0` — fallback redundante — apareceram em várias
+telas, ver DS12/DS19). Carregada uma vez em `main.tsx`, depois de
+`sensory-theme.css`/`staff-theme.css`/`index.css`. Nunca substitui
+`components/ui/` (botão, card, badge, campo — esses continuam sendo a
+única forma de elemento interativo, regra de frontend em
+`coding-rule.md`) — é só pra composição visual crua. Se uma combinação de
+`.u-*` virar cópia-e-cola em 3+ telas, é sinal de que devia nascer
+componente novo em `components/ui/`, não continuar como utilitária.
+
 ### Componentes novos em `components/ui/`
 
 - **`LinkButton`** — a mesma classe CSS de `Button` (`.ui-button`/
