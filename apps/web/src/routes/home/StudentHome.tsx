@@ -6,7 +6,7 @@ import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Button, LinkButton } from '../../components/ui';
 import './Home.css';
-import { LogOut, Play, TrendingUp, Settings } from 'lucide-react';
+import { LogOut, Play, TrendingUp, Settings, PartyPopper } from 'lucide-react';
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -103,7 +103,7 @@ export function StudentHome() {
           avatar ou posição de um colega específico (regra não-negociável 5). */}
       {showProgress && data?.classComparison?.amongMostActiveThisWeek && (
         <p className="home__progress-detail home__progress-comparison">
-          Você está entre os alunos que mais praticaram esta semana. 🎉
+          Você está entre os alunos que mais praticaram esta semana. <PartyPopper />
         </p>
       )}
     </main>
