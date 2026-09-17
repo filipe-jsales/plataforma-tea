@@ -1,17 +1,27 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiClient } from '../../lib/apiClient';
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { apiClient } from "../../lib/apiClient";
 import type {
   ChallengeTemplateDetail,
   ChallengeTemplateSummary,
   TeacherChallengeDetail,
-} from '../../lib/challengeTemplateTypes';
-import { Badge, Button, GuidedTour, LinkButton, SelectableCard } from '../../components/ui';
-import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
-import { CHALLENGE_FORM_TOUR_KEY, CHALLENGE_FORM_TOUR_STEPS } from '../../lib/teacherChallengeFormTour';
-import { useGuidedTourStore } from '../../stores/useGuidedTourStore';
-import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
-import './TeacherChallengeNew.css';
+} from "../../lib/challengeTemplateTypes";
+import {
+  Badge,
+  Button,
+  GuidedTour,
+  LinkButton,
+  SelectableCard,
+} from "../../components/ui";
+import { CONTENT_CATEGORY_LABEL } from "../../lib/contentCategory";
+import {
+  CHALLENGE_FORM_TOUR_KEY,
+  CHALLENGE_FORM_TOUR_STEPS,
+} from "../../lib/teacherChallengeFormTour";
+import { useGuidedTourStore } from "../../stores/useGuidedTourStore";
+import { TemplateChallengeForm } from "../../components/template-form/TemplateChallengeForm";
+import "./TeacherChallengeNew.css";
+import { CircleQuestionMark } from "lucide-react";
 
 // 4.2 (AC1/AC2) — "Criar desafio": galeria de templates em linguagem
 // pedagógica simples (nome, ícone, descrição — nunca o blockType técnico),
@@ -22,12 +32,18 @@ import './TeacherChallengeNew.css';
 export function TeacherChallengeNew() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromChallengeId = searchParams.get('fromChallengeId');
+  const fromChallengeId = searchParams.get("fromChallengeId");
 
-  const [templates, setTemplates] = useState<ChallengeTemplateSummary[] | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [templateDetail, setTemplateDetail] = useState<ChallengeTemplateDetail | null>(null);
-  const [sourceChallenge, setSourceChallenge] = useState<TeacherChallengeDetail | null>(null);
+  const [templates, setTemplates] = useState<ChallengeTemplateSummary[] | null>(
+    null,
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
+  const [templateDetail, setTemplateDetail] =
+    useState<ChallengeTemplateDetail | null>(null);
+  const [sourceChallenge, setSourceChallenge] =
+    useState<TeacherChallengeDetail | null>(null);
   const [sourceLoading, setSourceLoading] = useState(Boolean(fromChallengeId));
   const [tourOpen, setTourOpen] = useState(false);
   const hasSeenTour = useGuidedTourStore((state) => state.hasSeenTour);
@@ -51,7 +67,9 @@ export function TeacherChallengeNew() {
   }
 
   useEffect(() => {
-    apiClient.get<ChallengeTemplateSummary[]>('/challenge-templates').then(setTemplates);
+    apiClient
+      .get<ChallengeTemplateSummary[]>("/challenge-templates")
+      .then(setTemplates);
   }, []);
 
   useEffect(() => {
@@ -71,7 +89,11 @@ export function TeacherChallengeNew() {
       return;
     }
     setTemplateDetail(null);
-    apiClient.get<ChallengeTemplateDetail>(`/challenge-templates/${selectedTemplateId}`).then(setTemplateDetail);
+    apiClient
+      .get<ChallengeTemplateDetail>(
+        `/challenge-templates/${selectedTemplateId}`,
+      )
+      .then(setTemplateDetail);
   }, [selectedTemplateId]);
 
   async function handleSubmit(input: {
@@ -82,8 +104,11 @@ export function TeacherChallengeNew() {
     investigationQuestion: string;
   }) {
     if (!templateDetail) return;
-    await apiClient.post(`/challenge-templates/${templateDetail.id}/challenges`, input);
-    navigate('/teacher/challenges');
+    await apiClient.post(
+      `/challenge-templates/${templateDetail.id}/challenges`,
+      input,
+    );
+    navigate("/teacher/challenges");
   }
 
   return (
@@ -96,8 +121,8 @@ export function TeacherChallengeNew() {
       {!selectedTemplateId && (
         <>
           <p className="teacher-challenge-new__subtitle">
-            Escolha um template pronto. Você só ajusta os parâmetros do desafio — nunca precisa mexer em
-            blocos ou código.
+            Escolha um template pronto. Você só ajusta os parâmetros do desafio
+            — nunca precisa mexer em blocos ou código.
           </p>
 
           {sourceLoading && <p>Carregando desafio de origem…</p>}
@@ -115,8 +140,10 @@ export function TeacherChallengeNew() {
                   align="start"
                   meta={
                     <>
-                      {template.description}{' '}
-                      <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[template.category]}</Badge>
+                      {template.description}{" "}
+                      <Badge variant="neutral">
+                        {CONTENT_CATEGORY_LABEL[template.category]}
+                      </Badge>
                     </>
                   }
                   onSelect={() => setSelectedTemplateId(template.id)}
@@ -133,26 +160,41 @@ export function TeacherChallengeNew() {
         <>
           <div className="teacher-challenge-new__form-header">
             <h2>
-              <span aria-hidden="true">{templateDetail.icon}</span> {templateDetail.name}
+              <span aria-hidden="true">{templateDetail.icon}</span>{" "}
+              {templateDetail.name}
             </h2>
-            <Button type="button" variant="ghost" onClick={() => setTourOpen(true)}>
-              ❔ Rever tutorial
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setTourOpen(true)}
+            >
+              <CircleQuestionMark /> Rever tutorial
             </Button>
           </div>
           {/* CC1 — categoria só leitura (curada via seed/Topic.category,
               nunca escolhida pelo professor aqui). */}
-          <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[templateDetail.category]}</Badge>
+          <Badge variant="neutral">
+            {CONTENT_CATEGORY_LABEL[templateDetail.category]}
+          </Badge>
           <TemplateChallengeForm
             template={templateDetail}
-            initialTitle={sourceChallenge ? `${sourceChallenge.title} (cópia)` : undefined}
+            initialTitle={
+              sourceChallenge ? `${sourceChallenge.title} (cópia)` : undefined
+            }
             initialParams={sourceChallenge?.params}
             initialFeedbackMessages={sourceChallenge?.feedbackMessages}
             initialPredictQuestion={sourceChallenge?.predictQuestion}
-            initialInvestigationQuestion={sourceChallenge?.investigationQuestion}
+            initialInvestigationQuestion={
+              sourceChallenge?.investigationQuestion
+            }
             submitLabel="Salvar desafio"
             onSubmit={handleSubmit}
           />
-          <GuidedTour steps={CHALLENGE_FORM_TOUR_STEPS} open={tourOpen} onOpenChange={handleTourOpenChange} />
+          <GuidedTour
+            steps={CHALLENGE_FORM_TOUR_STEPS}
+            open={tourOpen}
+            onOpenChange={handleTourOpenChange}
+          />
         </>
       )}
 

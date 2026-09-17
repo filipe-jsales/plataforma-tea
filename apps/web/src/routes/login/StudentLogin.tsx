@@ -151,19 +151,19 @@ export function StudentLogin() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="student-login__link"
+          <Button
+            variant="primary"
+            className="student-login__class"
             onClick={() => {
               setStep("code");
               setRoster(null);
             }}
+
           >
             Trocar de turma
-          </button>
+          </Button>
         </div>
       )}
-
       {step === "sequence" && (
         <div>
           <h1>Toque suas 3 imagens, em ordem</h1>

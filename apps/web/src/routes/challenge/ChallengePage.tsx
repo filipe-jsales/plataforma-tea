@@ -1,9 +1,9 @@
-import * as Blockly from 'blockly/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { BlocklyWorkspace, type WorkspaceSvg } from 'react-blockly';
-import { PixiTurtleWorld } from '../../components/challenge/PixiTurtleWorld';
-import { InlineFeedback } from '../../components/ui';
+import * as Blockly from "blockly/core";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { BlocklyWorkspace, type WorkspaceSvg } from "react-blockly";
+import { PixiTurtleWorld } from "../../components/challenge/PixiTurtleWorld";
+import { Button, InlineFeedback } from "../../components/ui";
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,
@@ -11,22 +11,29 @@ import {
   registerBlockDefinitions,
   type EditableFieldConfig,
   type ToolboxCategory,
-} from '../../lib/blocklyToolbox';
-import { interpretProgram, type SerializedBlock } from '../../lib/blockProgram';
-import { apiClient } from '../../lib/apiClient';
-import { diffChangedValues, extractEditableFieldValues } from '../../lib/editableFields';
-import { resolveRetryMessage, resolveSuccessMessage, type ChallengeFeedbackMessages } from '../../lib/feedbackMessages';
-import { logEvent } from '../../lib/logEvent';
+} from "../../lib/blocklyToolbox";
+import { interpretProgram, type SerializedBlock } from "../../lib/blockProgram";
+import { apiClient } from "../../lib/apiClient";
+import {
+  diffChangedValues,
+  extractEditableFieldValues,
+} from "../../lib/editableFields";
+import {
+  resolveRetryMessage,
+  resolveSuccessMessage,
+  type ChallengeFeedbackMessages,
+} from "../../lib/feedbackMessages";
+import { logEvent } from "../../lib/logEvent";
 import {
   buildGoalPreviewPath,
   closedPolygonSides,
   evaluateSquareGoal,
   runTurtleProgram,
-} from '../../lib/turtleWorld';
-import { createTurtleExecutionStore } from '../../stores/turtleExecutionStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
-import './ChallengePage.css';
+} from "../../lib/turtleWorld";
+import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
+import "./ChallengePage.css";
 
 // AC3 (3.1) — tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
@@ -53,7 +60,7 @@ const AUTOSAVE_DEBOUNCE_MS = 1500;
 const AUTOSAVE_RETRY_DELAY_MS = 4000;
 
 interface ChallengeGoal {
-  shape: 'square';
+  shape: "square";
   sides: number;
   turnAngleDeg: number;
   // 7.4 (AC3) — margem de erro (px) escolhida pelo professor num desafio
@@ -87,7 +94,7 @@ interface ChallengeDetail {
   feedbackMessages: ChallengeFeedbackMessages | null;
 }
 
-type Feedback = { kind: 'success' | 'retry'; message: string } | null;
+type Feedback = { kind: "success" | "retry"; message: string } | null;
 
 // Motor PRIMM "Predict" (3.6): só 2 estágios são alcançáveis dentro desta
 // tela (ver a nota de pesquisa "motor PRIMM" em challenge-config.interface.ts
@@ -95,7 +102,7 @@ type Feedback = { kind: 'success' | 'retry'; message: string } | null;
 // 'predict' trava o botão Executar até o aluno responder a
 // `challenge.predictQuestion`; volta pra 'predict' depois de cada execução,
 // porque os valores editáveis podem ter mudado desde a última previsão.
-type PrimmStage = 'predict' | 'run';
+type PrimmStage = "predict" | "run";
 
 interface ModifyResult {
   predictedSides: number | null;
@@ -120,7 +127,10 @@ function toInitialWorkspaceJson(program: SerializedBlock): object {
 // `locked` — esse só descreve o Blockly `readOnly`) decide entre os 3 modos
 // de tela — nunca uma prop/estado inventado no frontend.
 export function ChallengePage() {
-  const { topicId, challengeId } = useParams<{ topicId?: string; challengeId?: string }>();
+  const { topicId, challengeId } = useParams<{
+    topicId?: string;
+    challengeId?: string;
+  }>();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const motionEnabled = useSensoryProfileStore((state) => state.motionEnabled);
@@ -129,10 +139,10 @@ export function ChallengePage() {
   const [notFound, setNotFound] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [attempts, setAttempts] = useState(0);
-  const [investigationAnswer, setInvestigationAnswer] = useState('');
+  const [investigationAnswer, setInvestigationAnswer] = useState("");
   const [proceeded, setProceeded] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [primmStage, setPrimmStage] = useState<PrimmStage>('predict');
+  const [primmStage, setPrimmStage] = useState<PrimmStage>("predict");
   const [predictAnswer, setPredictAnswer] = useState<number | null>(null);
   const [modifyResult, setModifyResult] = useState<ModifyResult | null>(null);
   // C2 — rascunho salvo do workspace (autosave). `draftLoaded` atrasa a
@@ -145,7 +155,9 @@ export function ChallengePage() {
   const workspaceRef = useRef<WorkspaceSvg | null>(null);
   const toolboxRenderedRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autosaveRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const executionStore = useMemo(() => createTurtleExecutionStore(), []);
   const helpStore = useMemo(() => createTurtleExecutionStore(), []);
   const executionStatus = executionStore((state) => state.status);
@@ -155,10 +167,10 @@ export function ChallengePage() {
     setNotFound(false);
     setFeedback(null);
     setAttempts(0);
-    setInvestigationAnswer('');
+    setInvestigationAnswer("");
     setProceeded(false);
     setHelpOpen(false);
-    setPrimmStage('predict');
+    setPrimmStage("predict");
     setPredictAnswer(null);
     setModifyResult(null);
     setDraftJson(null);
@@ -167,9 +179,12 @@ export function ChallengePage() {
     executionStore.getState().reset();
     helpStore.getState().reset();
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
+    if (autosaveRetryTimerRef.current)
+      clearTimeout(autosaveRetryTimerRef.current);
 
-    const path = topicId ? `/challenges/by-topic/${topicId}` : `/challenges/${challengeId}`;
+    const path = topicId
+      ? `/challenges/by-topic/${topicId}`
+      : `/challenges/${challengeId}`;
     apiClient
       .get<ChallengeDetail>(path)
       .then((detail) => {
@@ -188,8 +203,8 @@ export function ChallengePage() {
     );
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-I',
-      type: 'toolbox_rendered',
+      category: "RD-I",
+      type: "toolbox_rendered",
       challengeId: challenge.id,
       payload: {
         challenge_id: challenge.id,
@@ -201,7 +216,9 @@ export function ChallengePage() {
     // exigir ação extra" — chamado sempre que o desafio abre (não só o
     // primeiro, o backend já é idempotente), silencioso: falha de rede
     // aqui nunca deve impedir o aluno de usar o desafio.
-    apiClient.post(`/students/me/classroom-challenges/${challenge.id}/viewed`).catch(() => {});
+    apiClient
+      .post(`/students/me/classroom-challenges/${challenge.id}/viewed`)
+      .catch(() => {});
   }, [challenge, user]);
 
   // C2 (AC2) — busca o rascunho salvo assim que o desafio carrega, pra
@@ -230,11 +247,14 @@ export function ChallengePage() {
   // `use` é travado, `modify` edita campos de um programa fixo, nenhuma das
   // duas mostra toolbox (nunca inferido de `locked`, que hoje só descreve o
   // Blockly `readOnly`).
-  const isModify = challenge?.toolbox.stage === 'modify';
-  const isCreate = challenge?.toolbox.stage === 'create';
+  const isModify = challenge?.toolbox.stage === "modify";
+  const isCreate = challenge?.toolbox.stage === "create";
 
   const toolboxConfiguration = useMemo(
-    () => (challenge && isCreate ? buildToolboxConfiguration(challenge.toolbox.categories) : undefined),
+    () =>
+      challenge && isCreate
+        ? buildToolboxConfiguration(challenge.toolbox.categories)
+        : undefined,
     [challenge, isCreate],
   );
   // `program` só existe em `use`/`modify` — não depende de `locked`. C2: um
@@ -246,14 +266,22 @@ export function ChallengePage() {
     if (!challenge) return undefined;
     const effectiveProgram =
       !challenge.locked && draftJson ? draftJson : challenge.program;
-    return effectiveProgram ? toInitialWorkspaceJson(effectiveProgram) : undefined;
+    return effectiveProgram
+      ? toInitialWorkspaceJson(effectiveProgram)
+      : undefined;
   }, [challenge, draftJson]);
   // Snapshot dos valores originais dos campos editáveis (fase `modify`),
   // calculado uma vez a partir do `program` pré-montado — comparado contra o
   // valor atual a cada Executar pra montar `changed_values` do evento
   // challenge_modify_attempt (ver lib/editableFields.ts).
   const editableInitialValues = useMemo(
-    () => (challenge ? extractEditableFieldValues(challenge.program, challenge.editableFields) : {}),
+    () =>
+      challenge
+        ? extractEditableFieldValues(
+            challenge.program,
+            challenge.editableFields,
+          )
+        : {},
     [challenge],
   );
   // Opções de previsão (motor PRIMM "Predict"): quantos lados a figura vai
@@ -262,26 +290,36 @@ export function ChallengePage() {
   // domínio deste desafio específico (repetir+girar desenha um polígono
   // regular). Cai em 3–8 se o desafio não declarar TIMES como editável.
   const predictOptions = useMemo(() => {
-    const timesField = challenge?.editableFields.find((field) => field.fieldName === 'TIMES');
+    const timesField = challenge?.editableFields.find(
+      (field) => field.fieldName === "TIMES",
+    );
     const min = timesField?.min ?? 3;
     const max = timesField?.max ?? 8;
-    return Array.from({ length: Math.max(max - min + 1, 0) }, (_, index) => min + index);
+    return Array.from(
+      { length: Math.max(max - min + 1, 0) },
+      (_, index) => min + index,
+    );
   }, [challenge]);
 
   function handleWorkspaceEvent(event: Blockly.Events.Abstract) {
-    if (!(event instanceof Blockly.Events.BlockDrag) || event.isStart || !event.blockId) {
+    if (
+      !(event instanceof Blockly.Events.BlockDrag) ||
+      event.isStart ||
+      !event.blockId
+    ) {
       return;
     }
     const block = workspaceRef.current?.getBlockById(event.blockId);
     if (!block || !user || !challenge) return;
 
     const successDrop = Boolean(
-      block.previousConnection?.isConnected() || block.outputConnection?.isConnected(),
+      block.previousConnection?.isConnected() ||
+      block.outputConnection?.isConnected(),
     );
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-I',
-      type: 'block_dragged',
+      category: "RD-I",
+      type: "block_dragged",
       challengeId: challenge.id,
       payload: {
         block_type: block.type,
@@ -298,13 +336,15 @@ export function ChallengePage() {
     if (!challenge) return;
     const challengeId = challenge.id;
     apiClient
-      .patch(`/students/me/challenges/${challengeId}/draft`, { workspaceJson: serialized })
+      .patch(`/students/me/challenges/${challengeId}/draft`, {
+        workspaceJson: serialized,
+      })
       .then(() => {
         if (!user) return;
         logEvent({
           studentPseudoId: user.pseudonymId,
-          category: 'RD-P',
-          type: 'workspace_autosaved',
+          category: "RD-P",
+          type: "workspace_autosaved",
           challengeId,
           payload: {
             challenge_id: challengeId,
@@ -314,10 +354,13 @@ export function ChallengePage() {
         });
       })
       .catch(() => {
-        if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
+        if (autosaveRetryTimerRef.current)
+          clearTimeout(autosaveRetryTimerRef.current);
         autosaveRetryTimerRef.current = setTimeout(() => {
           apiClient
-            .patch(`/students/me/challenges/${challengeId}/draft`, { workspaceJson: serialized })
+            .patch(`/students/me/challenges/${challengeId}/draft`, {
+              workspaceJson: serialized,
+            })
             .catch(() => {
               // Silencioso de propósito (AC5) — o próximo tick de debounce
               // (nova alteração no workspace) já tenta salvar de novo com o
@@ -363,7 +406,9 @@ export function ChallengePage() {
   function discardDraftSilently() {
     if (!challenge) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    apiClient.delete(`/students/me/challenges/${challenge.id}/draft`).catch(() => {});
+    apiClient
+      .delete(`/students/me/challenges/${challenge.id}/draft`)
+      .catch(() => {});
   }
 
   // Motor PRIMM "Predict" (3.6): resposta é uma ação explícita do aluno
@@ -373,7 +418,7 @@ export function ChallengePage() {
   // duas coisas juntas numa única unidade logável (ver handleRun).
   function handlePredict(sides: number) {
     setPredictAnswer(sides);
-    setPrimmStage('run');
+    setPrimmStage("run");
   }
 
   function handleRun() {
@@ -397,11 +442,18 @@ export function ChallengePage() {
     const result = runTurtleProgram(actions);
     // 7.4 (AC3) — margem de erro por-desafio (ausente usa o default do
     // motor, ver lib/turtleWorld.ts), a mesma nos dois cálculos abaixo.
-    const evaluation = evaluateSquareGoal(result, challenge.goal, challenge.goal.closureTolerancePx);
+    const evaluation = evaluateSquareGoal(
+      result,
+      challenge.goal,
+      challenge.goal.closureTolerancePx,
+    );
     // Motor PRIMM "Predict": quantos lados o traçado realmente fechou com —
     // calculado uma vez, reusado tanto pelo comparativo de 3.3 (abaixo, só
     // no `program_executed`) quanto pelo de 3.4 (challenge_modify_attempt).
-    const actualSides = closedPolygonSides(result, challenge.goal.closureTolerancePx);
+    const actualSides = closedPolygonSides(
+      result,
+      challenge.goal.closureTolerancePx,
+    );
 
     setFeedback(null);
     executionStore.getState().play(result.points, motionEnabled);
@@ -421,8 +473,8 @@ export function ChallengePage() {
     // `program_executed` é intencional, não um bug de estado não-limpo).
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-P',
-      type: 'program_executed',
+      category: "RD-P",
+      type: "program_executed",
       challengeId: challenge.id,
       payload: {
         challenge_id: challenge.id,
@@ -447,14 +499,20 @@ export function ChallengePage() {
     // desde o início, o que o aluno previu, e se bateu com o resultado real
     // — a reflexão que aparece na tela é só descritiva, nunca "certo/errado".
     if (isModify) {
-      const currentValues = extractEditableFieldValues(serialized, challenge.editableFields);
-      const changedValues = diffChangedValues(editableInitialValues, currentValues);
+      const currentValues = extractEditableFieldValues(
+        serialized,
+        challenge.editableFields,
+      );
+      const changedValues = diffChangedValues(
+        editableInitialValues,
+        currentValues,
+      );
       const matched = actualSides !== null && actualSides === predictAnswer;
 
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-P',
-        type: 'challenge_modify_attempt',
+        category: "RD-P",
+        type: "challenge_modify_attempt",
         challengeId: challenge.id,
         payload: {
           challenge_id: challenge.id,
@@ -470,7 +528,7 @@ export function ChallengePage() {
       // Volta pra "predict" só se o desafio de fato usa essa pergunta —
       // nunca hardcoded a `isModify`, sempre a partir da config (AC4 3.6).
       if (challenge.predictQuestion) {
-        setPrimmStage('predict');
+        setPrimmStage("predict");
       }
       // 3.7 (AC6/feedback_shown) — a reflexão da fase Modify também passa
       // pelo componente de feedback reutilizável (ver JSX abaixo), então
@@ -479,12 +537,12 @@ export function ChallengePage() {
       // comparado à previsão do aluno (regra não-negociável 5).
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-I',
-        type: 'feedback_shown',
+        category: "RD-I",
+        type: "feedback_shown",
         challengeId: challenge.id,
         payload: {
           challenge_id: challenge.id,
-          feedback_type: actualSides !== null ? 'success' : 'neutral',
+          feedback_type: actualSides !== null ? "success" : "neutral",
           stage: challenge.toolbox.stage,
           timestamp: new Date().toISOString(),
         },
@@ -501,16 +559,24 @@ export function ChallengePage() {
     // 3.7 (AC4) — mensagem configurável pelo professor por desafio, com
     // fallback pro conjunto de mensagens-padrão sugeridas (lib/
     // feedbackMessages.ts) quando o professor não personaliza.
-    const feedbackType: 'success' | 'neutral' = evaluation.success ? 'success' : 'neutral';
+    const feedbackType: "success" | "neutral" = evaluation.success
+      ? "success"
+      : "neutral";
     setFeedback(
       evaluation.success
-        ? { kind: 'success', message: resolveSuccessMessage(challenge.feedbackMessages) }
-        : { kind: 'retry', message: resolveRetryMessage(challenge.feedbackMessages) },
+        ? {
+            kind: "success",
+            message: resolveSuccessMessage(challenge.feedbackMessages),
+          }
+        : {
+            kind: "retry",
+            message: resolveRetryMessage(challenge.feedbackMessages),
+          },
     );
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-I',
-      type: 'feedback_shown',
+      category: "RD-I",
+      type: "feedback_shown",
       challengeId: challenge.id,
       payload: {
         challenge_id: challenge.id,
@@ -522,8 +588,8 @@ export function ChallengePage() {
     if (evaluation.success) {
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-C',
-        type: 'challenge.completed',
+        category: "RD-C",
+        type: "challenge.completed",
         challengeId: challenge.id,
       });
       // C2 (AC3) — desafio concluído e submetido: o autosave intermediário
@@ -543,8 +609,8 @@ export function ChallengePage() {
     if (challenge.locked) {
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-P',
-        type: 'challenge_use_completed',
+        category: "RD-P",
+        type: "challenge_use_completed",
         challengeId: challenge.id,
         payload: {
           challenge_id: challenge.id,
@@ -555,8 +621,8 @@ export function ChallengePage() {
       });
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-C',
-        type: 'challenge_use_completed',
+        category: "RD-C",
+        type: "challenge_use_completed",
         challengeId: challenge.id,
         payload: {
           challenge_id: challenge.id,
@@ -579,8 +645,8 @@ export function ChallengePage() {
     if (user) {
       logEvent({
         studentPseudoId: user.pseudonymId,
-        category: 'RD-I',
-        type: 'challenge.help_viewed',
+        category: "RD-I",
+        type: "challenge.help_viewed",
         challengeId: challenge.id,
       });
     }
@@ -623,8 +689,12 @@ export function ChallengePage() {
             // bloco de verdade — fase "modify" trava a estrutura (ver
             // applyModifyFieldLocking), então nenhuma das duas aparece lá.
             trashcan: isCreate,
-            grid: { spacing: 24, length: 3, colour: '#d7dbe0', snap: false },
-            zoom: { controls: !challenge.locked, wheel: false, startScale: challenge.blockScale ?? 1 },
+            grid: { spacing: 24, length: 3, colour: "#d7dbe0", snap: false },
+            zoom: {
+              controls: !challenge.locked,
+              wheel: false,
+              startScale: challenge.blockScale ?? 1,
+            },
             move: { scrollbars: true, drag: !challenge.locked, wheel: false },
           }}
           onInject={(workspace) => {
@@ -640,7 +710,9 @@ export function ChallengePage() {
             // que o professor escolheu no formulário guiado ao criar um
             // desafio via template (Blockly.config é estado global, não
             // por-workspace, ver blocklyToolbox.ts).
-            applyGenerousSnapTolerance(challenge.snapTolerancePercent ?? undefined);
+            applyGenerousSnapTolerance(
+              challenge.snapTolerancePercent ?? undefined,
+            );
             if (isModify) {
               applyModifyFieldLocking(workspace, challenge.editableFields);
             }
@@ -648,8 +720,10 @@ export function ChallengePage() {
           onDispose={(workspace) => {
             workspace.removeChangeListener(handleWorkspaceEvent);
             workspace.removeChangeListener(handleWorkspaceAutosave);
-            if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-            if (autosaveRetryTimerRef.current) clearTimeout(autosaveRetryTimerRef.current);
+            if (autosaveTimerRef.current)
+              clearTimeout(autosaveTimerRef.current);
+            if (autosaveRetryTimerRef.current)
+              clearTimeout(autosaveRetryTimerRef.current);
           }}
         />
 
@@ -661,7 +735,7 @@ export function ChallengePage() {
               respondeu pra esta rodada, o botão Executar nem aparece —
               a previsão é sempre a primeira ação disponível, nunca uma
               etapa que dá pra pular. */}
-          {challenge.predictQuestion && primmStage === 'predict' ? (
+          {challenge.predictQuestion && primmStage === "predict" ? (
             <div className="challenge-page__predict">
               <p>{challenge.predictQuestion}</p>
               <div className="challenge-page__predict-options">
@@ -678,8 +752,12 @@ export function ChallengePage() {
               </div>
             </div>
           ) : (
-            <button type="button" className="challenge-page__run-button" onClick={handleRun}>
-              {attempts > 0 ? '🔁 Repetir execução' : '▶️ Executar'}
+            <button
+              type="button"
+              className="challenge-page__run-button"
+              onClick={handleRun}
+            >
+              {attempts > 0 ? "🔁 Repetir execução" : "▶️ Executar"}
             </button>
           )}
 
@@ -687,7 +765,7 @@ export function ChallengePage() {
               ritmo passo a passo, nunca um avanço automático. Só aparece
               depois de rodar (nada pra avançar antes disso) e some quando o
               caminho termina (status volta a 'idle'). */}
-          {!motionEnabled && executionStatus === 'stepping' && (
+          {!motionEnabled && executionStatus === "stepping" && (
             <button
               type="button"
               className="challenge-page__step-button"
@@ -703,14 +781,18 @@ export function ChallengePage() {
               revelar. */}
           {isCreate && (
             <>
-              <button type="button" className="challenge-page__help-button" onClick={handleHelp}>
+              <button
+                type="button"
+                className="challenge-page__help-button"
+                onClick={handleHelp}
+              >
                 🔎 Ajuda: ver a forma
               </button>
               {helpOpen && (
                 <div className="challenge-page__help-panel">
                   <p>
-                    É essa a forma que você precisa montar — mas os blocos que fazem isso
-                    acontecer são com você.
+                    É essa a forma que você precisa montar — mas os blocos que
+                    fazem isso acontecer são com você.
                   </p>
                   <PixiTurtleWorld store={helpStore} />
                 </div>
@@ -722,18 +804,24 @@ export function ChallengePage() {
               nunca só cor) usado nas 3 fases (3.3/3.4/3.5): aqui cobre
               Use/Create; a reflexão da fase Modify logo abaixo usa o
               mesmo InlineFeedback, só com texto composto dinamicamente. */}
-          {feedback && <InlineFeedback kind={feedback.kind}>{feedback.message}</InlineFeedback>}
+          {feedback && (
+            <InlineFeedback kind={feedback.kind}>
+              {feedback.message}
+            </InlineFeedback>
+          )}
 
           {/* Reflexão da fase "modify": só descreve o que aconteceu (o que o
               aluno previu vs. o que a figura fez), nunca "certo/errado" —
               regra não-negociável 4. O log de verdade (challenge_modify_
               attempt) já saiu em handleRun; isto é só o que aparece na tela. */}
           {isModify && modifyResult && (
-            <InlineFeedback kind={modifyResult.actualSides !== null ? 'success' : 'retry'}>
-              Você imaginou {modifyResult.predictedSides} lados.{' '}
+            <InlineFeedback
+              kind={modifyResult.actualSides !== null ? "success" : "retry"}
+            >
+              Você imaginou {modifyResult.predictedSides} lados.{" "}
               {modifyResult.actualSides
                 ? `A figura fechou com ${modifyResult.actualSides} lados.`
-                : 'Essa figura não fechou — quer tentar outros valores?'}
+                : "Essa figura não fechou — quer tentar outros valores?"}
             </InlineFeedback>
           )}
 
@@ -741,11 +829,15 @@ export function ChallengePage() {
             <div className="challenge-page__investigation">
               {challenge.investigationQuestion && (
                 <>
-                  <label htmlFor="investigation-answer">{challenge.investigationQuestion}</label>
+                  <label htmlFor="investigation-answer">
+                    {challenge.investigationQuestion}
+                  </label>
                   <textarea
                     id="investigation-answer"
                     value={investigationAnswer}
-                    onChange={(event) => setInvestigationAnswer(event.target.value)}
+                    onChange={(event) =>
+                      setInvestigationAnswer(event.target.value)
+                    }
                     rows={2}
                   />
                 </>
@@ -759,7 +851,10 @@ export function ChallengePage() {
                 Avançar
               </button>
               {proceeded && !challenge.nextChallengeId && (
-                <p>Você concluiu esta fase! O próximo desafio ainda está sendo preparado.</p>
+                <p>
+                  Você concluiu esta fase! O próximo desafio ainda está sendo
+                  preparado.
+                </p>
               )}
             </div>
           )}

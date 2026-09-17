@@ -1,19 +1,25 @@
-import { useMemo, useState } from 'react';
-import { PixiTurtleWorld } from '../challenge/PixiTurtleWorld';
-import { apiClient, ApiError } from '../../lib/apiClient';
-import { buildGoalPreviewPath } from '../../lib/turtleWorld';
-import { buildInitialParams, errorsByParameterKey } from '../../lib/templateParameterForm';
-import { DEFAULT_RETRY_MESSAGE, DEFAULT_SUCCESS_MESSAGE } from '../../lib/feedbackMessages';
-import { createTurtleExecutionStore } from '../../stores/turtleExecutionStore';
+import { useMemo, useState } from "react";
+import { PixiTurtleWorld } from "../challenge/PixiTurtleWorld";
+import { apiClient, ApiError } from "../../lib/apiClient";
+import { buildGoalPreviewPath } from "../../lib/turtleWorld";
+import {
+  buildInitialParams,
+  errorsByParameterKey,
+} from "../../lib/templateParameterForm";
+import {
+  DEFAULT_RETRY_MESSAGE,
+  DEFAULT_SUCCESS_MESSAGE,
+} from "../../lib/feedbackMessages";
+import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
 import type {
   ChallengeFeedbackMessagesDraft,
   ChallengeTemplateDetail,
   TemplateParamsDraft,
   TemplatePreviewResult,
-} from '../../lib/challengeTemplateTypes';
-import { Button, InlineFeedback, TextareaField, TextField, Toast } from '../ui';
-import { TemplateParameterField } from './TemplateParameterField';
-import './TemplateChallengeForm.css';
+} from "../../lib/challengeTemplateTypes";
+import { Button, InlineFeedback, TextareaField, TextField, Toast } from "../ui";
+import { TemplateParameterField } from "./TemplateParameterField";
+import "./TemplateChallengeForm.css";
 
 // Mapeia a chave de erro (parameterKey do backend) pro id do elemento a
 // focar depois de uma validação falhar — cada tipo de campo usa uma
@@ -25,11 +31,11 @@ import './TemplateChallengeForm.css';
 // `turnAngleDeg`...) não têm entrada fixa aqui — caem no fallback
 // `template-param-field-<key>` de `focusFieldByErrorKey`.
 const FIXED_FIELD_ELEMENT_ID: Record<string, string> = {
-  title: 'challenge-title',
-  predictQuestion: 'predict-question',
-  investigationQuestion: 'investigation-question',
-  retryMessage: 'feedback-retry-message',
-  successMessage: 'feedback-success-message',
+  title: "challenge-title",
+  predictQuestion: "predict-question",
+  investigationQuestion: "investigation-question",
+  retryMessage: "feedback-retry-message",
+  successMessage: "feedback-success-message",
 };
 
 // Ordem de leitura da tela (topo → baixo) — usada só pra escolher QUAL
@@ -37,12 +43,12 @@ const FIXED_FIELD_ELEMENT_ID: Record<string, string> = {
 // (nunca focar um campo abaixo enquanto um de cima também está errado).
 function buildFieldFocusOrder(template: ChallengeTemplateDetail): string[] {
   return [
-    'title',
+    "title",
     ...template.parameterSchema.map((definition) => definition.key),
-    'predictQuestion',
-    'investigationQuestion',
-    'retryMessage',
-    'successMessage',
+    "predictQuestion",
+    "investigationQuestion",
+    "retryMessage",
+    "successMessage",
   ];
 }
 
@@ -50,7 +56,7 @@ function focusFieldByErrorKey(key: string): void {
   const id = FIXED_FIELD_ELEMENT_ID[key] ?? `template-param-field-${key}`;
   const element = document.getElementById(id);
   if (!element) return;
-  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  element.scrollIntoView({ behavior: "smooth", block: "center" });
   element.focus();
 }
 
@@ -85,7 +91,7 @@ export interface TemplateChallengeFormProps {
 // backend nunca devolve isso pra esta tela (regra não-negociável 9).
 export function TemplateChallengeForm({
   template,
-  initialTitle = '',
+  initialTitle = "",
   initialParams,
   initialFeedbackMessages,
   initialPredictQuestion,
@@ -94,26 +100,31 @@ export function TemplateChallengeForm({
   onSubmit,
 }: TemplateChallengeFormProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [params, setParams] = useState<TemplateParamsDraft>(
-    () => buildInitialParams(template.parameterSchema, initialParams),
+  const [params, setParams] = useState<TemplateParamsDraft>(() =>
+    buildInitialParams(template.parameterSchema, initialParams),
   );
   // 3.7 (AC4) — mensagens de feedback opcionais, por desafio. Vazio (não
   // `undefined`) pra o input controlado nunca alternar entre controlado/
   // não-controlado; string vazia significa "usar o default sugerido" tanto
   // aqui quanto no backend (ver sanitizeFeedbackMessages).
-  const [feedbackMessages, setFeedbackMessages] = useState<ChallengeFeedbackMessagesDraft>(() => ({
-    retry: initialFeedbackMessages?.retry ?? '',
-    success: initialFeedbackMessages?.success ?? '',
-  }));
+  const [feedbackMessages, setFeedbackMessages] =
+    useState<ChallengeFeedbackMessagesDraft>(() => ({
+      retry: initialFeedbackMessages?.retry ?? "",
+      success: initialFeedbackMessages?.success ?? "",
+    }));
   // 7.5 — ao contrário de `feedbackMessages` (vazio = "usar default"), aqui
   // vazio nunca é uma opção válida: sem valor salvo (criação nova), o
   // campo já nasce preenchido com a sugestão do template — editável, nunca
   // um placeholder cinza que o professor precisaria apagar pra digitar.
   const [predictQuestion, setPredictQuestion] = useState(
-    () => initialPredictQuestion ?? template.primmQuestionSuggestion.predictQuestion,
+    () =>
+      initialPredictQuestion ??
+      template.primmQuestionSuggestion.predictQuestion,
   );
   const [investigationQuestion, setInvestigationQuestion] = useState(
-    () => initialInvestigationQuestion ?? template.primmQuestionSuggestion.investigationQuestion,
+    () =>
+      initialInvestigationQuestion ??
+      template.primmQuestionSuggestion.investigationQuestion,
   );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -124,13 +135,18 @@ export function TemplateChallengeForm({
   // longo, onde o campo com erro pode estar fora da área visível — sem
   // isto, "salvar" parecia não fazer nada (nenhuma mudança visível acima da
   // dobra), quando na verdade um campo obrigatório ficou sem preencher.
-  const [toast, setToast] = useState<{ kind: 'retry'; message: string } | null>(null);
+  const [toast, setToast] = useState<{ kind: "retry"; message: string } | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChecking, setPreviewChecking] = useState(false);
 
   const previewStore = useMemo(() => createTurtleExecutionStore(), []);
-  const fieldFocusOrder = useMemo(() => buildFieldFocusOrder(template), [template]);
+  const fieldFocusOrder = useMemo(
+    () => buildFieldFocusOrder(template),
+    [template],
+  );
 
   // Foca (e rola até) o primeiro campo inválido na ordem de leitura da
   // tela — nunca um campo qualquer do mapa (a ordem de iteração de um
@@ -140,7 +156,10 @@ export function TemplateChallengeForm({
     if (firstKey) focusFieldByErrorKey(firstKey);
   }
 
-  function handleParamChange(key: string, value: number | boolean | string | string[]) {
+  function handleParamChange(
+    key: string,
+    value: number | boolean | string | string[],
+  ) {
     setParams((current) => ({ ...current, [key]: value }));
     // Erros ficam desatualizados assim que qualquer campo muda — nunca
     // deixar uma mensagem de validação de um valor anterior grudada na
@@ -154,7 +173,10 @@ export function TemplateChallengeForm({
   // tenta salvar: o mesmo endpoint (`/preview`) serve as duas coisas, nunca
   // um "erro de schema" genérico se o backend rejeitar.
   async function runValidation(): Promise<TemplatePreviewResult> {
-    return apiClient.post<TemplatePreviewResult>(`/challenge-templates/${template.id}/preview`, { params });
+    return apiClient.post<TemplatePreviewResult>(
+      `/challenge-templates/${template.id}/preview`,
+      { params },
+    );
   }
 
   // AC4 — "Visualizar como aluno": preview funcional no motor de jogo
@@ -170,12 +192,18 @@ export function TemplateChallengeForm({
         const errors = errorsByParameterKey(result.errors);
         setFieldErrors(errors);
         setPreviewOpen(false);
-        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de visualizar.' });
+        setToast({
+          kind: "retry",
+          message: "Alguns campos precisam de atenção antes de visualizar.",
+        });
         focusFirstInvalidField(errors);
         return;
       }
       setFieldErrors({});
-      const path = buildGoalPreviewPath({ sides: result.goal.sides, turnAngleDeg: result.goal.turnAngleDeg });
+      const path = buildGoalPreviewPath({
+        sides: result.goal.sides,
+        turnAngleDeg: result.goal.turnAngleDeg,
+      });
       // Preview é sempre animado (independente do perfil sensorial do
       // PRÓPRIO professor): o objetivo aqui é uma demonstração rápida de
       // como o desenho fica, não a experiência sensorial de um aluno
@@ -188,9 +216,11 @@ export function TemplateChallengeForm({
       // `/preview` derrubava a promise sem nenhum feedback — o clique em
       // "Visualizar como aluno" parecia simplesmente não fazer nada.
       const message =
-        error instanceof Error ? error.message : 'Não foi possível gerar a pré-visualização. Tente novamente.';
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar a pré-visualização. Tente novamente.";
       setFormError(message);
-      setToast({ kind: 'retry', message });
+      setToast({ kind: "retry", message });
     } finally {
       setPreviewChecking(false);
     }
@@ -199,10 +229,10 @@ export function TemplateChallengeForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!title.trim()) {
-      const message = 'Dê um nome para o desafio antes de salvar.';
+      const message = "Dê um nome para o desafio antes de salvar.";
       setFormError(message);
-      setToast({ kind: 'retry', message });
-      focusFieldByErrorKey('title');
+      setToast({ kind: "retry", message });
+      focusFieldByErrorKey("title");
       return;
     }
 
@@ -215,7 +245,10 @@ export function TemplateChallengeForm({
         // nunca um erro genérico solto no topo da tela.
         const errors = errorsByParameterKey(result.errors);
         setFieldErrors(errors);
-        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de salvar.' });
+        setToast({
+          kind: "retry",
+          message: "Alguns campos precisam de atenção antes de salvar.",
+        });
         focusFirstInvalidField(errors);
         return;
       }
@@ -234,15 +267,25 @@ export function TemplateChallengeForm({
       // devolve `errors` estruturado (mesma forma do `/preview`) junto da
       // mensagem combinada — sem isso, o professor via só uma frase solta
       // no rodapé do formulário, fácil de não perceber num form longo.
-      if (error instanceof ApiError && error.errors && error.errors.length > 0) {
+      if (
+        error instanceof ApiError &&
+        error.errors &&
+        error.errors.length > 0
+      ) {
         const errors = errorsByParameterKey(error.errors);
         setFieldErrors((current) => ({ ...current, ...errors }));
-        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de salvar.' });
+        setToast({
+          kind: "retry",
+          message: "Alguns campos precisam de atenção antes de salvar.",
+        });
         focusFirstInvalidField(errors);
       } else {
-        const message = error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.';
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível salvar. Tente novamente.";
         setFormError(message);
-        setToast({ kind: 'retry', message });
+        setToast({ kind: "retry", message });
       }
     } finally {
       setSaving(false);
@@ -255,7 +298,10 @@ export function TemplateChallengeForm({
           (GuidedTour, ver TeacherChallengeNew.tsx) — nunca renomear/remover
           sem atualizar `CHALLENGE_FORM_TOUR_STEPS` junto, ou um passo do
           tour aponta pra um elemento que não existe mais. */}
-      <label id="template-challenge-form-title" className="template-challenge-form__title-field">
+      <label
+        id="template-challenge-form-title"
+        className="template-challenge-form__title-field"
+      >
         <span>✏️ Nome do desafio</span>
         <input
           id="challenge-title"
@@ -267,7 +313,10 @@ export function TemplateChallengeForm({
         />
       </label>
 
-      <div id="template-challenge-form-params" className="template-challenge-form__fields">
+      <div
+        id="template-challenge-form-params"
+        className="template-challenge-form__fields"
+      >
         {template.parameterSchema.map((definition) => (
           <TemplateParameterField
             key={definition.key}
@@ -283,7 +332,10 @@ export function TemplateChallengeForm({
           mensagens de feedback abaixo. Pré-preenchidas com a sugestão do
           template (AC2), sempre editáveis. Sem limite curto de caracteres
           (AC4) — TextareaField acomoda linguagem acessível mais longa. */}
-      <div id="template-challenge-form-primm" className="template-challenge-form__primm-questions">
+      <div
+        id="template-challenge-form-primm"
+        className="template-challenge-form__primm-questions"
+      >
         <TextareaField
           id="predict-question"
           label="Pergunta de Predição (antes de Executar)"
@@ -306,7 +358,10 @@ export function TemplateChallengeForm({
           já está valendo). Nunca aceita linguagem punitiva — o backend
           valida e devolve mensagem pedagógica se a tentativa violar isso
           (regra não-negociável 4, ver feedback-messages.ts). */}
-      <div id="template-challenge-form-feedback" className="template-challenge-form__feedback-messages">
+      <div
+        id="template-challenge-form-feedback"
+        className="template-challenge-form__feedback-messages"
+      >
         <TextField
           id="feedback-retry-message"
           label="Mensagem quando o aluno ainda não atingiu o objetivo (opcional)"
@@ -314,7 +369,12 @@ export function TemplateChallengeForm({
           error={fieldErrors.retryMessage}
           placeholder={DEFAULT_RETRY_MESSAGE}
           maxLength={200}
-          onChange={(event) => setFeedbackMessages((current) => ({ ...current, retry: event.target.value }))}
+          onChange={(event) =>
+            setFeedbackMessages((current) => ({
+              ...current,
+              retry: event.target.value,
+            }))
+          }
         />
         <TextField
           id="feedback-success-message"
@@ -323,7 +383,12 @@ export function TemplateChallengeForm({
           error={fieldErrors.successMessage}
           placeholder={DEFAULT_SUCCESS_MESSAGE}
           maxLength={200}
-          onChange={(event) => setFeedbackMessages((current) => ({ ...current, success: event.target.value }))}
+          onChange={(event) =>
+            setFeedbackMessages((current) => ({
+              ...current,
+              success: event.target.value,
+            }))
+          }
         />
       </div>
 
@@ -343,16 +408,22 @@ export function TemplateChallengeForm({
           onClick={handleVisualize}
           disabled={previewChecking}
         >
-          {previewChecking ? 'Verificando…' : '👀 Visualizar como aluno'}
+          {previewChecking ? "Verificando…" : "Visualizar como aluno"}
         </Button>
-        <Button id="template-challenge-form-submit" type="submit" disabled={saving}>
-          {saving ? 'Salvando…' : submitLabel}
+        <Button
+          id="template-challenge-form-submit"
+          type="submit"
+          disabled={saving}
+        >
+          {saving ? "Salvando…" : submitLabel}
         </Button>
       </div>
 
       {previewOpen && (
         <div className="template-challenge-form__preview-panel">
-          <p>É assim que o desenho aparece para o aluno, com os valores atuais.</p>
+          <p>
+            É assim que o desenho aparece para o aluno, com os valores atuais.
+          </p>
           <PixiTurtleWorld store={previewStore} />
         </div>
       )}

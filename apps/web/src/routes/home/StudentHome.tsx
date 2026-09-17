@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../lib/apiClient';
-import { logEvent } from '../../lib/logEvent';
-import { performLogout } from '../../lib/logout';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { Button, LinkButton } from '../../components/ui';
-import './Home.css';
-import { LogOut, Play, TrendingUp, Settings, PartyPopper } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../lib/apiClient";
+import { logEvent } from "../../lib/logEvent";
+import { performLogout } from "../../lib/logout";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { Button, LinkButton } from "../../components/ui";
+import "./Home.css";
+import { LogOut, Play, TrendingUp, Settings, PartyPopper } from "lucide-react";
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -27,11 +27,11 @@ export function StudentHome() {
 
   useEffect(() => {
     if (!user) return;
-    apiClient.get<StudentHomeData>('/home/student').then(setData);
+    apiClient.get<StudentHomeData>("/home/student").then(setData);
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-I',
-      type: 'home_viewed',
+      category: "RD-I",
+      type: "home_viewed",
       payload: { role: user.role },
     });
   }, [user?.id]);
@@ -43,8 +43,8 @@ export function StudentHome() {
     if (!user || !data) return;
     logEvent({
       studentPseudoId: user.pseudonymId,
-      category: 'RD-I',
-      type: 'class_comparison_shown',
+      category: "RD-I",
+      type: "class_comparison_shown",
       payload: { shown: data.classComparison !== null },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,7 +53,7 @@ export function StudentHome() {
   function handleLogout() {
     if (!user) return;
     performLogout(user);
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   }
 
   if (!user) return null;
@@ -67,11 +67,19 @@ export function StudentHome() {
         {/* 3.9 — mesmo racional de "Sair": ação de escape sempre
             disponível, mas discreta, fora das "no máximo 2 ações
             principais" (AC1). */}
-        <LinkButton to="/settings/sensory" variant="ghost" icon={<Settings color="#000000" strokeWidth={1.75} />}>
+        <LinkButton
+          to="/settings/sensory"
+          variant="secondary"
+          icon={<Settings color="#000000" strokeWidth={1.75} />}
+        >
           Configurações
         </LinkButton>
-        <Button variant="ghost" icon={< LogOut color="#000000" strokeWidth={1.75} />} onClick={handleLogout}>
-          Sair 
+        <Button
+          variant="secondary"
+          icon={<LogOut color="#000000" strokeWidth={1.75} />}
+          onClick={handleLogout}
+        >
+          Sair
         </Button>
       </div>
 
@@ -81,20 +89,26 @@ export function StudentHome() {
         <Button
           variant="secondary"
           icon={<Play color="#000000" strokeWidth={1.75} />}
-          onClick={() => navigate('/subjects')}
+          onClick={() => navigate("/subjects")}
           disabled={!data}
         >
-          Continuar{data?.continueChallenge ? `: ${data.continueChallenge.title}` : ''}
+          Continuar
+          {data?.continueChallenge ? `: ${data.continueChallenge.title}` : ""}
         </Button>
 
-        <Button variant="secondary" icon={<TrendingUp color="#000000" strokeWidth={1.75} />} onClick={() => setShowProgress((value) => !value)}>
-          Meu progresso 
+        <Button
+          variant="secondary"
+          icon={<TrendingUp color="#000000" strokeWidth={1.75} />}
+          onClick={() => setShowProgress((value) => !value)}
+        >
+          Meu progresso
         </Button>
       </div>
 
       {showProgress && data && (
         <p className="home__progress-detail">
-          Você concluiu {data.progress.completedChallengesCount} desafio(s) até agora.
+          Você concluiu {data.progress.completedChallengesCount} desafio(s) até
+          agora.
         </p>
       )}
 
@@ -103,7 +117,8 @@ export function StudentHome() {
           avatar ou posição de um colega específico (regra não-negociável 5). */}
       {showProgress && data?.classComparison?.amongMostActiveThisWeek && (
         <p className="home__progress-detail home__progress-comparison">
-          Você está entre os alunos que mais praticaram esta semana. <PartyPopper />
+          Você está entre os alunos que mais praticaram esta semana.{" "}
+          <PartyPopper />
         </p>
       )}
     </main>
