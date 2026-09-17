@@ -78,6 +78,7 @@ export function WorkToolsGamePage() {
     : null;
 
   const [levels, setLevels] = useState<WorkToolsMiniGameLevelDto[] | null>(null);
+  const [levelsError, setLevelsError] = useState<string | null>(null);
   const [showBriefing, setShowBriefing] = useState(true);
   const [reopenedBriefing, setReopenedBriefing] = useState(false);
   const [scenarios, setScenarios] = useState<WorkToolsScenario[]>([]);
@@ -100,8 +101,18 @@ export function WorkToolsGamePage() {
     Array<ConnectorLinePoints & { id: string; correct: boolean }>
   >([]);
 
+  // Sem `.catch()` aqui, uma falha do backend (ex.: 500 por schema
+  // desatualizado num ambiente que ainda não rodou a migration mais
+  // recente) deixava `levels` em `null` pra sempre — a tela ficava presa
+  // em "Carregando…" indefinidamente, sem nenhum sinal do que deu errado
+  // (mesmo bug de FractionsGamePage.tsx, corrigido junto).
   useEffect(() => {
-    apiClient.get<WorkToolsMiniGameLevelDto[]>(`/minigames/levels?conceptId=${CONCEPT_ID}`).then(setLevels);
+    apiClient
+      .get<WorkToolsMiniGameLevelDto[]>(`/minigames/levels?conceptId=${CONCEPT_ID}`)
+      .then(setLevels)
+      .catch((error) =>
+        setLevelsError(error instanceof Error ? error.message : 'Não foi possível carregar este jogo.'),
+      );
   }, []);
 
   const level = levels?.find((l) => l.stage === validStage) ?? null;
@@ -173,6 +184,17 @@ export function WorkToolsGamePage() {
     return null;
   }
 
+  if (levelsError) {
+    return (
+      <main className="work-tools-game-page">
+        <LinkButton to="/subjects" variant="ghost" icon="←">
+          Voltar
+        </LinkButton>
+        <InlineFeedback kind="retry">{levelsError}</InlineFeedback>
+      </main>
+    );
+  }
+
   if (!levels) {
     return (
       <main className="work-tools-game-page">
@@ -222,7 +244,7 @@ export function WorkToolsGamePage() {
   }
 
   function handleSelectTool(toolId: string) {
-    if (readOnly || !selectedScenarioId) return;
+    if (readOnly || !selectedScenarioId || !user || !level) return;
     const activeScene = store.getState().activeScene;
     if (!activeScene) return;
     ensureRunPhase();
@@ -246,6 +268,7 @@ export function WorkToolsGamePage() {
   }
 
   function handleAnswerStatement(statementId: string, answeredTrue: boolean) {
+    if (!user || !level) return;
     const activeScene = store.getState().activeScene;
     if (!activeScene) return;
     ensureRunPhase();
@@ -277,6 +300,7 @@ export function WorkToolsGamePage() {
   }
 
   function handleNewScenarioRound() {
+    if (!level) return;
     const pool = level.config.scenarioPool ?? level.config.scenarios;
     const next = pickRandomScenarios(pool, level.config.scenarios.length);
     setScenarios(next);

@@ -250,3 +250,14 @@ describe('WorkToolsGamePage — nível Create', () => {
     );
   });
 });
+
+describe('WorkToolsGamePage — falha ao carregar os níveis', () => {
+  it('shows a retry-friendly message instead of "Carregando…" forever when the levels request fails', async () => {
+    mockedGet.mockReset().mockRejectedValue(new Error('Erro 500'));
+
+    renderGame('use');
+
+    expect(await screen.findByText('Erro 500')).toBeInTheDocument();
+    expect(screen.queryByText('Carregando…')).not.toBeInTheDocument();
+  });
+});

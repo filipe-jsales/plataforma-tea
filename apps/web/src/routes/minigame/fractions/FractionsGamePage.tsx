@@ -72,6 +72,7 @@ export function FractionsGamePage() {
     : null;
 
   const [levels, setLevels] = useState<MiniGameLevelDto[] | null>(null);
+  const [levelsError, setLevelsError] = useState<string | null>(null);
   const [showBriefing, setShowBriefing] = useState(true);
   const [reopenedBriefing, setReopenedBriefing] = useState(false);
   const [cards, setCards] = useState<FractionsFactoryCard[]>([]);
@@ -81,8 +82,17 @@ export function FractionsGamePage() {
   const [predictAnswered, setPredictAnswered] = useState(false);
   const [completedOnce, setCompletedOnce] = useState(false);
 
+  // Sem `.catch()` aqui, uma falha do backend (ex.: 500 por schema
+  // desatualizado num ambiente que ainda não rodou a migration mais
+  // recente) deixava `levels` em `null` pra sempre — a tela ficava presa
+  // em "Carregando…" indefinidamente, sem nenhum sinal do que deu errado.
   useEffect(() => {
-    apiClient.get<MiniGameLevelDto[]>(`/minigames/levels?conceptId=${CONCEPT_ID}`).then(setLevels);
+    apiClient
+      .get<MiniGameLevelDto[]>(`/minigames/levels?conceptId=${CONCEPT_ID}`)
+      .then(setLevels)
+      .catch((error) =>
+        setLevelsError(error instanceof Error ? error.message : 'Não foi possível carregar este jogo.'),
+      );
   }, []);
 
   const level = levels?.find((l) => l.stage === validStage) ?? null;
@@ -111,6 +121,17 @@ export function FractionsGamePage() {
 
   if (!validStage || !user) {
     return null;
+  }
+
+  if (levelsError) {
+    return (
+      <main className="fractions-game-page">
+        <LinkButton to="/subjects" variant="ghost" icon="←">
+          Voltar
+        </LinkButton>
+        <InlineFeedback kind="retry">{levelsError}</InlineFeedback>
+      </main>
+    );
   }
 
   if (!levels) {
