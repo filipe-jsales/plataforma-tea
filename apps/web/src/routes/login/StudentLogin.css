@@ -99,3 +99,11 @@
   font-size: 1rem;
   min-height: 44px;
 }
+
+.student-login_change {
+  display: grid;
+  grid-template-columns: 200px;
+  gap: 10px;
+  justify-content: center;
+  justify-items: center;
+}

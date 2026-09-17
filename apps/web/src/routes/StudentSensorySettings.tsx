@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { ArrowLeft, Sparkles, Volume2 } from 'lucide-react';
-import { apiClient } from '../lib/apiClient';
-import { logEvent } from '../lib/logEvent';
-import { useAuthStore, type SessionUser } from '../stores/useAuthStore';
-import { useSensoryProfileStore } from '../stores/useSensoryProfileStore';
-import { Button, InlineFeedback, LinkButton, ToggleSwitch } from '../components/ui';
-import './OnboardingSensorial.css';
+import { useState } from "react";
+import { ArrowLeft, Sparkles, Volume2 } from "lucide-react";
+import { apiClient } from "../lib/apiClient";
+import { logEvent } from "../lib/logEvent";
+import { useAuthStore, type SessionUser } from "../stores/useAuthStore";
+import { useSensoryProfileStore } from "../stores/useSensoryProfileStore";
+import {
+  Button,
+  InlineFeedback,
+  LinkButton,
+  ToggleSwitch,
+} from "../components/ui";
+import "./OnboardingSensorial.css";
 
 // 3.9 — mesmas duas opções de OnboardingSensorial (2.2), mas revisitável
 // pelo próprio aluno a qualquer momento, não só na primeira sessão.
@@ -16,11 +21,17 @@ import './OnboardingSensorial.css';
 export function StudentSensorySettings() {
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
-  const setMotionEnabled = useSensoryProfileStore((state) => state.setMotionEnabled);
-  const setSoundEnabledGlobal = useSensoryProfileStore((state) => state.setSoundEnabled);
+  const setMotionEnabled = useSensoryProfileStore(
+    (state) => state.setMotionEnabled,
+  );
+  const setSoundEnabledGlobal = useSensoryProfileStore(
+    (state) => state.setSoundEnabled,
+  );
 
   const [soundEnabled, setSoundChoice] = useState(user?.soundEnabled ?? false);
-  const [animationEnabled, setAnimationChoice] = useState(user?.animationEnabled ?? false);
+  const [animationEnabled, setAnimationChoice] = useState(
+    user?.animationEnabled ?? false,
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -44,8 +55,8 @@ export function StudentSensorySettings() {
       setSoundEnabledGlobal(soundEnabled);
       logEvent({
         studentPseudoId: currentUser.pseudonymId,
-        category: 'RD-E',
-        type: 'sensory_settings_updated',
+        category: "RD-E",
+        type: "sensory_settings_updated",
         payload: { soundEnabled, animationEnabled },
       });
       setSaved(true);
@@ -82,8 +93,8 @@ export function StudentSensorySettings() {
 
       {saved && <InlineFeedback kind="success">Salvo.</InlineFeedback>}
 
-      <Button onClick={handleSave} disabled={saving}>
-        {saving ? 'Salvando…' : 'Salvar'}
+      <Button variant="secondary" onClick={handleSave} disabled={saving}>
+        {saving ? "Salvando…" : "Salvar"}
       </Button>
     </main>
   );

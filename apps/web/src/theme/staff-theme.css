@@ -19,8 +19,8 @@
      restrita de 3.9/3.10) — mais saturação/contraste, permitido porque
      professor/admin não têm a barreira de hipersensibilidade sensorial do
      aluno (RQ4 30,43% é especificamente sobre o aluno). */
-  --color-primary: #1d4ed8;
-  --color-primary-hover: #1e40af;
+  --color-primary: #3a3d41;
+  --color-primary-hover: #9fa1a9;
   --color-accent: #7c3aed;
 
   /* Elevação/sombra — nunca usada nas telas do aluno (Card.css do aluno

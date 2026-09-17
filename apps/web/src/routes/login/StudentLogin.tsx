@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ApiError, apiClient } from '../../lib/apiClient';
-import { completeLogin } from '../../lib/authFlow';
-import { getIllustrationAsset } from '../../lib/illustrationAssets';
-import './StudentLogin.css';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ApiError, apiClient } from "../../lib/apiClient";
+import { completeLogin } from "../../lib/authFlow";
+import { getIllustrationAsset } from "../../lib/illustrationAssets";
+import "./StudentLogin.css";
+import { Button } from "../../components/ui";
 
 interface RosterEntry {
   userId: string;
@@ -18,7 +19,7 @@ interface IllustrationOption {
   position: number;
 }
 
-type Step = 'code' | 'avatar' | 'sequence';
+type Step = "code" | "avatar" | "sequence";
 
 // 1.2.1 — fluxo aluno: código de turma → avatar (roster) → sequência de 3
 // imagens em posição fixa. Sem digitação de usuário/senha (RQ4 motora fina
@@ -26,11 +27,15 @@ type Step = 'code' | 'avatar' | 'sequence';
 // "senha incorreta" cru — regra não-negociável 4.
 export function StudentLogin() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>('code');
-  const [joinCode, setJoinCode] = useState('');
+  const [step, setStep] = useState<Step>("code");
+  const [joinCode, setJoinCode] = useState("");
   const [roster, setRoster] = useState<RosterEntry[] | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<RosterEntry | null>(null);
-  const [loginImages, setLoginImages] = useState<IllustrationOption[] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<RosterEntry | null>(
+    null,
+  );
+  const [loginImages, setLoginImages] = useState<IllustrationOption[] | null>(
+    null,
+  );
   const [sequence, setSequence] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +45,9 @@ export function StudentLogin() {
   // Catálogo de imagens de login é o mesmo pra qualquer aluno — busca uma
   // vez, layout fica pronto antes do aluno chegar no passo 3.
   useEffect(() => {
-    apiClient.get<IllustrationOption[]>('/illustrations?kind=login_image').then(setLoginImages);
+    apiClient
+      .get<IllustrationOption[]>("/illustrations?kind=login_image")
+      .then(setLoginImages);
   }, []);
 
   async function handleCodeSubmit(event: React.FormEvent) {
@@ -53,9 +60,11 @@ export function StudentLogin() {
         `/auth/student/classrooms/${joinCode.trim().toUpperCase()}/roster`,
       );
       setRoster(entries);
-      setStep('avatar');
+      setStep("avatar");
     } catch {
-      setError('Não encontramos essa turma — confira o código com seu professor.');
+      setError(
+        "Não encontramos essa turma — confira o código com seu professor.",
+      );
     } finally {
       setLoading(false);
     }
@@ -64,7 +73,7 @@ export function StudentLogin() {
   function handleSelectStudent(entry: RosterEntry) {
     setSelectedStudent(entry);
     setSequence([]);
-    setStep('sequence');
+    setStep("sequence");
   }
 
   async function handleSelectImage(imageId: string) {
@@ -77,21 +86,21 @@ export function StudentLogin() {
       setError(null);
       try {
         await completeLogin(() =>
-          apiClient.post('/auth/student/login', {
+          apiClient.post("/auth/student/login", {
             userId: selectedStudent.userId,
             imageSequence: nextSequence,
             durationMs: Date.now() - screenOpenedAt,
             retryCount,
           }),
         );
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       } catch (err) {
         setRetryCount((count) => count + 1);
         setSequence([]);
         setError(
           err instanceof ApiError && err.status === 401
-            ? 'Quase lá — essa sequência não bateu. Quer tentar de novo?'
-            : 'Não deu pra entrar agora. Quer tentar de novo?',
+            ? "Quase lá — essa sequência não bateu. Quer tentar de novo?"
+            : "Não deu pra entrar agora. Quer tentar de novo?",
         );
       } finally {
         setLoading(false);
@@ -101,7 +110,7 @@ export function StudentLogin() {
 
   return (
     <main className="student-login">
-      {step === 'code' && (
+      {step === "code" && (
         <form onSubmit={handleCodeSubmit}>
           <h1>Código da turma</h1>
           <p>Peça o código para seu professor(a).</p>
@@ -115,12 +124,12 @@ export function StudentLogin() {
           />
           {error && <p className="student-login__error">{error}</p>}
           <button type="submit" disabled={loading || !joinCode.trim()}>
-            {loading ? 'Procurando…' : 'Entrar na turma'}
+            {loading ? "Procurando…" : "Entrar na turma"}
           </button>
         </form>
       )}
 
-      {step === 'avatar' && (
+      {step === "avatar" && (
         <div>
           <h1>Qual é você?</h1>
           <div className="student-login__grid">
@@ -142,20 +151,20 @@ export function StudentLogin() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="student-login__link"
+          <Button
+            variant="primary"
+            className="student-login__class"
             onClick={() => {
-              setStep('code');
+              setStep("code");
               setRoster(null);
             }}
+
           >
             Trocar de turma
-          </button>
+          </Button>
         </div>
       )}
-
-      {step === 'sequence' && (
+      {step === "sequence" && (
         <div>
           <h1>Toque suas 3 imagens, em ordem</h1>
           {error && <p className="student-login__error">{error}</p>}
@@ -177,26 +186,22 @@ export function StudentLogin() {
                   />
                   <span>{option.label}</span>
                   {order >= 0 && (
-                    <span className="student-login__order-badge">{order + 1}</span>
+                    <span className="student-login__order-badge">
+                      {order + 1}
+                    </span>
                   )}
                 </button>
               );
             })}
           </div>
-          <button type="button" className="student-login__link" onClick={() => setSequence([])}>
-            Recomeçar
-          </button>
-          <button
-            type="button"
-            className="student-login__link"
-            onClick={() => {
-              setStep('avatar');
-              setSequence([]);
-              setError(null);
-            }}
-          >
-            Trocar de aluno
-          </button>
+          <div className="student-login_change">
+            <Button variant="primary" onClick={() => setSequence([])}>
+              Recomeçar
+            </Button>
+            <Button variant="primary" onClick={() => setSequence([])}>
+              Trocar de aluno
+            </Button>
+          </div>
         </div>
       )}
     </main>

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { apiClient } from '../../lib/apiClient';
-import type { TeacherChallengeSummary } from '../../lib/challengeTemplateTypes';
-import { Button, Dialog, LinkButton } from '../../components/ui';
-import { AllocationDialog } from './AllocationDialog';
-import './TeacherChallenges.css';
+import { useEffect, useState } from "react";
+import { apiClient } from "../../lib/apiClient";
+import type { TeacherChallengeSummary } from "../../lib/challengeTemplateTypes";
+import { Button, Dialog, LinkButton } from "../../components/ui";
+import { AllocationDialog } from "./AllocationDialog";
+import "./TeacherChallenges.css";
+import { CirclePlus } from "lucide-react";
 
 // 4.2 (AC5) — "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
@@ -13,14 +14,19 @@ import './TeacherChallenges.css';
 // o desafio chega a algum aluno — sem alocação, o desafio fica só aqui,
 // nunca vaza pra área de nenhum aluno (AC3 de 4.3).
 export function TeacherChallenges() {
-  const [challenges, setChallenges] = useState<TeacherChallengeSummary[] | null>(null);
+  const [challenges, setChallenges] = useState<
+    TeacherChallengeSummary[] | null
+  >(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [allocatingChallenge, setAllocatingChallenge] = useState<TeacherChallengeSummary | null>(null);
+  const [allocatingChallenge, setAllocatingChallenge] =
+    useState<TeacherChallengeSummary | null>(null);
 
   function reload() {
     setChallenges(null);
-    apiClient.get<TeacherChallengeSummary[]>('/teacher/challenges').then(setChallenges);
+    apiClient
+      .get<TeacherChallengeSummary[]>("/teacher/challenges")
+      .then(setChallenges);
   }
 
   useEffect(reload, []);
@@ -42,35 +48,54 @@ export function TeacherChallenges() {
       </LinkButton>
       <h1>Meus desafios</h1>
       <p className="teacher-challenges__subtitle">
-        Desafios que você criou escolhendo um template pronto e ajustando só os parâmetros — nunca
-        blocos ou código.
+        Desafios que você criou escolhendo um template pronto e ajustando só os
+        parâmetros — nunca blocos ou código.
       </p>
 
-      <LinkButton to="/teacher/challenges/new" icon="➕">
+      <LinkButton to="/teacher/challenges/new" icon={<CirclePlus />}>
         Criar desafio
       </LinkButton>
 
-      {challenges === null && <p className="teacher-challenges__loading">Carregando…</p>}
+      {challenges === null && (
+        <p className="teacher-challenges__loading">Carregando…</p>
+      )}
       {challenges !== null && challenges.length === 0 && (
-        <p className="teacher-challenges__empty">Você ainda não criou nenhum desafio.</p>
+        <p className="teacher-challenges__empty">
+          Você ainda não criou nenhum desafio.
+        </p>
       )}
 
       {challenges !== null && challenges.length > 0 && (
         <ul className="teacher-challenges__list">
           {challenges.map((challenge) => (
             <li key={challenge.id} className="teacher-challenges__item">
-              <span className="teacher-challenges__item-icon" aria-hidden="true">
+              <span
+                className="teacher-challenges__item-icon"
+                aria-hidden="true"
+              >
                 {challenge.templateIcon}
               </span>
               <span className="teacher-challenges__item-body">
-                <span className="teacher-challenges__item-title">{challenge.title}</span>
-                <span className="teacher-challenges__item-meta">Template: {challenge.templateName}</span>
+                <span className="teacher-challenges__item-title">
+                  {challenge.title}
+                </span>
+                <span className="teacher-challenges__item-meta">
+                  Template: {challenge.templateName}
+                </span>
               </span>
               <span className="teacher-challenges__item-actions">
-                <Button variant="secondary" icon="🏫" onClick={() => setAllocatingChallenge(challenge)}>
+                <Button
+                  variant="secondary"
+                  icon="🏫"
+                  onClick={() => setAllocatingChallenge(challenge)}
+                >
                   Alocar à turma
                 </Button>
-                <LinkButton to={`/teacher/challenges/${challenge.id}/edit`} variant="secondary" icon="✏️">
+                <LinkButton
+                  to={`/teacher/challenges/${challenge.id}/edit`}
+                  variant="secondary"
+                  icon="✏️"
+                >
                   Editar
                 </LinkButton>
                 <LinkButton
@@ -80,7 +105,11 @@ export function TeacherChallenges() {
                 >
                   Duplicar
                 </LinkButton>
-                <Button variant="ghost" icon="🗑️" onClick={() => setPendingDeleteId(challenge.id)}>
+                <Button
+                  variant="ghost"
+                  icon="🗑️"
+                  onClick={() => setPendingDeleteId(challenge.id)}
+                >
                   Excluir
                 </Button>
               </span>
@@ -104,7 +133,7 @@ export function TeacherChallenges() {
             reload();
           }}
         >
-          {deleting ? 'Excluindo…' : 'Excluir mesmo assim'}
+          {deleting ? "Excluindo…" : "Excluir mesmo assim"}
         </Button>
       </Dialog>
 

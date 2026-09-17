@@ -12,7 +12,7 @@ export interface FeedbackMessageValidationError {
 // sobrescrevíveis por desafio.
 export const DEFAULT_FEEDBACK_MESSAGES: Required<ChallengeFeedbackMessages> = {
   retry: 'Quase lá — quer tentar de novo?',
-  success: 'Você montou o desafio! ✅',
+  success: 'Você montou o desafio!',
 };
 
 const MAX_MESSAGE_LENGTH = 200;

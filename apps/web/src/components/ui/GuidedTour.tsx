@@ -1,8 +1,8 @@
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { computeCardPlacement, type Rect } from '../../lib/tourPositioning';
-import { Button } from './Button';
-import './GuidedTour.css';
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { computeCardPlacement, type Rect } from "../../lib/tourPositioning";
+import { Button } from "./Button";
+import "./GuidedTour.css";
 
 export interface GuidedTourStep {
   // Id de QUALQUER elemento já na tela — o tour nunca renderiza o alvo, só
@@ -65,17 +65,22 @@ export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
         setTargetRect(null);
         return;
       }
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
       const rect = target.getBoundingClientRect();
-      setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+      setTargetRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
     }
 
     measure();
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
     return () => {
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
     };
   }, [open, step]);
 
@@ -127,27 +132,41 @@ export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
           <p className="ui-guided-tour__step-count">
             Passo {stepIndex + 1} de {steps.length}
           </p>
-          <DialogPrimitive.Title className="ui-guided-tour__title">{step.title}</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="ui-guided-tour__title">
+            {step.title}
+          </DialogPrimitive.Title>
           <DialogPrimitive.Description className="ui-guided-tour__description">
             {step.description}
           </DialogPrimitive.Description>
 
           <div className="ui-guided-tour__actions">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
               Pular tutorial
             </Button>
             <div className="ui-guided-tour__nav">
               {!isFirst && (
-                <Button type="button" variant="secondary" onClick={() => setStepIndex((current) => current - 1)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setStepIndex((current) => current - 1)}
+                >
                   ← Voltar
                 </Button>
               )}
               <Button
                 ref={nextButtonRef}
                 type="button"
-                onClick={() => (isLast ? onOpenChange(false) : setStepIndex((current) => current + 1))}
+                onClick={() =>
+                  isLast
+                    ? onOpenChange(false)
+                    : setStepIndex((current) => current + 1)
+                }
               >
-                {isLast ? 'Concluir' : 'Próximo →'}
+                {isLast ? "Concluir" : "Próximo →"}
               </Button>
             </div>
           </div>

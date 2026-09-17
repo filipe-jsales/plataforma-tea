@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { apiClient } from '../../lib/apiClient';
-import { performLogout } from '../../lib/logout';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { Button, LinkButton } from '../../components/ui';
-import './Home.css';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { apiClient } from "../../lib/apiClient";
+import { performLogout } from "../../lib/logout";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { Button, LinkButton } from "../../components/ui";
+import "./Home.css";
+import {
+  ChartLine,
+  Plus,
+  UserGroup,
+  Puzzle,
+  Gamepad2,
+  LogOut,
+} from "lucide-react";
 
 interface TeacherHomeClassroom {
   id: string;
@@ -19,16 +27,18 @@ interface TeacherHomeClassroom {
 export function TeacherHome() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const [classrooms, setClassrooms] = useState<TeacherHomeClassroom[] | null>(null);
+  const [classrooms, setClassrooms] = useState<TeacherHomeClassroom[] | null>(
+    null,
+  );
 
   useEffect(() => {
-    apiClient.get<TeacherHomeClassroom[]>('/home/teacher').then(setClassrooms);
+    apiClient.get<TeacherHomeClassroom[]>("/home/teacher").then(setClassrooms);
   }, []);
 
   function handleLogout() {
     if (!user) return;
     performLogout(user);
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   }
 
   if (!user) return null;
@@ -36,7 +46,7 @@ export function TeacherHome() {
   return (
     <main className="home staff-theme">
       <div className="home__topbar">
-        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
+        <Button variant="ghost" icon={<LogOut />} onClick={handleLogout}>
           Sair
         </Button>
       </div>
@@ -44,31 +54,35 @@ export function TeacherHome() {
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
-        <LinkButton to="/teacher/students/new" icon="➕">
+        <LinkButton to="/teacher/students/new" icon={<Plus />}>
           Adicionar aluno
         </LinkButton>
-        <LinkButton to="/teacher/students" icon="🧑‍🤝‍🧑">
+        <LinkButton to="/teacher/students" icon={<UserGroup />}>
           Meus alunos
         </LinkButton>
-        <LinkButton to="/teacher/metrics" icon="📈">
+        <LinkButton to="/teacher/metrics" icon={<ChartLine />}>
           Painel da turma (progresso por aluno)
         </LinkButton>
-        <LinkButton to="/teacher/challenges" icon="🧩">
+        <LinkButton to="/teacher/challenges" icon={<Puzzle />}>
           Meus desafios
         </LinkButton>
-        <LinkButton to="/teacher/minigames" icon="🎮">
+        <LinkButton to="/teacher/minigames" icon={<Gamepad2 />}>
           Mini jogo: Fábrica de Pedaços Iguais
         </LinkButton>
       </div>
 
-      {classrooms && classrooms.length === 0 && <p>Nenhuma turma atribuída ainda.</p>}
+      {classrooms && classrooms.length === 0 && (
+        <p>Nenhuma turma atribuída ainda.</p>
+      )}
 
       {classrooms && classrooms.length > 0 && (
         <ul className="home__list">
           {classrooms.map((classroom) => (
             <li key={classroom.id} className="home__list-item">
               <div className="home__list-item-name">{classroom.name}</div>
-              <div className="home__list-item-meta">Código: {classroom.joinCode}</div>
+              <div className="home__list-item-meta">
+                Código: {classroom.joinCode}
+              </div>
               <div className="home__list-item-meta">
                 {classroom.activeStudentsToday} aluno(s) com atividade hoje
               </div>
