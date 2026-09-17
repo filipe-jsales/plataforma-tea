@@ -1,0 +1,23 @@
+.challenge-creation-survey {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 40rem;
+}
+
+.challenge-creation-survey__intro {
+  margin: 0;
+}
+
+.challenge-creation-survey__quantitative,
+.challenge-creation-survey__qualitative {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.challenge-creation-survey__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
