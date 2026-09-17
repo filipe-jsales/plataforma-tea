@@ -2,12 +2,23 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 
+export interface ApiFieldError {
+  parameterKey: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   status: number;
+  // Presente só quando o backend devolve erro por campo (ex.: validação de
+  // template ao salvar desafio, ver ChallengeTemplatesService) — permite a
+  // tela focar o campo certo em vez de só mostrar uma mensagem genérica no
+  // topo do formulário.
+  errors?: ApiFieldError[];
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, errors?: ApiFieldError[]) {
     super(message);
     this.status = status;
+    this.errors = errors;
   }
 }
 
@@ -42,7 +53,8 @@ async function authorizedFetch(path: string, options: RequestInit = {}): Promise
 async function throwForErrorResponse(response: Response): Promise<never> {
   const body = await response.json().catch(() => null);
   const message = Array.isArray(body?.message) ? body.message.join(', ') : body?.message;
-  throw new ApiError(message ?? `Erro ${response.status}`, response.status);
+  const errors = Array.isArray(body?.errors) ? (body.errors as ApiFieldError[]) : undefined;
+  throw new ApiError(message ?? `Erro ${response.status}`, response.status, errors);
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

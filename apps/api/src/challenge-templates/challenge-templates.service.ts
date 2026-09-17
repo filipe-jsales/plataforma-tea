@@ -288,7 +288,14 @@ export class ChallengeTemplatesService {
     if (errors.length > 0) {
       // Mensagem continua pedagógica (as mesmas do handler/validador),
       // nunca "erro de validação"/"schema" genérico (regra não-negociável 9).
-      throw new BadRequestException(errors.map((error) => error.message).join(' '));
+      // `errors` estruturado (mesma forma de TemplateValidationError do
+      // `/preview`) vai junto no corpo da resposta — sem isso, o frontend só
+      // enxergava uma string combinada e não conseguia focar o campo certo
+      // (ex.: pergunta PRIMM apagada só é checada aqui, nunca no /preview).
+      throw new BadRequestException({
+        message: errors.map((error) => error.message).join(' '),
+        errors,
+      });
     }
 
     const config = handler.buildChallengeConfig(params);

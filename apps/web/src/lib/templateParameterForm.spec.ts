@@ -27,6 +27,20 @@ describe('buildInitialParams', () => {
   it('returns an empty draft for a template with no parameters', () => {
     expect(buildInitialParams([])).toEqual({});
   });
+
+  it('uses the saved value per key when editing/duplicating an existing challenge', () => {
+    expect(buildInitialParams(schema, { sides: 6, enabledBlockTypes: ['move_forward'] })).toEqual({
+      sides: 6,
+      enabledBlockTypes: ['move_forward'],
+    });
+  });
+
+  it('falls back to the schema default for a key missing from savedParams — a template parameter added after the challenge was saved (ex.: closureTolerancePx/blockSize) never lands as undefined/NaN', () => {
+    expect(buildInitialParams(schema, { sides: 6 })).toEqual({
+      sides: 6,
+      enabledBlockTypes: ['move_forward', 'turn'],
+    });
+  });
 });
 
 describe('coerceParameterValue', () => {

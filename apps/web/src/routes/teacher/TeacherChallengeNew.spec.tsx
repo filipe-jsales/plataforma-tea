@@ -5,9 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../lib/apiClient';
 import { TeacherChallengeNew } from './TeacherChallengeNew';
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: { get: vi.fn(), post: vi.fn() },
-}));
+vi.mock('../../lib/apiClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/apiClient')>('../../lib/apiClient');
+  return { ApiError: actual.ApiError, apiClient: { get: vi.fn(), post: vi.fn() } };
+});
 
 vi.mock('../../components/challenge/PixiTurtleWorld', () => ({
   PixiTurtleWorld: () => <div data-testid="pixi-turtle-world-stub" />,

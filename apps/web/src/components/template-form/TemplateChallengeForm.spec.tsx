@@ -1,13 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiClient } from '../../lib/apiClient';
+import { apiClient, ApiError } from '../../lib/apiClient';
 import type { ChallengeTemplateDetail } from '../../lib/challengeTemplateTypes';
 import { TemplateChallengeForm } from './TemplateChallengeForm';
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: { post: vi.fn() },
-}));
+vi.mock('../../lib/apiClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/apiClient')>('../../lib/apiClient');
+  return { ApiError: actual.ApiError, apiClient: { post: vi.fn() } };
+});
 
 // Pixi.js não roda de verdade em jsdom (sem WebGL/Canvas real) — o mesmo
 // racional de qualquer teste que isola PixiTurtleWorld (ver nota de débito
@@ -82,7 +83,10 @@ describe('TemplateChallengeForm', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
 
-    expect(await screen.findByText('Dê um nome para o desafio antes de salvar.')).toBeInTheDocument();
+    // A mensagem aparece duas vezes de propósito: inline sob o formulário
+    // (persistente) e num Toast (transitório, ver Toast.tsx) — a mesma
+    // frase pedagógica nos dois lugares, nunca duas mensagens diferentes.
+    expect((await screen.findAllByText('Dê um nome para o desafio antes de salvar.')).length).toBeGreaterThan(0);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
@@ -181,6 +185,59 @@ describe('TemplateChallengeForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /visualizar como aluno/i }));
 
     expect(await screen.findByText('A tolerância de encaixe não pode ficar em 0%.')).toBeInTheDocument();
+    expect(screen.queryByTestId('pixi-turtle-world-stub')).not.toBeInTheDocument();
+  });
+
+  it('focuses the title field and shows a toast when the professor tries to save without a title, instead of silently doing nothing', async () => {
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Dê um nome para o desafio antes de salvar.');
+    expect(screen.getByLabelText(/nome do desafio/i)).toHaveFocus();
+  });
+
+  it('focuses the first invalid field (in screen order) and shows a toast when saving is blocked by a pedagogical error', async () => {
+    mockedPost.mockResolvedValueOnce({
+      valid: false,
+      errors: [{ parameterKey: 'turnAngleDeg', message: 'Com 3 lados e 200° de giro, o desenho não fecha.' }],
+      goal: null,
+    });
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Alguns campos precisam de atenção antes de salvar.');
+    expect(document.getElementById('template-param-field-turnAngleDeg')).toHaveFocus();
+  });
+
+  it('7.5 — surfaces a save-time pedagogical error (PRIMM question/feedback message, only checked on save) under its own field with a toast, never just a generic message at the bottom', async () => {
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError('Escreva a pergunta de predição antes de salvar.', 400, [
+          { parameterKey: 'predictQuestion', message: 'Escreva a pergunta de predição antes de salvar.' },
+        ]),
+      );
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    expect(await screen.findByText('Alguns campos precisam de atenção antes de salvar.')).toBeInTheDocument();
+    expect(screen.getAllByText('Escreva a pergunta de predição antes de salvar.').length).toBeGreaterThan(0);
+    expect(document.getElementById('predict-question')).toHaveFocus();
+  });
+
+  it('AC4 — shows a toast/error instead of silently doing nothing when "Visualizar como aluno" fails at the network level', async () => {
+    mockedPost.mockRejectedValueOnce(new Error('Falha de rede.'));
+    render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /visualizar como aluno/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
     expect(screen.queryByTestId('pixi-turtle-world-stub')).not.toBeInTheDocument();
   });
 });
