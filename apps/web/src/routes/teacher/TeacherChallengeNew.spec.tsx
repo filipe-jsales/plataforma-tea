@@ -56,6 +56,7 @@ function renderPage(initialEntry = '/teacher/challenges/new') {
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/teacher/challenges/new" element={<TeacherChallengeNew />} />
+        <Route path="/teacher/challenges" element={<div>Meus desafios</div>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -139,6 +140,57 @@ describe('TeacherChallengeNew', () => {
         investigationQuestion: templateDetail.primmQuestionSuggestion.investigationQuestion,
       }),
     );
+  });
+
+  describe('survey de pesquisa após criar o desafio', () => {
+    async function createChallenge() {
+      mockedGet.mockResolvedValueOnce([templateSummary]);
+      mockedGet.mockResolvedValueOnce(templateDetail);
+      mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+      mockedPost.mockResolvedValueOnce({ id: 'new-challenge' });
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+      await userEvent.type(await screen.findByPlaceholderText(/triângulos/i), 'Meu desafio');
+      await userEvent.click(screen.getByRole('button', { name: /^salvar desafio$/i }));
+    }
+
+    it('shows the survey instead of navigating away right after a successful creation', async () => {
+      await createChallenge();
+
+      expect(await screen.findByText(/uma pergunta rápida/i)).toBeInTheDocument();
+      expect(screen.queryByText('Meus desafios')).not.toBeInTheDocument();
+    });
+
+    it('navigates to "Meus desafios" only after the survey is answered, scoped to the challenge just created', async () => {
+      await createChallenge();
+      await screen.findByText(/uma pergunta rápida/i);
+      mockedPost.mockResolvedValueOnce(undefined);
+
+      await userEvent.click(screen.getByRole('button', { name: /enviar respostas/i }));
+
+      expect(await screen.findByText('Meus desafios')).toBeInTheDocument();
+      expect(mockedPost).toHaveBeenCalledWith('/surveys/challenge-creation', {
+        challengeId: 'new-challenge',
+        status: 'submitted',
+        quantitative: {},
+        qualitative: {},
+      });
+    });
+
+    it('navigates to "Meus desafios" when the professor declines the survey', async () => {
+      await createChallenge();
+      await screen.findByText(/uma pergunta rápida/i);
+      mockedPost.mockResolvedValueOnce(undefined);
+
+      await userEvent.click(screen.getByRole('button', { name: /agora não/i }));
+
+      expect(await screen.findByText('Meus desafios')).toBeInTheDocument();
+      expect(mockedPost).toHaveBeenCalledWith('/surveys/challenge-creation', {
+        challengeId: 'new-challenge',
+        status: 'declined',
+      });
+    });
   });
 
   describe('tutorial guiado do formulário', () => {

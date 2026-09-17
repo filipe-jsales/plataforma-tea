@@ -1,0 +1,19 @@
+.ui-likert-field {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--space-4);
+}
+
+.ui-likert-field__statement {
+  padding: 0;
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+/* 5 âncoras textuais completas ("Discordo totalmente"...) são mais largas
+   que o atalho "Por aluno"/"Turma toda" que SegmentedControl nasceu pra
+   caber numa linha só — em telas estreitas (400px, ver artifact-design)
+   preferimos quebrar em 2-3 linhas a forçar scroll horizontal. */
+.ui-likert-field .ui-segmented {
+  flex-wrap: wrap;
+}

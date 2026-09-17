@@ -11,6 +11,7 @@ import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
 import { CHALLENGE_FORM_TOUR_KEY, CHALLENGE_FORM_TOUR_STEPS } from '../../lib/teacherChallengeFormTour';
 import { useGuidedTourStore } from '../../stores/useGuidedTourStore';
 import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
+import { ChallengeCreationSurvey } from '../../components/survey/ChallengeCreationSurvey';
 import './TeacherChallengeNew.css';
 
 // 4.2 (AC1/AC2) — "Criar desafio": galeria de templates em linguagem
@@ -29,6 +30,13 @@ export function TeacherChallengeNew() {
   const [templateDetail, setTemplateDetail] = useState<ChallengeTemplateDetail | null>(null);
   const [sourceChallenge, setSourceChallenge] = useState<TeacherChallengeDetail | null>(null);
   const [sourceLoading, setSourceLoading] = useState(Boolean(fromChallengeId));
+  // Preenchido só depois que o `POST` de criação já teve sucesso — vira o
+  // gatilho pro survey de pesquisa (ChallengeCreationSurvey) substituir o
+  // formulário na tela, ANTES de navegar pra "Meus desafios" (ver
+  // `handleSubmit`/render abaixo). `null` = ainda não criou (mostra o
+  // formulário) ou o survey já foi respondido/recusado (nesse ponto já
+  // navegou embora, então nunca re-renderiza com isto true de novo).
+  const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const hasSeenTour = useGuidedTourStore((state) => state.hasSeenTour);
   const markTourSeen = useGuidedTourStore((state) => state.markTourSeen);
@@ -82,8 +90,14 @@ export function TeacherChallengeNew() {
     investigationQuestion: string;
   }) {
     if (!templateDetail) return;
-    await apiClient.post(`/challenge-templates/${templateDetail.id}/challenges`, input);
-    navigate('/teacher/challenges');
+    const created = await apiClient.post<{ id: string }>(
+      `/challenge-templates/${templateDetail.id}/challenges`,
+      input,
+    );
+    // Nunca navega direto — o survey de pesquisa (7.6) entra ANTES,
+    // substituindo o formulário na tela; só `onDone` do survey (responder
+    // OU recusar) navega de verdade (ver render abaixo).
+    setCreatedChallengeId(created.id);
   }
 
   return (
@@ -93,7 +107,14 @@ export function TeacherChallengeNew() {
       </LinkButton>
       <h1>Criar desafio</h1>
 
-      {!selectedTemplateId && (
+      {createdChallengeId && (
+        <ChallengeCreationSurvey
+          challengeId={createdChallengeId}
+          onDone={() => navigate('/teacher/challenges')}
+        />
+      )}
+
+      {!createdChallengeId && !selectedTemplateId && (
         <>
           <p className="teacher-challenge-new__subtitle">
             Escolha um template pronto. Você só ajusta os parâmetros do desafio — nunca precisa mexer em
@@ -129,7 +150,7 @@ export function TeacherChallengeNew() {
         </>
       )}
 
-      {selectedTemplateId && templateDetail && (
+      {!createdChallengeId && selectedTemplateId && templateDetail && (
         <>
           <div className="teacher-challenge-new__form-header">
             <h2>
@@ -156,7 +177,7 @@ export function TeacherChallengeNew() {
         </>
       )}
 
-      {selectedTemplateId && !templateDetail && <p>Carregando formulário…</p>}
+      {!createdChallengeId && selectedTemplateId && !templateDetail && <p>Carregando formulário…</p>}
     </main>
   );
 }

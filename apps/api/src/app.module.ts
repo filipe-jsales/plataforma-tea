@@ -23,6 +23,7 @@ import { SettingsModule } from './settings/settings.module';
 import { StudentAccountsModule } from './student-accounts/student-accounts.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { SubjectsModule } from './subjects/subjects.module';
+import { SurveysModule } from './surveys/surveys.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -66,6 +67,7 @@ import { UsersModule } from './users/users.module';
     ChallengeDraftsModule,
     ChallengeValidationModule,
     ClassroomSettingsModule,
+    SurveysModule,
   ],
   controllers: [AppController],
   providers: [AppService],

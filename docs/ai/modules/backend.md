@@ -1117,6 +1117,65 @@ nunca texto livre vindo direto do frontend sem validação.
 `challengeId` já é FK real para `challenges.id` (`ON DELETE SET NULL`,
 nullable — nem todo evento é escopado a um desafio, ex.: login).
 
+## Survey de pesquisa após criar um desafio (`SurveysModule`, 2026-09)
+
+Instrumento de pesquisa — opinião do PROFESSOR sobre a própria experiência
+de autoria — disparado pelo frontend depois que `POST /challenge-templates/
+:id/challenges` já teve sucesso (`TeacherChallengeNew.tsx`, ver
+`frontend.md`). Tabela `survey_responses`, própria (`apps/api/src/surveys/`),
+nunca uma linha em `interaction_events`: as categorias RD-I/P/C/E/L
+(`EventCategory`) descrevem taxonomia de comportamento do ALUNO (regra
+não-negociável 6), e `EventsService.countEventsByCategoryForChallenge`/
+`countEventsByTypeForChallenge` (relatório 6.5) somam TUDO que tem aquele
+`challengeId` sem filtrar por `studentPseudoId` — misturar opinião de
+professor ali contaminaria "N de alunos que chegaram até este desafio".
+
+- **`POST /surveys/challenge-creation`** (`SurveysController`, só
+  `Role.TEACHER`) — `SubmitChallengeCreationSurveyDto` valida a FORMA
+  (`challengeId` UUID, `status: 'submitted' | 'declined'`,
+  `quantitative`/`qualitative` objetos opcionais); o CONTEÚDO
+  (`quantitative` são inteiros 1–5, `qualitative` tem tamanho máximo) é
+  validado em `survey-answers.ts` (funções puras, testadas isoladamente,
+  mesmo padrão de `feedback-messages.ts`) — rejeita com 400 em vez de
+  filtrar silenciosamente um valor fora do range (dado de pesquisa errado
+  salvo sem avisar é pior que um erro).
+- **Autorização "é dono deste desafio"**: `SurveysService` chama
+  `ChallengesService.findByIdForOwner(challengeId, teacherId)` — nunca
+  aceita opinião sobre um desafio de outro professor, mesma checagem que
+  editar/duplicar/excluir já usam.
+- **`SurveyResponse.surveyKey`** (hoje só `'challenge_creation'`,
+  `SurveysService.CHALLENGE_CREATION_SURVEY_KEY`) é o que torna a tabela
+  reutilizável pra um survey futuro sem migration nova — um instrumento
+  novo só precisa de uma chave nova + um controller/DTO próprio, nunca uma
+  tabela `_v2`.
+- **`status: 'declined'`** registra que o professor VIU o convite e
+  escolheu não responder (sempre com `quantitative`/`qualitative` vazios,
+  forçado no service mesmo que o corpo mande algo por engano) — sem isso
+  não dá pra calcular taxa de resposta (métrica padrão em survey research),
+  só "não sabemos se viu ou não".
+- **`teacherUserId`/`challengeId` nullable + `ON DELETE SET NULL`** (nunca
+  CASCADE): se a conta do professor ou o desafio forem excluídos depois, a
+  RESPOSTA em si continua um dado de pesquisa válido — só perde a
+  referência de quem/o quê, mesmo racional de `challenges.createdByUserId`/
+  `interaction_events.challengeId`. `templateKey` fica congelado
+  (snapshot) na resposta pelo mesmo motivo — sobrevive mesmo se
+  `challengeId` virar `null`.
+- **Append-only**: nenhum método de update/delete existe no service —
+  resposta de survey nunca é corrigida depois, é dado de pesquisa do que a
+  pessoa respondeu NAQUELE momento.
+
+**Conteúdo do instrumento** (definido no FRONTEND, o backend é agnóstico às
+chaves — ver `lib/challengeCreationSurvey.ts` em `frontend.md`):
+parte quantitativa com base em "Personal Opinion Surveys in Software
+Engineering" (Ciolkowski et al., em Shull/Singer/Sjøberg (eds.), *Guide to
+Advanced Empirical Software Engineering*, 2008) — escala Likert de
+concordância 1–5, um conceito por item; parte qualitativa com base em
+"Case Study Research in Software Engineering: Guidelines and Examples"
+(Runeson, Höst, Rainer, Regnell, 2012) — perguntas abertas não-indutivas.
+Os itens mapeiam nas barreiras institucionais/formação docente do RQ4 (ver
+`docs/ai/persona.md`) — a mesma pergunta de pesquisa que motivou o
+`GuidedTour` do formulário, agora com um instrumento de medida.
+
 ## Painel do professor: progresso por turma (6.3/6.4)
 
 Plano completo em `docs/ai/backlog/metricas-professor-admin.md` (M2/M3,
