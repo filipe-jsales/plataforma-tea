@@ -20,6 +20,7 @@ import {
 } from "../../lib/teacherChallengeFormTour";
 import { useGuidedTourStore } from "../../stores/useGuidedTourStore";
 import { TemplateChallengeForm } from "../../components/template-form/TemplateChallengeForm";
+import { ChallengeCreationSurvey } from '../../components/survey/ChallengeCreationSurvey';
 import "./TeacherChallengeNew.css";
 import { CircleQuestionMark } from "lucide-react";
 
@@ -45,6 +46,13 @@ export function TeacherChallengeNew() {
   const [sourceChallenge, setSourceChallenge] =
     useState<TeacherChallengeDetail | null>(null);
   const [sourceLoading, setSourceLoading] = useState(Boolean(fromChallengeId));
+  // Preenchido só depois que o `POST` de criação já teve sucesso — vira o
+  // gatilho pro survey de pesquisa (ChallengeCreationSurvey) substituir o
+  // formulário na tela, ANTES de navegar pra "Meus desafios" (ver
+  // `handleSubmit`/render abaixo). `null` = ainda não criou (mostra o
+  // formulário) ou o survey já foi respondido/recusado (nesse ponto já
+  // navegou embora, então nunca re-renderiza com isto true de novo).
+  const [createdChallengeId, setCreatedChallengeId] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const hasSeenTour = useGuidedTourStore((state) => state.hasSeenTour);
   const markTourSeen = useGuidedTourStore((state) => state.markTourSeen);
@@ -104,11 +112,14 @@ export function TeacherChallengeNew() {
     investigationQuestion: string;
   }) {
     if (!templateDetail) return;
-    await apiClient.post(
+    const created = await apiClient.post<{ id: string }>(
       `/challenge-templates/${templateDetail.id}/challenges`,
       input,
     );
-    navigate("/teacher/challenges");
+    // Nunca navega direto — o survey de pesquisa (7.6) entra ANTES,
+    // substituindo o formulário na tela; só `onDone` do survey (responder
+    // OU recusar) navega de verdade (ver render abaixo).
+    setCreatedChallengeId(created.id);
   }
 
   return (
@@ -118,7 +129,14 @@ export function TeacherChallengeNew() {
       </LinkButton>
       <h1>Criar desafio</h1>
 
-      {!selectedTemplateId && (
+      {createdChallengeId && (
+        <ChallengeCreationSurvey
+          challengeId={createdChallengeId}
+          onDone={() => navigate('/teacher/challenges')}
+        />
+      )}
+
+      {!createdChallengeId && !selectedTemplateId && (
         <>
           <p className="teacher-challenge-new__subtitle">
             Escolha um template pronto. Você só ajusta os parâmetros do desafio
@@ -156,7 +174,7 @@ export function TeacherChallengeNew() {
         </>
       )}
 
-      {selectedTemplateId && templateDetail && (
+      {!createdChallengeId && selectedTemplateId && templateDetail && (
         <>
           <div className="teacher-challenge-new__form-header">
             <h2>
@@ -198,7 +216,7 @@ export function TeacherChallengeNew() {
         </>
       )}
 
-      {selectedTemplateId && !templateDetail && <p>Carregando formulário…</p>}
+      {!createdChallengeId && selectedTemplateId && !templateDetail && <p>Carregando formulário…</p>}
     </main>
   );
 }

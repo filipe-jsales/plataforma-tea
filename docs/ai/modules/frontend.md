@@ -61,8 +61,11 @@ apps/web/src/
 │   │   ├── InlineFeedback.tsx / InlineFeedback.css
 │   │   ├── Toast.tsx / Toast.css                # aviso flutuante/transitório, reusa InlineFeedback por dentro
 │   │   ├── GuidedTour.tsx / GuidedTour.css      # 2026-09 — tutorial "spotlight" passo-a-passo, @radix-ui/react-dialog
+│   │   ├── LikertScaleField.tsx / .css          # 2026-09 — 1 item de escala Likert 1-5, reusa SegmentedControl
 │   │   ├── VisuallyHidden.tsx       # re-export de react-aria
 │   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
+│   ├── survey/
+│   │   └── ChallengeCreationSurvey.tsx / .css   # 2026-09 — survey pós-criação de desafio, ver seção própria
 │   ├── challenge/
 │   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
 │   ├── template-form/               # 4.2 — formulário guiado do professor, ver seção própria
@@ -1481,6 +1484,60 @@ elementos que quer apontar; (2) escrever um arquivo `lib/<nome>Tour.ts` com
 tutorial" que ignora `hasSeenTour`; (4) renderizar
 `<GuidedTour steps={...} open={...} onOpenChange={...} />`. Nenhum passo
 desses exige tocar em `GuidedTour.tsx`/`useGuidedTourStore.ts`.
+
+## Survey de pesquisa após criar um desafio (`ChallengeCreationSurvey`, 2026-09)
+
+Instrumento de pesquisa (opinião do professor sobre a própria experiência
+de autoria), disparado só depois que `TeacherChallengeNew.handleSubmit`
+já recebeu sucesso do `POST /challenge-templates/:id/challenges` — nunca
+antes, nunca bloqueia a publicação em si. Substitui o formulário na tela
+(`createdChallengeId` não-nulo em `TeacherChallengeNew.tsx`) até o
+professor responder ou recusar; só então `onDone` navega de verdade pra
+`/teacher/challenges` — ver "Survey de pesquisa após criar um desafio" em
+`backend.md` pro schema/endpoint.
+
+- **`components/survey/ChallengeCreationSurvey.tsx`** — o formulário do
+  survey em si. Sempre tem uma saída sem resposta ("Agora não" →
+  `POST /surveys/challenge-creation` com `status: 'declined'`, erro de
+  rede aí é ignorado de propósito — nunca prender o professor numa tela
+  por causa de um instrumento de pesquisa opcional) — mesmo racional de
+  "Pular tutorial" em `GuidedTour.tsx`: forçar resposta pra poder sair
+  introduziria viés de resposta forçada, o oposto do que survey research
+  recomenda.
+- **`lib/challengeCreationSurvey.ts`** — o CONTEÚDO do instrumento (só
+  dado, o componente não hardcoda pergunta nenhuma):
+  - `CHALLENGE_CREATION_SURVEY_QUANTITATIVE_ITEMS` — parte quantitativa,
+    5 itens de escala Likert 1–5 (concordância), metodologia "Personal
+    Opinion Surveys in Software Engineering" (Ciolkowski et al., em
+    Shull/Singer/Sjøberg (eds.), *Guide to Advanced Empirical Software
+    Engineering*, 2008): um conceito por item, nunca uma pergunta
+    "dupla-barreled". Cada item mapeia numa barreira institucional/
+    formação docente do RQ4 (`docs/ai/persona.md`) — a mesma pergunta de
+    pesquisa que motivou o `GuidedTour`, agora com um instrumento de
+    medida validado.
+  - `CHALLENGE_CREATION_SURVEY_QUALITATIVE_ITEMS` — parte qualitativa, 2
+    perguntas abertas, metodologia "Case Study Research in Software
+    Engineering: Guidelines and Examples" (Runeson, Höst, Rainer, Regnell,
+    2012): perguntas não-indutivas buscando contexto/racional ("o que foi
+    difícil", "o que ajudaria"), nunca uma pergunta fechada de sim/não.
+  - `id` de cada item é a chave persistida em `SurveyResponse
+    .quantitative`/`.qualitative` (backend) — acrescentar um item novo é
+    seguro, RENOMEAR um `id` existente quebra a série temporal desse item
+    nas respostas já salvas.
+- **`components/ui/LikertScaleField.tsx`** — um item de escala Likert,
+  reutilizável por qualquer survey futuro (não só este). Reaproveita
+  `SegmentedControl` (Radix `radiogroup`/`radio`, teclado de graça) com 5
+  âncoras textuais completas ("Discordo totalmente"..."Concordo
+  totalmente") — nunca números nus (rotulagem redundante, regra
+  não-negociável 9). `value=''` (nenhuma opção marcada) é o estado
+  inicial — nunca um valor 1–5 forçado, porque isso salvaria uma resposta
+  que a pessoa nunca deu de verdade se ela pulasse aquele item.
+- **Resposta parcial é válida em qualquer nível**: `TeacherChallengeNew`
+  pode navegar embora com `quantitative`/`qualitative` completamente
+  vazios se o professor clicar "Enviar respostas" sem preencher nada —
+  forçar 100% de preenchimento introduziria viés de resposta forçada
+  (mesma decisão do backend, ver `validateQuantitativeAnswers`/
+  `validateQualitativeAnswers` em `backend.md`).
 
 ## Alocação de desafio a uma turma (4.3)
 
