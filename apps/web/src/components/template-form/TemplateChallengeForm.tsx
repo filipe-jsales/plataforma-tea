@@ -251,7 +251,11 @@ export function TemplateChallengeForm({
 
   return (
     <form className="template-challenge-form" onSubmit={handleSubmit}>
-      <label className="template-challenge-form__title-field">
+      {/* ids `template-challenge-form-*` são alvo do tutorial guiado
+          (GuidedTour, ver TeacherChallengeNew.tsx) — nunca renomear/remover
+          sem atualizar `CHALLENGE_FORM_TOUR_STEPS` junto, ou um passo do
+          tour aponta pra um elemento que não existe mais. */}
+      <label id="template-challenge-form-title" className="template-challenge-form__title-field">
         <span>✏️ Nome do desafio</span>
         <input
           id="challenge-title"
@@ -263,7 +267,7 @@ export function TemplateChallengeForm({
         />
       </label>
 
-      <div className="template-challenge-form__fields">
+      <div id="template-challenge-form-params" className="template-challenge-form__fields">
         {template.parameterSchema.map((definition) => (
           <TemplateParameterField
             key={definition.key}
@@ -279,7 +283,7 @@ export function TemplateChallengeForm({
           mensagens de feedback abaixo. Pré-preenchidas com a sugestão do
           template (AC2), sempre editáveis. Sem limite curto de caracteres
           (AC4) — TextareaField acomoda linguagem acessível mais longa. */}
-      <div className="template-challenge-form__primm-questions">
+      <div id="template-challenge-form-primm" className="template-challenge-form__primm-questions">
         <TextareaField
           id="predict-question"
           label="Pergunta de Predição (antes de Executar)"
@@ -302,7 +306,7 @@ export function TemplateChallengeForm({
           já está valendo). Nunca aceita linguagem punitiva — o backend
           valida e devolve mensagem pedagógica se a tentativa violar isso
           (regra não-negociável 4, ver feedback-messages.ts). */}
-      <div className="template-challenge-form__feedback-messages">
+      <div id="template-challenge-form-feedback" className="template-challenge-form__feedback-messages">
         <TextField
           id="feedback-retry-message"
           label="Mensagem quando o aluno ainda não atingiu o objetivo (opcional)"
@@ -332,10 +336,16 @@ export function TemplateChallengeForm({
       )}
 
       <div className="template-challenge-form__actions">
-        <Button type="button" variant="secondary" onClick={handleVisualize} disabled={previewChecking}>
+        <Button
+          id="template-challenge-form-visualize"
+          type="button"
+          variant="secondary"
+          onClick={handleVisualize}
+          disabled={previewChecking}
+        >
           {previewChecking ? 'Verificando…' : '👀 Visualizar como aluno'}
         </Button>
-        <Button type="submit" disabled={saving}>
+        <Button id="template-challenge-form-submit" type="submit" disabled={saving}>
           {saving ? 'Salvando…' : submitLabel}
         </Button>
       </div>
