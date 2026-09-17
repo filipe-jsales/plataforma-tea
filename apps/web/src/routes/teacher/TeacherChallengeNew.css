@@ -9,3 +9,15 @@
   gap: 1rem;
   margin-top: 1rem;
 }
+
+.teacher-challenge-new__form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.teacher-challenge-new__form-header h2 {
+  margin: 0;
+}

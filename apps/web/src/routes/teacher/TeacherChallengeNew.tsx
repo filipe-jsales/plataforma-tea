@@ -6,8 +6,10 @@ import type {
   ChallengeTemplateSummary,
   TeacherChallengeDetail,
 } from '../../lib/challengeTemplateTypes';
-import { Badge, LinkButton, SelectableCard } from '../../components/ui';
+import { Badge, Button, GuidedTour, LinkButton, SelectableCard } from '../../components/ui';
 import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
+import { CHALLENGE_FORM_TOUR_KEY, CHALLENGE_FORM_TOUR_STEPS } from '../../lib/teacherChallengeFormTour';
+import { useGuidedTourStore } from '../../stores/useGuidedTourStore';
 import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
 import './TeacherChallengeNew.css';
 
@@ -27,6 +29,26 @@ export function TeacherChallengeNew() {
   const [templateDetail, setTemplateDetail] = useState<ChallengeTemplateDetail | null>(null);
   const [sourceChallenge, setSourceChallenge] = useState<TeacherChallengeDetail | null>(null);
   const [sourceLoading, setSourceLoading] = useState(Boolean(fromChallengeId));
+  const [tourOpen, setTourOpen] = useState(false);
+  const hasSeenTour = useGuidedTourStore((state) => state.hasSeenTour);
+  const markTourSeen = useGuidedTourStore((state) => state.markTourSeen);
+
+  // Abre sozinho na PRIMEIRA vez que o professor chega no formulário guiado
+  // (nunca antes — os alvos do tour só existem no DOM depois que
+  // `TemplateChallengeForm` renderiza, ver ids `template-challenge-form-*`
+  // lá). Da segunda vez em diante fica quieto (`hasSeenTour`,
+  // useGuidedTourStore) — nunca interromper quem já sabe usar a tela; o
+  // link "❔ Rever tutorial" abaixo sempre reabre manualmente.
+  useEffect(() => {
+    if (templateDetail && !hasSeenTour(CHALLENGE_FORM_TOUR_KEY)) {
+      setTourOpen(true);
+    }
+  }, [templateDetail, hasSeenTour]);
+
+  function handleTourOpenChange(open: boolean) {
+    setTourOpen(open);
+    if (!open) markTourSeen(CHALLENGE_FORM_TOUR_KEY);
+  }
 
   useEffect(() => {
     apiClient.get<ChallengeTemplateSummary[]>('/challenge-templates').then(setTemplates);
@@ -109,9 +131,14 @@ export function TeacherChallengeNew() {
 
       {selectedTemplateId && templateDetail && (
         <>
-          <h2>
-            <span aria-hidden="true">{templateDetail.icon}</span> {templateDetail.name}
-          </h2>
+          <div className="teacher-challenge-new__form-header">
+            <h2>
+              <span aria-hidden="true">{templateDetail.icon}</span> {templateDetail.name}
+            </h2>
+            <Button type="button" variant="ghost" onClick={() => setTourOpen(true)}>
+              ❔ Rever tutorial
+            </Button>
+          </div>
           {/* CC1 — categoria só leitura (curada via seed/Topic.category,
               nunca escolhida pelo professor aqui). */}
           <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[templateDetail.category]}</Badge>
@@ -125,6 +152,7 @@ export function TeacherChallengeNew() {
             submitLabel="Salvar desafio"
             onSubmit={handleSubmit}
           />
+          <GuidedTour steps={CHALLENGE_FORM_TOUR_STEPS} open={tourOpen} onOpenChange={handleTourOpenChange} />
         </>
       )}
 

@@ -10,10 +10,24 @@ import type {
 // de validação por campo. Nenhuma delas conhece "polígono"/"ângulo" — um
 // template novo (geometria ou outra disciplina) funciona aqui sem tocar
 // neste arquivo, contanto que reuse um `TemplateParameterType` já suportado.
-export function buildInitialParams(parameterSchema: TemplateParameterDefinition[]): TemplateParamsDraft {
+// `savedParams` (opcional) é o `templateParams` de um desafio já existente
+// (edição/duplicação) — usado CAMPO A CAMPO, nunca o objeto inteiro no lugar
+// do draft: um parâmetro adicionado ao template DEPOIS que o desafio foi
+// salvo (ex.: `closureTolerancePx`/`blockSize`, ver migrations
+// AddClosureToleranceToRegularPolygonTemplate/AddBlockSizeToRegularPolygon-
+// Template) fica ausente em `savedParams`, e sem este merge o campo nascia
+// `undefined` — `Number(undefined)` é `NaN`, que o React repassa cru pro
+// DOM (`<input type="number" value={NaN}>`), gerando o warning do browser
+// "The specified value "NaN" cannot be parsed" e um campo em branco que
+// parecia bug, não "parâmetro novo sem valor salvo ainda".
+export function buildInitialParams(
+  parameterSchema: TemplateParameterDefinition[],
+  savedParams?: TemplateParamsDraft,
+): TemplateParamsDraft {
   const draft: TemplateParamsDraft = {};
   for (const param of parameterSchema) {
-    draft[param.key] = param.defaultValue;
+    const saved = savedParams?.[param.key];
+    draft[param.key] = saved !== undefined ? saved : param.defaultValue;
   }
   return draft;
 }

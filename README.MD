@@ -106,6 +106,10 @@ Copie o exemplo e ajuste se necessário (os valores padrão já batem com o
 Copy-Item apps\api\.env.example apps\api\.env
 ```
 
+```
+Copy-Item apps\web\.env.example apps\web\.env
+```
+
 ### Rodando as migrations
 
 O schema do banco é controlado **inteiramente por migrations** — não há

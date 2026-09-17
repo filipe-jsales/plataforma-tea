@@ -28,6 +28,7 @@ apps/web/src/
 ├── stores/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
+│   ├── useGuidedTourStore.ts        # 2026-09 — "já vi esse tutorial" por chave, persistida em localStorage
 │   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
 │   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer (+ getRaw, 6.6)
@@ -39,6 +40,8 @@ apps/web/src/
 │   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 │   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
 │   ├── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   ├── tourPositioning.ts           # 2026-09 — função pura: onde encaixar o card do GuidedTour
+│   ├── teacherChallengeFormTour.ts  # 2026-09 — passos do tutorial do formulário de desafio
 │   └── challengeAllocationTypes.ts  # 4.3 — mesma forma que a API de challenge-allocations devolve
 ├── assets/illustrations/            # 8 SVGs (avatar-*/login-*) + NOTICE.md (origem/licença)
 ├── components/
@@ -56,6 +59,8 @@ apps/web/src/
 │   │   ├── Dialog.tsx / Dialog.css              # @radix-ui/react-dialog
 │   │   ├── Heading.tsx / Text.tsx / Typography.css
 │   │   ├── InlineFeedback.tsx / InlineFeedback.css
+│   │   ├── Toast.tsx / Toast.css                # aviso flutuante/transitório, reusa InlineFeedback por dentro
+│   │   ├── GuidedTour.tsx / GuidedTour.css      # 2026-09 — tutorial "spotlight" passo-a-passo, @radix-ui/react-dialog
 │   │   ├── VisuallyHidden.tsx       # re-export de react-aria
 │   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
 │   ├── challenge/
@@ -1341,32 +1346,141 @@ que fazer com o resultado, nunca reimplementam campo nenhum.
   roda a mesma `runValidation()` antes de chamar `onSubmit({ title, params,
   feedbackMessages })` — nunca deixa a criação/edição ir pro backend com
   uma combinação que a própria tela já sabe que é inválida. Linguagem
-  punitiva em `feedbackMessages` só é validada no backend (não há preview
-  próprio pra isso, diferente de `params`) — um erro aí aparece como
-  `formError` genérico no `catch`, mesma mensagem pedagógica que o backend
-  devolve.
+  punitiva em `feedbackMessages`/pergunta PRIMM apagada só é validada no
+  backend (`ChallengeTemplatesService#validateAndBuildConfig`, não há
+  preview próprio pra isso, diferente de `params`) — desde a correção do
+  bug "salvar não mostra feedback" (2026-09), esse erro chega estruturado
+  (`{ message, errors }`, mesma forma do `/preview`) via `ApiError.errors`
+  (`lib/apiClient.ts`), não só uma string solta.
+- **Foco + Toast em toda validação bloqueada** (bug "professor acha que é
+  bug, mas só esqueceu um campo obrigatório", 2026-09): tanto
+  `handleSubmit` quanto `handleVisualize` (que também ganhou o `catch` que
+  faltava — uma falha de rede aí fazia "Visualizar como aluno" não fazer
+  nada visível) chamam `focusFirstInvalidField` (rola até + foca o
+  primeiro campo inválido, na ORDEM DE LEITURA da tela — `fieldFocusOrder`,
+  nunca a ordem de iteração de um objeto) e mostram um `Toast`
+  (`components/ui/Toast.tsx`) — nunca só a mensagem lá embaixo do form,
+  fácil de não ver num formulário longo. `TemplateParameterField` ganhou um
+  wrapper `id`/`tabIndex={-1}` só pra isso (`template-param-field-<key>`,
+  separado do `id` do controle interno — dois elementos com o mesmo id
+  quebraria `getElementById`).
 
 ### `lib/templateParameterForm.ts` — funções puras, testadas
 
-`buildInitialParams` (schema → rascunho com os defaults), `coerceParameterValue`
-(string de `<input>` → número/boolean/array, nunca guarda string crua nem
-`NaN`), `errorsByParameterKey`, `toggleBlockType` (liga/desliga 1 bloco na
-lista sem duplicar/perder os outros). Nenhuma conhece "polígono" — são o
-motor genérico por trás de `TemplateParameterField`/`TemplateChallengeForm`.
+`buildInitialParams` (schema + `savedParams?` opcional → rascunho) — desde
+a correção do bug "NaN no formulário de editar/duplicar" (2026-09), o merge
+é CAMPO A CAMPO (`saved[key] ?? default[key]`), nunca `savedParams` inteiro
+no lugar do draft: um parâmetro adicionado ao template DEPOIS que um
+desafio foi salvo (ex.: `closureTolerancePx`/`blockSize`, ver migrations em
+`backend.md`) ficava `undefined` em `savedParams`, e `Number(undefined)` é
+`NaN` — o React repassa isso cru pro DOM
+(`<input type="number" value={NaN}>`), o warning de browser que motivou o
+bug. `coerceParameterValue` (string de `<input>` → número/boolean/array,
+nunca guarda string crua nem `NaN`), `errorsByParameterKey`,
+`toggleBlockType` (liga/desliga 1 bloco na lista sem duplicar/perder os
+outros). Nenhuma conhece "polígono" — são o motor genérico por trás de
+`TemplateParameterField`/`TemplateChallengeForm`.
 
 ### Testes
 
 `TemplateParameterField.spec.tsx` (cada `type`/`visualPreview`, rótulo
 ícone+texto, erro inline) e `TemplateChallengeForm.spec.tsx` (bloqueio sem
-título, bloqueio com combinação inválida — erro no campo certo, preview só
-abre quando válido, payload de salvar) são os testes de lógica de decisão
-mais densos desta feature — `Pixi` é mockado nesses dois arquivos (mesmo
-racional do débito "ChallengePage sem RTL ainda" logo abaixo: jsdom não
-roda WebGL/Canvas de verdade, o que importa testar é SE o painel de preview
+título — foco + Toast, bloqueio com combinação inválida — erro no campo
+certo + foco no primeiro inválido, erro estruturado de save-time sob o
+campo certo, preview só abre quando válido e mostra erro/Toast numa falha
+de rede, payload de salvar) são os testes de lógica de decisão mais densos
+desta feature — `Pixi` é mockado nesses dois arquivos (mesmo racional do
+débito "ChallengePage sem RTL ainda" logo abaixo: jsdom não roda
+WebGL/Canvas de verdade, o que importa testar é SE o painel de preview
 aparece, não como o Pixi desenha por dentro). `TeacherChallenges.spec.tsx`/
 `TeacherChallengeNew.spec.tsx`/`TeacherChallengeEdit.spec.tsx` cobrem a
-galeria (AC1), a confirmação antes de excluir, e o fluxo de duplicar
-(AC6) pré-preenchendo o mesmo template+parâmetros.
+galeria (AC1), a confirmação antes de excluir, o fluxo de duplicar (AC6)
+pré-preenchendo o mesmo template+parâmetros, e (só `TeacherChallengeNew`) o
+tutorial guiado — ver seção própria abaixo.
+
+## Tutorial guiado do formulário de desafio (`GuidedTour`, 2026-09)
+
+Onboarding tipo "app recém-instalado": um card foca um elemento por vez,
+"Próximo" avança pro próximo, até o último passo. Disparado ao entrar em
+`/teacher/challenges/new` (`TeacherChallengeNew`) — card ambíguo de UX
+reportado como "não sei como preencher isso" virou este tutorial em vez de
+uma reescrita de copy do formulário.
+
+### `components/ui/GuidedTour.tsx` — primitivo genérico, não a feature
+
+Como qualquer componente de `components/ui/`, não sabe o que é "criar um
+desafio": recebe só `steps: { targetId, title, description }[]` + `open`/
+`onOpenChange`, e segue a lista — reaproveitável por qualquer tutorial
+futuro (outra tela, outro fluxo) só passando uma lista de passos diferente,
+nunca copiando o componente. `targetId` é o `id` de QUALQUER elemento já
+renderizado na tela (`document.getElementById`); o tour nunca desenha o
+alvo, só aponta.
+
+- **Construído sobre `@radix-ui/react-dialog`** (mesmo primitivo de
+  `Dialog.tsx`, ver "Decisão técnica: Radix UI" acima) — não pelo
+  posicionamento (isso é custom, ver abaixo), mas pelo que a lib já resolve
+  de graça e não vale reimplementar na mão: focus trap dentro do card,
+  `Escape`/clique-fora fecham, `aria-modal`/`role="dialog"`. Sendo modal,
+  Radix aplica `aria-hidden` no resto da árvore enquanto aberto — **testes
+  de outras telas precisam garantir que o tour não está aberto** (ver nota
+  de teste abaixo) ou `getByRole`/`getByLabelText` nos campos por baixo
+  quebram.
+- **Posição calculada, não centralizada**: `lib/tourPositioning.ts#computeCardPlacement`
+  é função PURA (sem DOM) — recebe o retângulo do alvo + tamanho da
+  viewport + tamanho do card já medido (`getBoundingClientRect`) e devolve
+  onde encaixar (embaixo do alvo por padrão, só vai pra cima se não couber
+  embaixo E houver mais espaço em cima; sempre recortado pra nunca vazar a
+  viewport). Separada do componente de propósito — jsdom sempre devolve
+  retângulo zerado, então só com retângulos INVENTADOS (`tourPositioning.spec.ts`)
+  esse cálculo tem cobertura de teste de verdade; `GuidedTour.spec.tsx`
+  testa só navegação/rótulos/fechamento, nunca pixel.
+- **Anel visual** (`.ui-guided-tour__spotlight`, `box-shadow` — mesma
+  técnica clássica de "spotlight" com um único elemento, sem SVG mask) +
+  `.ui-guided-tour__overlay` escurece o resto — ambos recalculados a cada
+  passo E em `resize`/`scroll` (`window.addEventListener`), nunca uma
+  medição presa ao primeiro render.
+- **Sem transição/animação própria** (`GuidedTour.css` não declara
+  nenhuma) — mesma decisão de `Button.css`/`Card.css`: se um módulo quiser
+  microanimação, isso vem de `.staff-theme` (regra não-negociável 1), nunca
+  hardcoded no componente compartilhado. Hoje só é usado dentro de
+  `.staff-theme` (professor), mas o componente em si continua seguro pra
+  reuso futuro numa tela de aluno sem violar a regra sensorial.
+
+### `useGuidedTourStore` — "já vi esse tutorial"
+
+Store Zustand persistido (`localStorage`, `stores/useGuidedTourStore.ts`),
+mesmo padrão de `useAuthStore`: `seenTours: Record<string, boolean>` +
+`markTourSeen(key)`/`hasSeenTour(key)`. Decisão explícita: isto é
+conveniência de navegador, não dado de negócio — não existe (nem faz
+sentido existir) uma coluna em `User` pra isso, diferente do onboarding
+sensorial do ALUNO, que É rastreado no backend
+(`User.sensoryOnboardingCompletedAt`, ver `backend.md`) porque ali a UI em
+si depende do valor. Um professor que troca de computador só vê o
+tutorial de novo, sem prejuízo — e sempre pode reabrir manualmente (botão
+"❔ Rever tutorial" ao lado do nome do template, em `TeacherChallengeNew`,
+chama `setTourOpen(true)` direto, sem checar `hasSeenTour`).
+
+### Passos do tour (`lib/teacherChallengeFormTour.ts`)
+
+`CHALLENGE_FORM_TOUR_STEPS` aponta pra LANDMARKS estruturais do formulário
+(`template-challenge-form-title/params/primm/feedback/visualize/submit`,
+ids em `TemplateChallengeForm.tsx`), nunca pro `id` de um parâmetro
+pedagógico específico (`sides`/`turnAngleDeg`...) — o schema de parâmetros
+muda por template (`RegularPolygonTemplateHandler` hoje, outro template
+amanhã), então o tour precisa continuar fazendo sentido pra QUALQUER
+template escolhido, sem um roteiro de passos por template. Se o formulário
+ganhar uma seção estrutural nova, o suficiente é: um passo novo aqui + um
+`id` novo no elemento correspondente — nunca precisa tocar em
+`GuidedTour.tsx`.
+
+**Como adicionar um tutorial novo em outra tela**: (1) dar `id` estável aos
+elementos que quer apontar; (2) escrever um arquivo `lib/<nome>Tour.ts` com
+`<NOME>_TOUR_KEY` + `<NOME>_TOUR_STEPS` (mesmo padrão de
+`teacherChallengeFormTour.ts`); (3) na tela, `useState` pro `open` +
+`useGuidedTourStore` pro auto-show na primeira visita + um botão "Rever
+tutorial" que ignora `hasSeenTour`; (4) renderizar
+`<GuidedTour steps={...} open={...} onOpenChange={...} />`. Nenhum passo
+desses exige tocar em `GuidedTour.tsx`/`useGuidedTourStore.ts`.
 
 ## Alocação de desafio a uma turma (4.3)
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { PixiTurtleWorld } from '../challenge/PixiTurtleWorld';
-import { apiClient } from '../../lib/apiClient';
+import { apiClient, ApiError } from '../../lib/apiClient';
 import { buildGoalPreviewPath } from '../../lib/turtleWorld';
 import { buildInitialParams, errorsByParameterKey } from '../../lib/templateParameterForm';
 import { DEFAULT_RETRY_MESSAGE, DEFAULT_SUCCESS_MESSAGE } from '../../lib/feedbackMessages';
@@ -11,9 +11,48 @@ import type {
   TemplateParamsDraft,
   TemplatePreviewResult,
 } from '../../lib/challengeTemplateTypes';
-import { Button, InlineFeedback, TextareaField, TextField } from '../ui';
+import { Button, InlineFeedback, TextareaField, TextField, Toast } from '../ui';
 import { TemplateParameterField } from './TemplateParameterField';
 import './TemplateChallengeForm.css';
+
+// Mapeia a chave de erro (parameterKey do backend) pro id do elemento a
+// focar depois de uma validação falhar — cada tipo de campo usa uma
+// convenção de id diferente (título é um input cru; perguntas PRIMM/
+// mensagens de feedback são TextField/TextareaField, cujo `id` vira o do
+// elemento nativo; parâmetro de template usa o wrapper de
+// TemplateParameterField, ver a nota lá sobre por que não é o mesmo id do
+// controle interno). Chaves de parâmetro do template (`sides`,
+// `turnAngleDeg`...) não têm entrada fixa aqui — caem no fallback
+// `template-param-field-<key>` de `focusFieldByErrorKey`.
+const FIXED_FIELD_ELEMENT_ID: Record<string, string> = {
+  title: 'challenge-title',
+  predictQuestion: 'predict-question',
+  investigationQuestion: 'investigation-question',
+  retryMessage: 'feedback-retry-message',
+  successMessage: 'feedback-success-message',
+};
+
+// Ordem de leitura da tela (topo → baixo) — usada só pra escolher QUAL
+// campo focar primeiro quando mais de um está inválido ao mesmo tempo
+// (nunca focar um campo abaixo enquanto um de cima também está errado).
+function buildFieldFocusOrder(template: ChallengeTemplateDetail): string[] {
+  return [
+    'title',
+    ...template.parameterSchema.map((definition) => definition.key),
+    'predictQuestion',
+    'investigationQuestion',
+    'retryMessage',
+    'successMessage',
+  ];
+}
+
+function focusFieldByErrorKey(key: string): void {
+  const id = FIXED_FIELD_ELEMENT_ID[key] ?? `template-param-field-${key}`;
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  element.focus();
+}
 
 export interface TemplateChallengeFormSubmitInput {
   title: string;
@@ -56,7 +95,7 @@ export function TemplateChallengeForm({
 }: TemplateChallengeFormProps) {
   const [title, setTitle] = useState(initialTitle);
   const [params, setParams] = useState<TemplateParamsDraft>(
-    () => initialParams ?? buildInitialParams(template.parameterSchema),
+    () => buildInitialParams(template.parameterSchema, initialParams),
   );
   // 3.7 (AC4) — mensagens de feedback opcionais, por desafio. Vazio (não
   // `undefined`) pra o input controlado nunca alternar entre controlado/
@@ -78,11 +117,28 @@ export function TemplateChallengeForm({
   );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // Aviso flutuante e transitório — some sozinho depois de um tempo (ver
+  // Toast.tsx), nunca a única fonte da mensagem: o campo problemático
+  // continua mostrando a mesma frase ao lado (fieldErrors) mesmo depois do
+  // Toast sumir. Existe especificamente pro caso de um formulário guiado
+  // longo, onde o campo com erro pode estar fora da área visível — sem
+  // isto, "salvar" parecia não fazer nada (nenhuma mudança visível acima da
+  // dobra), quando na verdade um campo obrigatório ficou sem preencher.
+  const [toast, setToast] = useState<{ kind: 'retry'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChecking, setPreviewChecking] = useState(false);
 
   const previewStore = useMemo(() => createTurtleExecutionStore(), []);
+  const fieldFocusOrder = useMemo(() => buildFieldFocusOrder(template), [template]);
+
+  // Foca (e rola até) o primeiro campo inválido na ordem de leitura da
+  // tela — nunca um campo qualquer do mapa (a ordem de iteração de um
+  // objeto JS não é garantida ser a ordem visual).
+  function focusFirstInvalidField(errors: Record<string, string>) {
+    const firstKey = fieldFocusOrder.find((key) => key in errors);
+    if (firstKey) focusFieldByErrorKey(firstKey);
+  }
 
   function handleParamChange(key: string, value: number | boolean | string | string[]) {
     setParams((current) => ({ ...current, [key]: value }));
@@ -111,8 +167,11 @@ export function TemplateChallengeForm({
     try {
       const result = await runValidation();
       if (!result.valid || !result.goal) {
-        setFieldErrors(errorsByParameterKey(result.errors));
+        const errors = errorsByParameterKey(result.errors);
+        setFieldErrors(errors);
         setPreviewOpen(false);
+        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de visualizar.' });
+        focusFirstInvalidField(errors);
         return;
       }
       setFieldErrors({});
@@ -124,6 +183,14 @@ export function TemplateChallengeForm({
       // com o próprio perfil, isto é só a tela de autoria.
       previewStore.getState().play(path.points, true);
       setPreviewOpen(true);
+    } catch (error) {
+      // Faltava este `catch`: uma falha de rede/servidor na chamada de
+      // `/preview` derrubava a promise sem nenhum feedback — o clique em
+      // "Visualizar como aluno" parecia simplesmente não fazer nada.
+      const message =
+        error instanceof Error ? error.message : 'Não foi possível gerar a pré-visualização. Tente novamente.';
+      setFormError(message);
+      setToast({ kind: 'retry', message });
     } finally {
       setPreviewChecking(false);
     }
@@ -132,7 +199,10 @@ export function TemplateChallengeForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!title.trim()) {
-      setFormError('Dê um nome para o desafio antes de salvar.');
+      const message = 'Dê um nome para o desafio antes de salvar.';
+      setFormError(message);
+      setToast({ kind: 'retry', message });
+      focusFieldByErrorKey('title');
       return;
     }
 
@@ -143,7 +213,10 @@ export function TemplateChallengeForm({
       if (!result.valid) {
         // AC3 — bloqueia o salvamento, mensagem descritiva sob cada campo,
         // nunca um erro genérico solto no topo da tela.
-        setFieldErrors(errorsByParameterKey(result.errors));
+        const errors = errorsByParameterKey(result.errors);
+        setFieldErrors(errors);
+        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de salvar.' });
+        focusFirstInvalidField(errors);
         return;
       }
       setFieldErrors({});
@@ -155,7 +228,22 @@ export function TemplateChallengeForm({
         investigationQuestion,
       });
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.');
+      // 7.5 — validação de pergunta PRIMM/mensagem de feedback só acontece
+      // no save de verdade (nunca no `/preview`, ver
+      // ChallengeTemplatesService#validateAndBuildConfig), então o backend
+      // devolve `errors` estruturado (mesma forma do `/preview`) junto da
+      // mensagem combinada — sem isso, o professor via só uma frase solta
+      // no rodapé do formulário, fácil de não perceber num form longo.
+      if (error instanceof ApiError && error.errors && error.errors.length > 0) {
+        const errors = errorsByParameterKey(error.errors);
+        setFieldErrors((current) => ({ ...current, ...errors }));
+        setToast({ kind: 'retry', message: 'Alguns campos precisam de atenção antes de salvar.' });
+        focusFirstInvalidField(errors);
+      } else {
+        const message = error instanceof Error ? error.message : 'Não foi possível salvar. Tente novamente.';
+        setFormError(message);
+        setToast({ kind: 'retry', message });
+      }
     } finally {
       setSaving(false);
     }
@@ -163,9 +251,14 @@ export function TemplateChallengeForm({
 
   return (
     <form className="template-challenge-form" onSubmit={handleSubmit}>
-      <label className="template-challenge-form__title-field">
+      {/* ids `template-challenge-form-*` são alvo do tutorial guiado
+          (GuidedTour, ver TeacherChallengeNew.tsx) — nunca renomear/remover
+          sem atualizar `CHALLENGE_FORM_TOUR_STEPS` junto, ou um passo do
+          tour aponta pra um elemento que não existe mais. */}
+      <label id="template-challenge-form-title" className="template-challenge-form__title-field">
         <span>✏️ Nome do desafio</span>
         <input
+          id="challenge-title"
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -174,7 +267,7 @@ export function TemplateChallengeForm({
         />
       </label>
 
-      <div className="template-challenge-form__fields">
+      <div id="template-challenge-form-params" className="template-challenge-form__fields">
         {template.parameterSchema.map((definition) => (
           <TemplateParameterField
             key={definition.key}
@@ -190,7 +283,7 @@ export function TemplateChallengeForm({
           mensagens de feedback abaixo. Pré-preenchidas com a sugestão do
           template (AC2), sempre editáveis. Sem limite curto de caracteres
           (AC4) — TextareaField acomoda linguagem acessível mais longa. */}
-      <div className="template-challenge-form__primm-questions">
+      <div id="template-challenge-form-primm" className="template-challenge-form__primm-questions">
         <TextareaField
           id="predict-question"
           label="Pergunta de Predição (antes de Executar)"
@@ -213,11 +306,12 @@ export function TemplateChallengeForm({
           já está valendo). Nunca aceita linguagem punitiva — o backend
           valida e devolve mensagem pedagógica se a tentativa violar isso
           (regra não-negociável 4, ver feedback-messages.ts). */}
-      <div className="template-challenge-form__feedback-messages">
+      <div id="template-challenge-form-feedback" className="template-challenge-form__feedback-messages">
         <TextField
           id="feedback-retry-message"
           label="Mensagem quando o aluno ainda não atingiu o objetivo (opcional)"
           value={feedbackMessages.retry}
+          error={fieldErrors.retryMessage}
           placeholder={DEFAULT_RETRY_MESSAGE}
           maxLength={200}
           onChange={(event) => setFeedbackMessages((current) => ({ ...current, retry: event.target.value }))}
@@ -226,6 +320,7 @@ export function TemplateChallengeForm({
           id="feedback-success-message"
           label="Mensagem de sucesso (opcional)"
           value={feedbackMessages.success}
+          error={fieldErrors.successMessage}
           placeholder={DEFAULT_SUCCESS_MESSAGE}
           maxLength={200}
           onChange={(event) => setFeedbackMessages((current) => ({ ...current, success: event.target.value }))}
@@ -234,11 +329,23 @@ export function TemplateChallengeForm({
 
       {formError && <InlineFeedback kind="retry">{formError}</InlineFeedback>}
 
+      {toast && (
+        <Toast kind={toast.kind} onDismiss={() => setToast(null)}>
+          {toast.message}
+        </Toast>
+      )}
+
       <div className="template-challenge-form__actions">
-        <Button type="button" variant="secondary" onClick={handleVisualize} disabled={previewChecking}>
+        <Button
+          id="template-challenge-form-visualize"
+          type="button"
+          variant="secondary"
+          onClick={handleVisualize}
+          disabled={previewChecking}
+        >
           {previewChecking ? 'Verificando…' : '👀 Visualizar como aluno'}
         </Button>
-        <Button type="submit" disabled={saving}>
+        <Button id="template-challenge-form-submit" type="submit" disabled={saving}>
           {saving ? 'Salvando…' : submitLabel}
         </Button>
       </div>

@@ -3,11 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../lib/apiClient';
+import { CHALLENGE_FORM_TOUR_KEY } from '../../lib/teacherChallengeFormTour';
+import { useGuidedTourStore } from '../../stores/useGuidedTourStore';
 import { TeacherChallengeNew } from './TeacherChallengeNew';
 
-vi.mock('../../lib/apiClient', () => ({
-  apiClient: { get: vi.fn(), post: vi.fn() },
-}));
+vi.mock('../../lib/apiClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/apiClient')>('../../lib/apiClient');
+  return { ApiError: actual.ApiError, apiClient: { get: vi.fn(), post: vi.fn() } };
+});
 
 vi.mock('../../components/challenge/PixiTurtleWorld', () => ({
   PixiTurtleWorld: () => <div data-testid="pixi-turtle-world-stub" />,
@@ -39,6 +42,13 @@ const templateDetail = {
 beforeEach(() => {
   mockedGet.mockReset();
   mockedPost.mockReset();
+  // Tour já visto por padrão — sem isso, o GuidedTour abriria sozinho em
+  // TODO teste que chega no formulário (Radix Dialog é modal: esconde o
+  // resto da árvore via aria-hidden enquanto aberto, o que quebraria
+  // `getByRole`/`getByLabelText` nos campos do formulário por baixo). Os
+  // testes que exercitam o tour em si (abaixo) resetam pra `{}` de
+  // propósito.
+  useGuidedTourStore.setState({ seenTours: { [CHALLENGE_FORM_TOUR_KEY]: true } });
 });
 
 function renderPage(initialEntry = '/teacher/challenges/new') {
@@ -129,5 +139,44 @@ describe('TeacherChallengeNew', () => {
         investigationQuestion: templateDetail.primmQuestionSuggestion.investigationQuestion,
       }),
     );
+  });
+
+  describe('tutorial guiado do formulário', () => {
+    it('opens by itself the first time the professor reaches the guided form', async () => {
+      useGuidedTourStore.setState({ seenTours: {} });
+      mockedGet.mockResolvedValueOnce([templateSummary]);
+      mockedGet.mockResolvedValueOnce(templateDetail);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+
+      expect(await screen.findByRole('dialog')).toHaveTextContent('Dê um nome pro desafio');
+    });
+
+    it('does not reopen on its own after the professor closes it once (marks the tour as seen)', async () => {
+      useGuidedTourStore.setState({ seenTours: {} });
+      mockedGet.mockResolvedValueOnce([templateSummary]);
+      mockedGet.mockResolvedValueOnce(templateDetail);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+      await userEvent.click(await screen.findByRole('button', { name: /pular tutorial/i }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(useGuidedTourStore.getState().hasSeenTour(CHALLENGE_FORM_TOUR_KEY)).toBe(true);
+    });
+
+    it('"❔ Rever tutorial" always reopens it manually, even after it was already seen', async () => {
+      mockedGet.mockResolvedValueOnce([templateSummary]);
+      mockedGet.mockResolvedValueOnce(templateDetail);
+
+      renderPage();
+      await userEvent.click(await screen.findByText('Desenhar um polígono regular'));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /rever tutorial/i }));
+
+      expect(await screen.findByRole('dialog')).toHaveTextContent('Dê um nome pro desafio');
+    });
   });
 });

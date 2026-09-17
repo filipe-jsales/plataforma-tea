@@ -29,5 +29,7 @@ export { Dialog, type DialogProps } from './Dialog';
 export { Heading, type HeadingProps, type HeadingLevel } from './Heading';
 export { Text, type TextProps, type TextTone, type TextSize } from './Text';
 export { InlineFeedback, type InlineFeedbackProps, type FeedbackKind } from './InlineFeedback';
+export { Toast, type ToastProps } from './Toast';
+export { GuidedTour, type GuidedTourProps, type GuidedTourStep } from './GuidedTour';
 export { Slider, type SliderProps } from './Slider';
 export { VisuallyHidden } from './VisuallyHidden';

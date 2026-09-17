@@ -40,11 +40,26 @@ function renderVisualPreview(definition: TemplateParameterDefinition, value: unk
 // linguagem pedagógica, nunca um asterisco vermelho sozinho.
 export function TemplateParameterField({ definition, value, error, onChange }: TemplateParameterFieldProps) {
   const fieldId = `template-param-${definition.key}`;
+  // Id separado do `fieldId` do controle interno (`<input id={fieldId}>`
+  // já existe pro tipo integer/percentage) — dois elementos com o mesmo id
+  // no DOM quebraria `document.getElementById`. `tabIndex={-1}` não entra
+  // na ordem normal de tab (o controle interno continua tabável do jeito de
+  // sempre) — serve só pra permitir `document.getElementById(wrapperId)
+  // ?.focus()` depois de uma validação falhar
+  // (TemplateChallengeForm#focusFirstInvalidField), sem precisar de um ref
+  // por tipo de controle (número/toggle/segmented control cada um foca
+  // diferente).
+  const wrapperId = `template-param-field-${definition.key}`;
   const preview = renderVisualPreview(definition, value);
   const isBlockSelection = definition.type === 'blockSelection';
 
   return (
-    <fieldset className="template-parameter-field" data-invalid={error ? 'true' : undefined}>
+    <fieldset
+      id={wrapperId}
+      tabIndex={-1}
+      className="template-parameter-field"
+      data-invalid={error ? 'true' : undefined}
+    >
       <legend className="template-parameter-field__header">
         <span className="template-parameter-field__icon" aria-hidden="true">
           {definition.icon}
