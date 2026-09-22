@@ -12,8 +12,11 @@ export const CONTENT_CATEGORY_LABEL: Record<ContentCategory, string> = {
   educacao_computacao: 'Educação em Computação',
 };
 
-// Rótulos pro ALUNO (SubjectSelector) — nunca os termos técnicos crus.
+// Rótulos pro ALUNO (SubjectSelector, AppSidebar) — nunca os termos técnicos
+// crus. 2026-09 — renomeados de "Matérias da escola"/"Sobre tecnologia" pra
+// alinhar com o vocabulário da sidebar global (feature de header/sidebar/
+// footer).
 export const CONTENT_CATEGORY_STUDENT_LABEL: Record<ContentCategory, string> = {
-  informatica_educacional: 'Matérias da escola',
-  educacao_computacao: 'Sobre tecnologia',
+  informatica_educacional: 'Informática na Computação',
+  educacao_computacao: 'Educação em Computação',
 };

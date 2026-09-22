@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../lib/apiClient";
 import { logEvent } from "../../lib/logEvent";
-import { performLogout } from "../../lib/logout";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { Button, LinkButton } from "../../components/ui";
+import { Button } from "../../components/ui";
 import "./Home.css";
-import { LogOut, Play, TrendingUp, Settings, PartyPopper } from "lucide-react";
+import { Play, TrendingUp, PartyPopper } from "lucide-react";
 
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
@@ -50,39 +49,14 @@ export function StudentHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  function handleLogout() {
-    if (!user) return;
-    performLogout(user);
-    navigate("/login", { replace: true });
-  }
-
   if (!user) return null;
 
   return (
     <main className="home">
-      {/* 1.5.1 — "Sair" fica fora de home__actions: não é uma das "no
-          máximo 2 ações principais" (AC1), é uma ação de escape sempre
-          disponível mas discreta. */}
-      <div className="home__topbar">
-        {/* 3.9 — mesmo racional de "Sair": ação de escape sempre
-            disponível, mas discreta, fora das "no máximo 2 ações
-            principais" (AC1). */}
-        <LinkButton
-          to="/settings/sensory"
-          variant="secondary"
-          icon={<Settings color="#000000" strokeWidth={1.75} />}
-        >
-          Configurações
-        </LinkButton>
-        <Button
-          variant="secondary"
-          icon={<LogOut color="#000000" strokeWidth={1.75} />}
-          onClick={handleLogout}
-        >
-          Sair
-        </Button>
-      </div>
-
+      {/* 1.5.1/3.9 — "Configurações"/"Sair" saíram do topbar solto e foram
+          pra sidebar global (AppSidebar), aberta pelo hambúrguer do
+          AppHeader — mesmo racional de ação de escape sempre disponível,
+          mas discreta, agora consistente nos 3 papéis. */}
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">

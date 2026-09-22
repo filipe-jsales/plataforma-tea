@@ -161,8 +161,8 @@ describe('SubjectSelector — categorização Informática Educacional × Educa�
 
     renderPage();
 
-    expect(await screen.findByText('Matérias da escola')).toBeInTheDocument();
-    expect(screen.getByText('Sobre tecnologia')).toBeInTheDocument();
+    expect(await screen.findByText('Informática na Computação')).toBeInTheDocument();
+    expect(screen.getByText('Educação em Computação')).toBeInTheDocument();
     expect(screen.queryByText(/informatica_educacional|educacao_computacao/)).not.toBeInTheDocument();
   });
 
@@ -173,10 +173,10 @@ describe('SubjectSelector — categorização Informática Educacional × Educa�
     renderPage();
 
     const section = (await screen.findByText('Ângulos e formas')).closest('section');
-    expect(section).toHaveTextContent('Matérias da escola');
+    expect(section).toHaveTextContent('Informática na Computação');
   });
 
-  it('groups a topic classified as educacao_computacao under "Sobre tecnologia", not with the school subjects', async () => {
+  it('groups a topic classified as educacao_computacao under "Educação em Computação", not with the school subjects', async () => {
     mockedGet.mockResolvedValueOnce([
       { topicId: 't1', subjectId: 's1', name: 'Ângulos e formas', category: 'informatica_educacional' },
       { topicId: 't3', subjectId: 's3', name: 'Ferramentas digitais', category: 'educacao_computacao' },
@@ -186,28 +186,28 @@ describe('SubjectSelector — categorização Informática Educacional × Educa�
     renderPage();
 
     const techSection = (await screen.findByText('Ferramentas digitais')).closest('section');
-    expect(techSection).toHaveTextContent('Sobre tecnologia');
+    expect(techSection).toHaveTextContent('Educação em Computação');
     const schoolSection = (await screen.findByText('Ângulos e formas')).closest('section');
-    expect(schoolSection).toHaveTextContent('Matérias da escola');
+    expect(schoolSection).toHaveTextContent('Informática na Computação');
   });
 
-  it('"Fábrica de Pedaços Iguais" (mini jogo) appears under "Matérias da escola", not "Sobre tecnologia"', async () => {
+  it('"Fábrica de Pedaços Iguais" (mini jogo) appears under "Informática na Computação", not "Educação em Computação"', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
 
     renderPage();
 
     const gameSection = (await screen.findByText('Fábrica de Pedaços Iguais')).closest('section');
-    expect(gameSection).toHaveTextContent('Matérias da escola');
+    expect(gameSection).toHaveTextContent('Informática na Computação');
   });
 
-  it('MJ10 — "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Sobre tecnologia", not with the school subjects', async () => {
+  it('MJ10 — "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Educação em Computação", not with the school subjects', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
 
     renderPage();
 
     const gameSection = (await screen.findByText('Ferramentas do Mundo do Trabalho')).closest('section');
-    expect(gameSection).toHaveTextContent('Sobre tecnologia');
+    expect(gameSection).toHaveTextContent('Educação em Computação');
   });
 });

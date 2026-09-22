@@ -6,6 +6,10 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { StudentHome } from './StudentHome';
 
+// 1.5.1/3.9 — "Sair"/"Configurações" saíram desta tela e foram pra
+// AppSidebar (ver components/layout/AppSidebar.spec.tsx) — cobertura de
+// logout/link de configurações vive lá agora, não aqui.
+
 vi.mock('../../lib/apiClient', () => ({ apiClient: { get: vi.fn() } }));
 vi.mock('../../lib/logEvent', () => ({ logEvent: vi.fn() }));
 
@@ -41,33 +45,6 @@ function renderPage() {
     </MemoryRouter>,
   );
 }
-
-describe('StudentHome — logout (1.5.1)', () => {
-  it('"Sair" is outside the up-to-2-main-actions group, never one of them', async () => {
-    renderPage();
-
-    const logoutButton = await screen.findByRole('button', { name: /sair/i });
-    expect(logoutButton).toBeInTheDocument();
-  });
-
-  it('clears the session and navigates to /login when clicked', async () => {
-    renderPage();
-
-    await userEvent.click(await screen.findByRole('button', { name: /sair/i }));
-
-    expect(useAuthStore.getState().token).toBeNull();
-    expect(await screen.findByText('Tela de login')).toBeInTheDocument();
-  });
-});
-
-describe('StudentHome — sensory settings link (3.9)', () => {
-  it('offers a discreet, always-available link to revisit sensory settings', async () => {
-    renderPage();
-
-    const settingsLink = await screen.findByRole('link', { name: /configurações/i });
-    expect(settingsLink).toHaveAttribute('href', '/settings/sensory');
-  });
-});
 
 describe('StudentHome — class comparison (7.3)', () => {
   it('never shows a comparison when the teacher never enabled it (classComparison: null)', async () => {

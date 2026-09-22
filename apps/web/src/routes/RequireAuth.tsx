@@ -1,5 +1,6 @@
 import { useEffect, type ReactElement } from 'react';
 import { Navigate } from 'react-router-dom';
+import { AppLayout } from '../components/layout';
 import { isTokenExpired } from '../lib/jwt';
 import { useAuthStore, type Role } from '../stores/useAuthStore';
 
@@ -35,5 +36,7 @@ export function RequireAuth({ children, roles }: RequireAuthProps) {
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/home" replace />;
   }
-  return children;
+  // Header + sidebar direita + footer globais (ver AppLayout) — aplicados
+  // uma vez aqui pra toda tela autenticada, nunca repetidos tela a tela.
+  return <AppLayout>{children}</AppLayout>;
 }

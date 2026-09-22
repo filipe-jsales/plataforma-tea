@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../lib/apiClient';
@@ -37,13 +36,19 @@ function renderPage() {
   );
 }
 
-describe('TeacherHome — logout (1.5.1)', () => {
-  it('clears the session and navigates to /login when "Sair" is clicked', async () => {
+// 1.5.1 — "Sair" saiu desta tela e foi pra AppSidebar (ver
+// components/layout/AppSidebar.spec.tsx) — cobertura de logout vive lá.
+describe('TeacherHome', () => {
+  it('greets the teacher by display name', async () => {
     renderPage();
 
-    await userEvent.click(await screen.findByRole('button', { name: /sair/i }));
+    expect(await screen.findByText('Olá, Prof. Ana!')).toBeInTheDocument();
+  });
 
-    expect(useAuthStore.getState().token).toBeNull();
-    expect(await screen.findByText('Tela de login')).toBeInTheDocument();
+  it('no longer renders its own "Sair" button (moved to the global sidebar)', async () => {
+    renderPage();
+
+    await screen.findByText('Olá, Prof. Ana!');
+    expect(screen.queryByRole('button', { name: /sair/i })).not.toBeInTheDocument();
   });
 });
