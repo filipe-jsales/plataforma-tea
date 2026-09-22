@@ -64,6 +64,12 @@ apps/web/src/
 │   │   ├── LikertScaleField.tsx / .css          # 2026-09 — 1 item de escala Likert 1-5, reusa SegmentedControl
 │   │   ├── VisuallyHidden.tsx       # re-export de react-aria
 │   │   └── index.ts                 # barril — toda tela importa daqui, nunca direto da lib
+│   ├── layout/                      # 2026-09 — header/sidebar direita/footer globais, ver seção própria
+│   │   ├── AppLayout.tsx / .css     # aplicado 1x em RequireAuth.tsx, nunca tela a tela
+│   │   ├── AppHeader.tsx / .css     # marca + botão "Menu" (abre a sidebar)
+│   │   ├── AppSidebar.tsx / .css    # @radix-ui/react-dialog, abre pela direita; conteúdo por papel + "Sair"
+│   │   ├── AppFooter.tsx / .css     # contato + direitos autorais
+│   │   └── index.ts
 │   ├── survey/
 │   │   └── ChallengeCreationSurvey.tsx / .css   # 2026-09 — survey pós-criação de desafio, ver seção própria
 │   ├── challenge/
@@ -1994,6 +2000,77 @@ novos, `WorkToolsGamePage.spec.tsx` cobre os 3 níveis (Use conclui via
 libera/completa as afirmações após a correção; Create liga um par do
 zero e confirma o evento RD-P). `SubjectSelector.spec.tsx` ganhou o caso
 do jogo aparecendo em "Sobre tecnologia".
+
+## Header/Sidebar direita/Footer globais (`components/layout/`, 2026-09)
+
+Casca visual aplicada a TODA tela autenticada — pedido explícito do usuário
+("melhorar o site esteticamente"), aplicada num único lugar
+(`RequireAuth.tsx`, que já é o guard único de rota por onde toda tela
+protegida passa) em vez de tela a tela:
+
+- **`AppLayout`** (`components/layout/AppLayout.tsx`) — envolve `children`
+  com `AppHeader`/`AppSidebar`/`AppFooter`. `RequireAuth` retorna
+  `<AppLayout>{children}</AppLayout>` em vez de `children` cru depois das
+  checagens de sessão/papel — nenhuma rota individual em `App.tsx` precisou
+  mudar. `.staff-theme` (3.11) é aplicado aqui na raiz quando
+  `user.role !== 'student'`, cobrindo `AppHeader`/`AppFooter`/o conteúdo da
+  página (cascata normal de CSS).
+- **`AppHeader`** — marca da plataforma + botão "Menu" (ícone hambúrguer +
+  texto, nunca só o ícone — mesma regra de rotulagem redundante de todo
+  `Button`) que abre a sidebar.
+- **`AppSidebar`** — painel que abre pela DIREITA (`transform: translateX`,
+  nunca posição central como o `Dialog` genérico de `components/ui`, que é
+  pra confirmação, não navegação persistente), construído direto sobre
+  `@radix-ui/react-dialog` (`DialogPrimitive.Root/Portal/Overlay/Content`) —
+  foco/Escape/clique-fora de graça, mesma base do `Dialog` existente.
+  "Sair" fica sempre por último, fora da navegação de papel (pedido
+  explícito do usuário). Conteúdo por papel:
+  - **Aluno**: link "Configurações" (`/settings/sensory`, mesmo destino que
+    já existia no topbar da `StudentHome`) + grupo expansível "Matérias"
+    (estado local `useState`, não um `Accordion` de biblioteca — um único
+    grupo não justifica um primitivo novo em `components/ui/`) com as duas
+    categorias de CC1 (`CONTENT_CATEGORY_STUDENT_LABEL`, ver
+    `lib/contentCategory.ts`), renomeadas nesta feature: "Matérias da
+    escola" → **"Informática na Computação"**, "Sobre tecnologia" →
+    **"Educação em Computação"** — ambas navegam pra `/subjects`
+    (`SubjectSelector` já agrupa os tópicos pelas duas categorias, decisão
+    do usuário pra não duplicar a busca de tópicos dentro da sidebar).
+  - **Professor**: os 5 itens que já existiam na grade de ações da
+    `TeacherHome` (Adicionar aluno, Meus alunos, Painel da turma, Meus
+    desafios, Mini jogo), agora TAMBÉM na sidebar — a `TeacherHome` continua
+    mostrando a mesma grade, a sidebar é um segundo caminho de navegação,
+    não uma substituição.
+  - **Admin**: só "Configurações" (`/admin/settings`) — decisão do usuário
+    em resposta a uma pergunta de esclarecimento; o resto da navegação do
+    admin continua só na grade de ações da `AdminHome`.
+  - Portal do Radix renderiza fora de `.app-layout` (direto em
+    `document.body`) — por isso `.staff-theme` é reaplicado direto na raiz
+    do `DialogPrimitive.Content`, não herdado do `AppLayout`: um nó
+    portado não é descendente no DOM real, só na árvore React, então uma
+    classe no ancestral React não alcança ele via CSS.
+  - Motion: `transition` no painel é declarado sem guarda condicional —
+    fica zerada automaticamente pro aluno pelo reset global
+    `:root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *)`
+    de `sensory-theme.css` (regra não-negociável 1), e ativa de verdade só
+    dentro de `.staff-theme` (mesma exceção que já existia pra
+    `Button`/`Card` de professor/admin) — nenhum código novo decidindo
+    animação, só o token/seletor que já existia.
+- **`AppFooter`** — contato (e-mail placeholder, `contato@plataforma-tea.com.br`
+  — trocar pelo canal real de suporte quando definido) + direitos autorais
+  com ano dinâmico. `#root` já era `display:flex; flex-direction:column;
+  min-height:100svh` desde 3.11 — `.app-layout`/`.app-layout__content` só
+  precisaram de `flex:1` pra empurrar o footer pro fim da tela sem CSS de
+  posicionamento novo.
+
+**Topbars soltos removidos**: `StudentHome`/`TeacherHome`/`AdminHome` tinham
+cada uma seu próprio `home__topbar` com botão(ões) de "Sair"
+(`performLogout` + `navigate('/login')`) e, no caso do aluno, o link de
+"Configurações" — removidos das 3 telas, a lógica de logout migrou pra
+dentro de `AppSidebar` (só ela chama `performLogout` agora). `AdminHome`
+manteve seu link "Configurações" na própria grade de ações (não duplicava
+"Sair", só ele saiu). Testes das 3 Home ganharam uma checagem negativa
+("não renderiza mais 'Sair' aqui") e a cobertura de logout/link de
+configurações migrou pra `AppSidebar.spec.tsx`/`AppLayout.spec.tsx`.
 
 ## Próximos passos (fora do escopo já implementado)
 

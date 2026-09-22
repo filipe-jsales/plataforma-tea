@@ -1,0 +1,97 @@
+.app-sidebar__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/*
+  Abre pela DIREITA (pedido explícito) via transform, nunca `left`/`right`
+  animado — `transition` só tem efeito de verdade dentro de `.staff-theme`
+  ou com `data-motion='full'` ligado (ver a exceção em
+  theme/sensory-theme.css); pro aluno sem motion, o painel só aparece/some
+  sem deslizar, o token de duração é zerado globalmente, não precisa de
+  lógica condicional aqui.
+*/
+.app-sidebar__content {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(320px, 100vw);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-modal);
+  transform: translateX(100%);
+  transition: transform var(--motion-duration) var(--motion-easing);
+}
+
+.app-sidebar__content[data-state='open'] {
+  transform: translateX(0);
+}
+
+.app-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.app-sidebar__title {
+  margin: 0;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-heading);
+}
+
+.app-sidebar__close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.app-sidebar__close:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.app-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.app-sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.app-sidebar__group-toggle {
+  justify-content: flex-start;
+}
+
+.app-sidebar__group-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+}
+
+/* "Sair" sempre no rodapé da sidebar, separado do resto da navegação. */
+.app-sidebar__logout {
+  margin-top: var(--space-3);
+  flex-shrink: 0;
+}

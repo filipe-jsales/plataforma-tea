@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
-import { performLogout } from '../../lib/logout';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { Button, LinkButton } from '../../components/ui';
+import { LinkButton } from '../../components/ui';
 import './Home.css';
 
 interface AdminHomeData {
@@ -16,7 +14,6 @@ interface AdminHomeData {
 // de aluno individual nesta tela, mesmo que o admin tenha acesso técnico a
 // isso em outra tela futura.
 export function AdminHome() {
-  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [data, setData] = useState<AdminHomeData | null>(null);
 
@@ -24,22 +21,12 @@ export function AdminHome() {
     apiClient.get<AdminHomeData>('/home/admin').then(setData);
   }, []);
 
-  function handleLogout() {
-    if (!user) return;
-    performLogout(user);
-    navigate('/login', { replace: true });
-  }
-
   if (!user) return null;
 
   return (
     <main className="home staff-theme">
-      <div className="home__topbar">
-        <Button variant="ghost" icon="🚪" onClick={handleLogout}>
-          Sair
-        </Button>
-      </div>
-
+      {/* 1.5.1 — "Sair" saiu do topbar solto e foi pra sidebar global
+          (AppSidebar), aberta pelo hambúrguer do AppHeader. */}
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">

@@ -1,0 +1,23 @@
+.app-footer {
+  margin-top: auto;
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.app-footer__contact,
+.app-footer__rights {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+}
+
+.app-footer__contact a {
+  color: var(--color-primary);
+}
+
+.app-footer__rights {
+  margin-bottom: 0;
+  opacity: 0.8;
+}
