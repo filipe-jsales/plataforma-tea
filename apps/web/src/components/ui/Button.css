@@ -28,10 +28,6 @@
   text-decoration: none;
 }
 
-.ui-button + .ui-button {
-  margin-inline-start: var(--hit-gap-min);
-}
-
 .ui-button__icon {
   font-size: 1.1em;
   line-height: 1;

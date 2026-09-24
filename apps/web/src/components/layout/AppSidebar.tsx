@@ -133,13 +133,13 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
                   Meus alunos
                 </LinkButton>
                 <LinkButton to="/teacher/metrics" icon={<ChartLine />} onClick={handleNavigate}>
-                  Painel da turma (progresso por aluno)
+                  Painel da turma
                 </LinkButton>
                 <LinkButton to="/teacher/challenges" icon={<Puzzle />} onClick={handleNavigate}>
                   Meus desafios
                 </LinkButton>
                 <LinkButton to="/teacher/minigames" icon={<Gamepad2 />} onClick={handleNavigate}>
-                  Mini jogo: Fábrica de Pedaços Iguais
+                  Mini jogo
                 </LinkButton>
               </>
             )}

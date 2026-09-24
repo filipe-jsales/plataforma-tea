@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '../../components/ui';
 import './AdminMetrics.css';
+import { School } from 'lucide-react';
 
 interface SchoolOverview {
   id: string;
@@ -77,7 +78,7 @@ export function AdminMetrics() {
             <SelectableCard
               key={school.id}
               align="start"
-              icon="🏫"
+              icon={<School />}
               selected={school.id === selectedSchoolId}
               onSelect={() => setSelectedSchoolId(school.id === selectedSchoolId ? null : school.id)}
               meta={

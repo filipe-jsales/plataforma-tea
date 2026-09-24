@@ -139,8 +139,7 @@ export function TeacherChallengeNew() {
       {!createdChallengeId && !selectedTemplateId && (
         <>
           <p className="teacher-challenge-new__subtitle">
-            Escolha um template pronto. Você só ajusta os parâmetros do desafio
-            — nunca precisa mexer em blocos ou código.
+            Escolha um template pronto. Você só ajusta os parâmetros do desafio, nunca precisa mexer em blocos ou código.
           </p>
 
           {sourceLoading && <p>Carregando desafio de origem…</p>}
