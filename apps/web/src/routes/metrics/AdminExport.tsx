@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiClient, ApiError } from '../../lib/apiClient';
 import { Button, InlineFeedback, LinkButton, Select } from '../../components/ui';
 import './AdminExport.css';
+import { ArrowDownToLine } from 'lucide-react';
 
 interface SchoolOption {
   id: string;
@@ -198,7 +199,7 @@ export function AdminExport() {
         {error && <InlineFeedback kind="retry">{error}</InlineFeedback>}
         {summary && <InlineFeedback kind="success">{summary}</InlineFeedback>}
 
-        <Button icon="⬇️" onClick={handleExport} disabled={loading}>
+        <Button icon={<ArrowDownToLine />} onClick={handleExport} disabled={loading}>
           {loading ? 'Exportando…' : 'Baixar exportação'}
         </Button>
       </div>

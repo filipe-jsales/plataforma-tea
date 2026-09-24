@@ -3,6 +3,7 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { LinkButton } from '../../components/ui';
 import './Home.css';
+import { School, User,ChartNoAxesCombined, Microscope, Award,FolderOutput, Settings } from 'lucide-react';
 
 interface AdminHomeData {
   schoolsCount: number;
@@ -30,25 +31,25 @@ export function AdminHome() {
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
       <div className="home__actions">
-        <LinkButton to="/admin/users" icon="👤">
+        <LinkButton to="/admin/users" icon={<User />}>
           Usuários
         </LinkButton>
-        <LinkButton to="/admin/schools" icon="🏫">
+        <LinkButton to="/admin/schools" icon={<School />}>
           Escolas e turmas
         </LinkButton>
-        <LinkButton to="/admin/metrics" icon="📊">
+        <LinkButton to="/admin/metrics" icon={<ChartNoAxesCombined />}>
           Painel institucional (escolas, turmas, professores)
         </LinkButton>
-        <LinkButton to="/admin/reports" icon="🔬">
+        <LinkButton to="/admin/reports" icon={<Microscope />}>  
           Relatório de profundidade por desafio
         </LinkButton>
-        <LinkButton to="/admin/minigames" icon="🎮">
+        <LinkButton to="/admin/minigames" icon={<Award />}>
           Relatório de mini jogos
         </LinkButton>
-        <LinkButton to="/admin/export" icon="⬇️" variant="secondary">
+        <LinkButton to="/admin/export" icon={<FolderOutput />} variant="secondary">
           Exportar dados brutos
         </LinkButton>
-        <LinkButton to="/admin/settings" icon="⚙️" variant="secondary">
+        <LinkButton to="/admin/settings" icon={<Settings />} variant="secondary" style={{ marginBottom: '16px' }}>
           Configurações
         </LinkButton>
       </div>

@@ -5,7 +5,7 @@
    usado em qualquer outro módulo (AC "consistência entre módulos"), só a
    cor de fundo muda por contexto. */
 .staff-login {
-  max-width: 360px;
+  max-width: 728px;
   margin: var(--space-5) auto;
   padding: var(--space-4);
 }
