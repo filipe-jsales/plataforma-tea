@@ -28,6 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       className={['ui-button', `ui-button--${variant}`, className].filter(Boolean).join(' ')}
       {...rest}
+      
     >
       {icon && (
         <span className="ui-button__icon" aria-hidden="true">

@@ -18,6 +18,7 @@ import {
   type BadgeVariant,
 } from '../../components/ui';
 import './TeacherMetrics.css';
+import { ChartColumn, LibraryBig } from 'lucide-react';
 
 type ChallengeStage = 'use' | 'modify' | 'create';
 type ChallengeStatus = 'not_started' | 'in_progress' | 'completed';
@@ -223,7 +224,7 @@ export function TeacherMetrics() {
             <SelectableCard
               key={classroom.id}
               align="start"
-              icon="📚"
+              icon={<LibraryBig />}
               selected={classroom.id === selectedClassroomId}
               onSelect={() =>
                 setSelectedClassroomId(classroom.id === selectedClassroomId ? null : classroom.id)
@@ -245,7 +246,7 @@ export function TeacherMetrics() {
           <section className="teacher-metrics__comparison-setting">
             <ToggleSwitch
               id="classroom-comparison-toggle"
-              icon="📊"
+              icon={<ChartColumn />}
               label="Comparação entre alunos nesta turma"
               checked={selectedClassroom.comparisonEnabled}
               onCheckedChange={(checked) => {
@@ -256,11 +257,6 @@ export function TeacherMetrics() {
                 }
               }}
             />
-            <p className="teacher-metrics__comparison-hint">
-              Desligado por padrão. Quando ligado, a tela "Meu progresso" do aluno pode mostrar uma
-              mensagem agregada e anônima (ex.: "você está entre os alunos que mais praticaram esta
-              semana") — nunca nome, avatar ou desempenho de um colega específico.
-            </p>
           </section>
 
           <Dialog
@@ -270,13 +266,13 @@ export function TeacherMetrics() {
             description={
               <>
                 A partir de agora, a tela &quot;Meu progresso&quot; de cada aluno desta turma pode
-                mostrar uma mensagem agregada e anônima sobre a prática da semana — nunca o nome, o
+                mostrar uma mensagem agregada e anônima sobre a prática da semana, nunca o nome, o
                 avatar ou o desempenho de um colega específico. Você pode desligar a qualquer momento.
               </>
             }
           >
             <Button
-              icon="📊"
+              icon={<ChartColumn />}
               onClick={() => {
                 setConfirmComparisonDialogOpen(false);
                 void updateComparisonSetting(selectedClassroom.id, true);
@@ -386,13 +382,12 @@ export function TeacherMetrics() {
               {conceptComparison !== null && (
                 <>
                   <p className="teacher-metrics__subtitle">
-                    {CONCEPT_LABEL} — desafio de blocos e mini jogo lado a lado, pro mesmo aluno.
+                    {CONCEPT_LABEL} 
                   </p>
 
                   {!conceptComparison.hasBlocksChallenge && (
                     <p className="teacher-metrics__empty">
-                      Nenhum desafio de blocos deste assunto cadastrado ainda — só o mini jogo aparece
-                      abaixo.
+                      Nenhum desafio de blocos deste assunto cadastrado ainda.
                     </p>
                   )}
 
