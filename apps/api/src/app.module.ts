@@ -39,6 +39,11 @@ import { UsersModule } from './users/users.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
+        // Bancos gerenciados (Neon, Supabase) exigem SSL; local fica sem.
+        ssl:
+          configService.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
         autoLoadEntities: true,
         // Schema é controlado por migrations (ver src/database/), nunca por sync
         // automático — mesmo em desenvolvimento, para o schema real de tabelas
