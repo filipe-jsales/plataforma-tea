@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { BlocklyWorkspace, type WorkspaceSvg } from "react-blockly";
 import { PixiTurtleWorld } from "../../components/challenge/PixiTurtleWorld";
-import { Button, InlineFeedback } from "../../components/ui";
+import { InlineFeedback } from "../../components/ui";
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,

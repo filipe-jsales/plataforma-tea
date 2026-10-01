@@ -24,6 +24,7 @@ const mockedPost = vi.mocked(apiClient.post);
 const template: ChallengeTemplateDetail = {
   id: 'template-1',
   key: 'regular_polygon',
+  category: 'informatica_educacional',
   name: 'Desenhar um polígono regular',
   description: 'descrição',
   icon: '🔷',
