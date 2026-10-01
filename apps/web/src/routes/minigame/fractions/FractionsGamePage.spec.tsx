@@ -37,6 +37,7 @@ const studentUser = {
 const LEVELS: MiniGameLevelDto[] = [
   {
     id: 'l-use',
+    category: 'informatica_educacional',
     conceptId: 'fractions_equal_parts',
     stage: 'use',
     position: 1,
@@ -55,6 +56,7 @@ const LEVELS: MiniGameLevelDto[] = [
   },
   {
     id: 'l-modify',
+    category: 'informatica_educacional',
     conceptId: 'fractions_equal_parts',
     stage: 'modify',
     position: 2,
@@ -73,6 +75,7 @@ const LEVELS: MiniGameLevelDto[] = [
   },
   {
     id: 'l-create',
+    category: 'informatica_educacional',
     conceptId: 'fractions_equal_parts',
     stage: 'create',
     position: 3,
