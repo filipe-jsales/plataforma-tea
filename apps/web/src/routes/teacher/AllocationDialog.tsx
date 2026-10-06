@@ -62,6 +62,7 @@ export function AllocationDialog({ challengeId, challengeTitle, open, onOpenChan
       onOpenChange={onOpenChange}
       title="Alocar à turma"
       description={`Escolha em quais das suas turmas "${challengeTitle}" fica disponível para os alunos.`}
+      headerClassName="ui-dialog__header--centered"
     >
       {classrooms === null && <p>Carregando turmas…</p>}
       {classrooms !== null && classrooms.length === 0 && (

@@ -8,6 +8,7 @@ export interface DialogProps {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description?: ReactNode;
+  headerClassName?: string;
   children?: ReactNode;
   trigger?: ReactNode;
 }
@@ -18,19 +19,21 @@ export interface DialogProps {
 // 4 primitivos que a decisão técnica do card cobre (dialog/tooltip/toggle/
 // tabs). Sem animação de entrada/saída própria (Dialog.css não declara
 // nenhuma) — Radix é headless, não faz isso sozinho.
-export function Dialog({ open, onOpenChange, title, description, children, trigger }: DialogProps) {
+export function Dialog({ open, onOpenChange, title, description, headerClassName, children, trigger }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>}
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="ui-dialog__overlay" />
         <DialogPrimitive.Content className="ui-dialog__content">
-          <DialogPrimitive.Title className="ui-dialog__title">{title}</DialogPrimitive.Title>
-          {description && (
-            <DialogPrimitive.Description className="ui-dialog__description">
-              {description}
-            </DialogPrimitive.Description>
-          )}
+          <div className={`ui-dialog__header ${headerClassName ?? ''}`}>
+            <DialogPrimitive.Title className="ui-dialog__title">{title}</DialogPrimitive.Title>
+            {description && (
+              <DialogPrimitive.Description className="ui-dialog__description">
+                {description}
+              </DialogPrimitive.Description>
+            )}
+          </div>
           {children}
           <DialogPrimitive.Close asChild>
             <Button type="button" className="ui-dialog__close">
