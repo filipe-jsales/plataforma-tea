@@ -123,7 +123,7 @@ export function TeacherChallengeNew() {
   }
 
   return (
-    <main className="teacher-challenge-new staff-theme page">
+    <main className="teacher-challenge-new staff-theme page page--narrow">
       <LinkButton to="/teacher/challenges" variant="ghost" icon="←">
         Voltar
       </LinkButton>

@@ -336,7 +336,9 @@ export function AdminUsers() {
               própria senha - hoje isso ainda não é enviado por e-mail automaticamente.
             </InlineFeedback>
             <p className="admin-users__result-label">Link de definição de senha (uso único):</p>
-            <code className="admin-users__result-token">{createResult.passwordSetupToken}</code>
+            <code className="admin-users__result-token">
+              {`${window.location.origin}/set-password?token=${createResult.passwordSetupToken}`}
+            </code>
             {createResult.totpOtpauthUri && (
               <>
                 <p className="admin-users__result-label">

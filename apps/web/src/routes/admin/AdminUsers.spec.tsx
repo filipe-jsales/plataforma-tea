@@ -102,7 +102,9 @@ describe('AdminUsers', () => {
     await userEvent.type(within(dialog).getByLabelText(/e-mail/i), 'nova@escola.com');
     await userEvent.click(within(dialog).getByRole('button', { name: /^criar$/i }));
 
-    expect(await screen.findByText('token-abc-123')).toBeInTheDocument();
+    expect(
+      await screen.findByText(`${window.location.origin}/set-password?token=token-abc-123`),
+    ).toBeInTheDocument();
     expect(mockedPost).toHaveBeenCalledWith('/admin/users', {
       displayName: 'Prof. Nova',
       email: 'nova@escola.com',

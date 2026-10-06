@@ -6,6 +6,7 @@ import { AdminUsers } from './routes/admin/AdminUsers'
 import { AdminLogin } from './routes/login/AdminLogin'
 import { RoleSelect } from './routes/login/RoleSelect'
 import { StudentLogin } from './routes/login/StudentLogin'
+import { SetPassword } from './routes/login/SetPassword'
 import { TeacherLogin } from './routes/login/TeacherLogin'
 import { ChallengePage } from './routes/challenge/ChallengePage'
 import { WaterStateChallengePage } from './routes/challenge/WaterStateChallengePage'
@@ -51,6 +52,7 @@ function App() {
       <Route path="/login/student" element={<StudentLogin />} />
       <Route path="/login/teacher" element={<TeacherLogin />} />
       <Route path="/login/admin" element={<AdminLogin />} />
+      <Route path="/set-password" element={<SetPassword />} />
       <Route
         path="/onboarding"
         element={

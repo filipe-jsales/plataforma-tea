@@ -2116,7 +2116,8 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
 - Tela de formulário usa `.page page--narrow`: uma coluna estreita e
   centralizada que contém voltar, título, subtítulo **e** formulário
   juntos. Nunca centralizar só o formulário deixando o cabeçalho à esquerda.
-  Tela com galeria larga (ex.: criar desafio) não usa `--narrow`.
+  Criar e editar desafio também usam `--narrow` (a galeria de templates
+  cabe em 2 colunas).
 - O header (`AppHeader`) alinha logo e menu à mesma largura de `.page`.
 
 ### Marca
