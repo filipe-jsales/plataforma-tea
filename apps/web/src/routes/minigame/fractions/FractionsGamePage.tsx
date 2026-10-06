@@ -15,6 +15,7 @@ import { createFractionsRoundStore } from '../../../stores/fractionsRoundStore';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { Button, InlineFeedback, LinkButton, Text, TextField } from '../../../components/ui';
 import './FractionsGamePage.css';
+import { Eye, Play, Search } from 'lucide-react';
 
 const CONCEPT_ID = 'fractions_equal_parts';
 const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
@@ -22,9 +23,9 @@ const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
 function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
   if (stage === 'use') {
     return [
-      { icon: '👀', label: 'Observe a sequência de cartões já pronta' },
-      { icon: '▶️', label: 'Aperte Executar' },
-      { icon: '🔍', label: 'Veja o resultado comparado ao pedido' },
+      { icon: <Eye />, label: 'Observe a sequência de cartões já pronta' },
+      { icon: <Play />, label: 'Aperte Executar' },
+      { icon: <Search />, label: 'Veja o resultado comparado ao pedido' },
     ];
   }
   if (stage === 'modify') {

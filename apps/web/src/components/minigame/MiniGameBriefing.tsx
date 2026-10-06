@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button, Heading, Text } from '../ui';
 import './MiniGameBriefing.css';
+import { Flag, Goal } from 'lucide-react';
 
 export interface MiniGameBriefingStep {
   icon: ReactNode;
@@ -32,7 +33,7 @@ export function MiniGameBriefing({ title, objective, steps, onStart, reopened }:
 
       <ol className="mini-game-briefing__steps">
         <li className="mini-game-briefing__step mini-game-briefing__step--marker">
-          <span className="mini-game-briefing__step-icon" aria-hidden="true">🚩</span>
+          <span className="mini-game-briefing__step-icon" aria-hidden="true"><Flag /></span>
           <span>Início</span>
         </li>
         {steps.map((step, index) => (
@@ -42,7 +43,7 @@ export function MiniGameBriefing({ title, objective, steps, onStart, reopened }:
           </li>
         ))}
         <li className="mini-game-briefing__step mini-game-briefing__step--marker">
-          <span className="mini-game-briefing__step-icon" aria-hidden="true">🏁</span>
+          <span className="mini-game-briefing__step-icon" aria-hidden="true"><Goal /></span>
           <span>Fim</span>
         </li>
       </ol>
