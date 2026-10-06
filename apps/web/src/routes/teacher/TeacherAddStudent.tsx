@@ -4,6 +4,7 @@ import { getIllustrationAsset } from '../../lib/illustrationAssets';
 import type { PendingStudentAccount, StudentAccountCredential } from '../../lib/studentAccountTypes';
 import { Button, InlineFeedback, LinkButton, SelectableCard, Select, TextField, ToggleSwitch } from '../../components/ui';
 import './TeacherAddStudent.css';
+import { Plus, Printer } from 'lucide-react';
 
 interface TeacherClassroomOption {
   id: string;
@@ -164,10 +165,10 @@ export function TeacherAddStudent() {
         )}
 
         <div className="teacher-add-student__credential-card" id="student-credential-card">
-          <h1>Credencial de acesso</h1>
-          <p className="teacher-add-student__credential-name">{credential.student.displayName}</p>
+          <h1 style={{ textAlign: 'center' }}>Credencial de acesso</h1>
+          <p className="teacher-add-student__credential-name">Nome: {credential.student.displayName}</p>
           <p className="teacher-add-student__credential-meta">
-            Turma: {credential.classroom.name} (código {credential.classroom.joinCode})
+            Turma: {credential.classroom.name} (código da turma: {credential.classroom.joinCode})
           </p>
 
           <div className="teacher-add-student__credential-section">
@@ -180,7 +181,7 @@ export function TeacherAddStudent() {
           </div>
 
           <div className="teacher-add-student__credential-section">
-            <h2>2. Minha senha de imagens (nesta ordem)</h2>
+            <h2>2. Minha senha de imagens em ordem:</h2>
             <div className="teacher-add-student__credential-images">
               {credential.credential.loginImages.map((image, index) => (
                 <div key={index} className="teacher-add-student__credential-image">
@@ -193,10 +194,10 @@ export function TeacherAddStudent() {
         </div>
 
         <div className="teacher-add-student__actions">
-          <Button icon="🖨️" onClick={() => window.print()}>
+          <Button icon={<Printer />} onClick={() => window.print()}>
             Imprimir credencial
           </Button>
-          <Button variant="secondary" icon="➕" onClick={resetAll}>
+          <Button variant="secondary" icon={<Plus />} onClick={resetAll}>
             Cadastrar outro aluno
           </Button>
         </div>
