@@ -171,7 +171,7 @@ describe('ChallengePage - feedback (3.7)', () => {
     const message = await screen.findByText('Quase lá - quer tentar de novo?');
     expect(message.textContent?.toLowerCase()).not.toMatch(/errad|errou|falh/);
     // InlineFeedback sempre combina ícone + texto - nunca só a cor/classe.
-    expect(screen.getByText('🔁')).toBeInTheDocument();
+    expect(message.closest('.ui-feedback')?.querySelector('.ui-feedback__icon svg.lucide-repeat')).not.toBeNull();
   });
 
   it('AC4 - uses the teacher-customized retry message instead of the default when the challenge declares one', async () => {
@@ -254,11 +254,11 @@ describe('ChallengePage - feedback (3.7)', () => {
     renderChallenge('challenge-2');
     await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
 
-    expect(await screen.findByText(/a figura fechou com 4 lados/i)).toBeInTheDocument();
+    const reflection = await screen.findByText(/a figura fechou com 4 lados/i);
     // Mesmo ícone default de sucesso do InlineFeedback usado no feedback de
     // Use/Create - é o MESMO componente reutilizado, não uma reflexão com
     // marcação própria.
-    expect(screen.getByText('✅')).toBeInTheDocument();
+    expect(reflection.closest('.ui-feedback')?.querySelector('.ui-feedback__icon svg.lucide-check')).not.toBeNull();
   });
 });
 

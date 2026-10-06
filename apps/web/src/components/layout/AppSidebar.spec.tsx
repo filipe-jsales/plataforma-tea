@@ -101,7 +101,7 @@ describe('AppSidebar - visão de professor', () => {
     expect(screen.getByRole('link', { name: /meus alunos/i })).toHaveAttribute('href', '/teacher/students');
     expect(screen.getByRole('link', { name: /painel da turma/i })).toHaveAttribute('href', '/teacher/metrics');
     expect(screen.getByRole('link', { name: /meus desafios/i })).toHaveAttribute('href', '/teacher/challenges');
-    expect(screen.getByRole('link', { name: /fábrica de pedaços iguais/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /mini jogo/i })).toHaveAttribute(
       'href',
       '/teacher/minigames',
     );

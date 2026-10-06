@@ -10,9 +10,11 @@ describe('InlineFeedback', () => {
     expect(container?.querySelector('.ui-feedback__icon')).not.toBeNull();
   });
 
-  it('never uses punitive words like "errado"/"falhou" as default copy - that is the caller\'s responsibility, but the default retry icon is a reversible cue (🔁), never an X', () => {
+  it('never uses punitive words like "errado"/"falhou" as default copy - that is the caller\'s responsibility, but the default retry icon is a reversible cue (repeat), never an X', () => {
     render(<InlineFeedback kind="retry">Quase lá</InlineFeedback>);
-    expect(screen.getByText('🔁')).toBeInTheDocument();
+    const icon = screen.getByText('Quase lá').closest('.ui-feedback')?.querySelector('.ui-feedback__icon');
+    expect(icon?.querySelector('svg.lucide-repeat')).not.toBeNull();
+    expect(icon?.querySelector('svg.lucide-x')).toBeNull();
   });
 
   it('lets the caller override the icon while keeping the text', () => {
