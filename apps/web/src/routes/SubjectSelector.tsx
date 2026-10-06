@@ -15,19 +15,19 @@ interface TopicOption {
   topicId: string;
   subjectId: string;
   name: string;
-  // 3.13/3.16 — qual página abre ao confirmar este módulo. Ausente (tópicos
-  // antigos, testes existentes) cai no domínio original de tartaruga —
+  // 3.13/3.16 - qual página abre ao confirmar este módulo. Ausente (tópicos
+  // antigos, testes existentes) cai no domínio original de tartaruga -
   // nunca inferido do slug/nome do tópico.
   domain?: string;
-  // CC1 — categoria curricular (Informática Educacional × Educação em
+  // CC1 - categoria curricular (Informática Educacional × Educação em
   // Computação). Ausente (testes existentes, resposta de API antiga) cai
-  // em Informática Educacional — mesmo default do backend
+  // em Informática Educacional - mesmo default do backend
   // (`Topic.category`), nunca um 3º grupo "sem categoria" na tela.
   category?: ContentCategory;
 }
 
-// CC1 — as duas categorias existem hoje como 2 blocos visuais já
-// separados (tópicos × "Mini jogos", ver histórico deste componente) —
+// CC1 - as duas categorias existem hoje como 2 blocos visuais já
+// separados (tópicos × "Mini jogos", ver histórico deste componente) -
 // esta é a MESMA quantidade de áreas, só agrupadas pelo que o produto
 // realmente distingue (o assunto ensinado), não por qual motor renderiza
 // (blocos vs. mini jogo). Regra não-negociável 2 ("no máximo 1 paleta nova
@@ -39,15 +39,15 @@ const CATEGORY_ICON: Record<ContentCategory, React.ReactNode> = {
 };
 const DEFAULT_CATEGORY: ContentCategory = 'informatica_educacional';
 
-// 2.3 — seletor de matéria/módulo. Componente genérico pra N itens (AC1);
-// com 1 item só, ainda exige confirmação explícita — não pula sozinho
+// 2.3 - seletor de matéria/módulo. Componente genérico pra N itens (AC1);
+// com 1 item só, ainda exige confirmação explícita - não pula sozinho
 // (AC2, previsibilidade/TEACCH).
 //
-// 4.3 — esta tela também é onde "a trilha" do aluno vive: além dos módulos
+// 4.3 - esta tela também é onde "a trilha" do aluno vive: além dos módulos
 // curriculares (sequência fixa Use-Modify-Create), lista os desafios que o
 // PRÓPRIO professor alocou explicitamente à turma do aluno
 // (`GET /students/me/classroom-challenges`). Um desafio nunca aparece aqui
-// sem alocação explícita (AC3 de 4.3) — a lista vem vazia, nunca um erro,
+// sem alocação explícita (AC3 de 4.3) - a lista vem vazia, nunca um erro,
 // quando não há nada alocado.
 export function SubjectSelector() {
   const navigate = useNavigate();
@@ -71,11 +71,11 @@ export function SubjectSelector() {
       type: 'subject_module_selected',
       payload: { subjectId: selected.subjectId, topicId: selected.topicId },
     });
-    // 3.13/3.16 — trilha "Estados da Matéria" abre numa página dedicada
+    // 3.13/3.16 - trilha "Estados da Matéria" abre numa página dedicada
     // (WaterStateChallengePage), nunca ChallengePage (que é específica do
     // mundo de tartaruga/Pixi). Um domínio novo sempre exige página nova de
     // verdade, então esta ramificação por `domain` é o mínimo necessário
-    // aqui — não uma tabela de rotas genérica pra 2 itens.
+    // aqui - não uma tabela de rotas genérica pra 2 itens.
     navigate(
       selected.domain === 'water_state'
         ? `/water/${selected.topicId}`
@@ -87,8 +87,8 @@ export function SubjectSelector() {
     <main className="subject-selector">
       <h1>Onde você quer entrar?</h1>
 
-      {/* CC1 — duas seções fixas (nunca uma 3ª), agrupadas pelo assunto
-          ensinado (Informática Educacional × Educação em Computação) —
+      {/* CC1 - duas seções fixas (nunca uma 3ª), agrupadas pelo assunto
+          ensinado (Informática Educacional × Educação em Computação) -
           um tópico curricular e um mini jogo da MESMA categoria aparecem
           juntos, mesmo vindo de fontes diferentes (API × catálogo local
           de mini jogos, ver lib/miniGamesCatalog.ts). */}
@@ -149,7 +149,7 @@ export function SubjectSelector() {
                 <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon="🧩">
                   {challenge.title}
                 </LinkButton>
-                {/* E1 — marcador discreto, nunca contagem/urgência (AC1/AC4):
+                {/* E1 - marcador discreto, nunca contagem/urgência (AC1/AC4):
                     "Novo" some sozinho quando o aluno abre o desafio (AC2,
                     ver ChallengePage), sem contador agregado (AC3). */}
                 {challenge.isNew && <Badge variant="info">Novo</Badge>}

@@ -1,10 +1,10 @@
 /*
-  Relatório de profundidade por desafio (6.5). Área de staff/pesquisa — mesmo
+  Relatório de profundidade por desafio (6.5). Área de staff/pesquisa - mesmo
   racional de AdminMetrics.css/TeacherMetrics.css: regra não-negociável 1
   protege a experiência do ALUNO, não a do admin.
 
   Layout de página, botão "Voltar" e dropdown "Desafio" vêm de `.page` +
-  components/ui/ (3.11) — só o que é específico DESTE relatório fica aqui.
+  components/ui/ (3.11) - só o que é específico DESTE relatório fica aqui.
 */
 
 .challenge-report__subtitle {

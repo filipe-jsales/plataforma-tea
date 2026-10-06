@@ -1,5 +1,5 @@
-// Gestão de escolas/turmas (admin) — mesma forma que a API devolve.
-// Duplicado de propósito (mesmo padrão de adminUserTypes.ts — não há
+// Gestão de escolas/turmas (admin) - mesma forma que a API devolve.
+// Duplicado de propósito (mesmo padrão de adminUserTypes.ts - não há
 // pacote compartilhado entre as duas apps neste monorepo).
 export interface AdminSchoolProfile {
   id: string;

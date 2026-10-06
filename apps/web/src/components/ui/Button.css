@@ -1,5 +1,5 @@
 /*
-  3.10 — botão base. Área de toque mínima e foco visível são o contrato não
+  3.10 - botão base. Área de toque mínima e foco visível são o contrato não
   negociável (ver tokens em theme/sensory-theme.css); a cor de cada variant
   é a única coisa que muda entre primary/secondary/ghost.
 */
@@ -17,13 +17,13 @@
   font-weight: 600;
   line-height: 1.2;
   cursor: pointer;
-  /* Sem transition/animation aqui de propósito — data-motion controla isso
+  /* Sem transition/animation aqui de propósito - data-motion controla isso
      globalmente (sensory-theme.css); um componente novo nunca declara a
      própria curva de animação por fora desse mecanismo. */
-  /* DS10 — `.ui-button` também é a classe de `LinkButton` (elemento <a>),
+  /* DS10 - `.ui-button` também é a classe de `LinkButton` (elemento <a>),
      que herda `text-decoration: underline` do navegador por padrão; sem
      este reset, todo LinkButton (não só variant="ghost") sai sublinhado,
-     mesmo os primary/secondary sólidos — contradiz o contrato do próprio
+     mesmo os primary/secondary sólidos - contradiz o contrato do próprio
      componente ("Entrar" e "← Voltar" nascem visualmente idênticos"). */
   text-decoration: none;
 }
@@ -55,12 +55,33 @@
   color: var(--color-primary);
 }
 
+.ui-button--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 85%, var(--color-text));
+  border-color: color-mix(in srgb, var(--color-primary) 85%, var(--color-text));
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-text));
+  border-color: var(--color-primary);
+}
+
+.ui-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.ui-button--primary:active:not(:disabled),
+.ui-button--secondary:active:not(:disabled),
+.ui-button--ghost:active:not(:disabled) {
+  filter: brightness(0.95);
+}
+
 .ui-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-/* Indicador de foco visível — nunca `outline: none` sem isto no lugar. */
+/* Indicador de foco visível - nunca `outline: none` sem isto no lugar. */
 .ui-button:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);

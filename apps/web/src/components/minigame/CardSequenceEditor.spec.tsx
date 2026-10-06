@@ -26,7 +26,7 @@ describe('CardSequenceEditor', () => {
     expect(screen.queryByRole('button', { name: /Remover/ })).not.toBeInTheDocument();
   });
 
-  it('disables "Subir" on the first card and "Descer" on the last (MJ4 — no out-of-range reorder)', () => {
+  it('disables "Subir" on the first card and "Descer" on the last (MJ4 - no out-of-range reorder)', () => {
     render(<CardSequenceEditor cards={CARDS} onChange={vi.fn()} />);
     const upButtons = screen.getAllByRole('button', { name: /para cima/ });
     const downButtons = screen.getAllByRole('button', { name: /para baixo/ });
@@ -35,7 +35,7 @@ describe('CardSequenceEditor', () => {
     expect(downButtons[downButtons.length - 1]).toBeDisabled();
   });
 
-  it('MJ4 — reorders via mouse click on the "Subir"/"Descer" buttons, never drag-and-drop', async () => {
+  it('MJ4 - reorders via mouse click on the "Subir"/"Descer" buttons, never drag-and-drop', async () => {
     const onChange = vi.fn();
     render(<CardSequenceEditor cards={CARDS} onChange={onChange} />);
 
@@ -50,13 +50,13 @@ describe('CardSequenceEditor', () => {
     ]);
   });
 
-  it('MJ4 — reorders via keyboard alone (Tab + Enter), same outcome as a mouse click', async () => {
+  it('MJ4 - reorders via keyboard alone (Tab + Enter), same outcome as a mouse click', async () => {
     const onChange = vi.fn();
     render(<CardSequenceEditor cards={CARDS} onChange={onChange} />);
     const user = userEvent.setup();
 
     // Tabula até o primeiro botão "Descer" (do cartão "Escolher o inteiro")
-    // sem nenhum clique de mouse — prova de navegação alternativa (AC de MJ4).
+    // sem nenhum clique de mouse - prova de navegação alternativa (AC de MJ4).
     const downButtons = screen.getAllByRole('button', { name: /para baixo/ });
     downButtons[0].focus();
     await user.keyboard('{Enter}');

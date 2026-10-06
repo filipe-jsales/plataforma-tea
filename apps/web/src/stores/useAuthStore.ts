@@ -24,7 +24,7 @@ interface AuthState {
 
 // Sessão persistida (localStorage): o aluno pode logar num computador da
 // sala e continuar depois sem refazer o fluxo de 3 passos a cada F5. O
-// token nunca é armazenado em cookie/servidor — mecanismo simples de
+// token nunca é armazenado em cookie/servidor - mecanismo simples de
 // sessão/JWT, sem OAuth de terceiros (ver docs/ai/persona.md).
 export const useAuthStore = create<AuthState>()(
   persist(

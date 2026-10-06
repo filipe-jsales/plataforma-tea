@@ -28,7 +28,7 @@ function renderPage() {
 }
 
 describe('TeacherChallenges', () => {
-  it('AC5 — shows only the templates/challenges the teacher created, never the seeded curriculum', async () => {
+  it('AC5 - shows only the templates/challenges the teacher created, never the seeded curriculum', async () => {
     mockedGet.mockResolvedValueOnce([
       { id: 'c1', title: 'Hexágonos', templateName: 'Desenhar um polígono regular', templateIcon: '🔷', createdAt: '2026-01-01' },
     ]);
@@ -47,7 +47,7 @@ describe('TeacherChallenges', () => {
     expect(await screen.findByText(/você ainda não criou nenhum desafio/i)).toBeInTheDocument();
   });
 
-  it('AC5 — edit and duplicate link into the same guided form, never a raw editor route', async () => {
+  it('AC5 - edit and duplicate link into the same guided form, never a raw editor route', async () => {
     mockedGet.mockResolvedValueOnce([
       { id: 'c1', title: 'Hexágonos', templateName: 'Desenhar um polígono regular', templateIcon: '🔷', createdAt: '2026-01-01' },
     ]);
@@ -91,7 +91,7 @@ describe('TeacherChallenges', () => {
     expect(await screen.findByText(/você ainda não criou nenhum desafio/i)).toBeInTheDocument();
   });
 
-  it('4.3 — opens the allocation dialog for the selected challenge', async () => {
+  it('4.3 - opens the allocation dialog for the selected challenge', async () => {
     mockedGet.mockResolvedValueOnce([
       { id: 'c1', title: 'Hexágonos', templateName: 'Desenhar um polígono regular', templateIcon: '🔷', createdAt: '2026-01-01' },
     ]);

@@ -57,7 +57,7 @@ describe('runTurtleProgram', () => {
   });
 
   it('uses the per-action angle (fase Modify, 3.4) instead of the global turnDeg option when present', () => {
-    // Triângulo: 3 lados, giro de 120° por vez — vem do campo ANGLE do
+    // Triângulo: 3 lados, giro de 120° por vez - vem do campo ANGLE do
     // bloco, não da opção global (que aqui nem é passada).
     const triangleProgram: TurtleAction[] = [
       { kind: 'move' },
@@ -132,7 +132,7 @@ describe('closedPolygonSides', () => {
     expect(closedPolygonSides(runTurtleProgram([]))).toBeNull();
   });
 
-  it('7.4 (AC3) — respects a configured closure tolerance override, same as evaluateSquareGoal', () => {
+  it('7.4 (AC3) - respects a configured closure tolerance override, same as evaluateSquareGoal', () => {
     const result = runTurtleProgram(squareProgram, { stepLength: 60, turnDeg: 90 });
     result.points[result.points.length - 1] = {
       x: result.points[result.points.length - 1].x + 15,
@@ -180,7 +180,7 @@ describe('evaluateSquareGoal', () => {
   it('fails when the path closes in position but the character ends up facing a different way', () => {
     // Anda os 4 lados do quadrado mas só gira 3 vezes (esquece o último
     // giro): a posição fecha (voltou ao início), mas termina de lado, não de
-    // frente pra onde começou — não conta como "desenhou o quadrado".
+    // frente pra onde começou - não conta como "desenhou o quadrado".
     const result = runTurtleProgram(
       [
         { kind: 'move' },
@@ -201,7 +201,7 @@ describe('evaluateSquareGoal', () => {
     expect(evaluateSquareGoal(result, goal).success).toBe(false);
   });
 
-  it('7.4 (AC3) — accepts a wider gap when a larger closure tolerance is configured for the challenge', () => {
+  it('7.4 (AC3) - accepts a wider gap when a larger closure tolerance is configured for the challenge', () => {
     const result = runTurtleProgram(squareProgram, { stepLength: 60, turnDeg: 90 });
     // Afasta o ponto final o suficiente pra falhar com o default (5px), mas
     // ainda dentro de uma tolerância maior escolhida pelo professor.
@@ -218,15 +218,15 @@ describe('evaluateSquareGoal', () => {
 describe('buildGoalPreviewPath', () => {
   const goal = { sides: 4, turnAngleDeg: 90 };
 
-  it('produces a path that itself satisfies evaluateSquareGoal — the preview is a real square', () => {
+  it('produces a path that itself satisfies evaluateSquareGoal - the preview is a real square', () => {
     const result = buildGoalPreviewPath(goal, { stepLength: 60 });
 
     expect(evaluateSquareGoal(result, goal)).toEqual({ success: true });
   });
 
-  it('never depends on any block/program input — only the numeric goal', () => {
+  it('never depends on any block/program input - only the numeric goal', () => {
     // Duas chamadas com o mesmo goal produzem exatamente o mesmo caminho,
-    // reforçando que não há nenhuma dependência de instruções/blocos aqui —
+    // reforçando que não há nenhuma dependência de instruções/blocos aqui -
     // só números (sides/turnAngleDeg), o que é a base do "anda sem entregar
     // a resposta" do botão de Ajuda.
     const first = buildGoalPreviewPath(goal);

@@ -8,10 +8,10 @@ import {
   logMiniGameStepRetry,
 } from './miniGameEvents';
 
-// MJ7 — traduz mudanças em `MiniGameStore.activeScene` em eventos RD-*,
+// MJ7 - traduz mudanças em `MiniGameStore.activeScene` em eventos RD-*,
 // desacoplado do motor de renderização (nenhum import de Pixi aqui,
 // mesmo racional de MiniGameEngine.tsx nunca conhecer o schema de
-// eventos) — o componente de cena só chama as ações do store
+// eventos) - o componente de cena só chama as ações do store
 // (`startScene`/`recordAttempt`/`advancePhase`), este hook observa e loga.
 // Assinado uma vez por instância de store (mesmo ciclo de vida do
 // MiniGameEngine que a possui).
@@ -22,7 +22,7 @@ export function useMiniGameEventLogging(store: MiniGameStore, studentPseudoId: s
     if (!studentPseudoId) return;
 
     // Sincroniza com o estado JÁ presente no momento em que o hook monta
-    // (ex.: `startScene` chamado antes deste efeito rodar) — sem isso, a
+    // (ex.: `startScene` chamado antes deste efeito rodar) - sem isso, a
     // 1ª cena nunca dispararia `minigame_scene_started`.
     const initial = store.getState().activeScene;
     if (initial && previousRef.current === null) {
@@ -37,7 +37,7 @@ export function useMiniGameEventLogging(store: MiniGameStore, studentPseudoId: s
 
       if (!next) return;
 
-      // Cena nova (nunca vista, ou trocou de `sceneId` — troca de cena É
+      // Cena nova (nunca vista, ou trocou de `sceneId` - troca de cena É
       // sempre uma cena nova, nunca uma continuação da anterior).
       if (!previous || previous.sceneId !== next.sceneId) {
         logMiniGameSceneStarted(studentPseudoId, next);
@@ -62,7 +62,7 @@ export function useMiniGameEventLogging(store: MiniGameStore, studentPseudoId: s
     return () => {
       unsubscribe();
       // Desmontou (navegou pra outro lugar) com uma cena ainda ATIVA
-      // (nunca concluída) — abandono, RD-E, mesmo racional de
+      // (nunca concluída) - abandono, RD-E, mesmo racional de
       // `challenge_time_in_phase` medir só o que aconteceu, nunca inferir
       // porquê.
       const current = previousRef.current;

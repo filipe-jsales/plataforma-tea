@@ -1,12 +1,12 @@
 /*
   Painel institucional do admin (6.2). Diferente das telas do aluno, esta
   não segue as restrições sensoriais (regra não-negociável 1 protege a
-  experiência do ALUNO — StaffLogin.css já estabelece o mesmo racional pra
-  telas de professor/admin) — por isso usa mais cor/hierarquia visual
+  experiência do ALUNO - StaffLogin.css já estabelece o mesmo racional pra
+  telas de professor/admin) - por isso usa mais cor/hierarquia visual
   (3.11, `.staff-theme`).
 
   Layout de página, botão "Voltar", card de escola e tabela de turmas vêm de
-  `.page` + components/ui/ (3.11) — só o que é específico DESTA tela fica
+  `.page` + components/ui/ (3.11) - só o que é específico DESTA tela fica
   aqui.
 */
 

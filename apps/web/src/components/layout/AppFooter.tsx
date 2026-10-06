@@ -1,7 +1,7 @@
 import './AppFooter.css';
 
 // Contato/direitos globais (todas as telas autenticadas). E-mail é um
-// placeholder de contato institucional — trocar pelo canal real de suporte
+// placeholder de contato institucional - trocar pelo canal real de suporte
 // da plataforma quando definido, nunca um endereço de pessoa física.
 const CONTACT_EMAIL = 'contato@plataforma-tea.com.br';
 

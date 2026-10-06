@@ -10,7 +10,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  /* `none` fora de `.staff-theme` (token default em sensory-theme.css) —
+  /* `none` fora de `.staff-theme` (token default em sensory-theme.css) -
      elevação é um diferencial do tema de staff, não da fundação do
      componente (ver theme/staff-theme.css). */
   box-shadow: var(--shadow-card);
@@ -44,8 +44,8 @@
   font-size: var(--font-size-body);
 }
 
-/* 3.11 — metadado (código da turma, contagem de alunos) sempre num nível
-   tipográfico abaixo do título — AC "hierarquia clara... não tudo no mesmo
+/* 3.11 - metadado (código da turma, contagem de alunos) sempre num nível
+   tipográfico abaixo do título - AC "hierarquia clara... não tudo no mesmo
    nível visual". */
 .ui-card__meta {
   font-size: var(--font-size-small);
@@ -60,7 +60,7 @@
   color: var(--color-primary);
 }
 
-/* 3.11 — variante "start" (professor/admin): título+meta empilhados à
+/* 3.11 - variante "start" (professor/admin): título+meta empilhados à
    esquerda, ícone (se houver) alinhado ao topo do texto, card mais baixo
    que o tile centralizado do aluno (que precisa de espaço pro ícone
    grande). Mesma fundação (useButton/seleção/foco) do 'center'. */
@@ -81,7 +81,7 @@
   font-weight: var(--font-weight-heading);
 }
 
-/* Só aparece pra navegação por teclado (useFocusRing) — clique de mouse não
+/* Só aparece pra navegação por teclado (useFocusRing) - clique de mouse não
    "acende" o anel a cada seleção, mas o foco nunca fica sem indicador
    quando alguém tabula até aqui. */
 .ui-card--focus-visible {

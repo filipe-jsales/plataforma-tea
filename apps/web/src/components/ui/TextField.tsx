@@ -7,8 +7,8 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   error?: string;
 }
 
-// 1.2/1.4 — primeiro campo de texto livre do design system (nome/e-mail):
-// mesma base de Select.tsx (rótulo sempre visível, nunca só placeholder —
+// 1.2/1.4 - primeiro campo de texto livre do design system (nome/e-mail):
+// mesma base de Select.tsx (rótulo sempre visível, nunca só placeholder -
 // rotulagem redundante) mas sobre um `<input>` nativo, que já tem o
 // comportamento de teclado/foco correto por padrão (mesmo raciocínio de
 // Button.tsx sobre não precisar de useTextField do React Aria aqui). Erro

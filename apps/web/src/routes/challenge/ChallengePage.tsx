@@ -35,26 +35,26 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
 import "./ChallengePage.css";
 
-// AC3 (3.1) — tolerância ampla de encaixe. Chamado uma vez no carregamento
+// AC3 (3.1) - tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
 // useSensoryProfileStore.ts), sempre antes de qualquer workspace injetar.
 applyGenerousSnapTolerance();
 
-// Estimativa da duração da animação — PixiTurtleWorld anima 1 segmento a
+// Estimativa da duração da animação - PixiTurtleWorld anima 1 segmento a
 // cada SEGMENT_DURATION_MS quando animate=true (ver
 // components/challenge/PixiTurtleWorld.tsx, mesmo valor). Usado só pra
 // popular `execution_duration_ms` no evento program_executed (3.2); em modo
-// passo-a-passo (animate=false, o padrão) não existe duração fixa — o aluno
-// controla o ritmo — por isso vale 0 nesse caso.
+// passo-a-passo (animate=false, o padrão) não existe duração fixa - o aluno
+// controla o ritmo - por isso vale 0 nesse caso.
 const SEGMENT_DURATION_MS = 260;
 
-// C2 (AC1) — "a cada alteração relevante no workspace, com debounce". Um
+// C2 (AC1) - "a cada alteração relevante no workspace, com debounce". Um
 // valor curto o bastante pra não perder muito trabalho numa queda de
 // conexão, longo o bastante pra não disparar uma requisição a cada
 // clique/arrasto individual.
 const AUTOSAVE_DEBOUNCE_MS = 1500;
-// C2 (AC5) — "tenta novamente silenciosamente sem expor erro técnico ao
-// aluno". Uma única retentativa (não uma fila robusta — o próximo debounce
+// C2 (AC5) - "tenta novamente silenciosamente sem expor erro técnico ao
+// aluno". Uma única retentativa (não uma fila robusta - o próximo debounce
 // tick já tenta de novo com o estado mais recente de qualquer forma, então
 // uma fila persistente não agregaria nada aqui).
 const AUTOSAVE_RETRY_DELAY_MS = 4000;
@@ -63,7 +63,7 @@ interface ChallengeGoal {
   shape: "square";
   sides: number;
   turnAngleDeg: number;
-  // 7.4 (AC3) — margem de erro (px) escolhida pelo professor num desafio
+  // 7.4 (AC3) - margem de erro (px) escolhida pelo professor num desafio
   // criado via template; ausente usa o default de lib/turtleWorld.ts.
   closureTolerancePx?: number;
 }
@@ -80,7 +80,7 @@ interface ChallengeDetail {
   predictQuestion: string | null;
   editableFields: EditableFieldConfig[];
   nextChallengeId: string | null;
-  // 4.2 — presente só em desafios criados via template pelo professor;
+  // 4.2 - presente só em desafios criados via template pelo professor;
   // `null` usa o default do editor (aplicado no carregamento do módulo).
   snapTolerancePercent: number | null;
   // Tamanho dos blocos escolhido pelo professor num desafio criado via
@@ -88,7 +88,7 @@ interface ChallengeDetail {
   // challenge-config.interface.ts#blockScale no backend); `null` usa o
   // default do editor (`startScale: 1`, ver workspaceConfiguration abaixo).
   blockScale: number | null;
-  // 3.7 (AC4) — mensagens de feedback customizadas pelo professor; `null`
+  // 3.7 (AC4) - mensagens de feedback customizadas pelo professor; `null`
   // (ou campo individual `null`) usa o conjunto de mensagens-padrão
   // sugeridas (ver lib/feedbackMessages.ts).
   feedbackMessages: ChallengeFeedbackMessages | null;
@@ -98,7 +98,7 @@ type Feedback = { kind: "success" | "retry"; message: string } | null;
 
 // Motor PRIMM "Predict" (3.6): só 2 estágios são alcançáveis dentro desta
 // tela (ver a nota de pesquisa "motor PRIMM" em challenge-config.interface.ts
-// pra onde os outros 3 — Run/Investigate/Make — vivem na sequência) —
+// pra onde os outros 3 - Run/Investigate/Make - vivem na sequência) -
 // 'predict' trava o botão Executar até o aluno responder a
 // `challenge.predictQuestion`; volta pra 'predict' depois de cada execução,
 // porque os valores editáveis podem ter mudado desde a última previsão.
@@ -114,7 +114,7 @@ function toInitialWorkspaceJson(program: SerializedBlock): object {
   return { blocks: { languageVersion: 0, blocks: [program] } };
 }
 
-// 3.1/3.2/3.3/3.4 — editor de blocos com paleta restrita (RQ4), mundo de
+// 3.1/3.2/3.3/3.4 - editor de blocos com paleta restrita (RQ4), mundo de
 // execução 2D desacoplado via store (RQ1), e as 3 fases Use-Modify-Create
 // (RQ2) de um tópico, cada uma com seu próprio subconjunto do motor PRIMM
 // (ver a nota de pesquisa "motor PRIMM" em
@@ -124,8 +124,8 @@ function toInitialWorkspaceJson(program: SerializedBlock): object {
 // de rota: `/subjects/:topicId` (2.3 → aqui, sempre o Desafio 1 da
 // sequência) e `/challenge/:challengeId` (acesso direto, usado pelo
 // "Avançar" saindo de um desafio anterior). `challenge.toolbox.stage` (não
-// `locked` — esse só descreve o Blockly `readOnly`) decide entre os 3 modos
-// de tela — nunca uma prop/estado inventado no frontend.
+// `locked` - esse só descreve o Blockly `readOnly`) decide entre os 3 modos
+// de tela - nunca uma prop/estado inventado no frontend.
 export function ChallengePage() {
   const { topicId, challengeId } = useParams<{
     topicId?: string;
@@ -145,9 +145,9 @@ export function ChallengePage() {
   const [primmStage, setPrimmStage] = useState<PrimmStage>("predict");
   const [predictAnswer, setPredictAnswer] = useState<number | null>(null);
   const [modifyResult, setModifyResult] = useState<ModifyResult | null>(null);
-  // C2 — rascunho salvo do workspace (autosave). `draftLoaded` atrasa a
+  // C2 - rascunho salvo do workspace (autosave). `draftLoaded` atrasa a
   // primeira renderização do editor até sabermos se existe rascunho pra
-  // restaurar — nunca monta com o programa curricular pra só depois trocar
+  // restaurar - nunca monta com o programa curricular pra só depois trocar
   // pelo rascunho (isso reiniciaria o Blockly de forma perceptível).
   const [draftJson, setDraftJson] = useState<SerializedBlock | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -212,8 +212,8 @@ export function ChallengePage() {
         timestamp: new Date().toISOString(),
       },
     });
-    // E1 (AC2) — "o marcador de novo é removido automaticamente, sem
-    // exigir ação extra" — chamado sempre que o desafio abre (não só o
+    // E1 (AC2) - "o marcador de novo é removido automaticamente, sem
+    // exigir ação extra" - chamado sempre que o desafio abre (não só o
     // primeiro, o backend já é idempotente), silencioso: falha de rede
     // aqui nunca deve impedir o aluno de usar o desafio.
     apiClient
@@ -221,9 +221,9 @@ export function ChallengePage() {
       .catch(() => {});
   }, [challenge, user]);
 
-  // C2 (AC2) — busca o rascunho salvo assim que o desafio carrega, pra
+  // C2 (AC2) - busca o rascunho salvo assim que o desafio carrega, pra
   // restaurar "exatamente no estado salvo mais recente". Fase `use` é
-  // sempre travada (readOnly, nunca editada) — nem faz a chamada, autosave
+  // sempre travada (readOnly, nunca editada) - nem faz a chamada, autosave
   // não faz sentido ali. Falha de rede aqui cai pro programa curricular
   // (nunca trava a tela por causa disso).
   useEffect(() => {
@@ -243,7 +243,7 @@ export function ChallengePage() {
       .finally(() => setDraftLoaded(true));
   }, [challenge]);
 
-  // Só a fase `create` (Make) oferece paleta de blocos nova pra arrastar —
+  // Só a fase `create` (Make) oferece paleta de blocos nova pra arrastar -
   // `use` é travado, `modify` edita campos de um programa fixo, nenhuma das
   // duas mostra toolbox (nunca inferido de `locked`, que hoje só descreve o
   // Blockly `readOnly`).
@@ -257,9 +257,9 @@ export function ChallengePage() {
         : undefined,
     [challenge, isCreate],
   );
-  // `program` só existe em `use`/`modify` — não depende de `locked`. C2: um
+  // `program` só existe em `use`/`modify` - não depende de `locked`. C2: um
   // rascunho salvo (fase não travada) tem prioridade sobre o `program`
-  // curricular — ele representa progresso MAIS recente do aluno; `use` é
+  // curricular - ele representa progresso MAIS recente do aluno; `use` é
   // sempre travado, então `draftJson` nunca é populado ali (ver efeito
   // acima).
   const initialJson = useMemo(() => {
@@ -271,7 +271,7 @@ export function ChallengePage() {
       : undefined;
   }, [challenge, draftJson]);
   // Snapshot dos valores originais dos campos editáveis (fase `modify`),
-  // calculado uma vez a partir do `program` pré-montado — comparado contra o
+  // calculado uma vez a partir do `program` pré-montado - comparado contra o
   // valor atual a cada Executar pra montar `changed_values` do evento
   // challenge_modify_attempt (ver lib/editableFields.ts).
   const editableInitialValues = useMemo(
@@ -286,7 +286,7 @@ export function ChallengePage() {
   );
   // Opções de previsão (motor PRIMM "Predict"): quantos lados a figura vai
   // ter. Os limites vêm do campo editável TIMES (é ele que decide o número
-  // de lados neste desafio) — nunca hardcoded, mas acoplado de propósito ao
+  // de lados neste desafio) - nunca hardcoded, mas acoplado de propósito ao
   // domínio deste desafio específico (repetir+girar desenha um polígono
   // regular). Cai em 3–8 se o desafio não declarar TIMES como editável.
   const predictOptions = useMemo(() => {
@@ -329,8 +329,8 @@ export function ChallengePage() {
     });
   }
 
-  // C2 (AC4) — invisível ao aluno por padrão: nenhum estado/UI de "salvando…"
-  // é criado aqui, o autosave nunca aparece na tela. (AC5) — falha de rede
+  // C2 (AC4) - invisível ao aluno por padrão: nenhum estado/UI de "salvando…"
+  // é criado aqui, o autosave nunca aparece na tela. (AC5) - falha de rede
   // tenta de novo em silêncio, uma vez, sem lançar/expor o erro.
   function saveDraftSilently(serialized: SerializedBlock | null) {
     if (!challenge) return;
@@ -362,7 +362,7 @@ export function ChallengePage() {
               workspaceJson: serialized,
             })
             .catch(() => {
-              // Silencioso de propósito (AC5) — o próximo tick de debounce
+              // Silencioso de propósito (AC5) - o próximo tick de debounce
               // (nova alteração no workspace) já tenta salvar de novo com o
               // estado mais recente; uma fila de retentativa persistente não
               // agregaria nada aqui.
@@ -371,8 +371,8 @@ export function ChallengePage() {
       });
   }
 
-  // AC1 — só eventos que mudam o CONTEÚDO do workspace disparam autosave
-  // (criar/apagar/mover/alterar bloco) — nunca eventos de UI (seleção,
+  // AC1 - só eventos que mudam o CONTEÚDO do workspace disparam autosave
+  // (criar/apagar/mover/alterar bloco) - nunca eventos de UI (seleção,
   // clique, scroll), que o addChangeListener também emite.
   function handleWorkspaceAutosave(event: Blockly.Events.Abstract) {
     if (!challenge || challenge.locked) return;
@@ -398,10 +398,10 @@ export function ChallengePage() {
     }, AUTOSAVE_DEBOUNCE_MS);
   }
 
-  // AC3 — consolida/descarta o rascunho na submissão final, pra não deixar
+  // AC3 - consolida/descarta o rascunho na submissão final, pra não deixar
   // um autosave intermediário conflitando com o resultado já concluído.
   // Fire-and-forget (silencioso, mesmo racional de saveDraftSilently): uma
-  // falha aqui não é grave — o pior caso é o rascunho reaparecer, o que o
+  // falha aqui não é grave - o pior caso é o rascunho reaparecer, o que o
   // aluno já resolveu construindo de novo.
   function discardDraftSilently() {
     if (!challenge) return;
@@ -412,7 +412,7 @@ export function ChallengePage() {
   }
 
   // Motor PRIMM "Predict" (3.6): resposta é uma ação explícita do aluno
-  // (clique num botão de opção), nunca avança sozinha — libera o Executar
+  // (clique num botão de opção), nunca avança sozinha - libera o Executar
   // pra esta rodada. Não loga por si só: a previsão entra no mesmo evento
   // `challenge_modify_attempt` que o resultado da execução, pra manter as
   // duas coisas juntas numa única unidade logável (ver handleRun).
@@ -424,10 +424,10 @@ export function ChallengePage() {
   function handleRun() {
     const workspace = workspaceRef.current;
     if (!workspace || !challenge || !user) return;
-    // AC de 3.4: a pergunta de predição aparece antes de CADA execução — se
+    // AC de 3.4: a pergunta de predição aparece antes de CADA execução - se
     // o desafio declara `predictQuestion` e o aluno ainda não respondeu
     // pra esta rodada, Executar não faz nada (o botão nem aparece nesse
-    // estado, ver JSX — isto é defesa em profundidade).
+    // estado, ver JSX - isto é defesa em profundidade).
     if (challenge.predictQuestion && predictAnswer === null) return;
 
     const topBlock = workspace.getTopBlocks(true)[0] ?? null;
@@ -440,14 +440,14 @@ export function ChallengePage() {
 
     const actions = interpretProgram(serialized);
     const result = runTurtleProgram(actions);
-    // 7.4 (AC3) — margem de erro por-desafio (ausente usa o default do
+    // 7.4 (AC3) - margem de erro por-desafio (ausente usa o default do
     // motor, ver lib/turtleWorld.ts), a mesma nos dois cálculos abaixo.
     const evaluation = evaluateSquareGoal(
       result,
       challenge.goal,
       challenge.goal.closureTolerancePx,
     );
-    // Motor PRIMM "Predict": quantos lados o traçado realmente fechou com —
+    // Motor PRIMM "Predict": quantos lados o traçado realmente fechou com -
     // calculado uma vez, reusado tanto pelo comparativo de 3.3 (abaixo, só
     // no `program_executed`) quanto pelo de 3.4 (challenge_modify_attempt).
     const actualSides = closedPolygonSides(
@@ -459,17 +459,17 @@ export function ChallengePage() {
     executionStore.getState().play(result.points, motionEnabled);
     setAttempts((count) => count + 1);
 
-    // 3.2 — evento program_executed (RD-P): a "duração" é uma estimativa da
+    // 3.2 - evento program_executed (RD-P): a "duração" é uma estimativa da
     // animação (ver SEGMENT_DURATION_MS acima), não uma medição real de
-    // wall-clock — em modo passo-a-passo (padrão sensorial) não há duração
+    // wall-clock - em modo passo-a-passo (padrão sensorial) não há duração
     // fixa, o aluno controla o ritmo, por isso 0 nesse caso.
     //
     // `prediction_given`/`result_matched_prediction` só aparecem quando o
-    // desafio pede previsão E não é a fase `modify` — lá o comparativo já
+    // desafio pede previsão E não é a fase `modify` - lá o comparativo já
     // sai em detalhe no `challenge_modify_attempt` logo abaixo, duplicar
     // aqui não agrega. Em 3.3 a previsão só é pedida antes da 1ª execução
     // (`predictAnswer` fica com o mesmo valor nas reexecuções seguintes,
-    // já que o programa nunca muda ali — repetir o comparativo a cada
+    // já que o programa nunca muda ali - repetir o comparativo a cada
     // `program_executed` é intencional, não um bug de estado não-limpo).
     logEvent({
       studentPseudoId: user.pseudonymId,
@@ -493,11 +493,11 @@ export function ChallengePage() {
     });
 
     // Motor PRIMM "Modify" (3.4): sem avaliação de sucesso/fracasso, mesmo
-    // racional da fase "use" logo abaixo — o objetivo é explorar o efeito
+    // racional da fase "use" logo abaixo - o objetivo é explorar o efeito
     // de mudar TIMES/ANGLE, não bater uma meta fixa. `challenge_modify_
     // attempt` é o log estruturado (RD-P) da rodada: quais valores mudaram
     // desde o início, o que o aluno previu, e se bateu com o resultado real
-    // — a reflexão que aparece na tela é só descritiva, nunca "certo/errado".
+    // - a reflexão que aparece na tela é só descritiva, nunca "certo/errado".
     if (isModify) {
       const currentValues = extractEditableFieldValues(
         serialized,
@@ -525,14 +525,14 @@ export function ChallengePage() {
 
       setModifyResult({ predictedSides: predictAnswer, actualSides, matched });
       setPredictAnswer(null);
-      // Volta pra "predict" só se o desafio de fato usa essa pergunta —
+      // Volta pra "predict" só se o desafio de fato usa essa pergunta -
       // nunca hardcoded a `isModify`, sempre a partir da config (AC4 3.6).
       if (challenge.predictQuestion) {
         setPrimmStage("predict");
       }
-      // 3.7 (AC6/feedback_shown) — a reflexão da fase Modify também passa
+      // 3.7 (AC6/feedback_shown) - a reflexão da fase Modify também passa
       // pelo componente de feedback reutilizável (ver JSX abaixo), então
-      // também emite o mesmo evento que Use/Create — "fechou" é o sinal
+      // também emite o mesmo evento que Use/Create - "fechou" é o sinal
       // mais próximo de "sucesso" que esta fase exploratória tem, nunca
       // comparado à previsão do aluno (regra não-negociável 5).
       logEvent({
@@ -550,13 +550,13 @@ export function ChallengePage() {
       return;
     }
 
-    // Fase "use" (Desafio 1) é só observação — o programa vem pronto e
+    // Fase "use" (Desafio 1) é só observação - o programa vem pronto e
     // sempre "funciona" por construção, não faz sentido avaliar sucesso.
     // Fase "create" (Desafio 2/4) é onde o feedback reversível importa de
     // verdade (regra não-negociável 4).
     if (challenge.locked) return;
 
-    // 3.7 (AC4) — mensagem configurável pelo professor por desafio, com
+    // 3.7 (AC4) - mensagem configurável pelo professor por desafio, com
     // fallback pro conjunto de mensagens-padrão sugeridas (lib/
     // feedbackMessages.ts) quando o professor não personaliza.
     const feedbackType: "success" | "neutral" = evaluation.success
@@ -592,7 +592,7 @@ export function ChallengePage() {
         type: "challenge.completed",
         challengeId: challenge.id,
       });
-      // C2 (AC3) — desafio concluído e submetido: o autosave intermediário
+      // C2 (AC3) - desafio concluído e submetido: o autosave intermediário
       // não deve sobrar conflitando com o resultado final.
       discardDraftSilently();
     }
@@ -602,7 +602,7 @@ export function ChallengePage() {
     if (!challenge || !user || attempts < 1) return;
     setProceeded(true);
 
-    // `challenge_use_completed` é específico da fase "use" (3.3) — a fase
+    // `challenge_use_completed` é específico da fase "use" (3.3) - a fase
     // "modify" já loga cada rodada via `challenge_modify_attempt` em
     // handleRun, não precisa de um evento de conclusão próprio (nada no
     // backlog de 3.4 pede isso; não inventar um).
@@ -661,9 +661,9 @@ export function ChallengePage() {
     );
   }
 
-  // C2 — espera o rascunho carregar antes de montar o editor pela primeira
+  // C2 - espera o rascunho carregar antes de montar o editor pela primeira
   // vez (nunca monta com o programa curricular pra só depois trocar pelo
-  // rascunho) — mesma tela em branco que `!challenge` já mostra, nenhum
+  // rascunho) - mesma tela em branco que `!challenge` já mostra, nenhum
   // indicador novo (AC4: autosave invisível por padrão).
   if (!challenge || !user || !draftLoaded) {
     return null;
@@ -686,7 +686,7 @@ export function ChallengePage() {
           workspaceConfiguration={{
             readOnly: challenge.locked,
             // Trashcan/paleta só fazem sentido quando dá pra apagar/adicionar
-            // bloco de verdade — fase "modify" trava a estrutura (ver
+            // bloco de verdade - fase "modify" trava a estrutura (ver
             // applyModifyFieldLocking), então nenhuma das duas aparece lá.
             trashcan: isCreate,
             grid: { spacing: 24, length: 3, colour: "#d7dbe0", snap: false },
@@ -700,12 +700,12 @@ export function ChallengePage() {
           onInject={(workspace) => {
             workspaceRef.current = workspace;
             workspace.addChangeListener(handleWorkspaceEvent);
-            // C2 — autosave só faz sentido onde o aluno pode editar; `use`
+            // C2 - autosave só faz sentido onde o aluno pode editar; `use`
             // é sempre readOnly (ver workspaceConfiguration acima).
             if (!challenge.locked) {
               workspace.addChangeListener(handleWorkspaceAutosave);
             }
-            // 4.2 — reaplica a tolerância de encaixe pra ESTE desafio
+            // 4.2 - reaplica a tolerância de encaixe pra ESTE desafio
             // específico: default (100%) pro currículo semeado, ou o valor
             // que o professor escolheu no formulário guiado ao criar um
             // desafio via template (Blockly.config é estado global, não
@@ -732,7 +732,7 @@ export function ChallengePage() {
 
           {/* Motor PRIMM "Predict" (3.6): quando o desafio declara
               predictQuestion (hoje só "modify") e o aluno ainda não
-              respondeu pra esta rodada, o botão Executar nem aparece —
+              respondeu pra esta rodada, o botão Executar nem aparece -
               a previsão é sempre a primeira ação disponível, nunca uma
               etapa que dá pra pular. */}
           {challenge.predictQuestion && primmStage === "predict" ? (
@@ -761,7 +761,7 @@ export function ChallengePage() {
             </button>
           )}
 
-          {/* 3.2 AC2 — padrão sensorial sem animação: o aluno controla o
+          {/* 3.2 AC2 - padrão sensorial sem animação: o aluno controla o
               ritmo passo a passo, nunca um avanço automático. Só aparece
               depois de rodar (nada pra avançar antes disso) e some quando o
               caminho termina (status volta a 'idle'). */}
@@ -775,7 +775,7 @@ export function ChallengePage() {
             </button>
           )}
 
-          {/* Botão de Ajuda mostra a forma-ALVO escondida — só faz sentido na
+          {/* Botão de Ajuda mostra a forma-ALVO escondida - só faz sentido na
               fase "create" (Desafio 2/4); na fase "modify" o aluno já vê e
               controla a forma diretamente, não há alvo escondido pra
               revelar. */}
@@ -791,7 +791,7 @@ export function ChallengePage() {
               {helpOpen && (
                 <div className="challenge-page__help-panel">
                   <p>
-                    É essa a forma que você precisa montar — mas os blocos que
+                    É essa a forma que você precisa montar - mas os blocos que
                     fazem isso acontecer são com você.
                   </p>
                   <PixiTurtleWorld store={helpStore} />
@@ -800,7 +800,7 @@ export function ChallengePage() {
             </>
           )}
 
-          {/* 3.7 (AC3/AC6) — mesmo componente reutilizável (icone + texto,
+          {/* 3.7 (AC3/AC6) - mesmo componente reutilizável (icone + texto,
               nunca só cor) usado nas 3 fases (3.3/3.4/3.5): aqui cobre
               Use/Create; a reflexão da fase Modify logo abaixo usa o
               mesmo InlineFeedback, só com texto composto dinamicamente. */}
@@ -811,7 +811,7 @@ export function ChallengePage() {
           )}
 
           {/* Reflexão da fase "modify": só descreve o que aconteceu (o que o
-              aluno previu vs. o que a figura fez), nunca "certo/errado" —
+              aluno previu vs. o que a figura fez), nunca "certo/errado" -
               regra não-negociável 4. O log de verdade (challenge_modify_
               attempt) já saiu em handleRun; isto é só o que aparece na tela. */}
           {isModify && modifyResult && (
@@ -821,7 +821,7 @@ export function ChallengePage() {
               Você imaginou {modifyResult.predictedSides} lados.{" "}
               {modifyResult.actualSides
                 ? `A figura fechou com ${modifyResult.actualSides} lados.`
-                : "Essa figura não fechou — quer tentar outros valores?"}
+                : "Essa figura não fechou - quer tentar outros valores?"}
             </InlineFeedback>
           )}
 

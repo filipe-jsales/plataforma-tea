@@ -34,7 +34,7 @@
   /* Gap bem maior que o token padrão (--space-4: 24px) de propósito: a
      seta que liga situação↔ferramenta (WorkToolsGamePage.tsx, ver
      matchConnectorGeometry.ts) sai da borda direita do cartão de origem
-     pra borda esquerda do cartão de destino — o percurso horizontal da
+     pra borda esquerda do cartão de destino - o percurso horizontal da
      linha é EXATAMENTE este gap. Com --space-4 a linha ficava quase
      vertical (ângulo muito íngreme) sempre que os dois cartões pareados
      estavam em linhas bem diferentes das duas colunas. */
@@ -61,13 +61,13 @@
   display: flex;
 }
 
-/* Seta ligando cartão de situação ↔ cartão de ferramenta (ver DS — troca
+/* Seta ligando cartão de situação ↔ cartão de ferramenta (ver DS - troca
    da "flag" no texto por uma linha visível). Puramente decorativo/
    redundante (aria-hidden no JSX): a mesma informação continua em texto
    no `meta` do cartão de situação, então some sem perda em telas estreitas
    (abaixo do ponto em que as colunas empilham por `flex-wrap`, ver
    `.work-tools-game-page__columns` acima) e nunca é a única fonte da
-   ligação. Estático — sem transição/animação própria, não precisa reagir
+   ligação. Estático - sem transição/animação própria, não precisa reagir
    a `data-motion` (não é o tipo de estímulo que a regra sensorial filtra,
    é informação, não decoração). */
 .work-tools-game-page__connectors {

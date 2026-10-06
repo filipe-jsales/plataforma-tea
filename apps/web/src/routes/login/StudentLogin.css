@@ -40,7 +40,7 @@
 }
 
 /* Grid de posição fixa: a ordem vem do backend (position ASC) e não muda
-   entre sessões — previsibilidade/TEACCH, requisito explícito do login. */
+   entre sessões - previsibilidade/TEACCH, requisito explícito do login. */
 .student-login__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

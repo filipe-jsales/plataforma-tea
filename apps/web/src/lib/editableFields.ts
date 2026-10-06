@@ -6,12 +6,12 @@ export interface EditableFieldSpec {
 }
 
 // Anda a árvore serializada de um programa (mesmo formato de
-// blockProgram.ts — encadeamento via `next`, bloco aninhado via
+// blockProgram.ts - encadeamento via `next`, bloco aninhado via
 // `inputs.DO`) e devolve o valor atual de cada campo declarado em
 // `fields` (Challenge.config.editableFields, fase Modify 3.4). Usado duas
 // vezes por execução em ChallengePage: uma vez sobre `challenge.program`
 // (snapshot inicial, calculado uma única vez) e uma vez sobre o bloco
-// recém-serializado do workspace (valor atual) — a diferença entre as duas
+// recém-serializado do workspace (valor atual) - a diferença entre as duas
 // chamadas vira `changed_values` do evento `challenge_modify_attempt` (ver
 // diffChangedValues abaixo). Puro: sem Blockly/DOM, testável isolado.
 export function extractEditableFieldValues(
@@ -40,7 +40,7 @@ export function extractEditableFieldValues(
   return values;
 }
 
-// Só os campos que o valor atual diverge do valor inicial — um Executar sem
+// Só os campos que o valor atual diverge do valor inicial - um Executar sem
 // nenhuma mudança (aluno só quer rever o mesmo resultado) loga `{}`, não um
 // snapshot completo repetido.
 export function diffChangedValues(

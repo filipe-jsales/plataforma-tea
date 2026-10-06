@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { SampleSizeNote, StatList } from './StatSummary';
 
 describe('StatList', () => {
-  it('shows "N=0 — sem dados" instead of nulls/NaN when the distribution is empty', () => {
+  it('shows "N=0 - sem dados" instead of nulls/NaN when the distribution is empty', () => {
     render(
       <StatList stats={{ n: 0, mean: null, median: null, stdDev: null, min: null, max: null, q1: null, q3: null }} />,
     );
-    expect(screen.getByText('N=0 — sem dados.')).toBeInTheDocument();
+    expect(screen.getByText('N=0 - sem dados.')).toBeInTheDocument();
   });
 
   it('renders every field with the given unit suffix', () => {
@@ -23,7 +23,7 @@ describe('StatList', () => {
 
   it('shows a distinct "N<2" marker for stdDev instead of a misleading 0', () => {
     render(<StatList stats={{ n: 1, mean: 7, median: 7, stdDev: null, min: 7, max: 7, q1: 7, q3: 7 }} />);
-    expect(screen.getByText('— (N<2)')).toBeInTheDocument();
+    expect(screen.getByText('- (N<2)')).toBeInTheDocument();
   });
 });
 

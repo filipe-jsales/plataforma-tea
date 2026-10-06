@@ -12,7 +12,7 @@ vi.mock('../../../lib/apiClient', () => ({
   apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 vi.mock('../../../lib/logEvent', () => ({ logEvent: vi.fn() }));
-// MiniGameEngine monta uma Application PixiJS real, que não roda em jsdom —
+// MiniGameEngine monta uma Application PixiJS real, que não roda em jsdom -
 // mesmo racional de PixiTurtleWorld mockado em ChallengePage.spec.tsx: o
 // que este arquivo testa é o COMPORTAMENTO da tela (cartões, feedback não
 // punitivo, progressão de nível), não a renderização Pixi.
@@ -109,7 +109,7 @@ async function dismissBriefing() {
   await userEvent.click(await screen.findByRole('button', { name: 'Começar' }));
 }
 
-describe('FractionsGamePage — nível Use', () => {
+describe('FractionsGamePage - nível Use', () => {
   it('shows a briefing before the interactive round (MJ3), then a locked/correct sequence that runs to a success message', async () => {
     renderGame('use');
     expect(await screen.findByText('Observe o pedido pronto')).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('FractionsGamePage — nível Use', () => {
   });
 });
 
-describe('FractionsGamePage — nível Modify', () => {
+describe('FractionsGamePage - nível Modify', () => {
   it('gives non-punitive retry feedback for the deliberately wrong preset card, never "errado"', async () => {
     renderGame('modify');
     await dismissBriefing();
@@ -139,7 +139,7 @@ describe('FractionsGamePage — nível Modify', () => {
     expect(screen.queryByRole('button', { name: 'Novo pedido' })).not.toBeInTheDocument();
   });
 
-  it('matches after the student corrects the wrong card via the Select control (MJ4 — no drag-and-drop)', async () => {
+  it('matches after the student corrects the wrong card via the Select control (MJ4 - no drag-and-drop)', async () => {
     renderGame('modify');
     await dismissBriefing();
 
@@ -153,12 +153,12 @@ describe('FractionsGamePage — nível Modify', () => {
   });
 });
 
-describe('FractionsGamePage — MJ3 (reabrir o roteiro sem perder o progresso)', () => {
+describe('FractionsGamePage - MJ3 (reabrir o roteiro sem perder o progresso)', () => {
   it('reopening the briefing ("Ver roteiro") preserves the edited sequence and result, never resets to the preset', async () => {
     renderGame('modify');
     await dismissBriefing();
 
-    // Corrige o cartão errado e executa — chega num estado de sucesso.
+    // Corrige o cartão errado e executa - chega num estado de sucesso.
     const partsSelect = screen.getByRole('combobox', { name: /Quantas partes/ });
     await userEvent.click(partsSelect);
     await userEvent.click(await screen.findByRole('option', { name: '4' }));
@@ -171,13 +171,13 @@ describe('FractionsGamePage — MJ3 (reabrir o roteiro sem perder o progresso)',
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
 
     // O resultado da rodada e a sequência corrigida (4, não o preset com 3)
-    // continuam lá — nada foi resetado ao reabrir/fechar o roteiro.
+    // continuam lá - nada foi resetado ao reabrir/fechar o roteiro.
     expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
     expect(await screen.findByRole('combobox', { name: /Quantas partes/ })).toHaveTextContent('4');
   });
 });
 
-describe('FractionsGamePage — nível Create', () => {
+describe('FractionsGamePage - nível Create', () => {
   it('starts with an empty sequence and disables Executar until at least one card is added', async () => {
     renderGame('create');
     await dismissBriefing();
@@ -190,7 +190,7 @@ describe('FractionsGamePage — nível Create', () => {
   });
 });
 
-describe('FractionsGamePage — falha ao carregar os níveis', () => {
+describe('FractionsGamePage - falha ao carregar os níveis', () => {
   it('shows a retry-friendly message instead of "Carregando…" forever when the levels request fails', async () => {
     mockedGet.mockReset().mockRejectedValue(new Error('Erro 500'));
 

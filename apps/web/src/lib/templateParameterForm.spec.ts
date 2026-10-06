@@ -20,7 +20,7 @@ const schema: TemplateParameterDefinition[] = [
 ];
 
 describe('buildInitialParams', () => {
-  it('seeds the draft with every parameter default — new templates work without bespoke prefill code', () => {
+  it('seeds the draft with every parameter default - new templates work without bespoke prefill code', () => {
     expect(buildInitialParams(schema)).toEqual({ sides: 4, enabledBlockTypes: ['move_forward', 'turn'] });
   });
 
@@ -35,7 +35,7 @@ describe('buildInitialParams', () => {
     });
   });
 
-  it('falls back to the schema default for a key missing from savedParams — a template parameter added after the challenge was saved (ex.: closureTolerancePx/blockSize) never lands as undefined/NaN', () => {
+  it('falls back to the schema default for a key missing from savedParams - a template parameter added after the challenge was saved (ex.: closureTolerancePx/blockSize) never lands as undefined/NaN', () => {
     expect(buildInitialParams(schema, { sides: 6 })).toEqual({
       sides: 6,
       enabledBlockTypes: ['move_forward', 'turn'],
@@ -70,7 +70,7 @@ describe('coerceParameterValue', () => {
 });
 
 describe('errorsByParameterKey', () => {
-  it('AC3 — indexes each error under its own field, so the message renders inline under the right input', () => {
+  it('AC3 - indexes each error under its own field, so the message renders inline under the right input', () => {
     const result = errorsByParameterKey([
       { parameterKey: 'sides', message: 'Escolha um número de lados entre 3 e 12.' },
       { parameterKey: 'snapTolerancePercent', message: 'A tolerância não pode ficar em 0%.' },

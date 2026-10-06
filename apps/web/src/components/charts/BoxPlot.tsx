@@ -24,7 +24,7 @@ const PADDING = 36;
 const BOX_HEIGHT = 26;
 
 // Whiskers vão até min/max diretamente (variante "min-max boxplot"), não
-// até 1.5×IQR com outliers marcados à parte — decisão deliberada: o AC pede
+// até 1.5×IQR com outliers marcados à parte - decisão deliberada: o AC pede
 // só min/max/quartis como estatística, e com N tipicamente pequeno neste
 // produto (turma/desafio, não milhares de sujeitos) a regra de outlier de
 // Tukey tende a marcar o próprio min/max como "outlier" sem agregar leitura
@@ -32,12 +32,12 @@ const BOX_HEIGHT = 26;
 // qualquer convenção de whisker que o pesquisador preferir.
 export function BoxPlot({ stats, ariaLabel, unit = '' }: BoxPlotProps) {
   if (stats.n === 0 || stats.min === null || stats.max === null) {
-    return <p className="chart-empty">N=0 — sem dados.</p>;
+    return <p className="chart-empty">N=0 - sem dados.</p>;
   }
   if (stats.n === 1) {
     return (
       <p className="chart-empty">
-        N=1 — valor único ({formatNumber(stats.mean)}
+        N=1 - valor único ({formatNumber(stats.mean)}
         {unit}); desvio padrão e quartis não são calculáveis com 1 sujeito.
       </p>
     );

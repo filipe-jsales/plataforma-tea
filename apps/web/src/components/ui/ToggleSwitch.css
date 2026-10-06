@@ -31,7 +31,7 @@
   gap: var(--space-2);
 }
 
-/* Redundância textual do estado — nunca só a posição/cor do trilho. */
+/* Redundância textual do estado - nunca só a posição/cor do trilho. */
 .ui-toggle__state {
   font-size: 0.85rem;
   font-weight: 600;
@@ -64,7 +64,7 @@
   background: var(--color-bg);
   transform: translateX(2px);
   /* A posição desliza; sensory-theme.css já zera transition-duration fora
-     de data-motion='full' — não declaramos duração própria aqui. */
+     de data-motion='full' - não declaramos duração própria aqui. */
 }
 
 .ui-toggle__thumb[data-state='checked'] {

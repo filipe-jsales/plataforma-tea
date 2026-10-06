@@ -28,18 +28,18 @@ import { TeacherChallengeEdit } from './routes/teacher/TeacherChallengeEdit'
 import { TeacherAddStudent } from './routes/teacher/TeacherAddStudent'
 import { TeacherStudents } from './routes/teacher/TeacherStudents'
 
-// MJ1 — único ponto de `React.lazy` do app hoje, de propósito: é o que
+// MJ1 - único ponto de `React.lazy` do app hoje, de propósito: é o que
 // garante o AC "lazy-loading do motor de jogo... sem impacto de bundle na
-// área principal de blocos" — PixiJS já é puxado eagerly por
+// área principal de blocos" - PixiJS já é puxado eagerly por
 // PixiTurtleWorld (ChallengePage), então isso não evita o Pixi já
 // existente, só evita que MiniGameEngine/cenas de mini jogo entrem no
 // chunk principal antes de precisar delas.
 const MiniGamePage = lazy(() => import('./routes/minigame/MiniGamePage'))
-// 1º mini jogo de CONTEÚDO ("Fábrica de Pedaços Iguais", frações) — mesmo
+// 1º mini jogo de CONTEÚDO ("Fábrica de Pedaços Iguais", frações) - mesmo
 // racional de lazy-loading do MiniGamePage acima.
 const FractionsGamePage = lazy(() => import('./routes/minigame/fractions/FractionsGamePage'))
-// MJ10 — 2º mini jogo de CONTEÚDO ("Ferramentas do Mundo do Trabalho",
-// BNCC EM13CO09, categoria Educação em Computação) — mesmo racional de
+// MJ10 - 2º mini jogo de CONTEÚDO ("Ferramentas do Mundo do Trabalho",
+// BNCC EM13CO09, categoria Educação em Computação) - mesmo racional de
 // lazy-loading.
 const WorkToolsGamePage = lazy(() => import('./routes/minigame/work-tools/WorkToolsGamePage'))
 
@@ -67,7 +67,7 @@ function App() {
           </RequireAuth>
         }
       />
-      {/* 3.9 — mesmas opções sensoriais do onboarding (2.2), mas
+      {/* 3.9 - mesmas opções sensoriais do onboarding (2.2), mas
           revisitáveis pelo aluno a qualquer momento, não só uma vez. */}
       <Route
         path="/settings/sensory"
@@ -101,7 +101,7 @@ function App() {
           </RequireAuth>
         }
       />
-      {/* 3.13/3.16 — trilha "Estados da Matéria" (domínio water_state, ver
+      {/* 3.13/3.16 - trilha "Estados da Matéria" (domínio water_state, ver
           Topic.domain): página dedicada, nunca ChallengePage (acoplada ao
           mundo de tartaruga/Pixi). SubjectSelector.handleConfirm decide
           entre esta rota e /subjects/:topicId a partir de `topic.domain`. */}
@@ -121,8 +121,8 @@ function App() {
           </RequireAuth>
         }
       />
-      {/* MJ1 — 2ª metodologia ativa (mini jogos sérios), complementar ao
-          desafio de blocos pro mesmo `conceptId`. Suspense só nesta rota —
+      {/* MJ1 - 2ª metodologia ativa (mini jogos sérios), complementar ao
+          desafio de blocos pro mesmo `conceptId`. Suspense só nesta rota -
           nenhuma outra tela do app paga o custo de um fallback de
           carregamento. */}
       <Route

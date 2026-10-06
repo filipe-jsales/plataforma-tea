@@ -20,13 +20,13 @@ const PADDING_TOP = 16;
 const PADDING_RIGHT = 16;
 
 // 1 ponto = 1 aluno (AC de 6.5). `fill-opacity` < 1 (ver charts.css) é o
-// único mecanismo de legibilidade contra sobreposição — com N pequeno
+// único mecanismo de legibilidade contra sobreposição - com N pequeno
 // (turma/desafio, não milhares de sujeitos) não vale a pena um algoritmo de
 // jitter/agrupamento, o ponto mais escuro já comunica "mais de um aluno
 // aqui".
 export function ScatterPlot({ points, xLabel, yLabel, ariaLabel }: ScatterPlotProps) {
   if (points.length === 0) {
-    return <p className="chart-empty">N=0 — sem dados.</p>;
+    return <p className="chart-empty">N=0 - sem dados.</p>;
   }
 
   const xMax = Math.max(...points.map((point) => point.x), 1);

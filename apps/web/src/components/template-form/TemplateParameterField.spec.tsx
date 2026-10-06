@@ -55,16 +55,16 @@ const blocksDefinition: TemplateParameterDefinition = {
 };
 
 describe('TemplateParameterField', () => {
-  it('AC2 — always shows icon and text together for the label, never icon-only', () => {
+  it('AC2 - always shows icon and text together for the label, never icon-only', () => {
     render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
 
     expect(screen.getByText('🔺')).toBeInTheDocument();
     expect(screen.getByText('Número de lados')).toBeInTheDocument();
   });
 
-  it('AC2 — renders the inline visual example matching the current value', () => {
+  it('AC2 - renders the inline visual example matching the current value', () => {
     // A prévia é decorativa (aria-hidden no wrapper, redundante com o valor
-    // já anunciado pelo input rotulado) — inspeciona o DOM diretamente em
+    // já anunciado pelo input rotulado) - inspeciona o DOM diretamente em
     // vez de getByRole, que corretamente ignora nós aria-hidden.
     const { container } = render(<TemplateParameterField definition={sidesDefinition} value={6} onChange={vi.fn()} />);
 
@@ -89,7 +89,7 @@ describe('TemplateParameterField', () => {
     expect(screen.getByText('60%')).toBeInTheDocument();
   });
 
-  it('regra 9 — renders a select field as 3 named options, never a raw scale number', () => {
+  it('regra 9 - renders a select field as 3 named options, never a raw scale number', () => {
     render(<TemplateParameterField definition={blockSizeDefinition} value="medium" onChange={vi.fn()} />);
 
     expect(screen.getByRole('radiogroup', { name: 'Tamanho dos blocos' })).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('TemplateParameterField', () => {
     expect(screen.getByText(/nenhum bloco disponível/i)).toBeInTheDocument();
   });
 
-  it('AC3 — renders the pedagogical error message inline under the field when present', () => {
+  it('AC3 - renders the pedagogical error message inline under the field when present', () => {
     render(
       <TemplateParameterField
         definition={sidesDefinition}

@@ -25,8 +25,8 @@ interface SchoolForm {
 
 const EMPTY_SCHOOL_FORM: SchoolForm = { name: '', externalId: '' };
 
-// Gestão de escolas e turmas (admin) — CRUD sobre "escola" (container
-// multi-tenant). "Desativar" nunca apaga turmas/matrículas vinculadas — é
+// Gestão de escolas e turmas (admin) - CRUD sobre "escola" (container
+// multi-tenant). "Desativar" nunca apaga turmas/matrículas vinculadas - é
 // soft delete (B1), mesma filosofia de reversibilidade de 1.4 (usuários).
 // Reaproveita components/ui, mesmo padrão visual de AdminUsers.tsx (1.4).
 export function AdminSchools() {
@@ -122,7 +122,7 @@ export function AdminSchools() {
       <h1>Escolas</h1>
       <p className="admin-schools__subtitle">
         Cada turma pertence a exatamente uma escola. Desativar uma escola bloqueia a criação de turmas novas
-        nela, mas nunca apaga turmas/matrículas já existentes — não há exclusão permanente aqui.
+        nela, mas nunca apaga turmas/matrículas já existentes - não há exclusão permanente aqui.
       </p>
 
       <div className="admin-schools__toolbar">
@@ -149,7 +149,7 @@ export function AdminSchools() {
               {schools.map((school) => (
                 <TableRow key={school.id}>
                   <TableCell>{school.name}</TableCell>
-                  <TableCell>{school.externalId ?? '—'}</TableCell>
+                  <TableCell>{school.externalId ?? '-'}</TableCell>
                   <TableCell>
                     <Badge variant={school.active ? 'success' : 'neutral'}>
                       {school.active ? 'Ativa' : 'Desativada'}

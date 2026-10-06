@@ -5,8 +5,8 @@ import { completeLogin } from '../../lib/authFlow';
 import { Button } from '../../components/ui';
 import './StaffLogin.css';
 
-// 1.2.1 — fluxo admin: e-mail + senha + segundo fator. "otp" nunca aparece
-// na tela — só "código do aplicativo autenticador" (sem jargão técnico).
+// 1.2.1 - fluxo admin: e-mail + senha + segundo fator. "otp" nunca aparece
+// na tela - só "código do aplicativo autenticador" (sem jargão técnico).
 export function AdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');

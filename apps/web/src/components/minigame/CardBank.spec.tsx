@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CardBank } from './CardBank';
 
 describe('CardBank', () => {
-  it('renders the 5 fixed card types, icon + text (MJ5 — never icon-only), never more (RQ4 paleta pequena)', () => {
+  it('renders the 5 fixed card types, icon + text (MJ5 - never icon-only), never more (RQ4 paleta pequena)', () => {
     render(<CardBank onAdd={vi.fn()} />);
 
     const labels = [
@@ -20,7 +20,7 @@ describe('CardBank', () => {
     expect(screen.getAllByRole('button')).toHaveLength(5);
   });
 
-  it('MJ4 — adds the default card via mouse click', async () => {
+  it('MJ4 - adds the default card via mouse click', async () => {
     const onAdd = vi.fn();
     render(<CardBank onAdd={onAdd} />);
 
@@ -29,7 +29,7 @@ describe('CardBank', () => {
     expect(onAdd).toHaveBeenCalledWith({ type: 'cut_equal_parts', parts: 2 });
   });
 
-  it('MJ4 — adds a card via keyboard alone (Tab + Enter), same outcome as a mouse click', async () => {
+  it('MJ4 - adds a card via keyboard alone (Tab + Enter), same outcome as a mouse click', async () => {
     const onAdd = vi.fn();
     render(<CardBank onAdd={onAdd} />);
     const user = userEvent.setup();

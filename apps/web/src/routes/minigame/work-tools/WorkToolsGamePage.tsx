@@ -31,14 +31,14 @@ import './WorkToolsGamePage.css';
 const CONCEPT_ID = 'digital_tools_workplace';
 const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
 
-// MJ10 — decisão de design: diferente de "Fábrica de Pedaços Iguais"
+// MJ10 - decisão de design: diferente de "Fábrica de Pedaços Iguais"
 // (que usa MiniGameEngine/Pixi pra desenhar o objeto sendo montado), este
-// jogo é mecânica de ligar/verdadeiro-falso — não existe um "mundo visual"
+// jogo é mecânica de ligar/verdadeiro-falso - não existe um "mundo visual"
 // pra desenhar, e a interação (selecionar cenário, selecionar ferramenta,
 // julgar uma afirmação) é inerentemente melhor servida por componentes
 // acessíveis reais (`components/ui`, com teclado/leitor de tela de
 // graça) do que por um canvas. `MiniGameStore` (fase PRIMM/tentativas) e
-// `useMiniGameEventLogging` continuam usados normalmente — só o motor de
+// `useMiniGameEventLogging` continuam usados normalmente - só o motor de
 // RENDERIZAÇÃO (Pixi) não se aplica aqui, nem todo mini jogo precisa dele.
 function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
   if (stage === 'use') {
@@ -63,7 +63,7 @@ function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
 }
 
 // Fluxo por rodada: MiniGameBriefing (MJ3) → predição opcional → duas
-// colunas selecionáveis (situações/ferramentas, MJ4 — nunca drag-and-drop)
+// colunas selecionáveis (situações/ferramentas, MJ4 - nunca drag-and-drop)
 // → verdadeiro/falso liberado só com todos os pares corretos → "Novo
 // cenário" (Create) ou link "Próximo nível". Mapeamento PRIMM (sem alterar
 // createMiniGameStore, mesma técnica de FractionsGamePage): predict→run na
@@ -87,7 +87,7 @@ export function WorkToolsGamePage() {
   const [completedOnce, setCompletedOnce] = useState(false);
 
   // Traçado visível da ligação situação↔ferramenta (substitui "só uma
-  // flag no texto" por uma seta real entre os dois cartões) — puramente
+  // flag no texto" por uma seta real entre os dois cartões) - puramente
   // geométrico, `computeConnectorLinePoints` (lib/matchConnectorGeometry.ts)
   // é a única parte testável isoladamente, já que jsdom não calcula layout
   // de verdade. `columnsRef` é o container relativo a que as coordenadas
@@ -103,7 +103,7 @@ export function WorkToolsGamePage() {
 
   // Sem `.catch()` aqui, uma falha do backend (ex.: 500 por schema
   // desatualizado num ambiente que ainda não rodou a migration mais
-  // recente) deixava `levels` em `null` pra sempre — a tela ficava presa
+  // recente) deixava `levels` em `null` pra sempre - a tela ficava presa
   // em "Carregando…" indefinidamente, sem nenhum sinal do que deu errado
   // (mesmo bug de FractionsGamePage.tsx, corrigido junto).
   useEffect(() => {
@@ -142,14 +142,14 @@ export function WorkToolsGamePage() {
   useMiniGameEventLogging(store, user?.pseudonymId ?? null);
 
   // `roundStore` (hook de subscrição, via zustand) precisa ser chamado
-  // sempre na MESMA posição em toda renderização — nunca depois de um
-  // `return` condicional (regra dos hooks do React) — por isso vem antes
+  // sempre na MESMA posição em toda renderização - nunca depois de um
+  // `return` condicional (regra dos hooks do React) - por isso vem antes
   // dos guards de `level`/`levels` abaixo, mesmo que só passe a importar
   // depois que `level` existir.
   const matches = roundStore((state) => state.matches);
   const statementAnswers = roundStore((state) => state.statementAnswers);
 
-  // Mesma regra de posição de hook do comentário acima — `level` pode ser
+  // Mesma regra de posição de hook do comentário acima - `level` pode ser
   // `null` aqui ainda (guard só vem depois), então a checagem fica dentro
   // do callback, nunca condicionando a chamada do hook em si.
   useLayoutEffect(() => {
@@ -386,7 +386,7 @@ export function WorkToolsGamePage() {
               <div className="work-tools-game-page__columns" ref={columnsRef}>
                 {/* Seta visível ligando cartão de situação ↔ cartão de
                     ferramenta (troca a "flag" no texto por uma linha real
-                    entre os dois) — puramente decorativo/redundante:
+                    entre os dois) - puramente decorativo/redundante:
                     `aria-hidden`, a informação "Ligado a: X" continua no
                     texto do `meta` abaixo pra quem usa leitor de tela ou
                     tela estreita (a seta some por CSS nesse caso, ver
@@ -512,7 +512,7 @@ export function WorkToolsGamePage() {
                   <div key={statement.id} className="work-tools-game-page__statement">
                     <Text>{statement.text}</Text>
                     <InlineFeedback kind="success">
-                      {answeredTrue ? 'Verdadeiro' : 'Falso'} — {statement.explanation}
+                      {answeredTrue ? 'Verdadeiro' : 'Falso'} - {statement.explanation}
                     </InlineFeedback>
                   </div>
                 );

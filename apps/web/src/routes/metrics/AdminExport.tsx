@@ -70,11 +70,11 @@ function buildQuery(params: {
   return search.toString();
 }
 
-// 6.6 — exportação de dados brutos pra análise externa (RQ5 por completo:
+// 6.6 - exportação de dados brutos pra análise externa (RQ5 por completo:
 // é o que efetivamente viabiliza usar os dados coletados desde o MVP num
 // artigo/análise fora da plataforma, não só guardar num banco que ninguém
-// consulta). O admin escolhe um recorte (escola, desafio e/ou período — ao
-// menos um) e baixa um arquivo (JSON ou CSV) — nunca visualiza os dados
+// consulta). O admin escolhe um recorte (escola, desafio e/ou período - ao
+// menos um) e baixa um arquivo (JSON ou CSV) - nunca visualiza os dados
 // crus na própria tela, o objetivo é analisar FORA da plataforma.
 export function AdminExport() {
   const [schools, setSchools] = useState<SchoolOption[] | null>(null);
@@ -120,14 +120,14 @@ export function AdminExport() {
         const { text } = await apiClient.getRaw(`/metrics/admin/export?${query}`);
         downloadFile(text, `interaction-events-${timestamp}.csv`, 'text/csv;charset=utf-8');
         const lineCount = Math.max(text.split('\n').filter((line) => line.trim()).length - 1, 0);
-        setSummary(`${lineCount} linha(s) exportada(s) — arquivo CSV baixado.`);
+        setSummary(`${lineCount} linha(s) exportada(s) - arquivo CSV baixado.`);
       } else {
         const result = await apiClient.get<ExportResult>(`/metrics/admin/export?${query}`);
         downloadFile(JSON.stringify(result.rows, null, 2), `interaction-events-${timestamp}.json`, 'application/json');
         setSummary(
-          `${result.rows.length} linha(s) exportada(s) — arquivo JSON baixado.` +
+          `${result.rows.length} linha(s) exportada(s) - arquivo JSON baixado.` +
             (result.hasMore
-              ? ' Existem mais linhas além desta página — reduza o recorte (ex.: um período menor) para exportar tudo.'
+              ? ' Existem mais linhas além desta página - reduza o recorte (ex.: um período menor) para exportar tudo.'
               : ''),
         );
       }
@@ -146,7 +146,7 @@ export function AdminExport() {
       <h1>Exportar dados brutos</h1>
       <p className="admin-export__subtitle">
         Escolha um recorte (escola, desafio e/ou período) e baixe os eventos de interação quase
-        crus, prontos pra analisar fora da plataforma — cada linha é pseudonimizada, nunca traz o
+        crus, prontos pra analisar fora da plataforma - cada linha é pseudonimizada, nunca traz o
         nome do aluno.
       </p>
 
@@ -171,14 +171,14 @@ export function AdminExport() {
             { value: NO_FILTER, label: 'Todos os desafios' },
             ...(challenges ?? []).map((challenge) => ({
               value: challenge.id,
-              label: `${challenge.topicName} — ${challenge.title}`,
+              label: `${challenge.topicName} - ${challenge.title}`,
             })),
           ]}
         />
 
         <div className="admin-export__period">
           <label className="admin-export__date-field">
-            <span>Período — de</span>
+            <span>Período - de</span>
             <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
           </label>
           <label className="admin-export__date-field">

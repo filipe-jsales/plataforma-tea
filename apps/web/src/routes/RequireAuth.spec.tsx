@@ -62,7 +62,7 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('Conteúdo protegido')).toBeInTheDocument();
   });
 
-  it('1.5.1 — redirects to /login and clears the session when the token is expired', async () => {
+  it('1.5.1 - redirects to /login and clears the session when the token is expired', async () => {
     useAuthStore.setState({ token: expiredToken, user: studentUser });
 
     renderGuarded();

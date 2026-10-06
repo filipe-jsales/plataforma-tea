@@ -7,12 +7,12 @@ export interface TooltipProps {
   children: ReactNode;
 }
 
-// 3.10 — reforço textual OPCIONAL, nunca a única fonte do rótulo (AC "nunca
+// 3.10 - reforço textual OPCIONAL, nunca a única fonte do rótulo (AC "nunca
 // só ícone"): `children` (o gatilho) já precisa ter nome acessível próprio
 // (texto visível ou aria-label) por conta dele mesmo; a Tooltip é contexto
 // extra pra quem passa o mouse/foca, não uma muleta pra rótulo ausente.
 // Cada instância traz seu próprio Provider (delay compartilhado só entre
-// Tooltips da mesma árvore) — telas com muitas tooltips lado a lado podem
+// Tooltips da mesma árvore) - telas com muitas tooltips lado a lado podem
 // envolver a árvore uma vez em <TooltipPrimitive.Provider> pra evitar
 // providers aninhados repetidos, mas isso é otimização, não correção.
 export function Tooltip({ content, children }: TooltipProps) {

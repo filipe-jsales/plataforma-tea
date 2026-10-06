@@ -6,7 +6,7 @@
 
 /*
   Abre pela DIREITA (pedido explícito) via transform, nunca `left`/`right`
-  animado — `transition` só tem efeito de verdade dentro de `.staff-theme`
+  animado - `transition` só tem efeito de verdade dentro de `.staff-theme`
   ou com `data-motion='full'` ligado (ver a exceção em
   theme/sensory-theme.css); pro aluno sem motion, o painel só aparece/some
   sem deslizar, o token de duração é zerado globalmente, não precisa de

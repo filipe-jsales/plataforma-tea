@@ -5,7 +5,7 @@ import { ScatterPlot } from './ScatterPlot';
 describe('ScatterPlot', () => {
   it('shows an empty state for no points, never a broken chart', () => {
     render(<ScatterPlot points={[]} xLabel="Tentativas" yLabel="Acerto (%)" ariaLabel="teste" />);
-    expect(screen.getByText('N=0 — sem dados.')).toBeInTheDocument();
+    expect(screen.getByText('N=0 - sem dados.')).toBeInTheDocument();
   });
 
   it('renders one point per datum, accessible via role=img', () => {

@@ -6,12 +6,12 @@ import { AllocationDialog } from "./AllocationDialog";
 import "./TeacherChallenges.css";
 import { CirclePlus, Trash } from "lucide-react";
 
-// 4.2 (AC5) — "Meus desafios": lista só os desafios que O PRÓPRIO professor
+// 4.2 (AC5) - "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
-// expõe `Challenge.config`/estrutura de blocos — editar e duplicar reabrem
+// expõe `Challenge.config`/estrutura de blocos - editar e duplicar reabrem
 // exatamente o mesmo formulário guiado da criação (ver TeacherChallengeForm
 // route), nunca um editor bruto. "Alocar à turma" (4.3) é o que decide se
-// o desafio chega a algum aluno — sem alocação, o desafio fica só aqui,
+// o desafio chega a algum aluno - sem alocação, o desafio fica só aqui,
 // nunca vaza pra área de nenhum aluno (AC3 de 4.3).
 export function TeacherChallenges() {
   const [challenges, setChallenges] = useState<

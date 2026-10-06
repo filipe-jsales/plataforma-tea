@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { Button, LinkButton } from '../../components/ui';
 import './MiniGamePage.css';
 
-// MJ1 — ponto de entrada de um mini jogo na área do aluno. Importada só via
+// MJ1 - ponto de entrada de um mini jogo na área do aluno. Importada só via
 // `React.lazy` em App.tsx: é este arquivo (e só ele) que puxa
 // `MiniGameEngine`/PixiJS pro bundle, então o mini jogo nunca pesa na
 // rota principal de blocos (AC de MJ1, "lazy-loading... sem impacto de
@@ -20,17 +20,17 @@ export function MiniGamePage() {
   const { conceptId } = useParams<{ conceptId: string }>();
   const user = useAuthStore((state) => state.user);
 
-  // useMemo (não useState) — uma instância de store por `conceptId`, nova
+  // useMemo (não useState) - uma instância de store por `conceptId`, nova
   // sempre que o aluno navega pra um mini jogo diferente (mesmo racional
   // de `createTurtleExecutionStore` em ChallengePage). `conceptId` no array
-  // de deps é INTENCIONAL mesmo sem aparecer no corpo da função — é a
+  // de deps é INTENCIONAL mesmo sem aparecer no corpo da função - é a
   // chave de "quando recriar o store", não um valor que `createMiniGameStore`
   // consome.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const store = useMemo(() => createMiniGameStore(), [conceptId]);
   const scene = useMemo(() => createPlaceholderScene(conceptId ?? 'desconhecido'), [conceptId]);
 
-  // MJ3 — toda cena é precedida por um roteiro visual (regra não-negociável
+  // MJ3 - toda cena é precedida por um roteiro visual (regra não-negociável
   // 2/AC de MJ3), inclusive esta cena placeholder de infraestrutura.
   const [showBriefing, setShowBriefing] = useState(true);
   const [reopenedBriefing, setReopenedBriefing] = useState(false);

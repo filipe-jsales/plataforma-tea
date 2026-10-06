@@ -1,7 +1,7 @@
-// MJ10 — mesma forma que apps/api/src/minigames/mini-game-level-config.
+// MJ10 - mesma forma que apps/api/src/minigames/mini-game-level-config.
 // interface.ts devolve via API pro jogo "Ferramentas do Mundo do Trabalho"
 // (BNCC EM13CO09). Arquivo próprio, separado de miniGameLevelTypes.ts (que
-// tipa `config` concretamente pro shape de frações) — evita transformar
+// tipa `config` concretamente pro shape de frações) - evita transformar
 // aquele tipo num union que `TeacherMiniGameSettings.tsx` precisaria
 // discriminar por `gameKey` sem necessidade nesta entrega (isso é MJ11,
 // ainda não implementada, que vai precisar disso pra configuração).

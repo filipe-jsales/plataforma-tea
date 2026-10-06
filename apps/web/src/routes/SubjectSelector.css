@@ -4,7 +4,7 @@
   padding: var(--space-4);
 }
 
-/* CC1 — cada seção de categoria (Informática Educacional × Educação em
+/* CC1 - cada seção de categoria (Informática Educacional × Educação em
    Computação) fica claramente separada, mesmo espaçamento de seção já
    usado por "Desafios da sua turma" abaixo. */
 .subject-selector__category {
@@ -26,12 +26,12 @@
 }
 
 /* Card selecionável e botão de confirmação vêm de
-   components/ui/Card (SelectableCard) e components/ui/Button (3.10) —
+   components/ui/Card (SelectableCard) e components/ui/Button (3.10) -
    nada de estilo próprio pra isso aqui. */
 
-/* 4.3 — "Desafios da sua turma", separado visualmente dos módulos
+/* 4.3 - "Desafios da sua turma", separado visualmente dos módulos
    curriculares (nunca no mesmo <ul>/fluxo de seleção+confirmação, pra não
-   confundir os dois tipos de navegação — módulo abre uma sequência,
+   confundir os dois tipos de navegação - módulo abre uma sequência,
    desafio da turma abre direto). */
 .subject-selector__classroom-challenges {
   margin-top: var(--space-5);
@@ -39,7 +39,7 @@
   border-top: 1px solid var(--color-border, #d7dbe0);
 }
 
-/* E1 — o marcador "Novo" fica ao lado do link, nunca sobreposto/flutuante
+/* E1 - o marcador "Novo" fica ao lado do link, nunca sobreposto/flutuante
    (AC1: discreto, sem chamar atenção como um alerta). */
 .subject-selector__classroom-challenge {
   display: flex;

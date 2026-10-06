@@ -69,8 +69,8 @@ async function fillAndSubmitStudentStep() {
   await userEvent.click(screen.getByRole('button', { name: /continuar/i }));
 }
 
-describe('TeacherAddStudent — passo 1 (dados do aluno)', () => {
-  it('AC — the form has no email/password/phone field for the student', async () => {
+describe('TeacherAddStudent - passo 1 (dados do aluno)', () => {
+  it('AC - the form has no email/password/phone field for the student', async () => {
     mockClassroomsAndAvatars(oneClassroom);
 
     renderPage();
@@ -81,7 +81,7 @@ describe('TeacherAddStudent — passo 1 (dados do aluno)', () => {
     expect(screen.queryByLabelText(/telefone/i)).not.toBeInTheDocument();
   });
 
-  it('AC — hides the classroom selector when the teacher has only one classroom', async () => {
+  it('AC - hides the classroom selector when the teacher has only one classroom', async () => {
     mockClassroomsAndAvatars(oneClassroom);
 
     renderPage();
@@ -99,7 +99,7 @@ describe('TeacherAddStudent — passo 1 (dados do aluno)', () => {
     expect(await screen.findByText('Turma')).toBeInTheDocument();
   });
 
-  it('A2 — creates only a PENDING account, never a credential, at this step', async () => {
+  it('A2 - creates only a PENDING account, never a credential, at this step', async () => {
     mockClassroomsAndAvatars(oneClassroom);
     mockedPost.mockResolvedValueOnce(pendingStudent);
 
@@ -115,13 +115,13 @@ describe('TeacherAddStudent — passo 1 (dados do aluno)', () => {
   });
 });
 
-describe('TeacherAddStudent — passo 2 (responsável legal, A2)', () => {
+describe('TeacherAddStudent - passo 2 (responsável legal, A2)', () => {
   beforeEach(() => {
     mockClassroomsAndAvatars(oneClassroom);
     mockedPost.mockResolvedValueOnce(pendingStudent);
   });
 
-  it('AC1/AC2 — blocks continuing without an explicit consent confirmation', async () => {
+  it('AC1/AC2 - blocks continuing without an explicit consent confirmation', async () => {
     renderPage();
     await fillAndSubmitStudentStep();
 
@@ -136,7 +136,7 @@ describe('TeacherAddStudent — passo 2 (responsável legal, A2)', () => {
     expect(mockedPost).toHaveBeenCalledTimes(1); // só o passo 1, nunca o passo 2
   });
 
-  it('AC2 — registers the consent (with explicit accept) and only then receives the credential', async () => {
+  it('AC2 - registers the consent (with explicit accept) and only then receives the credential', async () => {
     mockedPost.mockResolvedValueOnce(credential);
 
     renderPage();
@@ -158,7 +158,7 @@ describe('TeacherAddStudent — passo 2 (responsável legal, A2)', () => {
   });
 });
 
-describe('TeacherAddStudent — passo 3 (credencial)', () => {
+describe('TeacherAddStudent - passo 3 (credencial)', () => {
   it('shows the generated credential card, never using the free-text name as part of it', async () => {
     mockClassroomsAndAvatars(oneClassroom);
     mockedPost.mockResolvedValueOnce(pendingStudent);
@@ -178,7 +178,7 @@ describe('TeacherAddStudent — passo 3 (credencial)', () => {
     expect(screen.getByAltText('Estrela')).toBeInTheDocument();
   });
 
-  it('AC — shows a non-blocking info banner for a duplicate name at the credential step, not an error', async () => {
+  it('AC - shows a non-blocking info banner for a duplicate name at the credential step, not an error', async () => {
     mockClassroomsAndAvatars(oneClassroom);
     mockedPost.mockResolvedValueOnce({ ...pendingStudent, duplicateWarning: true });
     mockedPost.mockResolvedValueOnce(credential);

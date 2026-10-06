@@ -1,10 +1,10 @@
 /*
   Gráficos do relatório de profundidade (6.5). Um hue só (--color-primary) em
-  toda marca — nenhum destes gráficos compara séries categóricas coloridas
+  toda marca - nenhum destes gráficos compara séries categóricas coloridas
   entre si (é sempre "magnitude de uma variável", nunca "identidade de N
   séries"), então a paleta categórica validada não se aplica aqui (ver
   dataviz skill, "choosing-a-form": sequential = hue único é o default
-  seguro). SVG estático, sem transition/animation — não depende do estado
+  seguro). SVG estático, sem transition/animation - não depende do estado
   sensorial (esta é uma tela de staff/admin, mesmo racional de
   AdminMetrics.css), mas mesmo assim não anima por não ter porquê.
 */

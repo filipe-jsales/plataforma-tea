@@ -10,7 +10,7 @@ import './theme/utilities.css'
 import App from './App.tsx'
 
 // Sessão persistida (ex.: F5 na tela) já traz o perfil sensorial salvo do
-// aluno — aplica antes da primeira renderização de conteúdo de jogo, sem
+// aluno - aplica antes da primeira renderização de conteúdo de jogo, sem
 // esperar o aluno passar pelo onboarding de novo.
 const persistedUser = useAuthStore.getState().user
 if (persistedUser) {

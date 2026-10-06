@@ -6,7 +6,7 @@ import './WaterStateTransition.css';
 export interface WaterStateTransitionProps {
   state: WaterState;
   // Leitura numérica que acompanha o ícone durante a animação de transição
-  // (ver WaterStateChallengePage#animateStateTransition) — opcional porque
+  // (ver WaterStateChallengePage#animateStateTransition) - opcional porque
   // telas futuras que só mostram o estado (sem termômetro) continuam
   // funcionando sem essa prop.
   temperatureC?: number;
@@ -24,7 +24,7 @@ const STATE_LABEL: Record<WaterState, string> = {
   GAS: 'Gasoso',
 };
 
-// Bipe curto sintetizado via Web Audio (sem asset binário novo) — só
+// Bipe curto sintetizado via Web Audio (sem asset binário novo) - só
 // chamado quando o aluno ligou som explicitamente (desligado por padrão,
 // regra não-negociável 1). `webkitAudioContext` cobre Safari mais antigo,
 // mesmo racional de qualquer feature-detect de API de browser neste projeto.
@@ -47,12 +47,12 @@ function playTransitionChime(): void {
   oscillator.stop(context.currentTime + 0.25);
 }
 
-// 3.16 — transição de estado sólido/líquido/gasoso, reaproveitada pelos 3
+// 3.16 - transição de estado sólido/líquido/gasoso, reaproveitada pelos 3
 // desafios da trilha "Estados da Matéria" (2.1/2.2/2.3). CSS puro (sem
-// Pixi/Phaser — esta trilha não carrega motor de jogo, ver
+// Pixi/Phaser - esta trilha não carrega motor de jogo, ver
 // WaterStateChallengePage): a transição é só uma classe/atributo CSS, e
 // sensory-theme.css já zera `transition-duration` fora de
-// `data-motion='full'` (mesmo mecanismo de ToggleSwitch.css) — o componente
+// `data-motion='full'` (mesmo mecanismo de ToggleSwitch.css) - o componente
 // nunca reimplementa esse gate, só declara a transição normalmente. Ícone+
 // texto sempre juntos (regra não-negociável 9), nunca só a troca visual.
 export function WaterStateTransition({ state, temperatureC }: WaterStateTransitionProps) {
@@ -64,7 +64,7 @@ export function WaterStateTransition({ state, temperatureC }: WaterStateTransiti
     setEntered(false);
     const frame = requestAnimationFrame(() => setEntered(true));
     // Nunca toca som na primeira renderização (estado inicial do desafio,
-    // não uma "transição") — só em mudanças reais de `state` depois disso.
+    // não uma "transição") - só em mudanças reais de `state` depois disso.
     if (soundEnabled && !isFirstRender.current) {
       playTransitionChime();
     }

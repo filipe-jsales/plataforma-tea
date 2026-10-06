@@ -5,7 +5,7 @@ import './SegmentedControl.css';
 export interface SegmentedControlOption {
   value: string;
   label: ReactNode;
-  // Decorativo — nunca substitui `label`.
+  // Decorativo - nunca substitui `label`.
   icon?: ReactNode;
 }
 
@@ -16,15 +16,15 @@ export interface SegmentedControlProps {
   ariaLabel: string;
 }
 
-// 3.11 — substitui o padrão "2 <button> soltos com estilos diferentes um do
+// 3.11 - substitui o padrão "2 <button> soltos com estilos diferentes um do
 // outro" (ex.: TeacherMetrics "Por aluno"/"Turma toda", que hoje é 2
 // <button role="tab"> reimplementando manualmente teclado/estado ativo) por
 // um primitivo de verdade: @radix-ui/react-toggle-group em modo `single`
-// com `rovingFocus` — teclado (setas movem entre opções) e seleção
+// com `rovingFocus` - teclado (setas movem entre opções) e seleção
 // exclusiva vêm da lib, não de `aria-selected` calculado à mão em cada
 // tela. `type="single"` + `onValueChange` que ignora string vazia impede
 // des-selecionar tudo (o Toggle Group nativo permite ficar sem nenhuma
-// opção ativa ao clicar de novo na selecionada — aqui isso não faz sentido,
+// opção ativa ao clicar de novo na selecionada - aqui isso não faz sentido,
 // sempre existe uma visão ativa).
 export function SegmentedControl({ options, value, onValueChange, ariaLabel }: SegmentedControlProps) {
   return (

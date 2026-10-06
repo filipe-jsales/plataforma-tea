@@ -18,7 +18,7 @@ describe('LinkButton', () => {
     expect(link).toHaveClass('ui-button', 'ui-button--primary');
   });
 
-  it('shares its exact geometry classes with Button — same shape, only the element differs', () => {
+  it('shares its exact geometry classes with Button - same shape, only the element differs', () => {
     render(
       <MemoryRouter>
         <>
@@ -34,7 +34,7 @@ describe('LinkButton', () => {
     expect(button.className).toBe(link.className);
   });
 
-  it('never renders the icon as the only accessible content — text is always present', () => {
+  it('never renders the icon as the only accessible content - text is always present', () => {
     render(
       <MemoryRouter>
         <LinkButton to="/home" icon="←">

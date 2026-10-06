@@ -8,7 +8,7 @@ describe('Button', () => {
     render(<Button icon="▶️">Continuar</Button>);
     const button = screen.getByRole('button', { name: /continuar/i });
     expect(button).toBeInTheDocument();
-    // O ícone é decorativo (aria-hidden) — o nome acessível vem só do texto.
+    // O ícone é decorativo (aria-hidden) - o nome acessível vem só do texto.
     expect(button.querySelector('.ui-button__icon')).toHaveAttribute('aria-hidden', 'true');
   });
 

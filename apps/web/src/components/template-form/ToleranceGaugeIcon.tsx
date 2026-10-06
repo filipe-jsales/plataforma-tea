@@ -1,4 +1,4 @@
-// AC2 — miniatura inline do parâmetro "tolerância de encaixe": uma barra
+// AC2 - miniatura inline do parâmetro "tolerância de encaixe": uma barra
 // preenchida proporcionalmente ao percentual, mesma lógica de "quanto mais
 // cheia, mais fácil encaixar" que o professor já reconhece de outras
 // configurações de acessibilidade (nunca só um número solto).

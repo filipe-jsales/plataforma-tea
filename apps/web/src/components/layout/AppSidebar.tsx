@@ -26,15 +26,15 @@ export interface AppSidebarProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Sidebar global, aberta pelo hambúrguer do AppHeader — abre pela DIREITA
+// Sidebar global, aberta pelo hambúrguer do AppHeader - abre pela DIREITA
 // (`AppSidebar.css`), nunca centralizada como o `Dialog` genérico de
 // components/ui (aquele é pra confirmação, este é navegação persistente).
-// Configurações/Sair vivem aqui pros 3 papéis (ver docs/ai/persona.md —
+// Configurações/Sair vivem aqui pros 3 papéis (ver docs/ai/persona.md -
 // pedido explícito do usuário: layout global, "Sair" sempre no rodapé da
 // sidebar).
 //
 // Portal do Radix renderiza fora de `.app-layout` (direto em `document.
-// body`) — por isso o tema staff é aplicado de novo AQUI, direto na raiz do
+// body`) - por isso o tema staff é aplicado de novo AQUI, direto na raiz do
 // conteúdo, e não herdado da classe `.staff-theme` do AppLayout (que não
 // alcançaria este nó via CSS, já que ele não é descendente no DOM real).
 export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {

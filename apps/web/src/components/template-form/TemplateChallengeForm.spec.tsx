@@ -10,7 +10,7 @@ vi.mock('../../lib/apiClient', async () => {
   return { ApiError: actual.ApiError, apiClient: { post: vi.fn() } };
 });
 
-// Pixi.js não roda de verdade em jsdom (sem WebGL/Canvas real) — o mesmo
+// Pixi.js não roda de verdade em jsdom (sem WebGL/Canvas real) - o mesmo
 // racional de qualquer teste que isola PixiTurtleWorld (ver nota de débito
 // "ChallengePage sem RTL ainda" em docs/ai/modules/frontend.md). O que
 // importa testar aqui é SE o painel de preview aparece, não como o Pixi
@@ -63,7 +63,7 @@ describe('TemplateChallengeForm', () => {
     expect(screen.getByLabelText('Ângulo de giro')).toHaveValue(90);
   });
 
-  it('AC5/AC6 — prefills title and params for edit/duplicate, the same form as creation', () => {
+  it('AC5/AC6 - prefills title and params for edit/duplicate, the same form as creation', () => {
     render(
       <TemplateChallengeForm
         template={template}
@@ -85,14 +85,14 @@ describe('TemplateChallengeForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
 
     // A mensagem aparece duas vezes de propósito: inline sob o formulário
-    // (persistente) e num Toast (transitório, ver Toast.tsx) — a mesma
+    // (persistente) e num Toast (transitório, ver Toast.tsx) - a mesma
     // frase pedagógica nos dois lugares, nunca duas mensagens diferentes.
     expect((await screen.findAllByText('Dê um nome para o desafio antes de salvar.')).length).toBeGreaterThan(0);
     expect(mockedPost).not.toHaveBeenCalled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('AC3 — blocks saving on an invalid combination, showing the pedagogical error under the right field', async () => {
+  it('AC3 - blocks saving on an invalid combination, showing the pedagogical error under the right field', async () => {
     mockedPost.mockResolvedValueOnce({
       valid: false,
       errors: [{ parameterKey: 'turnAngleDeg', message: 'Com 3 lados e 200° de giro, o desenho não fecha.' }],
@@ -126,14 +126,14 @@ describe('TemplateChallengeForm', () => {
     });
   });
 
-  it('3.7 (AC4) — submits teacher-customized feedback messages alongside params', async () => {
+  it('3.7 (AC4) - submits teacher-customized feedback messages alongside params', async () => {
     mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
     await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Meu desafio');
     await userEvent.type(
       screen.getByLabelText(/mensagem quando o aluno ainda não atingiu/i),
-      'Esse ângulo ainda não fecha — quer ajustar?',
+      'Esse ângulo ainda não fecha - quer ajustar?',
     );
     await userEvent.type(screen.getByLabelText(/mensagem de sucesso/i), 'Mandou bem!');
 
@@ -142,12 +142,12 @@ describe('TemplateChallengeForm', () => {
     expect(await screen.findByRole('button', { name: /salvar desafio/i })).toBeEnabled();
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        feedbackMessages: { retry: 'Esse ângulo ainda não fecha — quer ajustar?', success: 'Mandou bem!' },
+        feedbackMessages: { retry: 'Esse ângulo ainda não fecha - quer ajustar?', success: 'Mandou bem!' },
       }),
     );
   });
 
-  it('3.7 (AC4) — pre-fills feedback message fields when editing an already-customized challenge', () => {
+  it('3.7 (AC4) - pre-fills feedback message fields when editing an already-customized challenge', () => {
     render(
       <TemplateChallengeForm
         template={template}
@@ -163,7 +163,7 @@ describe('TemplateChallengeForm', () => {
     expect(screen.getByLabelText(/mensagem de sucesso/i)).toHaveValue('');
   });
 
-  it('AC4 — "Visualizar como aluno" opens a functional preview in the game engine when parameters are valid', async () => {
+  it('AC4 - "Visualizar como aluno" opens a functional preview in the game engine when parameters are valid', async () => {
     mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
     render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
 
@@ -175,7 +175,7 @@ describe('TemplateChallengeForm', () => {
     });
   });
 
-  it('AC3/AC4 — "Visualizar como aluno" shows the pedagogical error instead of a preview for an invalid combination', async () => {
+  it('AC3/AC4 - "Visualizar como aluno" shows the pedagogical error instead of a preview for an invalid combination', async () => {
     mockedPost.mockResolvedValueOnce({
       valid: false,
       errors: [{ parameterKey: 'snapTolerancePercent', message: 'A tolerância de encaixe não pode ficar em 0%.' }],
@@ -213,7 +213,7 @@ describe('TemplateChallengeForm', () => {
     expect(document.getElementById('template-param-field-turnAngleDeg')).toHaveFocus();
   });
 
-  it('7.5 — surfaces a save-time pedagogical error (PRIMM question/feedback message, only checked on save) under its own field with a toast, never just a generic message at the bottom', async () => {
+  it('7.5 - surfaces a save-time pedagogical error (PRIMM question/feedback message, only checked on save) under its own field with a toast, never just a generic message at the bottom', async () => {
     mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
     const onSubmit = vi
       .fn()
@@ -232,7 +232,7 @@ describe('TemplateChallengeForm', () => {
     expect(document.getElementById('predict-question')).toHaveFocus();
   });
 
-  it('AC4 — shows a toast/error instead of silently doing nothing when "Visualizar como aluno" fails at the network level', async () => {
+  it('AC4 - shows a toast/error instead of silently doing nothing when "Visualizar como aluno" fails at the network level', async () => {
     mockedPost.mockRejectedValueOnce(new Error('Falha de rede.'));
     render(<TemplateChallengeForm template={template} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
 

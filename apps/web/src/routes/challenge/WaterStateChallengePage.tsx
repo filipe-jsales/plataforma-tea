@@ -32,7 +32,7 @@ import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import './WaterStateChallengePage.css';
 
 // Mesma técnica de PixiTurtleWorld.tsx (loop com `sleep` redesenhando a
-// cada passo, sem lib de animação) — aqui em vez de segmentos de linha,
+// cada passo, sem lib de animação) - aqui em vez de segmentos de linha,
 // cada passo reamostra o intérprete numa temperatura intermediária entre a
 // última execução e a nova, então o ícone/temperatura "viaja" por SOLID→
 // LIQUID→GAS em vez de trocar instantaneamente.
@@ -50,7 +50,7 @@ function buildTemperatureTicks(fromTemperatureC: number, toTemperatureC: number)
   );
 }
 
-// Mesma tolerância de encaixe generosa que ChallengePage.tsx já aplica —
+// Mesma tolerância de encaixe generosa que ChallengePage.tsx já aplica -
 // `Blockly.config` é global (não por-workspace), então qualquer tela que
 // injeta um workspace precisa deste `applyGenerousSnapTolerance()` no
 // carregamento do módulo (mesmo racional documentado lá).
@@ -98,21 +98,21 @@ function toInitialWorkspaceJson(program: SerializedBlock): object {
   return { blocks: { languageVersion: 0, blocks: [program] } };
 }
 
-// 3.13/3.14/3.16 — página dedicada da trilha "Estados da Matéria" (domínio
+// 3.13/3.14/3.16 - página dedicada da trilha "Estados da Matéria" (domínio
 // `water_state`, ver Topic.domain/AddDomainToTopics): NÃO reaproveita
 // ChallengePage.tsx, que é acoplada ao mundo de tartaruga/Pixi (goal com
 // sides/turnAngleDeg, PixiTurtleWorld fixo, interpretador sem ramificação)
-// — mesmo isolamento por domínio que PixiTurtleWorld/turtleWorld.ts já têm.
+// - mesmo isolamento por domínio que PixiTurtleWorld/turtleWorld.ts já têm.
 // Reaproveita só a infraestrutura genérica: blocklyToolbox.ts (registro de
 // blocos, travamento de campo em Modify), editableFields.ts (diff de
-// valores), feedbackMessages.ts, lib/logEvent.ts — nada específico de
+// valores), feedbackMessages.ts, lib/logEvent.ts - nada específico de
 // tartaruga entra aqui.
 //
 // Sem fase `create`/autosave nesta trilha ainda (2.3 fica pra depois): a
-// estrutura do programa (o `conditional_if`) é SEMPRE pré-montada — só o
+// estrutura do programa (o `conditional_if`) é SEMPRE pré-montada - só o
 // valor do limiar fica editável na fase `modify`, mesmo mecanismo de
 // TIMES/ANGLE em ChallengePage (campo destravado via applyModifyFieldLocking,
-// nunca uma toolbox própria de "blocos numéricos" — decisão documentada na
+// nunca uma toolbox própria de "blocos numéricos" - decisão documentada na
 // migration SeedEstadosDaMateriaTopic).
 export function WaterStateChallengePage() {
   const { topicId, challengeId } = useParams<{ topicId?: string; challengeId?: string }>();
@@ -127,35 +127,35 @@ export function WaterStateChallengePage() {
   const [primmStage, setPrimmStage] = useState<PrimmStage>('predict');
   const [predictedState, setPredictedState] = useState<WaterState | null>(null);
   const [temperatureC, setTemperatureC] = useState(0);
-  // Estado exibido pela transição sensorial (3.16) — representa "o estado
+  // Estado exibido pela transição sensorial (3.16) - representa "o estado
   // conhecido da água agora", só muda quando o aluno de fato Executa (nunca
   // reage ao slider em tempo real, que é só uma hipótese sendo ajustada).
   const [displayedState, setDisplayedState] = useState<WaterState>('LIQUID');
-  // Temperatura que acompanha `displayedState` durante a animação (3.16) —
+  // Temperatura que acompanha `displayedState` durante a animação (3.16) -
   // desacoplada de `temperatureC` (o valor do slider, que é só a hipótese
   // sendo ajustada e nunca deve "andar sozinho").
   const [displayedTemperatureC, setDisplayedTemperatureC] = useState(0);
 
   const workspaceRef = useRef<WorkspaceSvg | null>(null);
-  // RD-E — tempo na fase (engajamento-proxy, regra não-negociável 7: só o
+  // RD-E - tempo na fase (engajamento-proxy, regra não-negociável 7: só o
   // número bruto, nunca inferência clínica), medido do carregamento até
   // "Avançar".
   const mountedAtRef = useRef(Date.now());
-  // 3.13 (RD-I) — instante em que o aluno confirmou a predição, pra medir
+  // 3.13 (RD-I) - instante em que o aluno confirmou a predição, pra medir
   // quanto tempo levou até "Executar" (engajamento-proxy com a hipótese,
   // não corretude). `null` fora de uma rodada com Predict pendente (ex.:
   // desafio `create`, que não tem `predictQuestion`).
   const predictedAtRef = useRef<number | null>(null);
-  // Temperatura de onde a PRÓXIMA animação deve partir — a da última
+  // Temperatura de onde a PRÓXIMA animação deve partir - a da última
   // execução (ou a inicial do desafio, antes da primeira). Guardada em ref
   // (não state) porque só o loop de animação lê/escreve, nunca o render.
   const lastRunTemperatureRef = useRef(0);
-  // Token de cancelamento — mesmo padrão de `cancelled`/`runToken` em
+  // Token de cancelamento - mesmo padrão de `cancelled`/`runToken` em
   // PixiTurtleWorld/turtleExecutionStore: incrementar invalida qualquer
   // loop em voo (nova execução ou troca de desafio).
   const animationTokenRef = useRef(0);
   const motionEnabled = useSensoryProfileStore((s) => s.motionEnabled);
-  // 3.16 AC2 — padrão sensorial sem animação automática (mesmo racional do
+  // 3.16 AC2 - padrão sensorial sem animação automática (mesmo racional do
   // botão "Próximo passo" de PixiTurtleWorld/ChallengePage): em vez de só
   // pular pro resultado final, o aluno avança um tique por clique. Fila de
   // temperaturas restantes vive em ref (não precisa re-render por si só);
@@ -188,7 +188,7 @@ export function WaterStateChallengePage() {
         registerBlockDefinitions(detail.toolbox.categories);
         setTemperatureC(detail.goal.initialTemperatureC);
         // Estado inicial derivado do próprio programa (nunca hardcoded a um
-        // valor de domínio) — 'LIQUID' é só o fallback se o programa não
+        // valor de domínio) - 'LIQUID' é só o fallback se o programa não
         // decidir nada (defesa em profundidade, não deveria acontecer com o
         // currículo seedado).
         setDisplayedState(
@@ -202,11 +202,11 @@ export function WaterStateChallengePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicId, challengeId]);
 
-  // 3.16 — anima o ícone/temperatura passando pelos estados intermediários
+  // 3.16 - anima o ícone/temperatura passando pelos estados intermediários
   // entre a última execução e a nova (ex.: gelo a 0°C → água a 20°C mostra
   // o gelo derretendo no meio do caminho), mesma técnica de passo-fixo do
   // PixiTurtleWorld (loop com `sleep`, sem lib de animação). Reamostra o
-  // MESMO intérprete puro (`interpretWaterProgram`) a cada passo — nunca
+  // MESMO intérprete puro (`interpretWaterProgram`) a cada passo - nunca
   // precisa conhecer o limiar do programa, só variar a temperatura.
   async function animateStateTransition(
     serialized: SerializedBlock | null,
@@ -224,7 +224,7 @@ export function WaterStateChallengePage() {
     }
   }
 
-  // 3.16 AC2 — contraparte do "Próximo passo" quando o perfil sensorial tem
+  // 3.16 AC2 - contraparte do "Próximo passo" quando o perfil sensorial tem
   // movimento reduzido: cada clique consome um tique da fila e redesenha,
   // igual a `advanceStep()` do turtleExecutionStore, só que sem store
   // dedicado (a fila cabe inteira num ref porque só esta tela a usa).
@@ -244,17 +244,17 @@ export function WaterStateChallengePage() {
 
   useEffect(() => {
     if (!challenge) return;
-    // E1 — mesmo marcador "Novo" do resto da plataforma (ver ChallengePage);
+    // E1 - mesmo marcador "Novo" do resto da plataforma (ver ChallengePage);
     // endpoint idempotente, falha de rede nunca trava a tela.
     apiClient.post(`/students/me/classroom-challenges/${challenge.id}/viewed`).catch(() => {});
   }, [challenge]);
 
   const isModify = challenge?.toolbox.stage === 'modify';
-  // 3.12 (AC3) — só a fase `create` oferece a paleta completa de blocos
+  // 3.12 (AC3) - só a fase `create` oferece a paleta completa de blocos
   // condicionais pra arrastar; `use`/`modify` nunca mostram toolbox (mesmo
   // racional de ChallengePage.tsx#isCreate: `use` é travado, `modify` só
   // edita o valor-limiar do programa já montado via applyModifyFieldLocking
-  // — nenhuma das duas precisa de paleta de blocos pra isso).
+  // - nenhuma das duas precisa de paleta de blocos pra isso).
   const isCreate = challenge?.toolbox.stage === 'create';
 
   const toolboxConfiguration = useMemo(
@@ -272,7 +272,7 @@ export function WaterStateChallengePage() {
     [challenge],
   );
 
-  // 3.14 (RD-I, evento `thresholdChanged`) — casado contra `editableFields`
+  // 3.14 (RD-I, evento `thresholdChanged`) - casado contra `editableFields`
   // (nunca hardcoded "THRESHOLD"), mesmo racional domínio-agnóstico de
   // applyModifyFieldLocking: um `modify` futuro noutro tópico com outro
   // nome de campo funciona aqui sem mudança.
@@ -298,7 +298,7 @@ export function WaterStateChallengePage() {
   }
 
   // Motor PRIMM "Predict": libera o Executar pra esta rodada. A previsão em
-  // si não loga sozinha (mesmo racional de ChallengePage.handlePredict — o
+  // si não loga sozinha (mesmo racional de ChallengePage.handlePredict - o
   // valor entra no `water_state_prediction` de handleRun, junto do
   // resultado real); só marca o instante, pra medir a duração até Executar
   // (RD-I `predict_to_run_duration`, 3.13).
@@ -308,7 +308,7 @@ export function WaterStateChallengePage() {
     predictedAtRef.current = Date.now();
   }
 
-  // 3.13 (RD-I) — só quando o aluno TERMINA de mexer no slider (ver
+  // 3.13 (RD-I) - só quando o aluno TERMINA de mexer no slider (ver
   // Slider.onValueCommit), nunca a cada pixel do arrasto.
   function handleTemperatureCommit(value: number) {
     if (!challenge || !user) return;
@@ -341,7 +341,7 @@ export function WaterStateChallengePage() {
     lastRunTemperatureRef.current = temperatureC;
     animationTokenRef.current += 1;
     if (startTemperatureC === temperatureC) {
-      // Nada pra percorrer — mesma temperatura de novo.
+      // Nada pra percorrer - mesma temperatura de novo.
       pendingStepsRef.current = null;
       setStepStatus('idle');
       setDisplayedTemperatureC(temperatureC);
@@ -351,7 +351,7 @@ export function WaterStateChallengePage() {
       setStepStatus('idle');
       void animateStateTransition(serialized, startTemperatureC, temperatureC);
     } else {
-      // 3.16 AC2 — movimento reduzido: nunca pula direto pro resultado
+      // 3.16 AC2 - movimento reduzido: nunca pula direto pro resultado
       // final. Fica no ponto de partida e espera o aluno avançar tique a
       // tique pelo botão "Próximo passo", pra ele ver a condicional
       // decidindo no meio do caminho (ex.: gelo derretendo aos 0°C) mesmo
@@ -364,8 +364,8 @@ export function WaterStateChallengePage() {
     }
     setAttempts((count) => count + 1);
 
-    // 3.13 (RD-I) — quanto tempo o aluno levou entre confirmar a predição e
-    // clicar Executar (engajamento com a hipótese, não corretude — essa
+    // 3.13 (RD-I) - quanto tempo o aluno levou entre confirmar a predição e
+    // clicar Executar (engajamento com a hipótese, não corretude - essa
     // fica no RD-C abaixo). Só existe quando havia uma predição pendente
     // pra esta rodada (`predictedAtRef` fica `null` em desafios sem
     // `predictQuestion`, ex.: `create`).
@@ -386,13 +386,13 @@ export function WaterStateChallengePage() {
 
     const matched = actualState !== null && predictedState !== null && actualState === predictedState;
 
-    // 3.13/3.14 (RD-P) — snapshot do programa por execução, mesmo racional
+    // 3.13/3.14 (RD-P) - snapshot do programa por execução, mesmo racional
     // de `program_executed` em ChallengePage. `prediction_given`/
     // `result_matched_prediction` espelham o mesmo formato opcional que
     // ChallengePage já usa (só quando havia predição pra ESTA rodada, nunca
-    // na fase `modify` — lá o comparativo já sai em detalhe no
-    // `challenge_modify_attempt` abaixo — e nunca em `create`, que não pede
-    // predição) — o que faz `MetricsService`/`findExecutionsWithPrediction`
+    // na fase `modify` - lá o comparativo já sai em detalhe no
+    // `challenge_modify_attempt` abaixo - e nunca em `create`, que não pede
+    // predição) - o que faz `MetricsService`/`findExecutionsWithPrediction`
     // (genérico por formato de payload, não por domínio) enxergar a fase
     // Use da água do mesmo jeito que já enxerga a Geometria.
     logEvent({
@@ -412,7 +412,7 @@ export function WaterStateChallengePage() {
       },
     });
 
-    // 3.13 (RD-C) — predição declarada vs. resultado real. Só existe
+    // 3.13 (RD-C) - predição declarada vs. resultado real. Só existe
     // predição em Use/Modify (`challenge.predictQuestion`); `create` nunca
     // pede uma, então nunca loga este evento (nada a comparar).
     if (challenge.predictQuestion) {
@@ -434,7 +434,7 @@ export function WaterStateChallengePage() {
     if (isModify) {
       const currentValues = extractEditableFieldValues(serialized, challenge.editableFields);
       const changedValues = diffChangedValues(editableInitialValues, currentValues);
-      // 3.14 — mesmo evento `challenge_modify_attempt` que a Geometria já
+      // 3.14 - mesmo evento `challenge_modify_attempt` que a Geometria já
       // usa (ChallengePage.handleRun), reaproveitado sem mudança de forma.
       logEvent({
         studentPseudoId: user.pseudonymId,
@@ -451,19 +451,19 @@ export function WaterStateChallengePage() {
       });
     }
 
-    // 3.15/3.17 — desafio 2.3 (Create) não tem predição pra comparar (não
+    // 3.15/3.17 - desafio 2.3 (Create) não tem predição pra comparar (não
     // existe "resposta certa" fixa; o aluno monta a estrutura do zero).
     // Duas camadas de corretude coexistem aqui:
     //  1) Cobertura de estados (`water_states_coverage`, client-side, ver
-    //     `evaluateWaterStatesCoverage`) — "o programa produz os 3 estados
+    //     `evaluateWaterStatesCoverage`) - "o programa produz os 3 estados
     //     considerando toda a faixa de temperatura do slider?". Sempre
     //     calculado, é o que decide o feedback exibido na tela (nunca
     //     depende do professor ter configurado um cenário).
     //  2) Validação backend contra o "modelo esperado" (3.17,
-    //     `submit-program` abaixo) — só roda quando o professor configurou
+    //     `submit-program` abaixo) - só roda quando o professor configurou
     //     um `expectedModel` pra este desafio (hoje, curado via migration).
     //     Autoridade real de corretude pro relatório do professor (nunca
-    //     confiada ao frontend); resultado NUNCA volta pra esta tela — só
+    //     confiada ao frontend); resultado NUNCA volta pra esta tela - só
     //     `{ validated: boolean }`, sem nota/erro nenhuma pro aluno.
     if (isCreate) {
       apiClient
@@ -491,7 +491,7 @@ export function WaterStateChallengePage() {
       });
       if (allStatesCovered) {
         // Mesmo `type`/categoria que ChallengePage usa pro Create de
-        // Geometria — é o que StudentHome/HomeService já contam como
+        // Geometria - é o que StudentHome/HomeService já contam como
         // "desafios concluídos" desde 2.1, domínio-agnóstico por
         // `challengeId`.
         logEvent({
@@ -503,7 +503,7 @@ export function WaterStateChallengePage() {
       }
     }
 
-    // 3.13 (AC4) — linguagem sempre descritiva, nunca "errado" (regra
+    // 3.13 (AC4) - linguagem sempre descritiva, nunca "errado" (regra
     // não-negociável 4): compara o que o aluno imaginou com o que
     // aconteceu, sem avaliar a tentativa como certa/errada.
     const predictedLabel = predictedState ? STATE_LABEL[predictedState] : null;
@@ -514,7 +514,7 @@ export function WaterStateChallengePage() {
             kind: allStatesCovered ? 'success' : 'retry',
             message: allStatesCovered
               ? resolveSuccessMessage(challenge.feedbackMessages)
-              : `Seu programa ainda não mostra a água em todos os estados possíveis — faltou: ${ALL_WATER_STATES.filter(
+              : `Seu programa ainda não mostra a água em todos os estados possíveis - faltou: ${ALL_WATER_STATES.filter(
                   (state) => !(coveredStates ?? []).includes(state),
                 )
                   .map((state) => STATE_LABEL[state])
@@ -553,11 +553,11 @@ export function WaterStateChallengePage() {
     if (!challenge || !user || attempts < 1) return;
     setProceeded(true);
 
-    // 3.13/3.15 (RD-P + RD-C) — mesmo par de eventos `challenge_use_completed`
+    // 3.13/3.15 (RD-P + RD-C) - mesmo par de eventos `challenge_use_completed`
     // que ChallengePage já loga ao sair da fase Use (`challenge.locked`
     // aqui equivale ao `stage === 'use'` de lá). Faltava: sem isso,
     // `MetricsService`/`findUseCompletions` (genérico por TYPE de evento,
-    // não por domínio) nunca via a fase Use da água como "concluída" — a
+    // não por domínio) nunca via a fase Use da água como "concluída" - a
     // trilha de água ficava fora de qualquer relatório/exportação que
     // dependesse desse evento. Nunca dispara em `modify` (já tem
     // `challenge_modify_attempt` por rodada) nem em `create` (RD-C de lá é
@@ -669,7 +669,7 @@ export function WaterStateChallengePage() {
 
           {/* Motor PRIMM "Predict": a previsão é sempre a primeira ação
               disponível antes de Executar, nunca uma etapa que dá pra pular
-              — mesmo padrão de ChallengePage. */}
+              - mesmo padrão de ChallengePage. */}
           {challenge.predictQuestion && primmStage === 'predict' ? (
             <div className="water-challenge-page__predict">
               <p>{challenge.predictQuestion}</p>
@@ -703,7 +703,7 @@ export function WaterStateChallengePage() {
             </button>
           )}
 
-          {/* 3.16 AC2 — contraparte do "Próximo passo" de ChallengePage: só
+          {/* 3.16 AC2 - contraparte do "Próximo passo" de ChallengePage: só
               aparece com movimento reduzido (perfil sensorial padrão) e some
               assim que a fila de temperaturas intermediárias termina. */}
           {!motionEnabled && stepStatus === 'stepping' && (

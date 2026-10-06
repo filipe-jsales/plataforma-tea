@@ -1,6 +1,6 @@
-// AC2 — miniatura inline do efeito do parâmetro "número de lados": SVG puro
+// AC2 - miniatura inline do efeito do parâmetro "número de lados": SVG puro
 // (mesmo padrão zero-dependência de components/charts/), sem Blockly/Pixi
-// envolvido — é só geometria simples, atualiza em tempo real conforme o
+// envolvido - é só geometria simples, atualiza em tempo real conforme o
 // professor muda o valor no campo (nunca um par estático "4 vs 6", a
 // prévia É o valor atual, o que demonstra o efeito de forma mais direta).
 interface PolygonPreviewIconProps {

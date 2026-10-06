@@ -18,10 +18,10 @@ const STRIP_WIDTH = 380;
 const STRIP_HEIGHT = 140;
 const STRIP_GAP = 4;
 
-// Geometria deliberadamente IGUAL pros 3 temas (barra/pizza/jardim) — só
+// Geometria deliberadamente IGUAL pros 3 temas (barra/pizza/jardim) - só
 // cor + ícone mudam. Ver docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md
 // ("Riscos e trade-offs"): o próprio design original alerta que um corte
-// "quase igual" mal desenhado pode confundir mais que ensinar — uma faixa
+// "quase igual" mal desenhado pode confundir mais que ensinar - uma faixa
 // de retângulos iguais é a forma mais inequívoca de mostrar "partes
 // iguais", então este MVP usa a mesma geometria pros 3 temas em vez de
 // arriscar uma forma (fatia de pizza, grade de jardim) que fique
@@ -57,7 +57,7 @@ export function createFractionsFactoryScene(
         stripsContainer.clear();
 
         if (!executed || !totalParts) {
-          // Inteiro intacto, ainda sem cortes — só o contorno.
+          // Inteiro intacto, ainda sem cortes - só o contorno.
           stripsContainer
             .roundRect(
               origin.x - STRIP_WIDTH / 2,
@@ -82,7 +82,7 @@ export function createFractionsFactoryScene(
             .fill({ color: colour, alpha: delivered ? 1 : 0.2 })
             .stroke({ width: 2, color: colour });
 
-          // MJ5 — rotulagem redundante: peça entregue nunca é comunicada só
+          // MJ5 - rotulagem redundante: peça entregue nunca é comunicada só
           // por cor/opacidade, sempre com um ícone de check também.
           if (delivered) {
             const check = new Text({
@@ -95,10 +95,10 @@ export function createFractionsFactoryScene(
           }
         }
 
-        label.text = `${icon} ${totalParts} pedaços iguais — ${deliveredParts ?? 0} entregue(s)`;
+        label.text = `${icon} ${totalParts} pedaços iguais - ${deliveredParts ?? 0} entregue(s)`;
       }
 
-      // MJ2 — anima só se o perfil sensorial permitir (motionEnabled); caso
+      // MJ2 - anima só se o perfil sensorial permitir (motionEnabled); caso
       // contrário desenha o estado final direto, sem transição.
       let flashTicker: (() => void) | null = null;
       function drawWithOptionalFlash() {

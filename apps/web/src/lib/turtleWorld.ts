@@ -6,7 +6,7 @@ export interface Point {
 }
 
 export interface TurtleRunResult {
-  // Um ponto por posição visitada (incluindo o início) — PixiTurtleWorld
+  // Um ponto por posição visitada (incluindo o início) - PixiTurtleWorld
   // desenha um segmento de reta entre cada par consecutivo.
   points: Point[];
   // 0-359, sentido horário, 0 = "para cima" (heading inicial do personagem).
@@ -23,7 +23,7 @@ const DEFAULT_TURN_DEG = 90;
 
 // Matemática pura de tartaruga (LOGO-like): dado o programa já interpretado
 // (blockProgram.ts), calcula o caminho percorrido. Sem qualquer referência a
-// canvas/DOM — PixiTurtleWorld só desenha o resultado, nunca recalcula.
+// canvas/DOM - PixiTurtleWorld só desenha o resultado, nunca recalcula.
 export function runTurtleProgram(
   actions: TurtleAction[],
   options: TurtleRunOptions = {},
@@ -45,7 +45,7 @@ export function runTurtleProgram(
     } else {
       // Ângulo por ação (campo ANGLE do bloco "turn", fase Modify 3.4) tem
       // prioridade; `turnDeg` (opção global) é só o fallback pra blocos sem
-      // esse campo — mantém 100% compatível com todo caminho que nunca
+      // esse campo - mantém 100% compatível com todo caminho que nunca
       // passou `angle` (fase Use, Ajuda, e os testes existentes).
       const stepAngle = action.angle ?? turnDeg;
       const delta = action.direction === 'RIGHT' ? stepAngle : -stepAngle;
@@ -70,16 +70,16 @@ export interface GoalEvaluation {
 // (mesmo raciocínio de tolerância generosa da regra 3 do editor de blocos,
 // aplicado ao resultado visual em vez do encaixe de blocos). Default usado
 // pelo currículo semeado (sem `goal.closureTolerancePx`); um desafio criado
-// via template (7.4, AC3) pode sobrescrever isso por-desafio — ver
+// via template (7.4, AC3) pode sobrescrever isso por-desafio - ver
 // `toleranceOverridePx` abaixo e `SquareGoalConfig.closureTolerancePx` no
 // backend (challenge-config.interface.ts).
 const CLOSE_TOLERANCE_PX = 5;
 
 // Fechou de verdade: voltou perto do ponto de partida E terminou de frente
-// pro mesmo lado que começou — as duas condições juntas, não só a posição
+// pro mesmo lado que começou - as duas condições juntas, não só a posição
 // (um caminho pode "voltar" ao início de lado, ver teste dedicado). Base de
 // `evaluateSquareGoal` (fase Create, meta fixa) e `closedPolygonSides`
-// (fase Modify, exploração sem meta fixa) — a mesma checagem de geometria,
+// (fase Modify, exploração sem meta fixa) - a mesma checagem de geometria,
 // duas perguntas diferentes em cima dela.
 function isPathClosed(result: TurtleRunResult, tolerancePx: number): boolean {
   const start = result.points[0];
@@ -90,10 +90,10 @@ function isPathClosed(result: TurtleRunResult, tolerancePx: number): boolean {
 }
 
 // Feedback nunca-punitivo (regra não-negociável 4): isto só devolve
-// sucesso/não-sucesso, nunca "errado" — a mensagem reversível é
+// sucesso/não-sucesso, nunca "errado" - a mensagem reversível é
 // responsabilidade da tela. Heurística MVP: caminho fechou (voltou perto do
 // início) E o personagem terminou de frente pro mesmo lado que começou, com
-// pelo menos `sides` movimentos — o suficiente pra reconhecer "desenhou uma
+// pelo menos `sides` movimentos - o suficiente pra reconhecer "desenhou uma
 // forma fechada com o número de lados pedido", sem validar geometria exata.
 export function evaluateSquareGoal(
   result: TurtleRunResult,
@@ -108,13 +108,13 @@ export function evaluateSquareGoal(
   return { success: isPathClosed(result, toleranceOverridePx ?? CLOSE_TOLERANCE_PX) };
 }
 
-// Fase Modify (3.4): não há meta fixa nem avaliação certo/errado — o aluno
+// Fase Modify (3.4): não há meta fixa nem avaliação certo/errado - o aluno
 // está explorando o efeito de mudar TIMES/ANGLE. Isto só devolve quantos
 // lados o traçado fechou com (pra comparar com a previsão do aluno, motor
-// PRIMM "Predict" — ver ChallengePage.tsx), `null` quando não fechou (nunca
+// PRIMM "Predict" - ver ChallengePage.tsx), `null` quando não fechou (nunca
 // vira mensagem de erro na tela, só compõe o log RD-P). Um caminho sem
 // nenhum movimento "fecha" trivialmente (início == fim) mas não é um
-// polígono — por isso o mínimo de 3 lados.
+// polígono - por isso o mínimo de 3 lados.
 export function closedPolygonSides(result: TurtleRunResult, toleranceOverridePx?: number): number | null {
   const moveCount = result.points.length - 1;
   if (moveCount < 3 || !isPathClosed(result, toleranceOverridePx ?? CLOSE_TOLERANCE_PX)) {
@@ -124,7 +124,7 @@ export function closedPolygonSides(result: TurtleRunResult, toleranceOverridePx?
 }
 
 // Botão "Ajuda" (fase Create, 3.5): mostra a forma-alvo sendo traçada no
-// mundo Pixi, gerada só a partir do `goal` numérico (sides/turnAngleDeg) —
+// mundo Pixi, gerada só a partir do `goal` numérico (sides/turnAngleDeg) -
 // nunca a partir de blocos, então não existe como essa função "vazar" quais
 // instruções resolvem o desafio. É um andaime visual (o aluno já viu essa
 // mesma forma no Desafio 1 em fase Use), nunca a resposta.

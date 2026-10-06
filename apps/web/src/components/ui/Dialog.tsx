@@ -11,12 +11,12 @@ export interface DialogProps {
   trigger?: ReactNode;
 }
 
-// 3.10 — base modal. Nenhuma tela do MVP usa isto ainda (a Ajuda de 3.5 é
-// um painel inline, não modal) — nasce aqui pronta pra quando uma tela
+// 3.10 - base modal. Nenhuma tela do MVP usa isto ainda (a Ajuda de 3.5 é
+// um painel inline, não modal) - nasce aqui pronta pra quando uma tela
 // precisar (ex.: confirmação antes de uma ação difícil de reverter), um dos
 // 4 primitivos que a decisão técnica do card cobre (dialog/tooltip/toggle/
 // tabs). Sem animação de entrada/saída própria (Dialog.css não declara
-// nenhuma) — Radix é headless, não faz isso sozinho.
+// nenhuma) - Radix é headless, não faz isso sozinho.
 export function Dialog({ open, onOpenChange, title, description, children, trigger }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>

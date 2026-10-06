@@ -1,7 +1,7 @@
 import type { FractionsFactoryCard } from '../../lib/fractionsFactory';
 
-// Vocabulário fixo dos 5 cartões (RQ4 — paleta pequena e nunca ampliada).
-// Ícone + texto sempre juntos (MJ5) — nunca um cartão só com ícone.
+// Vocabulário fixo dos 5 cartões (RQ4 - paleta pequena e nunca ampliada).
+// Ícone + texto sempre juntos (MJ5) - nunca um cartão só com ícone.
 export const CARD_ICON: Record<FractionsFactoryCard['type'], string> = {
   choose_whole: '🧺',
   cut_equal_parts: '✂️',

@@ -17,10 +17,10 @@ export interface MiniGameBriefingProps {
   reopened?: boolean;
 }
 
-// MJ3 — roteiro visual estruturado (estilo TEACCH), reutilizável por
+// MJ3 - roteiro visual estruturado (estilo TEACCH), reutilizável por
 // QUALQUER mini jogo (regra não-negociável 2: previsibilidade antes de
 // começar). Objetivo em linguagem simples + número de etapas + início/fim
-// marcados visualmente + ícone+texto em cada etapa (MJ5) — nunca só um dos
+// marcados visualmente + ícone+texto em cada etapa (MJ5) - nunca só um dos
 // dois. O aluno pode reabrir isto a qualquer momento (ver
 // FractionsGamePage/MiniGamePage) sem perder progresso: este componente é
 // só uma camada de overlay, a store/cena continuam montadas por baixo.

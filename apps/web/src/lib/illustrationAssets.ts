@@ -9,7 +9,7 @@ import loginTree from '../assets/illustrations/login-tree.svg';
 
 // Mapeamento único assetRef (string vinda do banco, ver illustrations.entity.ts)
 // → arquivo estático do frontend. Ver NOTICE.md na pasta de assets para
-// origem/licença. Nunca importar os SVGs diretamente fora daqui — assim
+// origem/licença. Nunca importar os SVGs diretamente fora daqui - assim
 // trocar o arquivo de um assetRef é uma mudança em um lugar só.
 const ILLUSTRATION_ASSETS: Record<string, string> = {
   'avatar-cat': avatarCat,
@@ -23,7 +23,7 @@ const ILLUSTRATION_ASSETS: Record<string, string> = {
 };
 
 // Fallback visível (não crash silencioso) se o banco tiver um assetRef sem
-// arquivo correspondente ainda — um SVG cinza com "?" é preferível a uma
+// arquivo correspondente ainda - um SVG cinza com "?" é preferível a uma
 // tela quebrada.
 const FALLBACK_ASSET =
   'data:image/svg+xml;utf8,' +

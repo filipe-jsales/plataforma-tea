@@ -20,7 +20,7 @@ import {
 } from '../../components/ui';
 import './AdminSchools.css';
 
-// Radix Select reserva string vazia pro estado "sem seleção"/placeholder —
+// Radix Select reserva string vazia pro estado "sem seleção"/placeholder -
 // um Select.Item com value="" quebra em runtime. Sentinel não-vazio aqui,
 // convertido pra null (desvincular)/omitido (não atribuir) só na hora de
 // montar o corpo da requisição.
@@ -33,9 +33,9 @@ interface ClassroomForm {
 
 const EMPTY_CLASSROOM_FORM: ClassroomForm = { name: '', teacherId: NO_TEACHER_VALUE };
 
-// Gestão de turmas de uma escola (admin) — turma como container, sempre
+// Gestão de turmas de uma escola (admin) - turma como container, sempre
 // dentro de exatamente uma escola (schoolId vem da rota). Reaproveita os
-// mesmos components/ui de AdminSchools.tsx/AdminUsers.tsx — mesma
+// mesmos components/ui de AdminSchools.tsx/AdminUsers.tsx - mesma
 // consistência visual pedida pela AC.
 export function AdminSchoolClassrooms() {
   const { schoolId } = useParams<{ schoolId: string }>();
@@ -150,7 +150,7 @@ export function AdminSchoolClassrooms() {
       <LinkButton to="/admin/schools" variant="ghost" icon="←">
         Voltar para escolas
       </LinkButton>
-      <h1>Turmas{school ? ` — ${school.name}` : ''}</h1>
+      <h1>Turmas{school ? ` - ${school.name}` : ''}</h1>
       <p className="admin-schools__subtitle">
         Desativar uma turma bloqueia o login de aluno por ela imediatamente, mas nunca apaga matrículas ou
         alocações de desafio já registradas.
@@ -158,7 +158,7 @@ export function AdminSchoolClassrooms() {
 
       {school && !school.active && (
         <InlineFeedback kind="retry">
-          Esta escola está desativada — reative-a antes de criar turmas novas.
+          Esta escola está desativada - reative-a antes de criar turmas novas.
         </InlineFeedback>
       )}
 
@@ -192,7 +192,7 @@ export function AdminSchoolClassrooms() {
                 <TableRow key={classroom.id}>
                   <TableCell>{classroom.name}</TableCell>
                   <TableCell>{classroom.joinCode}</TableCell>
-                  <TableCell>{classroom.teacherName ?? '—'}</TableCell>
+                  <TableCell>{classroom.teacherName ?? '-'}</TableCell>
                   <TableCell>
                     <Badge variant={classroom.active ? 'success' : 'neutral'}>
                       {classroom.active ? 'Ativa' : 'Desativada'}

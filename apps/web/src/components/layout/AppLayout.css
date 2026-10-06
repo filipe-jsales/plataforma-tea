@@ -10,3 +10,10 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Cada tela traz o próprio max-width + margin auto; num flex column isso a
+   faz encolher ao conteúdo e colar à esquerda. width: 100% ocupa o pai e
+   deixa o max-width/margin auto centralizar de verdade. */
+.app-layout__content > * {
+  width: 100%;
+}

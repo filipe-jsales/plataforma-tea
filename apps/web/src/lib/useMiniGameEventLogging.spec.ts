@@ -96,7 +96,7 @@ describe('useMiniGameEventLogging (MJ7)', () => {
     );
   });
 
-  it('logs minigame_abandoned (RD-E) on unmount while the scene is still active — never when already completed', () => {
+  it('logs minigame_abandoned (RD-E) on unmount while the scene is still active - never when already completed', () => {
     const store = createMiniGameStore();
     store.getState().startScene('scene-1', 'concept-1');
     const { unmount } = renderHook(() => useMiniGameEventLogging(store, 'pseudo-1'));
@@ -123,7 +123,7 @@ describe('useMiniGameEventLogging (MJ7)', () => {
     );
   });
 
-  it('never includes clinical-inference language in the abandoned payload — only numeric time (regra não-negociável 7)', () => {
+  it('never includes clinical-inference language in the abandoned payload - only numeric time (regra não-negociável 7)', () => {
     const store = createMiniGameStore();
     store.getState().startScene('scene-1', 'concept-1');
     const { unmount } = renderHook(() => useMiniGameEventLogging(store, 'pseudo-1'));

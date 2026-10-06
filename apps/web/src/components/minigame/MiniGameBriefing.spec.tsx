@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MiniGameBriefing } from './MiniGameBriefing';
 
 describe('MiniGameBriefing', () => {
-  it('renders icon and text for every step (MJ5 — never icon-only)', () => {
+  it('renders icon and text for every step (MJ5 - never icon-only)', () => {
     render(
       <MiniGameBriefing
         title="Fábrica de Pedaços Iguais"

@@ -56,7 +56,7 @@ describe('SubjectSelector', () => {
     expect(await screen.findByText('Ângulos e formas')).toBeInTheDocument();
   });
 
-  it('4.3 — shows no "Desafios da sua turma" section when nothing was allocated (AC3), never an error', async () => {
+  it('4.3 - shows no "Desafios da sua turma" section when nothing was allocated (AC3), never an error', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
 
@@ -66,7 +66,7 @@ describe('SubjectSelector', () => {
     expect(screen.queryByText('Desafios da sua turma')).not.toBeInTheDocument();
   });
 
-  it('4.3 (AC2/AC4) — lists a teacher-allocated challenge as a direct link into it', async () => {
+  it('4.3 (AC2/AC4) - lists a teacher-allocated challenge as a direct link into it', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([
       { id: 'challenge-1', title: 'Hexágonos', prompt: 'Monte um desenho com 6 lados.', isNew: false },
@@ -79,7 +79,7 @@ describe('SubjectSelector', () => {
     expect(link).toHaveAttribute('href', '/challenge/challenge-1');
   });
 
-  it('E1 (AC1) — shows a discreet "Novo" marker for a challenge the student has never opened', async () => {
+  it('E1 (AC1) - shows a discreet "Novo" marker for a challenge the student has never opened', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([
       { id: 'challenge-1', title: 'Hexágonos', prompt: 'p', isNew: true },
@@ -91,7 +91,7 @@ describe('SubjectSelector', () => {
     expect(screen.getByText('Novo')).toBeInTheDocument();
   });
 
-  it('E1 (AC2) — a challenge already opened by the student shows no marker', async () => {
+  it('E1 (AC2) - a challenge already opened by the student shows no marker', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([
       { id: 'challenge-1', title: 'Hexágonos', prompt: 'p', isNew: false },
@@ -103,7 +103,7 @@ describe('SubjectSelector', () => {
     expect(screen.queryByText('Novo')).not.toBeInTheDocument();
   });
 
-  it('E1 (AC3) — multiple new challenges are each marked individually, never an aggregate count', async () => {
+  it('E1 (AC3) - multiple new challenges are each marked individually, never an aggregate count', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([
       { id: 'challenge-1', title: 'Hexágonos', prompt: 'p', isNew: true },
@@ -140,7 +140,7 @@ describe('SubjectSelector', () => {
     expect(navigateMock).toHaveBeenCalledWith('/subjects/t1');
   });
 
-  it('3.13/3.16 — navigates to the dedicated water-state page for a topic with domain "water_state"', async () => {
+  it('3.13/3.16 - navigates to the dedicated water-state page for a topic with domain "water_state"', async () => {
     mockedGet.mockResolvedValueOnce([
       { topicId: 't2', subjectId: 's2', name: 'Estados da matéria', domain: 'water_state' },
     ]);
@@ -154,7 +154,7 @@ describe('SubjectSelector', () => {
   });
 });
 
-describe('SubjectSelector — categorização Informática Educacional × Educação em Computação (CC1)', () => {
+describe('SubjectSelector - categorização Informática Educacional × Educação em Computação (CC1)', () => {
   it('shows two friendly category sections, never the raw technical category codes', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
@@ -201,7 +201,7 @@ describe('SubjectSelector — categorização Informática Educacional × Educa�
     expect(gameSection).toHaveTextContent('Informática na Computação');
   });
 
-  it('MJ10 — "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Educação em Computação", not with the school subjects', async () => {
+  it('MJ10 - "Ferramentas do Mundo do Trabalho" (mini jogo) appears under "Educação em Computação", not with the school subjects', async () => {
     mockedGet.mockResolvedValueOnce([]);
     mockedGet.mockResolvedValueOnce([]);
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createWorkToolsRoundStore } from './workToolsRoundStore';
 
 describe('createWorkToolsRoundStore', () => {
-  it('is a factory — two instances never share state', () => {
+  it('is a factory - two instances never share state', () => {
     const a = createWorkToolsRoundStore();
     const b = createWorkToolsRoundStore();
 

@@ -39,7 +39,7 @@ describe('interpretWaterProgram', () => {
   });
 
   it('supports a conditional_if nested inside a branch (arbitrary depth, not hardcoded to 1 level)', () => {
-    // SE > 100 ENTÃO gasoso SENÃO (SE > 0 ENTÃO líquido SENÃO sólido) —
+    // SE > 100 ENTÃO gasoso SENÃO (SE > 0 ENTÃO líquido SENÃO sólido) -
     // currículo seedado hoje não usa isso, mas o intérprete generaliza.
     const nested: SerializedBlock = {
       type: 'conditional_if',
@@ -116,7 +116,7 @@ describe('evaluateWaterStatesCoverage', () => {
   });
 
   it('never finds a state whose branch threshold sits outside the sampled range', () => {
-    // SOLID só é alcançável com temperatureC <= 0 — consultar só 10..150
+    // SOLID só é alcançável com temperatureC <= 0 - consultar só 10..150
     // nunca deveria "inventar" cobertura que a amostragem não confirmou.
     expect(evaluateWaterStatesCoverage(nested, 10, 150)).toEqual(['LIQUID', 'GAS']);
   });

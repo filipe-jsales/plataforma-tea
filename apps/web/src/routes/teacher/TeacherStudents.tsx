@@ -25,9 +25,9 @@ interface TeacherClassroomOption {
   joinCode: string;
 }
 
-// 1.5 — Vínculo aluno ↔ turma ↔ professor. Lista os alunos da turma
+// 1.5 - Vínculo aluno ↔ turma ↔ professor. Lista os alunos da turma
 // selecionada e permite transferir um aluno pra outra turma sem perder o
-// histórico (o backend encerra a matrícula anterior e cria uma nova — ver
+// histórico (o backend encerra a matrícula anterior e cria uma nova - ver
 // EnrollmentsService.transfer).
 export function TeacherStudents() {
   const [classrooms, setClassrooms] = useState<TeacherClassroomOption[] | null>(
@@ -43,7 +43,7 @@ export function TeacherStudents() {
   const [transferSaving, setTransferSaving] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  // 1.3 — recuperação de acesso: professor titular da turma gera uma
+  // 1.3 - recuperação de acesso: professor titular da turma gera uma
   // sequência de login NOVA pro aluno que esqueceu a credencial.
   const [resettingStudent, setResettingStudent] =
     useState<ClassroomRosterStudent | null>(null);
@@ -235,7 +235,7 @@ export function TeacherStudents() {
             ? `Transferir ${transferringStudent.displayName}`
             : "Transferir aluno"
         }
-        description="A matrícula atual é encerrada e uma nova é criada na turma de destino — o histórico de progresso do aluno não é perdido."
+        description="A matrícula atual é encerrada e uma nova é criada na turma de destino - o histórico de progresso do aluno não é perdido."
       >
         {transferringStudent && (
           <form
@@ -271,7 +271,7 @@ export function TeacherStudents() {
         onOpenChange={(open) => !open && setResettingStudent(null)}
         title={
           resettingStudent
-            ? `Recuperar acesso — ${resettingStudent.displayName}`
+            ? `Recuperar acesso - ${resettingStudent.displayName}`
             : "Recuperar acesso"
         }
         description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."

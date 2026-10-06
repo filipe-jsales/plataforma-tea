@@ -1,20 +1,20 @@
 /*
-  3.11 — reset global + escala tipográfica única dos 3 módulos (aluno/
+  3.11 - reset global + escala tipográfica única dos 3 módulos (aluno/
   professor/admin). Substitui o CSS que ainda vinha do template padrão do
   Vite (nunca limpo desde o bootstrap do projeto): `#root { width: 1126px;
-  text-align: center; border-inline: ... }` forçava toda tela do produto —
-  aluno incluído — pra uma faixa estreita e centralizada, e `h1 { font-size:
+  text-align: center; border-inline: ... }` forçava toda tela do produto -
+  aluno incluído - pra uma faixa estreita e centralizada, e `h1 { font-size:
   56px; margin: 32px 0 }`/`h2 { line-height: 118% }` sem nenhuma relação com
   o design real do produto é a causa raiz do bug "título/subtítulo
   sobrepostos" relatado nos prints de professor/admin (RQ4 barreira
-  institucional/formação docente, 17,39% — regra não-negociável 9).
+  institucional/formação docente, 17,39% - regra não-negociável 9).
 
   Tamanho/peso/line-height por nível vêm de theme/sensory-theme.css
-  (tokens --font-size-N, --line-height-N, --font-weight-N) — a MESMA escala
+  (tokens --font-size-N, --line-height-N, --font-weight-N) - a MESMA escala
   que components/ui/Heading.tsx e Text.tsx usam (ver Typography.css). Uma
   tela que ainda usa <h1>/<h2>/<p> cru (a maioria de professor/admin hoje)
   e uma que já usa <Heading>/<Text> (aluno, ver 3.10) renderizam com a
-  mesma hierarquia — não existem 2 escalas tipográficas no projeto.
+  mesma hierarquia - não existem 2 escalas tipográficas no projeto.
 */
 
 *,
@@ -38,13 +38,19 @@ body {
   flex-direction: column;
 }
 
+/* Filhos diretos de um flex column encolhem ao conteúdo quando têm
+   margin auto; width: 100% deixa max-width + margin auto centralizar. */
+#root > * {
+  width: 100%;
+}
+
 h1,
 h2,
 h3 {
   margin: 0 0 var(--space-3);
   font-weight: var(--font-weight-heading);
   line-height: var(--line-height-heading);
-  /* Sem font-style/text-transform — itálico/caixa alta nunca são o único
+  /* Sem font-style/text-transform - itálico/caixa alta nunca são o único
      indicador de ênfase (mesma regra de components/ui/Typography.css). */
 }
 

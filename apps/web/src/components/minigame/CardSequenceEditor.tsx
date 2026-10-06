@@ -15,13 +15,13 @@ const COUNT_OPTIONS = Array.from({ length: 7 }, (_, i) => i + 1).map((n) => ({
 export interface CardSequenceEditorProps {
   cards: FractionsFactoryCard[];
   onChange: (cards: FractionsFactoryCard[]) => void;
-  // Nível Use (3.7): sequência já pronta e correta, só observação — nenhum
+  // Nível Use (3.7): sequência já pronta e correta, só observação - nenhum
   // controle de edição/reordenação aparece.
   readOnly?: boolean;
 }
 
-// MJ4 — reordenar por botão (↑/↓), nunca drag-and-drop de precisão fina
-// (RQ4, coordenação motora fina — 21,74% dos estudos). Slots fixos, área de
+// MJ4 - reordenar por botão (↑/↓), nunca drag-and-drop de precisão fina
+// (RQ4, coordenação motora fina - 21,74% dos estudos). Slots fixos, área de
 // toque mínima já garantida por `Button` (56×56, ver components/ui).
 export function CardSequenceEditor({ cards, onChange, readOnly }: CardSequenceEditorProps) {
   function moveUp(index: number) {

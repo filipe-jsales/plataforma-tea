@@ -33,11 +33,11 @@ const EMPTY_GUARDIAN_FORM: GuardianForm = {
 
 type Step = 'student' | 'guardian' | 'credential';
 
-// 1.2/A2 — Criação de conta de aluno feita pela escola/professor (não
+// 1.2/A2 - Criação de conta de aluno feita pela escola/professor (não
 // autoatendimento), em 3 telas desde A2: (1) dados do aluno, (2)
-// responsável legal + consentimento (ECA) — etapa OBRIGATÓRIA, nunca
-// pulável — e só depois (3) a credencial gerada aparece. Sem campo de
-// e-mail/senha/telefone do ALUNO em nenhuma etapa (AC de 1.2) — o contato
+// responsável legal + consentimento (ECA) - etapa OBRIGATÓRIA, nunca
+// pulável - e só depois (3) a credencial gerada aparece. Sem campo de
+// e-mail/senha/telefone do ALUNO em nenhuma etapa (AC de 1.2) - o contato
 // coletado na etapa 2 é do RESPONSÁVEL, nunca do aluno.
 export function TeacherAddStudent() {
   const [step, setStep] = useState<Step>('student');
@@ -105,9 +105,9 @@ export function TeacherAddStudent() {
     }
   }
 
-  // A2 (AC1/AC2) — etapa obrigatória: responsável legal + consentimento
+  // A2 (AC1/AC2) - etapa obrigatória: responsável legal + consentimento
   // explícito, sempre ANTES de qualquer credencial existir. Validação
-  // client-side espelha a do backend (nunca confiar só numa das duas —
+  // client-side espelha a do backend (nunca confiar só numa das duas -
   // mesmo padrão de duplo-check já usado nos templates de desafio).
   async function handleGuardianSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -158,7 +158,7 @@ export function TeacherAddStudent() {
 
         {pending?.duplicateWarning && (
           <InlineFeedback kind="info">
-            Já existe outro aluno com um nome parecido nesta turma. A conta foi criada normalmente — só
+            Já existe outro aluno com um nome parecido nesta turma. A conta foi criada normalmente - só
             confira se não é um cadastro duplicado do mesmo aluno.
           </InlineFeedback>
         )}
@@ -213,7 +213,7 @@ export function TeacherAddStudent() {
         <h1>Responsável legal</h1>
         <p className="teacher-add-student__subtitle">
           Antes de liberar a credencial de acesso de {pending.student.displayName}, registre o consentimento
-          do responsável legal (conforme o ECA). Essa etapa é obrigatória — a credencial só é gerada depois
+          do responsável legal (conforme o ECA). Essa etapa é obrigatória - a credencial só é gerada depois
           dela.
         </p>
 
@@ -287,7 +287,7 @@ export function TeacherAddStudent() {
         )}
         {classrooms !== null && classrooms.length === 0 && (
           <InlineFeedback kind="info">
-            Você ainda não tem nenhuma turma sob sua responsabilidade — peça para um admin te vincular a
+            Você ainda não tem nenhuma turma sob sua responsabilidade - peça para um admin te vincular a
             uma turma antes de cadastrar alunos.
           </InlineFeedback>
         )}

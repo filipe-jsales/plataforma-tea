@@ -5,7 +5,7 @@ import './Tabs.css';
 export interface TabItem {
   value: string;
   label: ReactNode;
-  // Decorativo — nunca substitui `label`.
+  // Decorativo - nunca substitui `label`.
   icon?: ReactNode;
   content: ReactNode;
 }
@@ -17,12 +17,12 @@ export interface TabsProps {
   ariaLabel: string;
 }
 
-// 3.10 — base pra telas com mais de uma visão sobre o mesmo dado (ex.:
+// 3.10 - base pra telas com mais de uma visão sobre o mesmo dado (ex.:
 // TeacherMetrics "Por aluno"/"Turma toda", hoje 2 botões manuais alternando
-// estado — candidato futuro de migração, não feito automaticamente aqui,
+// estado - candidato futuro de migração, não feito automaticamente aqui,
 // ver nota de débito em frontend.md). Radix Tabs cobre teclado (setas
 // esquerda/direita movem entre abas, Home/End vão pra primeira/última) de
-// graça — comportamento que 2 <button>s soltos nunca teriam sem
+// graça - comportamento que 2 <button>s soltos nunca teriam sem
 // reimplementar isso na mão.
 export function Tabs({ items, value, onValueChange, ariaLabel }: TabsProps) {
   return (

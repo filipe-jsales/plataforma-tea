@@ -7,9 +7,9 @@ export interface TextareaFieldProps extends Omit<TextareaHTMLAttributes<HTMLText
   error?: string;
 }
 
-// 7.5 — mesma base de TextField.tsx (rótulo sempre visível, erro em
+// 7.5 - mesma base de TextField.tsx (rótulo sempre visível, erro em
 // linguagem descritiva ao lado do campo, nunca só borda vermelha), mas
-// sobre um `<textarea>` — pra texto que "deve acomodar linguagem
+// sobre um `<textarea>` - pra texto que "deve acomodar linguagem
 // acessível/mais longa" (ex.: perguntas PRIMM de predição/investigação),
 // onde um `<input>` de uma linha só espremeria a pergunta. `rows` tem
 // default aqui (nunca 1, que voltaria a parecer um `<input>`), mas

@@ -46,13 +46,13 @@ const statements = [
     id: 'st-spreadsheet-charts',
     text: 'Uma planilha eletrônica pode gerar gráficos pra entender melhor um cenário.',
     isTrue: true,
-    explanation: 'Isso mesmo — planilhas eletrônicas têm recursos prontos pra transformar números em gráficos.',
+    explanation: 'Isso mesmo - planilhas eletrônicas têm recursos prontos pra transformar números em gráficos.',
   },
   {
     id: 'st-tractor-print',
     text: 'Um trator é a ferramenta certa pra imprimir um documento.',
     isTrue: false,
-    explanation: 'Trator é uma máquina agrícola — não tem relação com imprimir documentos.',
+    explanation: 'Trator é uma máquina agrícola - não tem relação com imprimir documentos.',
   },
 ];
 
@@ -147,7 +147,7 @@ async function dismissBriefing() {
   await userEvent.click(await screen.findByRole('button', { name: 'Começar' }));
 }
 
-describe('WorkToolsGamePage — nível Use', () => {
+describe('WorkToolsGamePage - nível Use', () => {
   it('shows a briefing (MJ3), then a read-only round already solved, and completes via "Conferir"', async () => {
     renderGame('use');
     expect(await screen.findByText('Veja como resolver cada situação')).toBeInTheDocument();
@@ -161,12 +161,12 @@ describe('WorkToolsGamePage — nível Use', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Conferir' }));
 
     expect(await screen.findByRole('link', { name: /Próximo nível/ })).toBeInTheDocument();
-    // Nível Use não é Create — nunca mostra "Novo cenário".
+    // Nível Use não é Create - nunca mostra "Novo cenário".
     expect(screen.queryByRole('button', { name: 'Novo cenário' })).not.toBeInTheDocument();
   });
 });
 
-describe('WorkToolsGamePage — nível Modify', () => {
+describe('WorkToolsGamePage - nível Modify', () => {
   it('gates the true/false section until every pair is correct, and gives non-punitive retry feedback for the wrong preset pair', async () => {
     renderGame('modify');
     await dismissBriefing();
@@ -194,14 +194,14 @@ describe('WorkToolsGamePage — nível Modify', () => {
 
     expect(mindMapRow.textContent).toMatch(/✅/);
 
-    // Afirmações liberadas — a errada ("trator imprime documento" = true)
+    // Afirmações liberadas - a errada ("trator imprime documento" = true)
     // mostra retentativa.
     expect(await screen.findByText(/Um trator é a ferramenta certa/)).toBeInTheDocument();
     expect(
       screen.queryByText('Responda as afirmações depois de ligar todas as situações corretamente.'),
     ).not.toBeInTheDocument();
 
-    // Corrige pra "Falso" — completa a rodada.
+    // Corrige pra "Falso" - completa a rodada.
     const statementGroup = screen
       .getByText(/Um trator é a ferramenta certa/)
       .closest('.work-tools-game-page__statement') as HTMLElement;
@@ -211,7 +211,7 @@ describe('WorkToolsGamePage — nível Modify', () => {
   });
 });
 
-describe('WorkToolsGamePage — nível Create', () => {
+describe('WorkToolsGamePage - nível Create', () => {
   it('starts with no pairs made, links a scenario to a tool by tap-select-then-tap-select (never drag-and-drop)', async () => {
     renderGame('create');
     await dismissBriefing();
@@ -251,7 +251,7 @@ describe('WorkToolsGamePage — nível Create', () => {
   });
 });
 
-describe('WorkToolsGamePage — falha ao carregar os níveis', () => {
+describe('WorkToolsGamePage - falha ao carregar os níveis', () => {
   it('shows a retry-friendly message instead of "Carregando…" forever when the levels request fails', async () => {
     mockedGet.mockReset().mockRejectedValue(new Error('Erro 500'));
 

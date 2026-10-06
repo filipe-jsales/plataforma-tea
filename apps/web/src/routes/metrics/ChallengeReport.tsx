@@ -61,9 +61,9 @@ interface CreateValidationCaseInsight {
   submissions: number;
 }
 
-// 3.17 — corretude vs. "modelo esperado" (cenário configurado pelo
+// 3.17 - corretude vs. "modelo esperado" (cenário configurado pelo
 // professor, ex.: "Dia muito quente"), visível SÓ nesta tela (admin/
-// pesquisador) — nunca na resposta que o aluno recebe do desafio
+// pesquisador) - nunca na resposta que o aluno recebe do desafio
 // (ChallengesController nunca inclui `expectedModel`).
 interface CreateInsights {
   scenarioLabel: string;
@@ -120,12 +120,12 @@ function statsToSeconds(stats: DescriptiveStats): DescriptiveStats {
   };
 }
 
-// 6.5 — relatório de profundidade por desafio, "o que um revisor de artigo
+// 6.5 - relatório de profundidade por desafio, "o que um revisor de artigo
 // esperaria ver": todo número vem com o N sobre o qual foi calculado (AC de
 // 6.5), acompanhado do gráfico recomendado pro tipo de dado (boxplot pra
 // dispersão, histograma pra distribuição de frequência, barra pra
 // contagem categórica, scatter pra correlação entre duas variáveis por
-// aluno). Nunca nome de aluno nesta tela — é sempre agregado/distribuição.
+// aluno). Nunca nome de aluno nesta tela - é sempre agregado/distribuição.
 export function ChallengeReport() {
   const [challenges, setChallenges] = useState<ChallengePickerOption[] | null>(null);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
@@ -154,7 +154,7 @@ export function ChallengeReport() {
       <h1>Relatório de profundidade por desafio</h1>
       <p className="challenge-report__subtitle">
         Estatística descritiva completa de como os alunos interagiram com um desafio
-        específico — dado pronto pra virar tabela/figura de pesquisa.
+        específico - dado pronto pra virar tabela/figura de pesquisa.
       </p>
 
       {challenges === null && <p className="challenge-report__loading">Carregando desafios…</p>}
@@ -172,7 +172,7 @@ export function ChallengeReport() {
             onValueChange={(next) => setSelectedChallengeId(next || null)}
             options={challenges.map((challenge) => ({
               value: challenge.id,
-              label: `${challenge.topicName} — ${challenge.title}${
+              label: `${challenge.topicName} - ${challenge.title}${
                 challenge.stage ? ` (${STAGE_LABEL[challenge.stage]})` : ''
               }`,
             }))}
@@ -298,13 +298,13 @@ function UseSection({ insights, threshold }: { insights: UseInsights; threshold:
   );
 }
 
-// 3.17 — corretude vs. modelo esperado (cenário do professor). Casos com
-// 0 submissões aparecem igual aos demais (nunca somem da lista) — "nenhum
+// 3.17 - corretude vs. modelo esperado (cenário do professor). Casos com
+// 0 submissões aparecem igual aos demais (nunca somem da lista) - "nenhum
 // aluno testou esta temperatura ainda" é, em si, um dado de pesquisa.
 function CreateSection({ insights, threshold }: { insights: CreateInsights; threshold: number }) {
   return (
     <div className="challenge-report__section">
-      <h3>Estágio Create — cenário "{insights.scenarioLabel}"</h3>
+      <h3>Estágio Create - cenário "{insights.scenarioLabel}"</h3>
       <div className="challenge-report__grid">
         <RateCard
           title="Taxa de submissões que acertaram os 3 estados"
@@ -371,18 +371,18 @@ function RateCard({ title, rate, threshold }: { title: string; rate: RateReport;
     <div className="challenge-report__card">
       <h4>{title}</h4>
       <p className="challenge-report__plain-stat">
-        Agregada: {rate.aggregate.ratePercent === null ? '— (N=0)' : `${formatNumber(rate.aggregate.ratePercent)}%`}{' '}
+        Agregada: {rate.aggregate.ratePercent === null ? '- (N=0)' : `${formatNumber(rate.aggregate.ratePercent)}%`}{' '}
         (N={rate.aggregate.n} tentativas)
       </p>
       <SampleSizeNote n={rate.aggregate.n} threshold={threshold} />
       <p className="challenge-report__plain-stat">
         Por aluno: média{' '}
-        {rate.perStudent.meanPercent === null ? '—' : `${formatNumber(rate.perStudent.meanPercent)}%`}, desvio
-        padrão {rate.perStudent.stdDevPercent === null ? '— (N<2)' : `${formatNumber(rate.perStudent.stdDevPercent)}%`}{' '}
+        {rate.perStudent.meanPercent === null ? '-' : `${formatNumber(rate.perStudent.meanPercent)}%`}, desvio
+        padrão {rate.perStudent.stdDevPercent === null ? '- (N<2)' : `${formatNumber(rate.perStudent.stdDevPercent)}%`}{' '}
         (N={rate.perStudent.n} alunos)
       </p>
       <SampleSizeNote n={rate.perStudent.n} threshold={threshold} />
-      <BarChart data={rate.perStudentHistogram} ariaLabel={`${title} — distribuição por aluno`} />
+      <BarChart data={rate.perStudentHistogram} ariaLabel={`${title} - distribuição por aluno`} />
     </div>
   );
 }

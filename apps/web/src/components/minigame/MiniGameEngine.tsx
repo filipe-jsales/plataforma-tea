@@ -7,14 +7,14 @@ import './MiniGameEngine.css';
 
 const ENGINE_SIZE = 480;
 
-// MJ2 — perfil sensorial aplicado por padrão a todo mini jogo (regra
+// MJ2 - perfil sensorial aplicado por padrão a todo mini jogo (regra
 // não-negociável 1): nasce sem som/animação a menos que o aluno tenha
 // ativado explicitamente. `getSensory()` é uma leitura AO VIVO (não um
-// valor congelado no mount) — uma cena de execução longa (ex.: animação de
+// valor congelado no mount) - uma cena de execução longa (ex.: animação de
 // corte) consulta no momento de decidir animar/tocar som, então uma
 // mudança de perfil no meio de uma rodada é respeitada imediatamente.
 // `motionEnabled` combina o toggle da plataforma (Zustand) COM
-// `prefers-reduced-motion` do SO (`lib/prefersReducedMotion.ts`) — o SO só
+// `prefers-reduced-motion` do SO (`lib/prefersReducedMotion.ts`) - o SO só
 // pode DESLIGAR animação, nunca ligar por cima do toggle desligado; mesma
 // política já aplicada a toda animação CSS em theme/sensory-theme.css,
 // replicada aqui porque o canvas Pixi não é afetado por `@media
@@ -30,10 +30,10 @@ export interface MiniGameSceneContext {
   getSensory: () => MiniGameSensoryFlags;
 }
 
-// MJ1 — contrato que toda cena de mini jogo implementa: recebe a
+// MJ1 - contrato que toda cena de mini jogo implementa: recebe a
 // Application Pixi já pronta + o store da rodada atual, monta seu próprio
 // conteúdo no stage, e devolve uma função de limpeza. O motor
-// (MiniGameEngine) nunca conhece o CONTEÚDO de uma cena — só chama
+// (MiniGameEngine) nunca conhece o CONTEÚDO de uma cena - só chama
 // `mount`/limpa o retorno, mesmo desacoplamento de PixiTurtleWorld em
 // relação ao programa de blocos que desenha.
 export interface MiniGameSceneDefinition {
@@ -47,7 +47,7 @@ interface MiniGameEngineProps {
   scene: MiniGameSceneDefinition;
 }
 
-// MJ3 — extraída como função pura (testada em MiniGameEngine.spec.ts) pelo
+// MJ3 - extraída como função pura (testada em MiniGameEngine.spec.ts) pelo
 // mesmo motivo de statistics.ts no backend: a Application Pixi real não
 // inicializa em jsdom (sem canvas/WebGL), então a LÓGICA de decisão fica
 // isolada do componente pra continuar testável sem precisar de um canvas de
@@ -56,19 +56,19 @@ export function shouldRestartScene(activeSceneId: string | null, nextSceneId: st
   return activeSceneId !== nextSceneId;
 }
 
-// MJ1 — motor base de mini jogos sérios (2ª metodologia ativa, RQ1
+// MJ1 - motor base de mini jogos sérios (2ª metodologia ativa, RQ1
 // 39,13%). PixiJS, não Phaser (ver nota de decisão de arquitetura em
-// docs/ai/backlog/mini-jogos-serios.md) — mesmo motor 2D já em produção
+// docs/ai/backlog/mini-jogos-serios.md) - mesmo motor 2D já em produção
 // via PixiTurtleWorld.tsx, evitando duas stacks de renderização.
 //
 // Comunicação exclusivamente via `store` (Zustand), igual a
 // PixiTurtleWorld: este componente nunca importa nada de domínio
-// específico de um mini jogo, só a `scene` que lhe é passada — trocar de
+// específico de um mini jogo, só a `scene` que lhe é passada - trocar de
 // cena é só trocar essa prop.
 //
 // "Uma única cena carregada por vez" (AC de MJ1): o efeito que monta a
 // cena SEMPRE limpa a cena anterior (`sceneCleanupRef.current?.()` +
-// `app.stage.removeChildren()`) antes de montar a nova — nunca duas cenas
+// `app.stage.removeChildren()`) antes de montar a nova - nunca duas cenas
 // coexistindo no mesmo stage, mesmo se `scene` mudar rapidamente.
 export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,7 +82,7 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
     appRef.current = app;
 
     // app.init() é assíncrono; em React StrictMode o efeito monta/desmonta
-    // duas vezes de propósito (dev only) — mesmo cuidado de
+    // duas vezes de propósito (dev only) - mesmo cuidado de
     // PixiTurtleWorld: destroy() só roda depois que `ready` resolve.
     const ready = (async () => {
       await app.init({
@@ -101,12 +101,12 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
     return () => {
       disposed = true;
       ready.then(() => {
-        // React StrictMode (dev) monta/desmonta/remonta este efeito — a
+        // React StrictMode (dev) monta/desmonta/remonta este efeito - a
         // limpeza da PRIMEIRA instância só resolve depois que uma SEGUNDA
         // já pode ter assumido `appRef.current` (app.init() é assíncrono).
         // Sem esta checagem, a limpeza tardia da instância descartada
         // derrubava a cena/subscrição da instância REALMENTE ativa (nula
-        // `sceneCleanupRef`/`appRef` que já não eram mais dela) — sintoma:
+        // `sceneCleanupRef`/`appRef` que já não eram mais dela) - sintoma:
         // o desenho inicial aparece, mas nunca mais redesenha depois de
         // qualquer atualização de store (ex.: depois de "Executar" na
         // Fábrica de Pedaços Iguais). Uma instância que nunca chegou a
@@ -132,18 +132,18 @@ export function MiniGameEngine({ store, scene }: MiniGameEngineProps) {
       const app = appRef.current;
       if (!app) return;
 
-      // Cena anterior (se houver) sempre sai antes da nova entrar — ver
+      // Cena anterior (se houver) sempre sai antes da nova entrar - ver
       // comentário da função acima.
       sceneCleanupRef.current?.();
       app.stage.removeChildren();
 
       // MJ3 (AC "aluno pode reabrir o roteiro a qualquer momento sem
-      // perder o progresso") — só reinicia a rodada (fase PRIMM zerada,
+      // perder o progresso") - só reinicia a rodada (fase PRIMM zerada,
       // tentativas a 0) quando é de fato uma cena NOVA (sceneId diferente
       // da já ativa no store). O componente que mostra o roteiro visual
       // (MiniGameBriefing, ver MiniGamePage.tsx/FractionsGamePage.tsx)
       // desmonta/remonta este `MiniGameEngine` sem trocar `scene`/`store`
-      // — sem esta checagem, cada reabertura do roteiro chamaria
+      // - sem esta checagem, cada reabertura do roteiro chamaria
       // `startScene` de novo e resetaria silenciosamente o progresso (e
       // duplicaria o evento `minigame_scene_started`, RD-P).
       if (shouldRestartScene(store.getState().activeScene?.sceneId ?? null, scene.id)) {

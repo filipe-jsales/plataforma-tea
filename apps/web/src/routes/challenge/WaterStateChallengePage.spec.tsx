@@ -12,7 +12,7 @@ import { WaterStateChallengePage } from './WaterStateChallengePage';
 // Mesmo racional de mock de ChallengePage.spec.tsx: BlocklyWorkspace vira
 // um stub que só entrega uma instância fake pro onInject/workspaceConfiguration,
 // e Blockly.serialization.blocks.save é mockado pra devolver um programa
-// fixo — o que este arquivo testa é o COMPORTAMENTO DA TELA (predição
+// fixo - o que este arquivo testa é o COMPORTAMENTO DA TELA (predição
 // obrigatória, feedback não-punitivo, log de mudança de limiar), não a
 // interpretação em si (já coberta por waterProgram.spec.ts).
 const { workspaceHolder, lastWorkspaceConfigHolder } = vi.hoisted(() => ({
@@ -115,7 +115,7 @@ const useChallenge = {
 const modifyChallenge = {
   ...useChallenge,
   id: 'challenge-2',
-  title: 'Como a água muda de estado? — agora mude!',
+  title: 'Como a água muda de estado? - agora mude!',
   locked: false,
   toolbox: { stage: 'modify', categories: [] },
   editableFields: [
@@ -143,7 +143,7 @@ function renderChallenge(challengeId: string) {
   );
 }
 
-describe('WaterStateChallengePage — carga inicial (3.13 AC1)', () => {
+describe('WaterStateChallengePage - carga inicial (3.13 AC1)', () => {
   it('injects the Blockly workspace read-only when the challenge is stage "use" (locked)', async () => {
     mockedGet.mockResolvedValueOnce(useChallenge);
 
@@ -164,7 +164,7 @@ describe('WaterStateChallengePage — carga inicial (3.13 AC1)', () => {
   });
 });
 
-describe('WaterStateChallengePage — previsão obrigatória (3.13 AC2)', () => {
+describe('WaterStateChallengePage - previsão obrigatória (3.13 AC2)', () => {
   it('unlocks the run button only after the student picks a predicted state', async () => {
     mockedGet.mockResolvedValueOnce(useChallenge);
 
@@ -174,7 +174,7 @@ describe('WaterStateChallengePage — previsão obrigatória (3.13 AC2)', () => 
     expect(await screen.findByRole('button', { name: /executar/i })).toBeInTheDocument();
   });
 
-  it('3.13 (RD-C) — logs the prediction and the actual result together on Executar', async () => {
+  it('3.13 (RD-C) - logs the prediction and the actual result together on Executar', async () => {
     mockedGet.mockResolvedValueOnce(useChallenge);
 
     renderChallenge('challenge-1');
@@ -197,12 +197,12 @@ describe('WaterStateChallengePage — previsão obrigatória (3.13 AC2)', () => 
   });
 });
 
-describe('WaterStateChallengePage — feedback não-punitivo (3.13 AC4)', () => {
+describe('WaterStateChallengePage - feedback não-punitivo (3.13 AC4)', () => {
   it('describes the divergence between prediction and result, never "errado"/punitive language', async () => {
     mockedGet.mockResolvedValueOnce(useChallenge);
 
     renderChallenge('challenge-1');
-    // Temperatura inicial (20°C) fica no ramo SENÃO (líquido) — prevendo
+    // Temperatura inicial (20°C) fica no ramo SENÃO (líquido) - prevendo
     // "gasoso" diverge do resultado real.
     await userEvent.click(await screen.findByRole('button', { name: /gasoso/i }));
     await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
@@ -213,8 +213,8 @@ describe('WaterStateChallengePage — feedback não-punitivo (3.13 AC4)', () => 
   });
 });
 
-describe('WaterStateChallengePage — fase modify (3.14)', () => {
-  it('AC1 — the conditional structure is locked but the threshold field stays editable (applyModifyFieldLocking is applied)', async () => {
+describe('WaterStateChallengePage - fase modify (3.14)', () => {
+  it('AC1 - the conditional structure is locked but the threshold field stays editable (applyModifyFieldLocking is applied)', async () => {
     mockedGet.mockResolvedValueOnce(modifyChallenge);
 
     renderChallenge('challenge-2');
@@ -224,7 +224,7 @@ describe('WaterStateChallengePage — fase modify (3.14)', () => {
     );
   });
 
-  it('AC4 — logs challenge_modify_attempt with changed_values on Executar', async () => {
+  it('AC4 - logs challenge_modify_attempt with changed_values on Executar', async () => {
     mockedGet.mockResolvedValueOnce(modifyChallenge);
 
     renderChallenge('challenge-2');
@@ -242,7 +242,7 @@ describe('WaterStateChallengePage — fase modify (3.14)', () => {
     );
   });
 
-  it('AC4 — logs thresholdChanged (RD-I) with previous/new value when the field itself changes', async () => {
+  it('AC4 - logs thresholdChanged (RD-I) with previous/new value when the field itself changes', async () => {
     mockedGet.mockResolvedValueOnce(modifyChallenge);
 
     renderChallenge('challenge-2');
@@ -283,7 +283,7 @@ describe('WaterStateChallengePage — fase modify (3.14)', () => {
   });
 });
 
-describe('WaterStateChallengePage — marca o desafio como visto (E1)', () => {
+describe('WaterStateChallengePage - marca o desafio como visto (E1)', () => {
   it('posts the viewed marker once the challenge loads', async () => {
     mockedGet.mockResolvedValueOnce(useChallenge);
 

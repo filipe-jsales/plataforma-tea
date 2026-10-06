@@ -71,7 +71,7 @@ describe('AdminSchoolClassrooms', () => {
 
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: /turmas — escola azul/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /turmas - escola azul/i })).toBeInTheDocument();
     expect(await screen.findByText('Turma A')).toBeInTheDocument();
     expect(screen.getByText('AZUL-1')).toBeInTheDocument();
     expect(screen.getByText('Prof. Ana')).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe('AdminSchoolClassrooms', () => {
     renderPage();
 
     await screen.findByText('Turma A');
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('-')).toBeInTheDocument();
   });
 
   it('blocks creating a classroom when the school is deactivated (AC: escola desativada não recebe turma nova)', async () => {

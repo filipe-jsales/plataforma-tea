@@ -23,7 +23,7 @@
   cursor: pointer;
 }
 
-/* Estado ativo nunca é só cor de fundo — o peso/cor de texto também muda
+/* Estado ativo nunca é só cor de fundo - o peso/cor de texto também muda
    (redundância visual), e `aria-checked`/data-state já contam o estado pra
    quem usa leitor de tela. */
 .ui-segmented__item[data-state='on'] {

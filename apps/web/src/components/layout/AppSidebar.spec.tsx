@@ -44,14 +44,14 @@ function renderSidebar(open = true) {
   return { onOpenChange };
 }
 
-describe('AppSidebar — sem sessão', () => {
+describe('AppSidebar - sem sessão', () => {
   it('renders nothing when there is no logged-in user', () => {
     renderSidebar();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
 
-describe('AppSidebar — visão de aluno', () => {
+describe('AppSidebar - visão de aluno', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: 'token', user: studentUser });
   });
@@ -62,7 +62,7 @@ describe('AppSidebar — visão de aluno', () => {
     expect(settingsLink).toHaveAttribute('href', '/settings/sensory');
   });
 
-  it('the "Matérias" group starts collapsed — no category link visible before expanding', () => {
+  it('the "Matérias" group starts collapsed - no category link visible before expanding', () => {
     renderSidebar();
     expect(screen.queryByRole('link', { name: /informática na computação/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /educação em computação/i })).not.toBeInTheDocument();
@@ -86,7 +86,7 @@ describe('AppSidebar — visão de aluno', () => {
   });
 });
 
-describe('AppSidebar — visão de professor', () => {
+describe('AppSidebar - visão de professor', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: 'token', user: teacherUser });
   });
@@ -113,7 +113,7 @@ describe('AppSidebar — visão de professor', () => {
   });
 });
 
-describe('AppSidebar — visão de admin', () => {
+describe('AppSidebar - visão de admin', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: 'token', user: adminUser });
   });
@@ -124,7 +124,7 @@ describe('AppSidebar — visão de admin', () => {
   });
 });
 
-describe('AppSidebar — "Sair" (1.5.1)', () => {
+describe('AppSidebar - "Sair" (1.5.1)', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: 'token', user: studentUser });
   });
@@ -145,7 +145,7 @@ describe('AppSidebar — "Sair" (1.5.1)', () => {
   });
 });
 
-describe('AppSidebar — fechar', () => {
+describe('AppSidebar - fechar', () => {
   beforeEach(() => {
     useAuthStore.setState({ token: 'token', user: studentUser });
   });

@@ -88,7 +88,7 @@ describe('TeacherStudents', () => {
     });
   });
 
-  it('1.3 — generates a new credential via reset-credential and shows the new image sequence', async () => {
+  it('1.3 - generates a new credential via reset-credential and shows the new image sequence', async () => {
     mockClassroomsAndRoster();
     mockedPost.mockResolvedValueOnce({
       student: { id: 'student-1', displayName: 'Aluno Um', pseudonymId: 'pseudo-1' },
@@ -107,7 +107,7 @@ describe('TeacherStudents', () => {
     await screen.findByText('Aluno Um');
     await userEvent.click(screen.getByRole('button', { name: /recuperar acesso/i }));
 
-    const dialog = await screen.findByRole('dialog', { name: /recuperar acesso — aluno um/i });
+    const dialog = await screen.findByRole('dialog', { name: /recuperar acesso - aluno um/i });
     await userEvent.click(within(dialog).getByRole('button', { name: /gerar nova credencial/i }));
 
     expect(mockedPost).toHaveBeenCalledWith('/teacher/students/student-1/reset-credential', {});

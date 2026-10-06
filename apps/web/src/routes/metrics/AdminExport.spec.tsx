@@ -40,7 +40,7 @@ function renderPage() {
 }
 
 // Select (Radix) só mostra a opção carregada quando o dropdown está aberto
-// — o gatilho continua com o mesmo texto placeholder ("Todas as escolas")
+// - o gatilho continua com o mesmo texto placeholder ("Todas as escolas")
 // antes e depois do fetch resolver, então não dá pra esperar por texto
 // visível. Espera as duas chamadas iniciais (escolas + desafios)
 // resolverem antes de interagir.
@@ -100,7 +100,7 @@ describe('AdminExport', () => {
     await userEvent.click(screen.getByRole('button', { name: /baixar exportação/i }));
 
     expect(
-      await screen.findByText('2 linha(s) exportada(s) — arquivo JSON baixado.'),
+      await screen.findByText('2 linha(s) exportada(s) - arquivo JSON baixado.'),
     ).toBeInTheDocument();
     expect(mockedGet).toHaveBeenCalledWith(
       expect.stringContaining('/metrics/admin/export?challengeId=c1&format=json'),
@@ -144,7 +144,7 @@ describe('AdminExport', () => {
     expect(mockedGetRaw).toHaveBeenCalledWith(
       expect.stringContaining('/metrics/admin/export?challengeId=c1&format=csv'),
     );
-    expect(await screen.findByText('2 linha(s) exportada(s) — arquivo CSV baixado.')).toBeInTheDocument();
+    expect(await screen.findByText('2 linha(s) exportada(s) - arquivo CSV baixado.')).toBeInTheDocument();
   });
 
   it('never sends a schoolId/challengeId param when the "all" sentinel is selected', async () => {
@@ -178,7 +178,7 @@ describe('AdminExport', () => {
       if (path === '/metrics/admin/challenges') return Promise.resolve(challenges as any);
       if (path.startsWith('/metrics/admin/export')) {
         return Promise.reject(
-          new ApiError('O período pedido passa de 90 dias — reduza o intervalo e tente de novo.', 400),
+          new ApiError('O período pedido passa de 90 dias - reduza o intervalo e tente de novo.', 400),
         );
       }
       return Promise.resolve(undefined as any);
@@ -191,7 +191,7 @@ describe('AdminExport', () => {
     await userEvent.click(screen.getByRole('button', { name: /baixar exportação/i }));
 
     expect(
-      await screen.findByText('O período pedido passa de 90 dias — reduza o intervalo e tente de novo.'),
+      await screen.findByText('O período pedido passa de 90 dias - reduza o intervalo e tente de novo.'),
     ).toBeInTheDocument();
   });
 

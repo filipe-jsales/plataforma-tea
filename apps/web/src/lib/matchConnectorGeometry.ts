@@ -1,7 +1,7 @@
-// MJ10 — geometria pura pro traçado da seta que liga um cartão de situação
+// MJ10 - geometria pura pro traçado da seta que liga um cartão de situação
 // a um cartão de ferramenta em WorkToolsGamePage (substitui "só aparece uma
 // flag" por uma linha visível entre os dois cartões). Função pura, sem
-// DOM/React — o componente só chama `getBoundingClientRect()` e passa os
+// DOM/React - o componente só chama `getBoundingClientRect()` e passa os
 // retângulos aqui; isso é o que permite testar a matemática sem precisar de
 // layout real (jsdom não calcula posição/tamanho de verdade).
 export interface ConnectorRect {
@@ -20,7 +20,7 @@ export interface ConnectorLinePoints {
 
 // Ancora a linha na borda direita do cartão de origem (situação) e na
 // borda esquerda do cartão de destino (ferramenta), ambas no meio vertical
-// do cartão — coordenadas relativas ao container que envolve as duas
+// do cartão - coordenadas relativas ao container que envolve as duas
 // colunas (nunca em coordenadas absolutas da viewport, que mudam com
 // scroll).
 export function computeConnectorLinePoints(

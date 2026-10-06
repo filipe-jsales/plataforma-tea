@@ -29,9 +29,9 @@ interface ClassroomOverview {
   activeStudentsCount: number;
 }
 
-// 6.2 — painel institucional do admin: escolas → turmas → professor
+// 6.2 - painel institucional do admin: escolas → turmas → professor
 // responsável, sem nenhum dado de aluno individual (AC de 6.2). Área
-// exclusiva de staff (admin) — tema mais rico que o do aluno (3.11,
+// exclusiva de staff (admin) - tema mais rico que o do aluno (3.11,
 // `.staff-theme`), mesma fundação de componente (Radix/React Aria, ver
 // components/ui/).
 export function AdminMetrics() {
@@ -63,7 +63,7 @@ export function AdminMetrics() {
       </LinkButton>
       <h1>Painel institucional</h1>
       <p className="admin-metrics__subtitle">
-        Como cada escola está usando a plataforma — turmas, professores e alunos ativos.
+        Como cada escola está usando a plataforma - turmas, professores e alunos ativos.
       </p>
 
       {schools === null && <p className="admin-metrics__loading">Carregando escolas…</p>}

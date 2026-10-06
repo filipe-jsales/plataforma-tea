@@ -16,13 +16,13 @@ function decodeJwtPayload(token: string): DecodedJwtPayload | null {
   }
 }
 
-// 1.5.1 — checagem OTIMISTA de expiração de sessão: só decodifica o
-// payload (nunca valida assinatura no cliente — isso é sempre
+// 1.5.1 - checagem OTIMISTA de expiração de sessão: só decodifica o
+// payload (nunca valida assinatura no cliente - isso é sempre
 // responsabilidade do backend a cada request, ver apiClient.ts). Existe
 // pra mandar o aluno/professor/admin de volta pro login IMEDIATAMENTE ao
 // abrir uma tela com token vencido, em vez de esperar a primeira chamada
 // de API falhar. Token ilegível ou sem `exp` é tratado como expirado
-// (falha seguro — nunca deixa passar por engano).
+// (falha seguro - nunca deixa passar por engano).
 export function isTokenExpired(token: string): boolean {
   const payload = decodeJwtPayload(token);
   if (!payload || typeof payload.exp !== 'number') {

@@ -5,7 +5,7 @@ import { Tooltip } from './Tooltip';
 import { Button } from './Button';
 
 describe('Tooltip', () => {
-  it('never supplies the trigger name — the trigger keeps its own accessible name', () => {
+  it('never supplies the trigger name - the trigger keeps its own accessible name', () => {
     render(
       <Tooltip content="Executa o programa montado">
         <Button>Executar</Button>

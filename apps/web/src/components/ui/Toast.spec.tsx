@@ -18,7 +18,7 @@ describe('Toast', () => {
   it('dismisses when the close button is clicked', async () => {
     const user = userEvent.setup();
     const onDismiss = vi.fn();
-    // Sem auto-dismiss aqui — só testando o clique, nunca a corrida contra
+    // Sem auto-dismiss aqui - só testando o clique, nunca a corrida contra
     // o timer (o timer em si tem teste próprio abaixo, com fake timers).
     render(
       <Toast kind="retry" onDismiss={onDismiss} autoDismissMs={0}>

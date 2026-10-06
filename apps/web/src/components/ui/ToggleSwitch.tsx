@@ -4,7 +4,7 @@ import './ToggleSwitch.css';
 
 export interface ToggleSwitchProps {
   id: string;
-  // Decorativo — nunca substitui `label` (AC "rótulo redundante ícone + texto").
+  // Decorativo - nunca substitui `label` (AC "rótulo redundante ícone + texto").
   icon?: ReactNode;
   label: ReactNode;
   checked: boolean;
@@ -12,11 +12,11 @@ export interface ToggleSwitchProps {
   disabled?: boolean;
 }
 
-// 3.10 — configuração sensorial binária (som/animação/contraste). Radix
+// 3.10 - configuração sensorial binária (som/animação/contraste). Radix
 // Switch cobre o primitivo estrutural (role="switch", aria-checked,
 // teclado) headless; o `<label>` externo estende a área de toque pra linha
 // inteira (AC "espaçamento/área de toque ampliada"), não só o trilho
-// pequeno do switch. O estado NUNCA depende só da posição do trilho/cor —
+// pequeno do switch. O estado NUNCA depende só da posição do trilho/cor -
 // `ui-toggle__state` escreve "Ligado"/"Desligado" em texto ao lado (AC
 // "nunca só cor pra indicar estado", regra não-negociável 4 aplicada a
 // controles, não só a feedback de erro).
