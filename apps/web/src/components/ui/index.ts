@@ -6,6 +6,7 @@
 // mesmo raciocínio de `lib/logEvent.ts` centralizar o `fetch` de eventos:
 // um único lugar pra trocar a biblioteca por baixo sem tocar toda tela.
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
+export { IconButton, type IconButtonProps } from './IconButton';
 export { LinkButton, type LinkButtonProps } from './LinkButton';
 export { ToggleSwitch, type ToggleSwitchProps } from './ToggleSwitch';
 export { SelectableCard, type SelectableCardProps, type SelectableCardAlign } from './Card';

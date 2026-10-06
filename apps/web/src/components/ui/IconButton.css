@@ -1,0 +1,44 @@
+.ui-icon-button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--hit-area-min);
+  height: var(--hit-area-min);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ui-icon-button__icon {
+  display: inline-flex;
+}
+
+.ui-icon-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.ui-icon-button:hover {
+  color: var(--color-bg);
+}
+
+.ui-icon-button:hover::before {
+  background: var(--color-primary);
+}
+
+.ui-icon-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

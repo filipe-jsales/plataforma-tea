@@ -2072,6 +2072,40 @@ manteve seu link "Configurações" na própria grade de ações (não duplicava
 ("não renderiza mais 'Sair' aqui") e a cobertura de logout/link de
 configurações migrou pra `AppSidebar.spec.tsx`/`AppLayout.spec.tsx`.
 
+## Sidebar responsiva: drawer e sidebar recolhível (2026-10)
+
+Substitui o painel que abria pela direita em todas as telas. Mesmos itens
+por papel (`SidebarNav`), duas apresentações por largura (breakpoint 1024px,
+`lib/useIsDesktop.ts`, `matchMedia`; sem `matchMedia` cai em drawer):
+
+- **< 1024px, drawer** (`AppSidebar.tsx`, Radix Dialog): desliza pela
+  esquerda sobre overlay escurecido; clique no overlay, Esc ou X fecham.
+  O hambúrguer do `AppHeader` ("Abrir menu") abre.
+- **>= 1024px, sidebar fixa** (`AppSidebarDesktop.tsx`): fica ao lado de
+  `.app-layout__content` (empurra a área de trabalho), sem overlay.
+  Expandida ~256px (ícone + texto) ou compacta ~64px (`.app-sidebar--compact`,
+  só ícones). O hambúrguer alterna ("Recolher menu"/"Expandir menu",
+  `aria-expanded`); a preferência vive em `stores/useSidebarStore.ts`
+  (persistida em localStorage, nasce expandida).
+- **Compacto nunca é só ícone sem nome:** o texto continua no DOM (escondido
+  visualmente, é o nome acessível) e o `Tooltip` mostra o nome no hover/foco.
+- Itens: `LinkButton` variante `ghost`; o da rota atual leva
+  `aria-current="page"`, fundo tingido, peso 700 e marcador lateral (nunca
+  só cor); entre rotas aninhadas vence a mais específica
+  (`/teacher/students/new` não ativa "Meus alunos"). Divisória "CONTA" separa
+  o grupo principal de Configurações; "Sair" fica sempre no rodapé.
+- `components/ui/IconButton` é o botão vazado só com ícone (hambúrguer, X do
+  drawer): área 56px, fundo `--color-primary` em círculo justo só no hover,
+  `label` obrigatório vira `aria-label`.
+- Animação (deslize, largura) usa `--motion-duration`: só anima em
+  `.staff-theme` ou com `data-motion='full'`. Para o aluno sem motion o menu
+  só aparece/some.
+- Sem badges: não existe dado real de contagem (mensagens/atividades) no app.
+  Só adicionar badge quando houver dado por trás, nunca número fixo.
+- O header não alinha mais à largura de `.page`: o hambúrguer fica à esquerda
+  ao lado do logo, e o conteúdo é centralizado dentro de
+  `.app-layout__content`.
+
 ## Padrões de UI consolidados (2026-10)
 
 Regras que valem para toda tela e componente novo. Estão em `components/ui/`
@@ -2118,7 +2152,7 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
   juntos. Nunca centralizar só o formulário deixando o cabeçalho à esquerda.
   Criar e editar desafio também usam `--narrow` (a galeria de templates
   cabe em 2 colunas).
-- O header (`AppHeader`) alinha logo e menu à mesma largura de `.page`.
+- O header (`AppHeader`) tem o hambúrguer à esquerda e o logo ao lado (ver "Sidebar responsiva").
 
 ### Marca
 

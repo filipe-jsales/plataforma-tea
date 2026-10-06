@@ -1,3 +1,11 @@
+/*
+  Duas apresentações da mesma navegação (SidebarNav):
+  - drawer (< 1024px): `.app-sidebar__content`, painel fixo que desliza pela
+    esquerda sobre `.app-sidebar__overlay`;
+  - sidebar fixa (>= 1024px): `.app-sidebar-desktop`, ao lado do conteúdo,
+    expandida (~256px) ou compacta (`.app-sidebar--compact`, ~64px).
+*/
+
 .app-sidebar__overlay {
   position: fixed;
   inset: 0;
@@ -5,17 +13,16 @@
 }
 
 /*
-  Abre pela DIREITA (pedido explícito) via transform, nunca `left`/`right`
-  animado - `transition` só tem efeito de verdade dentro de `.staff-theme`
-  ou com `data-motion='full'` ligado (ver a exceção em
-  theme/sensory-theme.css); pro aluno sem motion, o painel só aparece/some
-  sem deslizar, o token de duração é zerado globalmente, não precisa de
-  lógica condicional aqui.
+  Desliza via transform, nunca `left` animado - `transition` só tem efeito
+  de verdade dentro de `.staff-theme` ou com `data-motion='full'` ligado
+  (ver a exceção em theme/sensory-theme.css); pro aluno sem motion, o painel
+  só aparece/some sem deslizar, o token de duração é zerado globalmente,
+  não precisa de lógica condicional aqui.
 */
 .app-sidebar__content {
   position: fixed;
   top: 0;
-  right: 0;
+  left: 0;
   height: 100%;
   width: min(320px, 100vw);
   display: flex;
@@ -23,9 +30,9 @@
   padding: var(--space-4);
   background: var(--color-bg);
   color: var(--color-text);
-  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
   box-shadow: var(--shadow-modal);
-  transform: translateX(100%);
+  transform: translateX(-100%);
   transition: transform var(--motion-duration) var(--motion-easing);
 }
 
@@ -46,51 +53,33 @@
   font-weight: var(--font-weight-heading);
 }
 
-.app-sidebar__close {
-  position: relative;
-  isolation: isolate;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--hit-area-min);
-  height: var(--hit-area-min);
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: transparent;
+/* Sidebar fixa do desktop. */
+.app-sidebar-desktop {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex-shrink: 0;
+  width: 16rem;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg);
   color: var(--color-text);
-  cursor: pointer;
+  overflow-x: hidden;
+  transition: width var(--motion-duration) var(--motion-easing);
 }
 
-
-.app-sidebar__close::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  z-index: -1;
-}
-
-.app-sidebar__close:hover {
-  color: var(--color-bg);
-}
-
-.app-sidebar__close:hover::before {
-  background: var(--color-primary);
-}
-
-.app-sidebar__close:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring-color);
-  outline-offset: var(--focus-ring-offset);
+.app-sidebar-desktop.app-sidebar--compact {
+  width: 4rem;
+  padding-inline: var(--space-1);
 }
 
 .app-sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   overflow-y: auto;
   flex: 1;
 }
@@ -101,10 +90,6 @@
   gap: var(--space-2);
 }
 
-.app-sidebar__group-toggle {
-  justify-content: flex-start;
-}
-
 .app-sidebar__group-items {
   display: flex;
   flex-direction: column;
@@ -112,8 +97,78 @@
   padding-left: var(--space-3);
 }
 
+/* Item de navegação: linha inteira, alinhada à esquerda. */
+.app-sidebar__item {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* Ativo: pílula tingida + peso + marcador lateral (nunca só cor). */
+.app-sidebar__item--active,
+.app-sidebar__item--active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg));
+  border-color: transparent;
+  color: var(--color-primary);
+  font-weight: 700;
+  box-shadow: inset 4px 0 0 var(--color-primary);
+}
+
+.app-sidebar__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-2);
+}
+
+.app-sidebar__divider-label {
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
 /* "Sair" sempre no rodapé da sidebar, separado do resto da navegação. */
 .app-sidebar__logout {
   margin-top: var(--space-3);
   flex-shrink: 0;
+}
+
+/*
+  Compacto: só ícones centralizados. O texto sai da tela mas continua no
+  DOM (nome acessível do link/botão); o Tooltip mostra o nome.
+*/
+.app-sidebar--compact .ui-button__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-sidebar--compact .app-sidebar__item,
+.app-sidebar--compact .app-sidebar__logout {
+  justify-content: center;
+  width: 100%;
+  padding-inline: 0;
+}
+
+.app-sidebar--compact .app-sidebar__item--active,
+.app-sidebar--compact .app-sidebar__item--active:hover:not(:disabled) {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.app-sidebar--compact .app-sidebar__divider {
+  margin-block: var(--space-1);
+}
+
+.app-sidebar--compact .app-sidebar__divider-label {
+  display: none;
 }

@@ -150,7 +150,7 @@ describe('AppSidebar - fechar', () => {
     useAuthStore.setState({ token: 'token', user: studentUser });
   });
 
-  it('the close control has a visible text label, never an icon-only ✕', () => {
+  it('the close control is an icon-only button but always has an accessible name', () => {
     renderSidebar();
     expect(screen.getByRole('button', { name: /fechar/i })).toBeInTheDocument();
   });
@@ -159,5 +159,31 @@ describe('AppSidebar - fechar', () => {
     const { onOpenChange } = renderSidebar();
     await userEvent.click(screen.getByRole('button', { name: /fechar/i }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('AppSidebar - item ativo', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ token: 'token', user: teacherUser });
+  });
+
+  function renderAt(path: string) {
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <AppSidebar open onOpenChange={vi.fn()} />
+      </MemoryRouter>,
+    );
+  }
+
+  it('marks only the item that matches the current route with aria-current="page"', () => {
+    renderAt('/teacher/metrics');
+    expect(screen.getByRole('link', { name: /painel da turma/i })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /meus alunos/i })).not.toHaveAttribute('aria-current');
+  });
+
+  it('prefers the most specific match (/teacher/students/new is not also "Meus alunos")', () => {
+    renderAt('/teacher/students/new');
+    expect(screen.getByRole('link', { name: /adicionar aluno/i })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /meus alunos/i })).not.toHaveAttribute('aria-current');
   });
 });
