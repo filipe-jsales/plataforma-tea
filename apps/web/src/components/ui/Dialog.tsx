@@ -1,6 +1,7 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import type { ReactNode } from 'react';
 import './Dialog.css';
+import { Button } from './Button';
 
 export interface DialogProps {
   open: boolean;
@@ -32,9 +33,9 @@ export function Dialog({ open, onOpenChange, title, description, children, trigg
           )}
           {children}
           <DialogPrimitive.Close asChild>
-            <button type="button" className="ui-dialog__close">
-              <span aria-hidden="true">✕</span> Fechar
-            </button>
+            <Button type="button" className="ui-dialog__close">
+              <span aria-hidden="true"></span> Fechar
+            </Button>
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
