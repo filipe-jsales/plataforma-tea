@@ -4,7 +4,7 @@ import type { TeacherChallengeSummary } from "../../lib/challengeTemplateTypes";
 import { Button, Dialog, LinkButton } from "../../components/ui";
 import { AllocationDialog } from "./AllocationDialog";
 import "./TeacherChallenges.css";
-import { CirclePlus, Trash } from "lucide-react";
+import { CirclePlus, Dna, Pencil, School, Trash } from "lucide-react";
 
 // 4.2 (AC5) - "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
@@ -86,7 +86,7 @@ export function TeacherChallenges() {
               <span className="teacher-challenges__item-actions">
                 <Button
                   variant="secondary"
-                  icon="🏫"
+                  icon={<School />}
                   onClick={() => setAllocatingChallenge(challenge)}
                 >
                   Alocar à turma
@@ -94,14 +94,14 @@ export function TeacherChallenges() {
                 <LinkButton
                   to={`/teacher/challenges/${challenge.id}/edit`}
                   variant="secondary"
-                  icon="✏️"
+                  icon={<Pencil />}
                 >
                   Editar
                 </LinkButton>
                 <LinkButton
                   to={`/teacher/challenges/new?fromChallengeId=${challenge.id}`}
                   variant="secondary"
-                  icon="🧬"
+                  icon={<Dna />}
                 >
                   Duplicar
                 </LinkButton>
