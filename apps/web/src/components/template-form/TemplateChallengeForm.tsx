@@ -20,6 +20,7 @@ import type {
 import { Button, InlineFeedback, TextareaField, TextField, Toast } from "../ui";
 import { TemplateParameterField } from "./TemplateParameterField";
 import "./TemplateChallengeForm.css";
+import { Pencil } from "lucide-react";
 
 // Mapeia a chave de erro (parameterKey do backend) pro id do elemento a
 // focar depois de uma validação falhar — cada tipo de campo usa uma
@@ -302,7 +303,7 @@ export function TemplateChallengeForm({
         id="template-challenge-form-title"
         className="template-challenge-form__title-field"
       >
-        <span>✏️ Nome do desafio</span>
+        <span><Pencil />Nome do desafio</span>
         <input
           id="challenge-title"
           type="text"

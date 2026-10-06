@@ -9,7 +9,7 @@
 }
 
 .template-parameter-field[data-invalid='true'] {
-  border-color: var(--color-danger, #c0392b);
+  border-color: var(--color-danger, #b3261e);
 }
 
 .template-parameter-field__header {

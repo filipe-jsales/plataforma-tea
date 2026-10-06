@@ -60,7 +60,7 @@ export function TeacherChallenges() {
         <p className="teacher-challenges__loading">Carregando…</p>
       )}
       {challenges !== null && challenges.length === 0 && (
-        <p className="teacher-challenges__empty">
+        <p className="teacher-challenges__empty" style={{ marginTop: "0.5em" }}>
           Você ainda não criou nenhum desafio.
         </p>
       )}

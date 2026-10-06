@@ -21,6 +21,8 @@ import {
 } from '../../components/ui';
 import './AdminUsers.css';
 
+import { Ban, Check, Key, Pencil,Plus,Shield}from "lucide-react";
+
 const ROLE_FILTER_OPTIONS = [
   { value: '', label: 'Todos os papéis' },
   { value: 'student', label: 'Aluno' },
@@ -205,7 +207,7 @@ export function AdminUsers() {
       <div className="admin-users__toolbar">
         <SegmentedControl ariaLabel="Filtrar por papel" options={ROLE_FILTER_OPTIONS} value={roleFilter} onValueChange={(v) => { setPage(1); setRoleFilter(v); }} />
         <SegmentedControl ariaLabel="Filtrar por status" options={STATUS_FILTER_OPTIONS} value={statusFilter} onValueChange={(v) => { setPage(1); setStatusFilter(v); }} />
-        <Button icon="➕" onClick={() => { setCreateResult(null); setCreateError(null); setCreateForm(EMPTY_STAFF_FORM); setCreateOpen(true); }}>
+        <Button icon={<Plus />} onClick={() => { setCreateResult(null); setCreateError(null); setCreateForm(EMPTY_STAFF_FORM); setCreateOpen(true); }}>
           Criar professor/admin
         </Button>
       </div>
@@ -235,22 +237,23 @@ export function AdminUsers() {
                     <Badge variant={user.active ? 'success' : 'neutral'}>{user.active ? 'Ativo' : 'Desativado'}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="secondary" icon="✏️" onClick={() => openEdit(user)}>
+                    <Button variant="secondary" icon={<Pencil />} onClick={() => openEdit(user)}>
                       Editar
                     </Button>
                     {user.role === 'student' && (
-                      <Button variant="secondary" icon="🛡️" onClick={() => openConsent(user)}>
+                      <Button variant="secondary" icon={<Shield />} onClick={() => openConsent(user)} style={{ marginLeft: '12px' }}>
                         Consentimento
                       </Button>
                     )}
                     {user.role === 'student' && user.active && (
-                      <Button variant="ghost" icon="🔑" onClick={() => openReset(user)}>
+                      <Button variant="secondary" icon={<Key />} onClick={() => openReset(user)} style={{ marginLeft: '12px' }}>
                         Recuperar acesso
                       </Button>
                     )}
                     <Button
-                      variant="ghost"
-                      icon={user.active ? '🚫' : '✅'}
+                      variant="secondary"
+                      style={{ marginLeft: '12px' }}
+                      icon={user.active ? <Ban /> : <Check />}
                       disabled={pendingStatusId === user.id}
                       onClick={() => toggleStatus(user)}
                     >

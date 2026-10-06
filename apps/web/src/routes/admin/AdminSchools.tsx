@@ -16,6 +16,7 @@ import {
   TextField,
 } from '../../components/ui';
 import './AdminSchools.css';
+import { Ban, Check, Pencil, Plus, School,} from 'lucide-react';
 
 interface SchoolForm {
   name: string;
@@ -125,7 +126,7 @@ export function AdminSchools() {
       </p>
 
       <div className="admin-schools__toolbar">
-        <Button icon="➕" onClick={() => { setCreateError(null); setCreateForm(EMPTY_SCHOOL_FORM); setCreateOpen(true); }}>
+        <Button icon={<Plus />} onClick={() => { setCreateError(null); setCreateForm(EMPTY_SCHOOL_FORM); setCreateOpen(true); }}>
           Criar escola
         </Button>
       </div>
@@ -155,15 +156,16 @@ export function AdminSchools() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <LinkButton to={`/admin/schools/${school.id}/classrooms`} variant="secondary" icon="🏫">
+                    <LinkButton to={`/admin/schools/${school.id}/classrooms`} variant="secondary" icon={<School />}>
                       Turmas
                     </LinkButton>
-                    <Button variant="secondary" icon="✏️" onClick={() => openEdit(school)}>
+                    <Button variant="secondary" icon={<Pencil />} onClick={() => openEdit(school)} style={{ marginLeft: '12px' }}>
                       Editar
                     </Button>
                     <Button
-                      variant="ghost"
-                      icon={school.active ? '🚫' : '✅'}
+                      variant="secondary"
+                      style={{ marginLeft: '12px' }}
+                      icon={school.active ? <Ban /> : <Check />}
                       disabled={pendingStatusId === school.id}
                       onClick={() => toggleStatus(school)}
                     >

@@ -41,13 +41,13 @@ export function TeacherHome() {
           Meus alunos
         </LinkButton>
         <LinkButton to="/teacher/metrics" icon={<ChartLine />}>
-          Painel da turma (progresso por aluno)
+          Painel da turma
         </LinkButton>
         <LinkButton to="/teacher/challenges" icon={<Puzzle />}>
           Meus desafios
         </LinkButton>
         <LinkButton to="/teacher/minigames" icon={<Gamepad2 />}>
-          Mini jogo: Fábrica de Pedaços Iguais
+          Mini jogo
         </LinkButton>
       </div>
 

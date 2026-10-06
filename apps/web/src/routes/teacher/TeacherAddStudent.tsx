@@ -262,9 +262,8 @@ export function TeacherAddStudent() {
       </LinkButton>
       <h1>Adicionar aluno</h1>
       <p className="teacher-add-student__subtitle">
-        O aluno nunca cria a própria conta. Informe só o nome e a turma — depois de registrar o consentimento
-        do responsável legal, o sistema gera a credencial de acesso automaticamente (sem e-mail, sem senha
-        digitada).
+        O aluno nunca cria a própria conta. Informe só o nome e a turma depois de registrar o consentimento
+        do responsável legal, o sistema gera a credencial de acesso automaticamente.
       </p>
 
       <form className="teacher-add-student__form" onSubmit={handleStudentSubmit}>
@@ -273,6 +272,7 @@ export function TeacherAddStudent() {
           label="Nome do aluno"
           value={displayName}
           onChange={(event) => setDisplayName(event.target.value)}
+          style={{ marginTop: 'var(--space-2)' }}
         />
 
         {classrooms !== null && classrooms.length > 1 && (
@@ -294,8 +294,8 @@ export function TeacherAddStudent() {
 
         {avatars !== null && avatars.length > 0 && (
           <fieldset className="teacher-add-student__avatar-field">
-            <legend>Avatar (opcional — se não escolher, o sistema sorteia um)</legend>
-            <div className="teacher-add-student__avatar-grid">
+            <label className="teacher-add-student__avatar-label">Avatar</label>
+            <div className="teacher-add-student__avatar-grid" style={{ marginTop: 'var(--space-2)' }}>
               {avatars.map((avatar) => (
                 <SelectableCard
                   key={avatar.id}

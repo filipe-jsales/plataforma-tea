@@ -1,19 +1,34 @@
-import { useEffect, useState } from 'react';
-import { apiClient, ApiError } from '../../lib/apiClient';
-import type { FractionsFactoryFraction, MiniGameLevelDto } from '../../lib/miniGameLevelTypes';
-import { Badge, Button, InlineFeedback, LinkButton, Select, TextField } from '../../components/ui';
-import { CONTENT_CATEGORY_LABEL } from '../../lib/contentCategory';
-import './TeacherMiniGameSettings.css';
+import { useEffect, useState } from "react";
+import { apiClient, ApiError } from "../../lib/apiClient";
+import type {
+  FractionsFactoryFraction,
+  MiniGameLevelDto,
+} from "../../lib/miniGameLevelTypes";
+import {
+  Badge,
+  Button,
+  InlineFeedback,
+  LinkButton,
+  Select,
+  TextField,
+} from "../../components/ui";
+import { CONTENT_CATEGORY_LABEL } from "../../lib/contentCategory";
+import "./TeacherMiniGameSettings.css";
+import { Plus, Trash } from "lucide-react";
 
-const CONCEPT_ID = 'fractions_equal_parts';
+const CONCEPT_ID = "fractions_equal_parts";
 
 const THEME_OPTIONS = [
-  { value: 'chocolate_bar', label: 'Barra de chocolate' },
-  { value: 'pizza', label: 'Pizza' },
-  { value: 'garden', label: 'Jardim' },
+  { value: "chocolate_bar", label: "Barra de chocolate" },
+  { value: "pizza", label: "Pizza" },
+  { value: "garden", label: "Jardim" },
 ];
 
-const STAGE_LABEL: Record<string, string> = { use: 'Nível 1 — Use', modify: 'Nível 2 — Modify', create: 'Nível 3 — Create' };
+const STAGE_LABEL: Record<string, string> = {
+  use: "Nível 1 — Use",
+  modify: "Nível 2 — Modify",
+  create: "Nível 3 — Create",
+};
 
 interface LevelDraft {
   theme: string;
@@ -41,29 +56,46 @@ export function TeacherMiniGameSettings() {
   const [levels, setLevels] = useState<MiniGameLevelDto[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, LevelDraft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Record<string, { kind: 'success' | 'retry'; text: string }>>({});
+  const [messages, setMessages] = useState<
+    Record<string, { kind: "success" | "retry"; text: string }>
+  >({});
 
   useEffect(() => {
-    apiClient.get<MiniGameLevelDto[]>(`/teacher/minigames/levels?conceptId=${CONCEPT_ID}`).then((result) => {
-      setLevels(result);
-      setDrafts(Object.fromEntries(result.map((level) => [level.id, draftFromLevel(level)])));
-    });
+    apiClient
+      .get<MiniGameLevelDto[]>(
+        `/teacher/minigames/levels?conceptId=${CONCEPT_ID}`,
+      )
+      .then((result) => {
+        setLevels(result);
+        setDrafts(
+          Object.fromEntries(
+            result.map((level) => [level.id, draftFromLevel(level)]),
+          ),
+        );
+      });
   }, []);
 
   function updateDraft(levelId: string, patch: Partial<LevelDraft>) {
-    setDrafts((prev) => ({ ...prev, [levelId]: { ...prev[levelId], ...patch } }));
+    setDrafts((prev) => ({
+      ...prev,
+      [levelId]: { ...prev[levelId], ...patch },
+    }));
   }
 
   function addPoolFraction(levelId: string) {
     const draft = drafts[levelId];
     if (!draft || draft.fractionPool.length >= 5) return;
-    updateDraft(levelId, { fractionPool: [...draft.fractionPool, { numerator: 1, denominator: 2 }] });
+    updateDraft(levelId, {
+      fractionPool: [...draft.fractionPool, { numerator: 1, denominator: 2 }],
+    });
   }
 
   function removePoolFraction(levelId: string, index: number) {
     const draft = drafts[levelId];
     if (!draft) return;
-    updateDraft(levelId, { fractionPool: draft.fractionPool.filter((_, i) => i !== index) });
+    updateDraft(levelId, {
+      fractionPool: draft.fractionPool.filter((_, i) => i !== index),
+    });
   }
 
   async function handleSave(level: MiniGameLevelDto) {
@@ -74,17 +106,31 @@ export function TeacherMiniGameSettings() {
     try {
       const body: Record<string, unknown> = {
         theme: draft.theme,
-        targetFraction: { numerator: Number(draft.numerator), denominator: Number(draft.denominator) },
+        targetFraction: {
+          numerator: Number(draft.numerator),
+          denominator: Number(draft.denominator),
+        },
       };
-      if (level.stage === 'create') {
+      if (level.stage === "create") {
         body.fractionPool = draft.fractionPool;
       }
-      const updated = await apiClient.patch<MiniGameLevelDto>(`/teacher/minigames/levels/${level.id}`, body);
-      setLevels((prev) => prev?.map((l) => (l.id === level.id ? updated : l)) ?? null);
-      setMessages((prev) => ({ ...prev, [level.id]: { kind: 'success', text: 'Configuração salva.' } }));
+      const updated = await apiClient.patch<MiniGameLevelDto>(
+        `/teacher/minigames/levels/${level.id}`,
+        body,
+      );
+      setLevels(
+        (prev) => prev?.map((l) => (l.id === level.id ? updated : l)) ?? null,
+      );
+      setMessages((prev) => ({
+        ...prev,
+        [level.id]: { kind: "success", text: "Configuração salva." },
+      }));
     } catch (error) {
-      const text = error instanceof ApiError ? error.message : 'Não foi possível salvar — tente novamente.';
-      setMessages((prev) => ({ ...prev, [level.id]: { kind: 'retry', text } }));
+      const text =
+        error instanceof ApiError
+          ? error.message
+          : "Não foi possível salvar — tente novamente.";
+      setMessages((prev) => ({ ...prev, [level.id]: { kind: "retry", text } }));
     } finally {
       setSavingId(null);
     }
@@ -95,16 +141,18 @@ export function TeacherMiniGameSettings() {
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>
-      <h1>Fábrica de Pedaços Iguais — configuração</h1>
+      <h1>Fábrica de Pedaços Iguais</h1>
       {/* CC1 — categoria só leitura (curada via seed/MiniGameLevel.category,
           nunca escolhida pelo professor aqui); as 3 linhas do jogo
           compartilham a mesma categoria, então a 1ª já basta. */}
       {levels && levels.length > 0 && (
-        <Badge variant="neutral">{CONTENT_CATEGORY_LABEL[levels[0].category]}</Badge>
+        <Badge variant="neutral">
+          {CONTENT_CATEGORY_LABEL[levels[0].category]}
+        </Badge>
       )}
       <p>
-        Escolha o tema e a fração-alvo de cada nível. No nível 3 (Create), "Novo pedido" sorteia
-        uma fração desta lista a cada rodada.
+        Escolha o tema e a fração-alvo de cada nível. No nível 3 (Create), "Novo
+        pedido" sorteia uma fração desta lista a cada rodada.
       </p>
 
       {levels === null && <p>Carregando…</p>}
@@ -124,7 +172,9 @@ export function TeacherMiniGameSettings() {
                 label="Tema"
                 value={draft.theme}
                 options={THEME_OPTIONS}
-                onValueChange={(value) => updateDraft(level.id, { theme: value })}
+                onValueChange={(value) =>
+                  updateDraft(level.id, { theme: value })
+                }
               />
               <TextField
                 id={`numerator-${level.id}`}
@@ -132,7 +182,9 @@ export function TeacherMiniGameSettings() {
                 type="number"
                 min={1}
                 value={draft.numerator}
-                onChange={(event) => updateDraft(level.id, { numerator: event.target.value })}
+                onChange={(event) =>
+                  updateDraft(level.id, { numerator: event.target.value })
+                }
               />
               <TextField
                 id={`denominator-${level.id}`}
@@ -141,11 +193,13 @@ export function TeacherMiniGameSettings() {
                 min={2}
                 max={8}
                 value={draft.denominator}
-                onChange={(event) => updateDraft(level.id, { denominator: event.target.value })}
+                onChange={(event) =>
+                  updateDraft(level.id, { denominator: event.target.value })
+                }
               />
             </div>
 
-            {level.stage === 'create' && (
+            {level.stage === "create" && (
               <div className="teacher-minigame-settings__pool">
                 <p>Frações sorteadas em "Novo pedido" (1 a 5 opções):</p>
                 <ul>
@@ -159,7 +213,10 @@ export function TeacherMiniGameSettings() {
                         value={String(fraction.numerator)}
                         onChange={(event) => {
                           const next = [...draft.fractionPool];
-                          next[index] = { ...next[index], numerator: Number(event.target.value) };
+                          next[index] = {
+                            ...next[index],
+                            numerator: Number(event.target.value),
+                          };
                           updateDraft(level.id, { fractionPool: next });
                         }}
                       />
@@ -172,31 +229,45 @@ export function TeacherMiniGameSettings() {
                         value={String(fraction.denominator)}
                         onChange={(event) => {
                           const next = [...draft.fractionPool];
-                          next[index] = { ...next[index], denominator: Number(event.target.value) };
+                          next[index] = {
+                            ...next[index],
+                            denominator: Number(event.target.value),
+                          };
                           updateDraft(level.id, { fractionPool: next });
                         }}
                       />
-                      <Button variant="ghost" icon="🗑️" onClick={() => removePoolFraction(level.id, index)}>
-                        Remover
-                      </Button>
+                      <Button
+                        variant="ghost"
+                        icon={<Trash color="#b3261e" />}
+                        onClick={() => removePoolFraction(level.id, index)}
+                      ></Button>
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant="secondary"
-                  icon="➕"
+                  icon={<Plus />}
                   onClick={() => addPoolFraction(level.id)}
                   disabled={draft.fractionPool.length >= 5}
+                  style ={{ marginTop: "1em" }}
                 >
                   Adicionar fração
+                  
                 </Button>
               </div>
             )}
 
-            {message && <InlineFeedback kind={message.kind}>{message.text}</InlineFeedback>}
+            {message && (
+              <InlineFeedback kind={message.kind}>
+                {message.text}
+              </InlineFeedback>
+            )}
 
-            <Button onClick={() => handleSave(level)} disabled={savingId === level.id}>
-              {savingId === level.id ? 'Salvando…' : 'Salvar'}
+            <Button
+              onClick={() => handleSave(level)}
+              disabled={savingId === level.id}
+            >
+              {savingId === level.id ? "Salvando…" : "Salvar"}
             </Button>
           </section>
         );
