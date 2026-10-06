@@ -115,6 +115,7 @@ body {
   max-width: var(--page-max-width);
   margin-inline: auto;
   padding-inline: var(--space-4);
+  padding-block-start: var(--space-4);
   padding-block-end: var(--space-5);
 }
 

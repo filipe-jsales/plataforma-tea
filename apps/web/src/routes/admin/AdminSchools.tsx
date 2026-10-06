@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   Table,
@@ -181,8 +182,20 @@ export function AdminSchools() {
         </>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen} title="Criar escola">
-        <form className="admin-schools__form" onSubmit={handleCreateSubmit}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Criar escola"
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="create-school-form" variant="success" disabled={createSaving}>
+              {createSaving ? 'Criando…' : 'Criar'}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-school-form" className="admin-schools__form" onSubmit={handleCreateSubmit}>
           <TextField
             id="school-name"
             label="Nome da escola"
@@ -196,9 +209,6 @@ export function AdminSchools() {
             onChange={(e) => setCreateForm((f) => ({ ...f, externalId: e.target.value }))}
           />
           {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
-          <Button type="submit" disabled={createSaving}>
-            {createSaving ? 'Criando…' : 'Criar'}
-          </Button>
         </form>
       </Dialog>
 
@@ -206,9 +216,17 @@ export function AdminSchools() {
         open={editingSchool !== null}
         onOpenChange={(open) => !open && setEditingSchool(null)}
         title={editingSchool ? `Editar ${editingSchool.name}` : 'Editar'}
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="edit-school-form" variant="success" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </>
+        }
       >
         {editingSchool && (
-          <form className="admin-schools__form" onSubmit={handleEditSubmit}>
+          <form id="edit-school-form" className="admin-schools__form" onSubmit={handleEditSubmit}>
             <TextField
               id="edit-school-name"
               label="Nome da escola"
@@ -222,9 +240,6 @@ export function AdminSchools() {
               onChange={(e) => setEditForm((f) => ({ ...f, externalId: e.target.value }))}
             />
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
-            <Button type="submit" disabled={editSaving}>
-              {editSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
           </form>
         )}
       </Dialog>

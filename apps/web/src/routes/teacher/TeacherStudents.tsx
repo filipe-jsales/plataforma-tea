@@ -6,6 +6,7 @@ import type { ResetCredentialResult } from "../../lib/studentAccountTypes";
 import {
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   Select,
@@ -236,9 +237,25 @@ export function TeacherStudents() {
             : "Transferir aluno"
         }
         description="A matrícula atual é encerrada e uma nova é criada na turma de destino - o histórico de progresso do aluno não é perdido."
+        footer={
+          transferringStudent && (
+            <>
+              <DialogCancel />
+              <Button
+                type="submit"
+                form="transfer-student-form"
+                variant="success"
+                disabled={transferSaving || !destinationClassroomId}
+              >
+                {transferSaving ? "Transferindo…" : "Confirmar transferência"}
+              </Button>
+            </>
+          )
+        }
       >
         {transferringStudent && (
           <form
+            id="transfer-student-form"
             className="teacher-students__transfer-form"
             onSubmit={handleTransfer}
           >
@@ -256,12 +273,6 @@ export function TeacherStudents() {
             {transferError && (
               <InlineFeedback kind="retry">{transferError}</InlineFeedback>
             )}
-            <Button
-              type="submit"
-              disabled={transferSaving || !destinationClassroomId}
-            >
-              {transferSaving ? "Transferindo…" : "Confirmar transferência"}
-            </Button>
           </form>
         )}
       </Dialog>
@@ -275,6 +286,17 @@ export function TeacherStudents() {
             : "Recuperar acesso"
         }
         description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+        footer={
+          resettingStudent &&
+          !resetResult && (
+            <>
+              <DialogCancel />
+              <Button variant="success" onClick={handleReset} disabled={resetSaving}>
+                {resetSaving ? "Gerando…" : "Gerar nova credencial"}
+              </Button>
+            </>
+          )
+        }
       >
         {resettingStudent && !resetResult && (
           <div className="teacher-students__reset-body">
@@ -286,9 +308,6 @@ export function TeacherStudents() {
             {resetError && (
               <InlineFeedback kind="retry">{resetError}</InlineFeedback>
             )}
-            <Button onClick={handleReset} disabled={resetSaving}>
-              {resetSaving ? "Gerando…" : "Gerar nova credencial"}
-            </Button>
           </div>
         )}
 
@@ -309,12 +328,6 @@ export function TeacherStudents() {
                 </div>
               ))}
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => setResettingStudent(null)}
-            >
-              Fechar
-            </Button>
           </div>
         )}
       </Dialog>

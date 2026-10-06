@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   SegmentedControl,
@@ -289,9 +290,19 @@ export function AdminUsers() {
         }}
         title="Criar professor ou admin"
         description="Alunos nunca são criados aqui - use 'Adicionar aluno', no painel do professor (1.2)."
+        footer={
+          !createResult && (
+            <>
+              <DialogCancel />
+              <Button type="submit" form="create-staff-form" variant="success" disabled={createSaving}>
+                {createSaving ? 'Criando…' : 'Criar'}
+              </Button>
+            </>
+          )
+        }
       >
         {!createResult && (
-          <form className="admin-users__form" onSubmit={handleCreateSubmit}>
+          <form id="create-staff-form" className="admin-users__form" onSubmit={handleCreateSubmit}>
             <TextField
               id="staff-name"
               label="Nome completo"
@@ -315,9 +326,6 @@ export function AdminUsers() {
               onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v as 'teacher' | 'admin' }))}
             />
             {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
-            <Button type="submit" disabled={createSaving}>
-              {createSaving ? 'Criando…' : 'Criar'}
-            </Button>
           </form>
         )}
 
@@ -337,7 +345,6 @@ export function AdminUsers() {
                 <code className="admin-users__result-token">{createResult.totpOtpauthUri}</code>
               </>
             )}
-            <Button onClick={() => setCreateOpen(false)}>Fechar</Button>
           </div>
         )}
       </Dialog>
@@ -346,9 +353,17 @@ export function AdminUsers() {
         open={editingUser !== null}
         onOpenChange={(open) => !open && setEditingUser(null)}
         title={editingUser ? `Editar ${editingUser.displayName}` : 'Editar'}
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="edit-user-form" variant="success" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </>
+        }
       >
         {editingUser && (
-          <form className="admin-users__form" onSubmit={handleEditSubmit}>
+          <form id="edit-user-form" className="admin-users__form" onSubmit={handleEditSubmit}>
             <TextField
               id="edit-name"
               label="Nome completo"
@@ -382,9 +397,6 @@ export function AdminUsers() {
               </p>
             )}
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
-            <Button type="submit" disabled={editSaving}>
-              {editSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
           </form>
         )}
       </Dialog>
@@ -422,6 +434,17 @@ export function AdminUsers() {
         onOpenChange={(open) => !open && setResettingStudent(null)}
         title={resettingStudent ? `Recuperar acesso - ${resettingStudent.displayName}` : 'Recuperar acesso'}
         description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+        footer={
+          resettingStudent &&
+          !resetResult && (
+            <>
+              <DialogCancel />
+              <Button variant="success" onClick={handleReset} disabled={resetSaving}>
+                {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
+              </Button>
+            </>
+          )
+        }
       >
         {resettingStudent && !resetResult && (
           <div className="admin-users__reset-body">
@@ -430,9 +453,6 @@ export function AdminUsers() {
               depois desta ação. Confirme só se o aluno realmente esqueceu a credencial.
             </p>
             {resetError && <InlineFeedback kind="retry">{resetError}</InlineFeedback>}
-            <Button onClick={handleReset} disabled={resetSaving}>
-              {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
-            </Button>
           </div>
         )}
 
@@ -449,9 +469,6 @@ export function AdminUsers() {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" onClick={() => setResettingStudent(null)}>
-              Fechar
-            </Button>
           </div>
         )}
       </Dialog>

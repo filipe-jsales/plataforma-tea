@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   LinkButton,
   Select,
   SegmentedControl,
@@ -270,18 +271,22 @@ export function TeacherMetrics() {
                 avatar ou o desempenho de um colega específico. Você pode desligar a qualquer momento.
               </>
             }
-          >
-            <Button
-              variant="success"
-              icon={<ChartColumn />}
-              onClick={() => {
-                setConfirmComparisonDialogOpen(false);
-                void updateComparisonSetting(selectedClassroom.id, true);
-              }}
-            >
-              Ativar comparação
-            </Button>
-          </Dialog>
+            footer={
+              <>
+                <DialogCancel />
+                <Button
+                  variant="success"
+                  icon={<ChartColumn />}
+                  onClick={() => {
+                    setConfirmComparisonDialogOpen(false);
+                    void updateComparisonSetting(selectedClassroom.id, true);
+                  }}
+                >
+                  Ativar comparação
+                </Button>
+              </>
+            }
+          />
 
           <SegmentedControl
             options={VIEW_OPTIONS}

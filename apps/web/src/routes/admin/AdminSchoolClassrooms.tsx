@@ -7,6 +7,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   Select,
@@ -220,8 +221,20 @@ export function AdminSchoolClassrooms() {
         </>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen} title="Criar turma">
-        <form className="admin-schools__form" onSubmit={handleCreateSubmit}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Criar turma"
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="create-classroom-form" variant="success" disabled={createSaving}>
+              {createSaving ? 'Criando…' : 'Criar'}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-classroom-form" className="admin-schools__form" onSubmit={handleCreateSubmit}>
           <TextField
             id="classroom-name"
             label="Nome da turma"
@@ -236,9 +249,6 @@ export function AdminSchoolClassrooms() {
             onValueChange={(value) => setCreateForm((f) => ({ ...f, teacherId: value }))}
           />
           {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
-          <Button type="submit" disabled={createSaving}>
-            {createSaving ? 'Criando…' : 'Criar'}
-          </Button>
         </form>
       </Dialog>
 
@@ -246,9 +256,17 @@ export function AdminSchoolClassrooms() {
         open={editingClassroom !== null}
         onOpenChange={(open) => !open && setEditingClassroom(null)}
         title={editingClassroom ? `Editar ${editingClassroom.name}` : 'Editar'}
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="edit-classroom-form" variant="success" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </>
+        }
       >
         {editingClassroom && (
-          <form className="admin-schools__form" onSubmit={handleEditSubmit}>
+          <form id="edit-classroom-form" className="admin-schools__form" onSubmit={handleEditSubmit}>
             <TextField
               id="edit-classroom-name"
               label="Nome da turma"
@@ -263,9 +281,6 @@ export function AdminSchoolClassrooms() {
               onValueChange={(value) => setEditForm((f) => ({ ...f, teacherId: value }))}
             />
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
-            <Button type="submit" disabled={editSaving}>
-              {editSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
           </form>
         )}
       </Dialog>

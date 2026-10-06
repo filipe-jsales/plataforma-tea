@@ -25,7 +25,7 @@ export {
 } from './Table';
 export { Badge, type BadgeProps, type BadgeVariant } from './Badge';
 export { Tooltip, type TooltipProps } from './Tooltip';
-export { Dialog, type DialogProps } from './Dialog';
+export { Dialog, DialogCancel, type DialogProps } from './Dialog';
 export { Heading, type HeadingProps, type HeadingLevel } from './Heading';
 export { Text, type TextProps, type TextTone, type TextSize } from './Text';
 export { InlineFeedback, type InlineFeedbackProps, type FeedbackKind } from './InlineFeedback';

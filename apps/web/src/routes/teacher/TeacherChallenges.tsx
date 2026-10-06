@@ -123,19 +123,25 @@ export function TeacherChallenges() {
         onOpenChange={(open) => !open && setPendingDeleteId(null)}
         title="Excluir este desafio?"
         description="Os alunos que já acessaram este desafio por link direto deixam de conseguir abri-lo. Esta ação não pode ser desfeita."
-      >
-        <Button
-          variant="danger"
-          disabled={deleting}
-          onClick={async () => {
-            await confirmDelete();
-            setPendingDeleteId(null);
-            reload();
-          }}
-        >
-          {deleting ? "Excluindo…" : "Excluir mesmo assim"}
-        </Button>
-      </Dialog>
+        footer={
+          <>
+            <Button variant="success" onClick={() => setPendingDeleteId(null)}>
+              Manter desafio
+            </Button>
+            <Button
+              variant="danger"
+              disabled={deleting}
+              onClick={async () => {
+                await confirmDelete();
+                setPendingDeleteId(null);
+                reload();
+              }}
+            >
+              {deleting ? "Excluindo…" : "Excluir mesmo assim"}
+            </Button>
+          </>
+        }
+      />
 
       {allocatingChallenge && (
         <AllocationDialog
