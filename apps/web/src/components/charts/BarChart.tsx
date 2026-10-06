@@ -12,7 +12,7 @@ interface BarChartProps {
 
 // Barras HORIZONTAIS de propósito: rótulos de categoria deste relatório
 // variam de curtos ("1", "2") a longos (`type` de evento, ex.
-// "toolbox_rendered") — horizontal evita rótulo rotacionado/cortado
+// "toolbox_rendered") - horizontal evita rótulo rotacionado/cortado
 // independente do tamanho do texto (AC de 6.5 não pede layout específico,
 // só "gráfico de barras"). Valor no fim da barra (mark spec: "Bars → value
 // at the tip").
@@ -26,7 +26,7 @@ const ROW_HEIGHT = 30;
 export function BarChart({ data, ariaLabel }: BarChartProps) {
   const total = data.reduce((sum, datum) => sum + datum.count, 0);
   if (data.length === 0 || total === 0) {
-    return <p className="chart-empty">N=0 — sem dados.</p>;
+    return <p className="chart-empty">N=0 - sem dados.</p>;
   }
 
   const max = Math.max(...data.map((datum) => datum.count), 1);

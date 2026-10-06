@@ -13,7 +13,7 @@ export interface Size {
 export interface CardPlacement {
   top: number;
   left: number;
-  // Só pra quem quiser desenhar uma "setinha" apontando pro alvo depois —
+  // Só pra quem quiser desenhar uma "setinha" apontando pro alvo depois -
   // o cálculo de posição em si não depende disso.
   placement: 'top' | 'bottom';
 }
@@ -21,7 +21,7 @@ export interface CardPlacement {
 const GAP = 12;
 const VIEWPORT_MARGIN = 16;
 
-// Função pura (sem DOM) — GuidedTour.tsx mede `target`/`card` de verdade via
+// Função pura (sem DOM) - GuidedTour.tsx mede `target`/`card` de verdade via
 // `getBoundingClientRect` e só chama isto pro cálculo. Separado do
 // componente de propósito: jsdom sempre devolve retângulo zerado (ver nota
 // em GuidedTour.spec.tsx), então é só aqui, com retângulos inventados, que a
@@ -29,9 +29,9 @@ const VIEWPORT_MARGIN = 16;
 //
 // Regra: preferir embaixo do alvo; só vai pra cima se não couber embaixo E
 // houver mais espaço em cima (nunca escolher "cima" só porque cabe, se
-// embaixo também cabe — resultado mais prático de prever/testar). Depois,
+// embaixo também cabe - resultado mais prático de prever/testar). Depois,
 // centraliza horizontalmente sobre o alvo, mas nunca deixa o card vazar a
-// viewport — recorta pro `VIEWPORT_MARGIN` de qualquer lado.
+// viewport - recorta pro `VIEWPORT_MARGIN` de qualquer lado.
 export function computeCardPlacement(target: Rect, viewport: Size, card: Size): CardPlacement {
   const spaceBelow = viewport.height - (target.top + target.height);
   const spaceAbove = target.top;

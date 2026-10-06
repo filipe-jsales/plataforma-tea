@@ -12,10 +12,10 @@ import {
 } from "../components/ui";
 import "./OnboardingSensorial.css";
 
-// 3.9 — mesmas duas opções de OnboardingSensorial (2.2), mas revisitável
+// 3.9 - mesmas duas opções de OnboardingSensorial (2.2), mas revisitável
 // pelo próprio aluno a qualquer momento, não só na primeira sessão.
 // Reaproveita o mesmo endpoint (PATCH /users/:id/sensory-profile já aceita
-// `isSelf`, ver UsersController) — salvar aqui nunca reabre o onboarding
+// `isSelf`, ver UsersController) - salvar aqui nunca reabre o onboarding
 // nem mexe em `sensoryOnboardingCompletedAt`
 // (UsersService.updateSensoryProfile só marca isso na primeira vez).
 export function StudentSensorySettings() {
@@ -49,7 +49,7 @@ export function StudentSensorySettings() {
         { soundEnabled, animationEnabled },
       );
       updateUser(updated);
-      // Aplica na hora, sem precisar recarregar — mesmo comportamento do
+      // Aplica na hora, sem precisar recarregar - mesmo comportamento do
       // onboarding (AC4 de 2.2).
       setMotionEnabled(animationEnabled);
       setSoundEnabledGlobal(soundEnabled);

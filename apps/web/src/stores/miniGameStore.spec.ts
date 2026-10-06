@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMiniGameStore } from './miniGameStore';
 
 describe('createMiniGameStore', () => {
-  it('is a factory — two instances never share state', () => {
+  it('is a factory - two instances never share state', () => {
     const a = createMiniGameStore();
     const b = createMiniGameStore();
     a.getState().startScene('scene-1', 'concept-1');

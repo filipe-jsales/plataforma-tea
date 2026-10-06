@@ -16,7 +16,7 @@ export interface ToolboxCategory {
 }
 
 // A forma do bloco (message0/args0/...) vem inteira do catálogo do backend
-// (GET /challenges/by-topic/:id) — nunca hardcodada aqui. Isso é o que
+// (GET /challenges/by-topic/:id) - nunca hardcodada aqui. Isso é o que
 // permite um bloco novo existir só com uma linha na tabela `blocks` +
 // migration, sem deploy de frontend (mesmo raciocínio de
 // getIllustrationAsset ler de um mapeamento único, não espalhado pela tela).
@@ -34,7 +34,7 @@ export function registerBlockDefinitions(categories: ToolboxCategory[]): void {
 }
 
 // AC1/AC5: só os blocos configurados pro desafio, agrupados em categorias
-// pequenas e nomeadas (nunca uma paleta única enorme) — a categoria em si já
+// pequenas e nomeadas (nunca uma paleta única enorme) - a categoria em si já
 // vem pronta do backend (blocks.category), aqui só traduzimos pro formato de
 // toolbox JSON que o Blockly espera.
 export function buildToolboxConfiguration(
@@ -55,12 +55,12 @@ const BASE_DRAG_RADIUS = 20;
 const BASE_SNAP_RADIUS = 48;
 const BASE_CONNECTING_SNAP_RADIUS = 48;
 
-// AC3: tolerância ampla de encaixe (mitiga coordenação motora fina, RQ4) —
+// AC3: tolerância ampla de encaixe (mitiga coordenação motora fina, RQ4) -
 // valores bem acima do default do Blockly (~20px). Chamado uma vez no
-// carregamento do módulo (`tolerancePercent` default 100 — o mesmo
+// carregamento do módulo (`tolerancePercent` default 100 - o mesmo
 // comportamento de sempre) e de novo por ChallengePage a cada desafio
 // carregado (`onInject`), com `challenge.snapTolerancePercent` quando o
-// desafio foi criado via template (4.2) — o professor escolhe esse valor
+// desafio foi criado via template (4.2) - o professor escolhe esse valor
 // no formulário guiado, nunca editando este arquivo. `Blockly.config` é
 // estado global mutável do módulo Blockly (não por-workspace), por isso
 // reaplicar por desafio é o suficiente: não há dois workspaces com
@@ -73,7 +73,7 @@ export function applyGenerousSnapTolerance(tolerancePercent = 100): void {
 }
 
 // Motor PRIMM "Modify" (3.4/3.6, mesma forma que EditableFieldConfig do
-// backend — ver challenge-config.interface.ts): um campo numérico do
+// backend - ver challenge-config.interface.ts): um campo numérico do
 // `program` pré-montado que o aluno pode editar, com os limites curados
 // pra este desafio.
 export interface EditableFieldConfig {
@@ -85,12 +85,12 @@ export interface EditableFieldConfig {
 }
 
 // Trava a estrutura do programa (bloco não pode ser movido/apagado) e o
-// valor de todo campo que não está em `editableFields` — só os campos
+// valor de todo campo que não está em `editableFields` - só os campos
 // configurados pro desafio aceitam edição, e com o min/max definidos ali
 // (não o min/max técnico do bloco em si, ver migration
 // AddAngleFieldToTurnBlock). Chamado uma vez no `onInject` do workspace.
 // Domínio-agnóstica: usada tanto por ChallengePage (turtle) quanto por
-// WaterStateChallengePage (condicionais) — o mecanismo não sabe/importa o
+// WaterStateChallengePage (condicionais) - o mecanismo não sabe/importa o
 // que o campo representa (ângulo, número de lados, limiar de temperatura).
 export function applyModifyFieldLocking(workspace: WorkspaceSvg, editableFields: EditableFieldConfig[]): void {
   for (const block of workspace.getAllBlocks(false)) {

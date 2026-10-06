@@ -70,7 +70,7 @@ describe('TeacherMetrics', () => {
     expect(mockedGet).toHaveBeenCalledWith('/metrics/teacher/classrooms/c1/students');
   });
 
-  it('renders each student with, per challenge, its stage/status/attempts — never sorted by performance by default', async () => {
+  it('renders each student with, per challenge, its stage/status/attempts - never sorted by performance by default', async () => {
     mockedGet.mockResolvedValueOnce([classroom]);
     mockedGet.mockResolvedValueOnce([
       {

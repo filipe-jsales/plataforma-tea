@@ -47,7 +47,7 @@
   cursor: pointer;
 }
 
-/* Mesmo estilo de .challenge-page__step-button (ChallengePage.css) — só
+/* Mesmo estilo de .challenge-page__step-button (ChallengePage.css) - só
    muda o seletor, pra manter o "Próximo passo" visualmente consistente
    entre as trilhas de Geometria e Estados da Matéria. */
 .water-challenge-page__step-button {
@@ -74,7 +74,7 @@
   gap: var(--space-2);
 }
 
-/* AC de coordenação motora fina (RQ4, regra 4) — alvo de toque grande,
+/* AC de coordenação motora fina (RQ4, regra 4) - alvo de toque grande,
    mesmo racional de .challenge-page__predict-option em ChallengePage.css. */
 .water-challenge-page__predict-option {
   min-width: 56px;

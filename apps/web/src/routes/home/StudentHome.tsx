@@ -10,13 +10,13 @@ import { Play, TrendingUp, PartyPopper } from "lucide-react";
 interface StudentHomeData {
   continueChallenge: { id: string; title: string } | null;
   progress: { completedChallengesCount: number };
-  // 7.3 — `null` sempre que a turma não ativou a comparação (padrão) ou não
+  // 7.3 - `null` sempre que a turma não ativou a comparação (padrão) ou não
   // há colega pra comparar contra. Nunca nome/rank/número de outro aluno.
   classComparison: { amongMostActiveThisWeek: boolean } | null;
 }
 
-// 2.1 — home do aluno. No máximo 2 ações principais (AC1), nenhum número
-// comparativo a outros alunos, nenhum timer/contagem regressiva (AC2) —
+// 2.1 - home do aluno. No máximo 2 ações principais (AC1), nenhum número
+// comparativo a outros alunos, nenhum timer/contagem regressiva (AC2) -
 // regra não-negociável 5 / RQ4 ansiedade social (13,04%).
 export function StudentHome() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export function StudentHome() {
     });
   }, [user?.id]);
 
-  // 7.3 — loga uma vez quando o dado chega, nunca a cada clique em "Meu
+  // 7.3 - loga uma vez quando o dado chega, nunca a cada clique em "Meu
   // progresso" (o AC é sobre o dado estar/não estar disponível, não sobre
   // o aluno ter revelado a seção).
   useEffect(() => {
@@ -53,9 +53,9 @@ export function StudentHome() {
 
   return (
     <main className="home">
-      {/* 1.5.1/3.9 — "Configurações"/"Sair" saíram do topbar solto e foram
+      {/* 1.5.1/3.9 - "Configurações"/"Sair" saíram do topbar solto e foram
           pra sidebar global (AppSidebar), aberta pelo hambúrguer do
-          AppHeader — mesmo racional de ação de escape sempre disponível,
+          AppHeader - mesmo racional de ação de escape sempre disponível,
           mas discreta, agora consistente nos 3 papéis. */}
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 
@@ -86,8 +86,8 @@ export function StudentHome() {
         </p>
       )}
 
-      {/* 7.3 — só aparece quando o PROFESSOR ativou a comparação pra esta
-          turma (padrão: desligado). Sempre agregado/anônimo — nunca nome,
+      {/* 7.3 - só aparece quando o PROFESSOR ativou a comparação pra esta
+          turma (padrão: desligado). Sempre agregado/anônimo - nunca nome,
           avatar ou posição de um colega específico (regra não-negociável 5). */}
       {showProgress && data?.classComparison?.amongMostActiveThisWeek && (
         <p className="home__progress-detail home__progress-comparison">

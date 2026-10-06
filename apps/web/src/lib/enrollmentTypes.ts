@@ -1,4 +1,4 @@
-// 1.5 — mesma forma que a API de enrollments devolve.
+// 1.5 - mesma forma que a API de enrollments devolve.
 export interface ClassroomRosterStudent {
   id: string;
   displayName: string;

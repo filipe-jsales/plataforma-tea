@@ -80,7 +80,7 @@
   gap: var(--space-3);
 }
 
-/* Credencial imprimível — só o cartão sai no papel, nunca o resto da tela
+/* Credencial imprimível - só o cartão sai no papel, nunca o resto da tela
    (navegação, botões, avisos). */
 @media print {
   .teacher-add-student > *:not(#student-credential-card) {

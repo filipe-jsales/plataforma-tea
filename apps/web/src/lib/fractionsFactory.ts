@@ -1,11 +1,11 @@
 // Lógica pura do 1º mini jogo de conteúdo ("Fábrica de Pedaços Iguais",
-// frações) — ver docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md.
+// frações) - ver docs/ai/backlog/mini-jogo-fabrica-pedacos-iguais.md.
 // Sem I/O, sem Pixi/React: testável isolado (fractionsFactory.spec.ts),
 // mesmo racional de turtleWorld.ts (fechamento geométrico calculado no
 // cliente) e statistics.ts do backend (cálculo em código puro).
 //
 // Decisão de design (ver plano/backlog): "Repetir corte" é deliberadamente
-// SEM efeito matemático — reforça a percepção de iteração/repetição sem
+// SEM efeito matemático - reforça a percepção de iteração/repetição sem
 // amarrar o denominador a potências de 2. `cutEqualParts.parts` já define o
 // denominador diretamente.
 
@@ -26,7 +26,7 @@ export interface SimulationResult {
   deliveredParts: number | null;
   repeatCutCount: number;
   valid: boolean;
-  // Mensagens descritivas e reversíveis (regra não-negociável 4) — nunca
+  // Mensagens descritivas e reversíveis (regra não-negociável 4) - nunca
   // "errado"/"inválido" sozinho, sempre explicando o quê e convidando a
   // ajustar.
   errors: string[];
@@ -35,7 +35,7 @@ export interface SimulationResult {
 const MIN_PARTS = 2;
 const MAX_PARTS = 8;
 
-// Anda a sequência cartão a cartão, validando ordem e parâmetros — nunca
+// Anda a sequência cartão a cartão, validando ordem e parâmetros - nunca
 // lança exceção, sempre devolve um resultado descritivo (mesmo espírito de
 // isChallengeConfig/ChallengeTemplateHandler.validateParameters no
 // backend: "quase lá, quer ajustar?", não um erro técnico).
@@ -54,7 +54,7 @@ export function simulateSequence(cards: FractionsFactoryCard[]): SimulationResul
       deliveredParts: null,
       repeatCutCount: 0,
       valid: false,
-      errors: ['A sequência está vazia — adicione ao menos um cartão para começar.'],
+      errors: ['A sequência está vazia - adicione ao menos um cartão para começar.'],
     };
   }
 
@@ -123,7 +123,7 @@ export function simulateSequence(cards: FractionsFactoryCard[]): SimulationResul
   };
 }
 
-// Compara o resultado da simulação ao pedido (fração-alvo) — só bate se a
+// Compara o resultado da simulação ao pedido (fração-alvo) - só bate se a
 // sequência é válida E os números batem exatamente (mesma definição de
 // fração ensinada pelo jogo: partes iguais de um todo).
 export function matchesTarget(result: SimulationResult, target: FractionsFactoryFraction): boolean {

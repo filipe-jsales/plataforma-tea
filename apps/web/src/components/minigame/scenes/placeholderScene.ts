@@ -4,15 +4,15 @@ import type { MiniGameSceneDefinition } from '../MiniGameEngine';
 
 const BUTTON_RADIUS = 56;
 
-// MJ1 — cena mínima só pra provar o ciclo de vida do motor ponta a ponta
+// MJ1 - cena mínima só pra provar o ciclo de vida do motor ponta a ponta
 // (montar/desmontar, avançar as 5 fases do PRIMM, disparar os eventos de
-// MJ7) — NÃO é conteúdo pedagógico de verdade. MJ3/MJ4/MJ5 (roteiro
+// MJ7) - NÃO é conteúdo pedagógico de verdade. MJ3/MJ4/MJ5 (roteiro
 // visual, áreas de interação tolerantes, rotulagem redundante completa)
 // são cartões separados que qualquer cena de CONTEÚDO real precisa seguir
-// — esta aqui é propositalmente a mais simples possível.
+// - esta aqui é propositalmente a mais simples possível.
 //
 // Nunca mostra os rótulos técnicos do PRIMM ao aluno (regra não-negociável
-// 3) — "Etapa N de 5" é a única coisa exibida, nunca "predict"/"run"/etc.
+// 3) - "Etapa N de 5" é a única coisa exibida, nunca "predict"/"run"/etc.
 export function createPlaceholderScene(conceptId: string): MiniGameSceneDefinition {
   return {
     id: `placeholder:${conceptId}`,

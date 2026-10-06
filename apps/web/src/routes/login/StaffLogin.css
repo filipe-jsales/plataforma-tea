@@ -1,7 +1,7 @@
-/* Compartilhado por professor/admin — formulário padrão, sem as
+/* Compartilhado por professor/admin - formulário padrão, sem as
    restrições sensoriais do fluxo aluno (não precisa de alvo de toque
    gigante nem grade de ilustrações). Tema mais rico (3.11, `.staff-theme`)
-   e botão "Entrar" vêm de components/ui/Button — mesma geometria do botão
+   e botão "Entrar" vêm de components/ui/Button - mesma geometria do botão
    usado em qualquer outro módulo (AC "consistência entre módulos"), só a
    cor de fundo muda por contexto. */
 .staff-login {

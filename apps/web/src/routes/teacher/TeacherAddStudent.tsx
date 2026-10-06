@@ -4,6 +4,7 @@ import { getIllustrationAsset } from '../../lib/illustrationAssets';
 import type { PendingStudentAccount, StudentAccountCredential } from '../../lib/studentAccountTypes';
 import { Button, InlineFeedback, LinkButton, SelectableCard, Select, TextField, ToggleSwitch } from '../../components/ui';
 import './TeacherAddStudent.css';
+import { Plus, Printer } from 'lucide-react';
 
 interface TeacherClassroomOption {
   id: string;
@@ -33,11 +34,11 @@ const EMPTY_GUARDIAN_FORM: GuardianForm = {
 
 type Step = 'student' | 'guardian' | 'credential';
 
-// 1.2/A2 — Criação de conta de aluno feita pela escola/professor (não
+// 1.2/A2 - Criação de conta de aluno feita pela escola/professor (não
 // autoatendimento), em 3 telas desde A2: (1) dados do aluno, (2)
-// responsável legal + consentimento (ECA) — etapa OBRIGATÓRIA, nunca
-// pulável — e só depois (3) a credencial gerada aparece. Sem campo de
-// e-mail/senha/telefone do ALUNO em nenhuma etapa (AC de 1.2) — o contato
+// responsável legal + consentimento (ECA) - etapa OBRIGATÓRIA, nunca
+// pulável - e só depois (3) a credencial gerada aparece. Sem campo de
+// e-mail/senha/telefone do ALUNO em nenhuma etapa (AC de 1.2) - o contato
 // coletado na etapa 2 é do RESPONSÁVEL, nunca do aluno.
 export function TeacherAddStudent() {
   const [step, setStep] = useState<Step>('student');
@@ -105,9 +106,9 @@ export function TeacherAddStudent() {
     }
   }
 
-  // A2 (AC1/AC2) — etapa obrigatória: responsável legal + consentimento
+  // A2 (AC1/AC2) - etapa obrigatória: responsável legal + consentimento
   // explícito, sempre ANTES de qualquer credencial existir. Validação
-  // client-side espelha a do backend (nunca confiar só numa das duas —
+  // client-side espelha a do backend (nunca confiar só numa das duas -
   // mesmo padrão de duplo-check já usado nos templates de desafio).
   async function handleGuardianSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -151,23 +152,23 @@ export function TeacherAddStudent() {
 
   if (step === 'credential' && credential) {
     return (
-      <main className="teacher-add-student staff-theme page">
+      <main className="teacher-add-student staff-theme page page--narrow">
         <LinkButton to="/home" variant="ghost" icon="←">
           Voltar
         </LinkButton>
 
         {pending?.duplicateWarning && (
           <InlineFeedback kind="info">
-            Já existe outro aluno com um nome parecido nesta turma. A conta foi criada normalmente — só
+            Já existe outro aluno com um nome parecido nesta turma. A conta foi criada normalmente - só
             confira se não é um cadastro duplicado do mesmo aluno.
           </InlineFeedback>
         )}
 
         <div className="teacher-add-student__credential-card" id="student-credential-card">
-          <h1>Credencial de acesso</h1>
-          <p className="teacher-add-student__credential-name">{credential.student.displayName}</p>
+          <h1 style={{ textAlign: 'center' }}>Credencial de acesso</h1>
+          <p className="teacher-add-student__credential-name">Nome: {credential.student.displayName}</p>
           <p className="teacher-add-student__credential-meta">
-            Turma: {credential.classroom.name} (código {credential.classroom.joinCode})
+            Turma: {credential.classroom.name} (código da turma: {credential.classroom.joinCode})
           </p>
 
           <div className="teacher-add-student__credential-section">
@@ -180,7 +181,7 @@ export function TeacherAddStudent() {
           </div>
 
           <div className="teacher-add-student__credential-section">
-            <h2>2. Minha senha de imagens (nesta ordem)</h2>
+            <h2>2. Minha senha de imagens em ordem:</h2>
             <div className="teacher-add-student__credential-images">
               {credential.credential.loginImages.map((image, index) => (
                 <div key={index} className="teacher-add-student__credential-image">
@@ -193,10 +194,10 @@ export function TeacherAddStudent() {
         </div>
 
         <div className="teacher-add-student__actions">
-          <Button icon="🖨️" onClick={() => window.print()}>
+          <Button icon={<Printer />} onClick={() => window.print()}>
             Imprimir credencial
           </Button>
-          <Button variant="secondary" icon="➕" onClick={resetAll}>
+          <Button variant="secondary" icon={<Plus />} onClick={resetAll}>
             Cadastrar outro aluno
           </Button>
         </div>
@@ -206,14 +207,14 @@ export function TeacherAddStudent() {
 
   if (step === 'guardian' && pending) {
     return (
-      <main className="teacher-add-student staff-theme page">
+      <main className="teacher-add-student staff-theme page page--narrow">
         <LinkButton to="/home" variant="ghost" icon="←">
           Voltar
         </LinkButton>
         <h1>Responsável legal</h1>
         <p className="teacher-add-student__subtitle">
           Antes de liberar a credencial de acesso de {pending.student.displayName}, registre o consentimento
-          do responsável legal (conforme o ECA). Essa etapa é obrigatória — a credencial só é gerada depois
+          do responsável legal (conforme o ECA). Essa etapa é obrigatória - a credencial só é gerada depois
           dela.
         </p>
 
@@ -256,7 +257,7 @@ export function TeacherAddStudent() {
   }
 
   return (
-    <main className="teacher-add-student staff-theme page">
+    <main className="teacher-add-student staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>
@@ -287,7 +288,7 @@ export function TeacherAddStudent() {
         )}
         {classrooms !== null && classrooms.length === 0 && (
           <InlineFeedback kind="info">
-            Você ainda não tem nenhuma turma sob sua responsabilidade — peça para um admin te vincular a
+            Você ainda não tem nenhuma turma sob sua responsabilidade - peça para um admin te vincular a
             uma turma antes de cadastrar alunos.
           </InlineFeedback>
         )}

@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 
 describe('AllocationDialog', () => {
-  it('AC1 — lists only the teacher\'s own classrooms (reusing GET /home/teacher), never every classroom in the school', async () => {
+  it('AC1 - lists only the teacher\'s own classrooms (reusing GET /home/teacher), never every classroom in the school', async () => {
     mockedGet.mockResolvedValueOnce([classroomA, classroomB]);
     mockedGet.mockResolvedValueOnce([]);
 
@@ -47,7 +47,7 @@ describe('AllocationDialog', () => {
     expect(screen.getByRole('switch', { name: /turma b/i })).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('AC2 — turning a classroom on immediately allocates the challenge, no separate "save" step', async () => {
+  it('AC2 - turning a classroom on immediately allocates the challenge, no separate "save" step', async () => {
     mockedGet.mockResolvedValueOnce([classroomA]);
     mockedGet.mockResolvedValueOnce([]);
     mockedPost.mockResolvedValueOnce({ classroomId: 'classroom-1', classroomName: 'Turma A', classroomJoinCode: 'AZUL-1' });
@@ -64,7 +64,7 @@ describe('AllocationDialog', () => {
     expect(await screen.findByRole('switch', { name: /turma a/i })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('AC5 — turning an allocated classroom off removes only that link', async () => {
+  it('AC5 - turning an allocated classroom off removes only that link', async () => {
     mockedGet.mockResolvedValueOnce([classroomA]);
     mockedGet.mockResolvedValueOnce([{ classroomId: 'classroom-1', classroomName: 'Turma A', classroomJoinCode: 'AZUL-1' }]);
     mockedDelete.mockResolvedValueOnce(undefined);

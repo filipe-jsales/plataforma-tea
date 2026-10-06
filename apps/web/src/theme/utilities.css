@@ -12,7 +12,7 @@
 .u-justify-end { justify-content: flex-end; }
 .u-justify-between { justify-content: space-between; }
 
-/* ---------- espaçamento (gap — nunca margin solto entre irmãos, mesma
+/* ---------- espaçamento (gap - nunca margin solto entre irmãos, mesma
    regra de "Let layout do the spacing" já seguida no resto do produto) --- */
 .u-gap-1 { gap: var(--space-1); }
 .u-gap-2 { gap: var(--space-2); }
@@ -38,14 +38,14 @@
 .u-text-primary { color: var(--color-primary); }
 .u-text-success { color: var(--color-success); }
 .u-text-warning { color: var(--color-warning); }
-/* Texto secundário — nunca um hex solto (`#5a6472`) nem um token
+/* Texto secundário - nunca um hex solto (`#5a6472`) nem um token
    `--color-text-muted` que não existe (ver DS12): opacidade sobre
    `--color-text` herda qualquer override de tema/alto-contraste de
    graça, mesmo mecanismo de `components/ui/Card.css` (`.ui-card__meta`)
    e `Typography.css` (`.ui-text--muted`). */
 .u-text-muted { color: var(--color-text); opacity: 0.75; }
 
-/* ---------- tamanho de texto (mesma escala de Heading/Text — usar aqui só
+/* ---------- tamanho de texto (mesma escala de Heading/Text - usar aqui só
    quando o elemento não puder ser <Heading>/<Text>, ex. um <span> dentro
    de outro componente) ---------- */
 .u-text-sm { font-size: var(--font-size-small); }
@@ -61,6 +61,6 @@
 .u-rounded { border-radius: var(--radius-md); }
 .u-shadow-card { box-shadow: var(--shadow-card); }
 
-/* ---------- interação (RQ4 coordenação motora fina — mesmo token que
+/* ---------- interação (RQ4 coordenação motora fina - mesmo token que
    Button.css/Card.css usam, nunca um px inventado na tela) ---------- */
 .u-hit-area { min-width: var(--hit-area-min); min-height: var(--hit-area-min); }

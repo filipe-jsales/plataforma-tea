@@ -10,11 +10,11 @@ export interface AllocationDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// 4.3 (AC1/AC2/AC5) — o professor liga/desliga a presença do desafio em
-// cada uma das PRÓPRIAS turmas (nunca todas as turmas da escola — AC1;
+// 4.3 (AC1/AC2/AC5) - o professor liga/desliga a presença do desafio em
+// cada uma das PRÓPRIAS turmas (nunca todas as turmas da escola - AC1;
 // `GET /home/teacher`, já existente desde 2.1, já é escopado ao professor
 // autenticado, reaproveitado aqui sem endpoint novo). Efeito imediato: cada
-// toggle chama POST/DELETE na hora, sem um botão "Salvar" separado — a
+// toggle chama POST/DELETE na hora, sem um botão "Salvar" separado - a
 // mesma linha que autoriza a alocação já é o que a área do aluno lê (AC2).
 export function AllocationDialog({ challengeId, challengeTitle, open, onOpenChange }: AllocationDialogProps) {
   const [classrooms, setClassrooms] = useState<TeacherClassroomOption[] | null>(null);
@@ -62,6 +62,7 @@ export function AllocationDialog({ challengeId, challengeTitle, open, onOpenChan
       onOpenChange={onOpenChange}
       title="Alocar à turma"
       description={`Escolha em quais das suas turmas "${challengeTitle}" fica disponível para os alunos.`}
+      headerClassName="ui-dialog__header--centered"
     >
       {classrooms === null && <p>Carregando turmas…</p>}
       {classrooms !== null && classrooms.length === 0 && (

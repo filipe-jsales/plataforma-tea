@@ -6,7 +6,7 @@
 
   O estado real (data-motion, data-contrast, data-font-scale) é escrito no <html>
   pelo store de perfil sensorial (ver src/stores/useSensoryProfileStore.ts).
-  Aqui definimos os valores de cada configuração — nunca lógica de decisão.
+  Aqui definimos os valores de cada configuração - nunca lógica de decisão.
 */
 
 :root {
@@ -15,6 +15,7 @@
   --color-text: #1c1e21;
   --color-primary: #2b6cb0;
   --color-success: #2f855a;
+  --color-danger: #c53030;
   --color-warning: #b7791f;
   --color-border: #d7dbe0;
 
@@ -26,14 +27,14 @@
 
   --radius-md: 8px;
 
-  /* Duração/curva de transição — só têm efeito quando data-motion="full". */
+  /* Duração/curva de transição - só têm efeito quando data-motion="full". */
   --motion-duration: 180ms;
   --motion-easing: ease-out;
 
   /*
-    3.10 — tokens de interação compartilhados por todo componente em
+    3.10 - tokens de interação compartilhados por todo componente em
     components/ui/. Área de toque mínima (RQ4 coordenação motora fina,
-    21,74%) e anel de foco visível (nunca removido sem substituto) — um
+    21,74%) e anel de foco visível (nunca removido sem substituto) - um
     único lugar pra mudar o valor em vez de espalhar "56px"/"3px solid" por
     CSS de componente.
   */
@@ -44,13 +45,13 @@
   --focus-ring-offset: 2px;
 
   /*
-    3.11 — escala tipográfica única dos 3 módulos (aluno/professor/admin).
+    3.11 - escala tipográfica única dos 3 módulos (aluno/professor/admin).
     Definida uma vez aqui; index.css (h1/h2/h3/p crus) e
-    components/ui/Typography.css (<Heading>/<Text>) leem os MESMOS tokens —
+    components/ui/Typography.css (<Heading>/<Text>) leem os MESMOS tokens -
     nunca um tamanho/line-height inventado numa tela específica. O bug
     "título/subtítulo sobrepostos" dos prints de professor/admin era
     especificamente `line-height` ausente (herdado de um h1 de 56px sem
-    line-height do template Vite nunca limpo, ver index.css) — line-height
+    line-height do template Vite nunca limpo, ver index.css) - line-height
     proporcional ao tamanho da fonte, nunca um valor fixo em px que quebra
     ao trocar de nível.
   */
@@ -65,19 +66,19 @@
   --font-weight-body: 400;
 
   /*
-    3.11 — grid de página compartilhado entre professor e admin (AC "mesmo
+    3.11 - grid de página compartilhado entre professor e admin (AC "mesmo
     grid... hoje ambos parecem centralizados sem largura máxima definida").
     1080px é o valor que TeacherMetrics/AdminMetrics já usavam individualmente
-    antes desta feature — promovido a token único em vez de repetido por
+    antes desta feature - promovido a token único em vez de repetido por
     tela. Telas do aluno (Home/SubjectSelector/OnboardingSensorial) têm
-    largura mais estreita de propósito — fluxo de single-column, não um bug —
+    largura mais estreita de propósito - fluxo de single-column, não um bug -
     e continuam com seu próprio max-width, não usam este token.
   */
-  --page-max-width: 1080px;
+  --page-max-width: 1200px;
 
   /*
-    3.11 — elevação. `none` por padrão (aluno: só borda simples, ver
-    components/ui/Card.css) — `.staff-theme` (theme/staff-theme.css) é quem
+    3.11 - elevação. `none` por padrão (aluno: só borda simples, ver
+    components/ui/Card.css) - `.staff-theme` (theme/staff-theme.css) é quem
     dá valor real a estes tokens. Declarados aqui, não só via fallback do
     var(), pra deixar explícito que elevação É um token do sistema, não uma
     sombra inventada numa tela específica.
@@ -87,12 +88,14 @@
   --shadow-modal: none;
 }
 
-/* Alto contraste, opt-in (RF de acessibilidade — rotulagem redundante, nunca só cor). */
+/* Alto contraste, opt-in (RF de acessibilidade - rotulagem redundante, nunca só cor). */
 :root[data-contrast='high'] {
   --color-bg: #000000;
   --color-surface: #0d0d0d;
   --color-text: #ffffff;
   --color-primary: #7fb2ff;
+  --color-success: #6ee7a0;
+  --color-danger: #ff9b9b;
   --color-border: #ffffff;
 }
 
@@ -102,17 +105,25 @@ body {
 }
 
 /*
-  3.11 — grid de página compartilhado (professor/admin, ver --page-max-width
+  3.11 - grid de página compartilhado (professor/admin, ver --page-max-width
   acima). Substitui o `max-width`/`margin: auto` que cada tela de staff
   repetia no próprio CSS (TeacherMetrics.css/AdminMetrics.css/etc já usavam
-  1080px cada uma, na mão) — um único lugar pra mudar a largura de página do
+  1080px cada uma, na mão) - um único lugar pra mudar a largura de página do
   produto inteiro.
 */
 .page {
   max-width: var(--page-max-width);
   margin-inline: auto;
   padding-inline: var(--space-4);
+  padding-block-start: var(--space-4);
   padding-block-end: var(--space-5);
+}
+
+/* Páginas de formulário: uma única coluna estreita e centralizada que
+   contém voltar, título, subtítulo e formulário juntos (nunca só o
+   formulário centralizado com o cabeçalho colado à esquerda). */
+.page--narrow {
+  max-width: 44rem;
 }
 
 /*
@@ -120,12 +131,12 @@ body {
   E o SO não pediu "reduzir movimento". Respeita prefers-reduced-motion sempre,
   mesmo que o aluno tenha ativado animações nas configurações da plataforma.
 
-  3.11: `.staff-theme` (ver theme/staff-theme.css) é a ÚNICA exceção — área
+  3.11: `.staff-theme` (ver theme/staff-theme.css) é a ÚNICA exceção - área
   de professor/admin não tem a barreira sensorial do aluno (RQ4), então pode
   ter microanimação (hover de botão, abertura de dropdown) sem depender do
   opt-in do aluno. A exceção vive aqui, não em staff-theme.css, porque
   reescrever esta regra de fora (especificidade/ordem de import) seria
-  frágil — um único lugar decide quem fica de fora do reset.
+  frágil - um único lugar decide quem fica de fora do reset.
 */
 :root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *),
 :root:not([data-motion='full']) *:not(.staff-theme, .staff-theme *)::before,

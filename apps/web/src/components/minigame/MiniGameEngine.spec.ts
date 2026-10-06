@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { shouldRestartScene } from './MiniGameEngine';
 
 // MiniGameEngine.tsx em si monta uma Application PixiJS real, que não
-// inicializa em jsdom (sem canvas/WebGL — confirmado: `app.init()` lança
+// inicializa em jsdom (sem canvas/WebGL - confirmado: `app.init()` lança
 // `Cannot read properties of null (reading 'imageSmoothingEnabled')` fora
 // de um navegador de verdade). Por isso este arquivo testa só a lógica de
-// decisão extraída (`shouldRestartScene`), não o componente inteiro —
+// decisão extraída (`shouldRestartScene`), não o componente inteiro -
 // mesmo padrão de PixiTurtleWorld, sempre mockado nos specs que o usam
 // (ver ChallengePage.spec.tsx).
 describe('shouldRestartScene (MJ3)', () => {
@@ -17,7 +17,7 @@ describe('shouldRestartScene (MJ3)', () => {
     expect(shouldRestartScene('fractions-factory:use', 'fractions-factory:modify')).toBe(true);
   });
 
-  it('does NOT restart when the scene id is unchanged (MiniGameEngine remontou, ex.: reabrir o roteiro — MJ3 AC "sem perder o progresso")', () => {
+  it('does NOT restart when the scene id is unchanged (MiniGameEngine remontou, ex.: reabrir o roteiro - MJ3 AC "sem perder o progresso")', () => {
     expect(shouldRestartScene('fractions-factory:use', 'fractions-factory:use')).toBe(false);
   });
 });

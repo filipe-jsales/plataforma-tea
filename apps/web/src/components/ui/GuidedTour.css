@@ -1,4 +1,4 @@
-/* Sem transition/animation própria aqui (mesma decisão de Button.css) — se
+/* Sem transition/animation própria aqui (mesma decisão de Button.css) - se
    algum módulo quiser microanimação, isso vem de `.staff-theme`, nunca
    hardcoded no componente compartilhado (regra não-negociável 1). */
 
@@ -33,7 +33,7 @@
   margin: 0 0 var(--space-2);
   font-size: 0.85rem;
   font-weight: 600;
-  /* `--color-text-muted` não existe (DS12) — opacidade sobre --color-text é
+  /* `--color-text-muted` não existe (DS12) - opacidade sobre --color-text é
      o padrão do projeto, mesma técnica de `.u-text-muted` em utilities.css. */
   color: var(--color-text);
   opacity: 0.75;

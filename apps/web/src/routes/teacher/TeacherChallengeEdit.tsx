@@ -6,8 +6,8 @@ import { LinkButton } from '../../components/ui';
 import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
 import './TeacherChallengeNew.css';
 
-// 4.2 (AC5) — edição: abre no MESMO formulário guiado da criação, com os
-// valores pré-preenchidos (`challenge.params`) — nunca um editor bruto de
+// 4.2 (AC5) - edição: abre no MESMO formulário guiado da criação, com os
+// valores pré-preenchidos (`challenge.params`) - nunca um editor bruto de
 // `Challenge.config`. `templateKey` só decide QUAL formulário buscar
 // (`GET /challenge-templates/:templateId`); o desafio em si continua sendo
 // identificado por id (`PATCH /teacher/challenges/:id`).
@@ -44,7 +44,7 @@ export function TeacherChallengeEdit() {
   }
 
   return (
-    <main className="teacher-challenge-new staff-theme page">
+    <main className="teacher-challenge-new staff-theme page page--narrow">
       <LinkButton to="/teacher/challenges" variant="ghost" icon="←">
         Voltar
       </LinkButton>

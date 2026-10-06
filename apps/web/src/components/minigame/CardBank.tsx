@@ -23,10 +23,10 @@ export interface CardBankProps {
   onAdd: (card: FractionsFactoryCard) => void;
 }
 
-// MJ4/nível Create — paleta pequena e FIXA (RQ4, sobrecarga cognitiva:
+// MJ4/nível Create - paleta pequena e FIXA (RQ4, sobrecarga cognitiva:
 // 39,13% dos estudos), nunca mais que os 5 cartões já ensinados nos níveis
 // Use/Modify. Clique adiciona ao fim da sequência (o aluno reordena depois
-// com os botões ↑/↓ de CardSequenceEditor) — nunca drag-and-drop.
+// com os botões ↑/↓ de CardSequenceEditor) - nunca drag-and-drop.
 export function CardBank({ onAdd }: CardBankProps) {
   return (
     <div className="card-bank" role="group" aria-label="Cartões disponíveis">

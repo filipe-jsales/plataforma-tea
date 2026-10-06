@@ -9,18 +9,18 @@ import './ChallengeCreationSurvey.css';
 
 export interface ChallengeCreationSurveyProps {
   challengeId: string;
-  // Chamado depois que a resposta (ou a recusa) já foi persistida — quem
+  // Chamado depois que a resposta (ou a recusa) já foi persistida - quem
   // usa este componente decide o que acontece depois (hoje, navegar pra
   // "Meus desafios"; ver TeacherChallengeNew.tsx). Nunca bloqueia a
-  // navegação se o envio falhar — ver `handleDecline`/`handleSubmit`.
+  // navegação se o envio falhar - ver `handleDecline`/`handleSubmit`.
   onDone: () => void;
 }
 
 // Survey de pesquisa (opinião do professor sobre a própria experiência de
-// autoria), disparado só depois que o desafio JÁ foi criado com sucesso —
+// autoria), disparado só depois que o desafio JÁ foi criado com sucesso -
 // nunca antes, nunca bloqueando a publicação em si. Sempre com saída
 // "Agora não" (nunca uma tela sem escape, mesmo racional de "Pular
-// tutorial" em GuidedTour.tsx) — um survey que força resposta pra poder
+// tutorial" em GuidedTour.tsx) - um survey que força resposta pra poder
 // sair introduz viés de resposta forçada, o oposto do que a metodologia de
 // survey research recomenda.
 export function ChallengeCreationSurvey({ challengeId, onDone }: ChallengeCreationSurveyProps) {
@@ -37,7 +37,7 @@ export function ChallengeCreationSurvey({ challengeId, onDone }: ChallengeCreati
     setQualitative((current) => ({ ...current, [itemId]: value }));
   }
 
-  // 'declined' nunca é bloqueado por erro de rede — se salvar a recusa
+  // 'declined' nunca é bloqueado por erro de rede - se salvar a recusa
   // falhar, a pessoa não deveria ficar presa na tela só por causa de um
   // instrumento de pesquisa opcional. `handleSubmit` (resposta de verdade)
   // já mostra o erro e deixa tentar de novo, porque ali existe conteúdo
@@ -46,7 +46,7 @@ export function ChallengeCreationSurvey({ challengeId, onDone }: ChallengeCreati
     try {
       await submitChallengeCreationSurvey({ challengeId, status: 'declined' });
     } catch {
-      // Ignorado de propósito — ver nota acima.
+      // Ignorado de propósito - ver nota acima.
     } finally {
       onDone();
     }
@@ -77,7 +77,7 @@ export function ChallengeCreationSurvey({ challengeId, onDone }: ChallengeCreati
     <form className="challenge-creation-survey" onSubmit={handleSubmit}>
       <h2>🎉 Desafio criado! Uma pergunta rápida antes de continuar</h2>
       <p className="challenge-creation-survey__intro">
-        Suas respostas ajudam a melhorar esta ferramenta para outros professores — leva menos de um minuto, e é
+        Suas respostas ajudam a melhorar esta ferramenta para outros professores - leva menos de um minuto, e é
         totalmente opcional.
       </p>
 

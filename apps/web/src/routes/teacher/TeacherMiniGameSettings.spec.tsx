@@ -52,7 +52,7 @@ beforeEach(() => {
 });
 
 describe('TeacherMiniGameSettings', () => {
-  it('CC1 — shows the game category as read-only metadata', async () => {
+  it('CC1 - shows the game category as read-only metadata', async () => {
     render(
       <MemoryRouter>
         <TeacherMiniGameSettings />

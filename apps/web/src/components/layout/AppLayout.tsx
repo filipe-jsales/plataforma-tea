@@ -10,7 +10,7 @@ export interface AppLayoutProps {
 }
 
 // Casca global (header + sidebar direita + footer) de toda tela autenticada
-// — aplicada uma vez em RequireAuth, nunca repetida tela a tela. `.staff-
+// - aplicada uma vez em RequireAuth, nunca repetida tela a tela. `.staff-
 // theme` aqui cobre header/footer (não portados); AppSidebar reaplica a
 // mesma classe direto no seu próprio conteúdo porque o Portal do Radix o
 // desconecta desta árvore no DOM real.

@@ -3,13 +3,13 @@ import { isFinalPrimmPhase, nextPrimmPhase, PRIMM_PHASES, type PrimmPhase } from
 
 export interface MiniGameSceneState {
   sceneId: string;
-  // MJ1/MJ8 — mesmo assunto curricular do desafio de blocos equivalente
+  // MJ1/MJ8 - mesmo assunto curricular do desafio de blocos equivalente
   // (string livre hoje; o vínculo formal de schema entre Challenge/Topic e
-  // mini jogo é MJ8, ainda não implementado — ver docs/ai/backlog/
+  // mini jogo é MJ8, ainda não implementado - ver docs/ai/backlog/
   // mini-jogos-serios.md).
   conceptId: string;
   phase: PrimmPhase;
-  // Tentativas na fase ATUAL, zerado a cada `advancePhase` — mesmo
+  // Tentativas na fase ATUAL, zerado a cada `advancePhase` - mesmo
   // racional de granularidade de `attempts` no desafio de blocos
   // (contagem por rodada, não acumulada pra sempre).
   attempts: number;
@@ -20,10 +20,10 @@ export interface MiniGameSceneState {
 
 interface MiniGameState {
   activeScene: MiniGameSceneState | null;
-  // MJ1 (AC "uma única cena carregada por vez") — chamar de novo com um
+  // MJ1 (AC "uma única cena carregada por vez") - chamar de novo com um
   // `sceneId` diferente troca a cena inteira (o motor de renderização
   // reage a essa mudança desmontando a cena anterior antes de montar a
-  // nova, nunca duas simultâneas — ver MiniGameEngine.tsx). Sempre nasce
+  // nova, nunca duas simultâneas - ver MiniGameEngine.tsx). Sempre nasce
   // na 1ª fase do PRIMM ('predict').
   startScene: (sceneId: string, conceptId: string) => void;
   recordAttempt: () => void;
@@ -35,7 +35,7 @@ interface MiniGameState {
 
 export type MiniGameStore = UseBoundStore<StoreApi<MiniGameState>>;
 
-// Factory, não singleton — mesmo racional de createTurtleExecutionStore:
+// Factory, não singleton - mesmo racional de createTurtleExecutionStore:
 // o componente de renderização (MiniGameEngine) nunca deve importar um
 // store global, só reagir ao que recebe via prop, permitindo múltiplas
 // instâncias independentes na mesma árvore de componentes se algum dia

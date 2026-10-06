@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { GuidedTour, type GuidedTourStep } from './GuidedTour';
 
-// jsdom nunca calcula layout de verdade — `getBoundingClientRect` de
+// jsdom nunca calcula layout de verdade - `getBoundingClientRect` de
 // qualquer elemento devolve um retângulo zerado. Isso é irrelevante pro que
 // este arquivo testa (navegação entre passos, fechamento, rótulos
 // acessíveis): o CÁLCULO de posição em si tem cobertura própria em

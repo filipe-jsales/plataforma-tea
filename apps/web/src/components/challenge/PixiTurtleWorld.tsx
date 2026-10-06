@@ -22,11 +22,11 @@ interface PixiTurtleWorldProps {
   store: TurtleExecutionStore;
 }
 
-// Mundo PixiJS: comunicação exclusivamente via `store` (Zustand) — nunca
+// Mundo PixiJS: comunicação exclusivamente via `store` (Zustand) - nunca
 // importa nem manipula o DOM/instância do Blockly diretamente (3.2 AC1).
 // ChallengePage calcula o caminho (blockProgram.ts + turtleWorld.ts, lógica
 // pura, sem Pixi/Blockly) e chama `store.getState().play(...)`; este
-// componente só reage a mudanças no store — poderia ser trocado por outro
+// componente só reage a mudanças no store - poderia ser trocado por outro
 // motor de renderização sem tocar em ChallengePage nem vice-versa.
 export function PixiTurtleWorld({ store }: PixiTurtleWorldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,11 +41,11 @@ export function PixiTurtleWorld({ store }: PixiTurtleWorldProps) {
     appRef.current = app;
 
     // app.init() é assíncrono; em React StrictMode o efeito monta/desmonta
-    // duas vezes de propósito (dev only) — se destroy() rodar antes do init
+    // duas vezes de propósito (dev only) - se destroy() rodar antes do init
     // terminar, os plugins internos do Pixi (ex.: resize) ainda não foram
     // inicializados e destroy() quebra (`_cancelResize is not a function`).
     // Por isso o cleanup só chama destroy() depois que `ready` resolve,
-    // nunca antes — `disposed` só decide se ainda vale montar o canvas.
+    // nunca antes - `disposed` só decide se ainda vale montar o canvas.
     const ready = (async () => {
       await app.init({
         width: WORLD_SIZE,
@@ -119,7 +119,7 @@ export function PixiTurtleWorld({ store }: PixiTurtleWorldProps) {
       };
 
       if (!animate) {
-        // 3.2 AC2 — padrão sem animação: avanço por passos controlados pelo
+        // 3.2 AC2 - padrão sem animação: avanço por passos controlados pelo
         // aluno (advanceStep() do store, disparado por um botão "Próximo
         // passo" na tela). Este efeito só redesenha até `stepIndex`, nunca
         // avança sozinho.

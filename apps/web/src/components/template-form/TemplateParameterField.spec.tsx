@@ -55,16 +55,35 @@ const blocksDefinition: TemplateParameterDefinition = {
 };
 
 describe('TemplateParameterField', () => {
-  it('AC2 — always shows icon and text together for the label, never icon-only', () => {
+  it('hides the help text until the "?" button is clicked, and hides it again on a second click', async () => {
+    render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
+    const toggle = screen.getByRole('button', { name: /explicação: número de lados/i });
+    expect(screen.queryByText('Quantos lados a figura vai ter.')).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await userEvent.click(toggle);
+    expect(screen.getByText('Quantos lados a figura vai ter.')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.click(toggle);
+    expect(screen.queryByText('Quantos lados a figura vai ter.')).not.toBeInTheDocument();
+  });
+
+  it('does not render a "?" button when the parameter has no help text', () => {
+    render(<TemplateParameterField definition={toleranceDefinition} value={60} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /explicação/i })).not.toBeInTheDocument();
+  });
+
+  it('AC2 - always shows icon and text together for the label, never icon-only', () => {
     render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
 
     expect(screen.getByText('🔺')).toBeInTheDocument();
     expect(screen.getByText('Número de lados')).toBeInTheDocument();
   });
 
-  it('AC2 — renders the inline visual example matching the current value', () => {
+  it('AC2 - renders the inline visual example matching the current value', () => {
     // A prévia é decorativa (aria-hidden no wrapper, redundante com o valor
-    // já anunciado pelo input rotulado) — inspeciona o DOM diretamente em
+    // já anunciado pelo input rotulado) - inspeciona o DOM diretamente em
     // vez de getByRole, que corretamente ignora nós aria-hidden.
     const { container } = render(<TemplateParameterField definition={sidesDefinition} value={6} onChange={vi.fn()} />);
 
@@ -89,7 +108,7 @@ describe('TemplateParameterField', () => {
     expect(screen.getByText('60%')).toBeInTheDocument();
   });
 
-  it('regra 9 — renders a select field as 3 named options, never a raw scale number', () => {
+  it('regra 9 - renders a select field as 3 named options, never a raw scale number', () => {
     render(<TemplateParameterField definition={blockSizeDefinition} value="medium" onChange={vi.fn()} />);
 
     expect(screen.getByRole('radiogroup', { name: 'Tamanho dos blocos' })).toBeInTheDocument();
@@ -136,7 +155,7 @@ describe('TemplateParameterField', () => {
     expect(screen.getByText(/nenhum bloco disponível/i)).toBeInTheDocument();
   });
 
-  it('AC3 — renders the pedagogical error message inline under the field when present', () => {
+  it('AC3 - renders the pedagogical error message inline under the field when present', () => {
     render(
       <TemplateParameterField
         definition={sidesDefinition}

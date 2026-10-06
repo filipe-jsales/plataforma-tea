@@ -6,8 +6,8 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { StudentHome } from './StudentHome';
 
-// 1.5.1/3.9 — "Sair"/"Configurações" saíram desta tela e foram pra
-// AppSidebar (ver components/layout/AppSidebar.spec.tsx) — cobertura de
+// 1.5.1/3.9 - "Sair"/"Configurações" saíram desta tela e foram pra
+// AppSidebar (ver components/layout/AppSidebar.spec.tsx) - cobertura de
 // logout/link de configurações vive lá agora, não aqui.
 
 vi.mock('../../lib/apiClient', () => ({ apiClient: { get: vi.fn() } }));
@@ -46,7 +46,7 @@ function renderPage() {
   );
 }
 
-describe('StudentHome — class comparison (7.3)', () => {
+describe('StudentHome - class comparison (7.3)', () => {
   it('never shows a comparison when the teacher never enabled it (classComparison: null)', async () => {
     renderPage();
 
@@ -68,7 +68,7 @@ describe('StudentHome — class comparison (7.3)', () => {
 
     const comparison = await screen.findByText(/entre os alunos que mais praticaram/i);
     expect(comparison).toBeInTheDocument();
-    // Never a name, avatar, or a colleague's number — text only.
+    // Never a name, avatar, or a colleague's number - text only.
     expect(comparison.textContent).not.toMatch(/\d/);
   });
 

@@ -44,7 +44,7 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Redundância textual do valor — nunca só a posição do thumb. */
+/* Redundância textual do valor - nunca só a posição do thumb. */
 .ui-slider__value {
   min-width: 4.5em;
   text-align: right;

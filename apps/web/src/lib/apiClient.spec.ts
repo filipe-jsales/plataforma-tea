@@ -77,9 +77,9 @@ describe('apiClient', () => {
     await expect(apiClient.get('/users/me')).rejects.toBeInstanceOf(ApiError);
   });
 
-  describe('1.5.1 — expiração de sessão', () => {
+  describe('1.5.1 - expiração de sessão', () => {
     it('a 401 WITHOUT a session token (ex.: login com credencial errada) never clears a session or redirects', async () => {
-      // token já é null por padrão no beforeEach — este é literalmente o
+      // token já é null por padrão no beforeEach - este é literalmente o
       // caso "tentativa de login", nunca deveria mexer na sessão.
       (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: false,
@@ -142,7 +142,7 @@ describe('apiClient', () => {
     await expect(apiClient.get('/subjects')).rejects.toMatchObject({ message: 'Erro 500' });
   });
 
-  it('4.2 — delete sets the method and still returns undefined for a 204 response', async () => {
+  it('4.2 - delete sets the method and still returns undefined for a 204 response', async () => {
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 204,

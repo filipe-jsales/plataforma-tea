@@ -5,14 +5,14 @@ import './Button.css';
 
 export interface LinkButtonProps extends LinkProps {
   variant?: ButtonVariant;
-  // Decorativo — nunca substitui `children` (o texto).
+  // Decorativo - nunca substitui `children` (o texto).
   icon?: ReactNode;
 }
 
-// 3.11 — "← Voltar" deixa de ser link de texto solto (AC dos prints) e
+// 3.11 - "← Voltar" deixa de ser link de texto solto (AC dos prints) e
 // qualquer navegação (não ação) reaproveita a MESMA geometria visual do
 // Button (`.ui-button`/`.ui-button--*` de Button.css: raio de borda, área
-// de toque, tipografia) — só o elemento HTML muda (<a> de react-router em
+// de toque, tipografia) - só o elemento HTML muda (<a> de react-router em
 // vez de <button>, porque navegação é link, não ação de formulário/JS). AC
 // "consistência entre módulos": o botão "Entrar" (Button, elemento
 // <button>) e "← Voltar" (LinkButton, elemento <a>) nascem visualmente

@@ -38,7 +38,7 @@ describe('createTurtleExecutionStore', () => {
       expect(useStore.getState()).toMatchObject({ points, animate: true, status: 'playing', stepIndex: 0 });
     });
 
-    it('animate=false (default sensory profile) starts in "stepping" at stepIndex 0 — no auto-advance', () => {
+    it('animate=false (default sensory profile) starts in "stepping" at stepIndex 0 - no auto-advance', () => {
       const useStore = createTurtleExecutionStore();
 
       useStore.getState().play(points, false);
@@ -46,7 +46,7 @@ describe('createTurtleExecutionStore', () => {
       expect(useStore.getState()).toMatchObject({ points, animate: false, status: 'stepping', stepIndex: 0 });
     });
 
-    it('animate=false with an empty (no-op) program goes straight to "idle" — nothing to step through', () => {
+    it('animate=false with an empty (no-op) program goes straight to "idle" - nothing to step through', () => {
       const useStore = createTurtleExecutionStore();
 
       useStore.getState().play([{ x: 0, y: 0 }], false);

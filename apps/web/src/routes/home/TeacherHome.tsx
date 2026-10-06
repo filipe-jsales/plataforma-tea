@@ -12,8 +12,8 @@ interface TeacherHomeClassroom {
   activeStudentsToday: number;
 }
 
-// 2.1 — home do professor. Indicador neutro de atividade recente por turma
-// ("N alunos com atividade hoje"), nunca ranking de alunos (AC3) — RD-E
+// 2.1 - home do professor. Indicador neutro de atividade recente por turma
+// ("N alunos com atividade hoje"), nunca ranking de alunos (AC3) - RD-E
 // como sinal observável agregado, não inferência individual.
 export function TeacherHome() {
   const user = useAuthStore((state) => state.user);
@@ -29,7 +29,7 @@ export function TeacherHome() {
 
   return (
     <main className="home staff-theme">
-      {/* 1.5.1 — "Sair" saiu do topbar solto e foi pra sidebar global
+      {/* 1.5.1 - "Sair" saiu do topbar solto e foi pra sidebar global
           (AppSidebar), aberta pelo hambúrguer do AppHeader. */}
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 

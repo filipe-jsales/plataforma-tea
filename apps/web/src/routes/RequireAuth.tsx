@@ -13,8 +13,8 @@ interface RequireAuthProps {
 // implementado, ver LoginStub). Papel errado → home do papel certo, nunca
 // uma tela de erro genérica.
 //
-// 1.5.1 — checa a EXPIRAÇÃO do token localmente (`isTokenExpired`), não só
-// se existe um `user` salvo — sem isso, um token vencido (mas ainda
+// 1.5.1 - checa a EXPIRAÇÃO do token localmente (`isTokenExpired`), não só
+// se existe um `user` salvo - sem isso, um token vencido (mas ainda
 // presente no localStorage) deixava passar até a primeira chamada de API
 // falhar (ver apiClient.ts pro tratamento de 401 em requisições já em
 // voo). Aqui é a checagem PROATIVA: pega o caso "usuário abre uma aba/PC
@@ -36,7 +36,7 @@ export function RequireAuth({ children, roles }: RequireAuthProps) {
   if (roles && !roles.includes(user.role)) {
     return <Navigate to="/home" replace />;
   }
-  // Header + sidebar direita + footer globais (ver AppLayout) — aplicados
+  // Header + sidebar direita + footer globais (ver AppLayout) - aplicados
   // uma vez aqui pra toda tela autenticada, nunca repetidos tela a tela.
   return <AppLayout>{children}</AppLayout>;
 }

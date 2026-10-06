@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   LinkButton,
   Select,
   SegmentedControl,
@@ -29,7 +30,7 @@ interface TeacherClassroomOption {
   name: string;
   joinCode: string;
   activeStudentsToday: number;
-  // 4.3/7.3 — estado atual do toggle "comparação entre alunos" desta turma.
+  // 4.3/7.3 - estado atual do toggle "comparação entre alunos" desta turma.
   comparisonEnabled: boolean;
 }
 
@@ -62,7 +63,7 @@ interface ClassroomSummary {
   helpButtonUsageRate: number;
 }
 
-// MJ8 — os dois sinais (desafio de blocos × mini jogo) lado a lado, pro
+// MJ8 - os dois sinais (desafio de blocos × mini jogo) lado a lado, pro
 // mesmo conceito. Mesmo vocabulário de status (not_started/in_progress/
 // completed) dos dois lados, pra caber no mesmo Badge sem o professor
 // precisar aprender dois jeitos de ler a tela.
@@ -87,7 +88,7 @@ interface ConceptComparison {
   students: ConceptComparisonStudent[];
 }
 
-// Único conceito com mini jogo hoje — sem seletor de propósito (nada além
+// Único conceito com mini jogo hoje - sem seletor de propósito (nada além
 // disso pra escolher ainda). Vira um <Select> quando existir um 2º.
 const CONCEPT_ID = 'fractions_equal_parts';
 const CONCEPT_LABEL = 'Frações (Fábrica de Pedaços Iguais)';
@@ -104,9 +105,9 @@ const STATUS_LABEL: Record<ChallengeStatus, string> = {
   completed: 'Concluído',
 };
 
-// 3.11 — "Concluído" continua verde, "Em andamento" continua o mesmo
+// 3.11 - "Concluído" continua verde, "Em andamento" continua o mesmo
 // amarelo de aviso (não-punitivo: cor expressiva no feedback positivo,
-// nunca no negativo) — só o COMPONENTE (Badge) muda, a semântica de cor é a
+// nunca no negativo) - só o COMPONENTE (Badge) muda, a semântica de cor é a
 // mesma de antes desta feature.
 const STATUS_VARIANT: Record<ChallengeStatus, BadgeVariant> = {
   not_started: 'neutral',
@@ -133,10 +134,10 @@ function sortStudents(students: StudentProgressOverview[], sortKey: SortKey): St
   );
 }
 
-// 6.3/6.4 — painel do professor: progresso por aluno da própria turma (6.3)
-// e visão agregada (6.4), reaproveitando o motor 6.1. Área de staff — tema
+// 6.3/6.4 - painel do professor: progresso por aluno da própria turma (6.3)
+// e visão agregada (6.4), reaproveitando o motor 6.1. Área de staff - tema
 // mais rico que o do aluno (3.11, `.staff-theme`), mas MESMA fundação de
-// componente (Radix/React Aria, ver components/ui/) — regra não-negociável
+// componente (Radix/React Aria, ver components/ui/) - regra não-negociável
 // 1 protege a experiência do aluno, não a do professor, e este é o painel
 // que concentra quase todos os bugs visuais reportados nos prints de 3.11
 // (título sobreposto, "← Voltar" sem affordance, card sem elevação, toggle
@@ -148,11 +149,11 @@ export function TeacherMetrics() {
   const [students, setStudents] = useState<StudentProgressOverview[] | null>(null);
   const [summary, setSummary] = useState<ClassroomSummary | null>(null);
   const [conceptComparison, setConceptComparison] = useState<ConceptComparison | null>(null);
-  // AC de 6.3: ordenação default nunca é por desempenho — só nome ou data de
+  // AC de 6.3: ordenação default nunca é por desempenho - só nome ou data de
   // matrícula, e a troca é sempre uma escolha explícita do professor.
   const [sortKey, setSortKey] = useState<SortKey>('enrolledAt');
-  // 4.3/7.3 — confirmação obrigatória antes de LIGAR a comparação (evita
-  // ativação acidental, AC de 7.3); desligar é imediato, sem confirmação —
+  // 4.3/7.3 - confirmação obrigatória antes de LIGAR a comparação (evita
+  // ativação acidental, AC de 7.3); desligar é imediato, sem confirmação -
   // só remove um elemento, não introduz um novo pro aluno ver.
   const [confirmComparisonDialogOpen, setConfirmComparisonDialogOpen] = useState(false);
 
@@ -187,7 +188,7 @@ export function TeacherMetrics() {
   const sortedStudents = students ? sortStudents(students, sortKey) : null;
   const challengeColumns = sortedStudents?.[0]?.challenges ?? [];
 
-  // 4.3/7.3 — só este campo muda no estado local; nenhuma outra métrica
+  // 4.3/7.3 - só este campo muda no estado local; nenhuma outra métrica
   // depende dele, então não há necessidade de refazer as buscas da turma.
   async function updateComparisonSetting(classroomId: string, enabled: boolean) {
     await apiClient.patch<{ classroomId: string; enabled: boolean }>(
@@ -239,7 +240,7 @@ export function TeacherMetrics() {
 
       {selectedClassroom && (
         <section className="teacher-metrics__detail">
-          {/* 4.3/7.3 — toggle nasce OFF (regra não-negociável 5). Ligar
+          {/* 4.3/7.3 - toggle nasce OFF (regra não-negociável 5). Ligar
               exige confirmação explícita (evita ativação acidental); desligar
               é imediato e some da tela do aluno sem precisar recarregar
               sessão (o aluno já refaz `GET /home/student` a cada visita). */}
@@ -270,17 +271,22 @@ export function TeacherMetrics() {
                 avatar ou o desempenho de um colega específico. Você pode desligar a qualquer momento.
               </>
             }
-          >
-            <Button
-              icon={<ChartColumn />}
-              onClick={() => {
-                setConfirmComparisonDialogOpen(false);
-                void updateComparisonSetting(selectedClassroom.id, true);
-              }}
-            >
-              Ativar comparação
-            </Button>
-          </Dialog>
+            footer={
+              <>
+                <DialogCancel />
+                <Button
+                  variant="success"
+                  icon={<ChartColumn />}
+                  onClick={() => {
+                    setConfirmComparisonDialogOpen(false);
+                    void updateComparisonSetting(selectedClassroom.id, true);
+                  }}
+                >
+                  Ativar comparação
+                </Button>
+              </>
+            }
+          />
 
           <SegmentedControl
             options={VIEW_OPTIONS}
@@ -457,7 +463,7 @@ function SummaryStat({ value, label }: { value: number | string; label: string }
 }
 
 // AC de 6.4: pensada pra virar gráfico simples (barra de progresso por
-// estágio), nunca uma tabela de números — largura estática por dado, sem
+// estágio), nunca uma tabela de números - largura estática por dado, sem
 // nenhuma animação/transição decorativa.
 function StageBar({ stage, total }: { stage: ClassroomStageBreakdown; total: number }) {
   const pct = (count: number) => (total === 0 ? 0 : Math.round((count / total) * 100));

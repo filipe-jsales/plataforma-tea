@@ -70,7 +70,7 @@ function statsToSeconds(stats: DescriptiveStats): DescriptiveStats {
 }
 
 // Métricas dos eventos de mini jogo pro admin (pedido explícito do
-// produto) — mesmo padrão de ChallengeReport.tsx (6.5), reaproveitando os
+// produto) - mesmo padrão de ChallengeReport.tsx (6.5), reaproveitando os
 // MESMOS componentes de gráfico (nenhuma paleta/formato novo). RD-E
 // (abandono) aparece só como número bruto, nunca "possível dificuldade"
 // (regra não-negociável 7).
@@ -101,7 +101,7 @@ export function MiniGameReport() {
       </LinkButton>
       <h1>Relatório de mini jogos</h1>
       <p className="minigame-report__subtitle">
-        Como os alunos interagiram com cada nível do mini jogo "Fábrica de Pedaços Iguais" —
+        Como os alunos interagiram com cada nível do mini jogo "Fábrica de Pedaços Iguais" -
         mesmo nível de profundidade já dado ao desafio de blocos.
       </p>
 
@@ -175,7 +175,7 @@ function ReportBody({ report }: { report: MiniGameLevelDepthReport }) {
           <h4>Taxa de resposta da predição opcional</h4>
           <p className="minigame-report__plain-stat">
             {report.predictAnswerRate.ratePercent === null
-              ? '— (N=0)'
+              ? '- (N=0)'
               : `${formatNumber(report.predictAnswerRate.ratePercent)}%`}{' '}
             (N={report.predictAnswerRate.n} alunos)
           </p>

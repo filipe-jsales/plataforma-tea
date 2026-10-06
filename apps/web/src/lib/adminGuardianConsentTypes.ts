@@ -1,4 +1,4 @@
-// A2 (AC4) — mesma forma que GET /admin/students/:id/guardian-consent
+// A2 (AC4) - mesma forma que GET /admin/students/:id/guardian-consent
 // devolve.
 export interface GuardianConsentAdminView {
   recorded: boolean;

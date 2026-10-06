@@ -207,6 +207,15 @@ decisão a cada feature:
   `docs/ai/modules/frontend.md` — `StudentSensorySettings.tsx` é a
   primeira tela integrada de ponta a ponta, usar como referência.
 
+- **Botão e modal seguem os padrões consolidados** em "Padrões de UI
+  consolidados (2026-10)" de `docs/ai/modules/frontend.md`: variantes
+  `success` (confirmar) e `danger` (negar) em `Button`; modal sempre via
+  `components/ui/Dialog`, com X no canto superior direito (nunca um botão
+  "Fechar" por extenso) e ações no `footer` centralizado; tela de formulário
+  em `.page page--narrow`; texto de ajuda longo atrás de um botão "?".
+- Não usar o travessão longo (`—`) em código, comentários, textos de UI,
+  testes ou docs novos; usar `-`.
+
 ### Geral
 
 - TypeScript estrito nas duas apps; não usar `any` para contornar erro de tipo

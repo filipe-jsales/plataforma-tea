@@ -5,7 +5,7 @@ import { Button } from "./Button";
 import "./GuidedTour.css";
 
 export interface GuidedTourStep {
-  // Id de QUALQUER elemento já na tela — o tour nunca renderiza o alvo, só
+  // Id de QUALQUER elemento já na tela - o tour nunca renderiza o alvo, só
   // aponta pra ele (`document.getElementById`). Quem monta os passos decide
   // o que marcar de id (ver TeacherChallengeNew.tsx).
   targetId: string;
@@ -19,22 +19,22 @@ export interface GuidedTourProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Tutorial guiado genérico, "spotlight" num elemento por vez — mesma ideia
+// Tutorial guiado genérico, "spotlight" num elemento por vez - mesma ideia
 // de onboarding de app recém-instalado: cada passo foca um elemento
 // (`targetId`) com uma caixinha explicando, "Próximo" avança pro próximo
 // alvo, até o último passo. O componente é 100% dirigido por dado
-// (`steps`) — nunca sabe o que é "criar um desafio"/nome de campo
+// (`steps`) - nunca sabe o que é "criar um desafio"/nome de campo
 // específico, então serve qualquer tutorial futuro só passando uma lista
 // de passos diferente (mesmo raciocínio de TemplateParameterField
 // renderizar só a partir de `definition.type`, nunca por nome de campo).
 //
 // Construído sobre `@radix-ui/react-dialog` (mesmo primitivo de Dialog.tsx,
-// ver "Decisão técnica: Radix UI" em frontend.md) — não pelo layout (a
+// ver "Decisão técnica: Radix UI" em frontend.md) - não pelo layout (a
 // posição do card é calculada, não centralizada), mas pelo que a lib já
 // resolve de graça e não vale reimplementar na mão: focus trap dentro do
 // card, `Escape`/clique-fora fecham, `aria-modal`. O que É custom aqui:
 // `Content` nasce posicionado perto do `targetId` (`computeCardPlacement`,
-// lib/tourPositioning.ts — função pura, testada isoladamente porque jsdom
+// lib/tourPositioning.ts - função pura, testada isoladamente porque jsdom
 // não calcula layout de verdade) e um anel visual
 // (`.ui-guided-tour__spotlight`) marca o elemento em foco.
 export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
@@ -46,7 +46,7 @@ export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
 
   const step = steps[stepIndex];
 
-  // Sempre reabre no PRIMEIRO passo — nunca no meio de onde o professor
+  // Sempre reabre no PRIMEIRO passo - nunca no meio de onde o professor
   // parou da última vez (ex.: reabrindo pelo link "Rever tutorial" depois
   // de já ter concluído uma vez).
   useEffect(() => {
@@ -54,7 +54,7 @@ export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
   }, [open]);
 
   // Mede o alvo de novo a cada passo (o elemento muda) e em resize/scroll
-  // (a posição na viewport muda mesmo com o mesmo elemento) — nunca uma
+  // (a posição na viewport muda mesmo com o mesmo elemento) - nunca uma
   // medição única presa ao valor do primeiro render.
   useLayoutEffect(() => {
     if (!open || !step) return;
@@ -123,7 +123,7 @@ export function GuidedTour({ steps, open, onOpenChange }: GuidedTourProps) {
           style={{ top: cardPosition.top, left: cardPosition.left }}
           onOpenAutoFocus={(event: Event) => {
             // Sem isto, Radix foca o primeiro elemento focável do card
-            // (seria "Pular tutorial") — não é a ação que o professor vai
+            // (seria "Pular tutorial") - não é a ação que o professor vai
             // querer repetir a cada passo, "Próximo"/"Concluir" é.
             event.preventDefault();
             nextButtonRef.current?.focus();

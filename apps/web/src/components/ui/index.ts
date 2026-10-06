@@ -1,8 +1,8 @@
-// 3.10/3.11 — barril único do sistema de componentes acessíveis,
-// compartilhado pelos 3 módulos (aluno/professor/admin — a diferença entre
+// 3.10/3.11 - barril único do sistema de componentes acessíveis,
+// compartilhado pelos 3 módulos (aluno/professor/admin - a diferença entre
 // eles é só tema, ver theme/staff-theme.css, nunca fundação de componente).
 // Toda tela nova importa daqui (`import { Button, ToggleSwitch } from
-// '../../components/ui'`), nunca direto de `@radix-ui/*`/`react-aria` —
+// '../../components/ui'`), nunca direto de `@radix-ui/*`/`react-aria` -
 // mesmo raciocínio de `lib/logEvent.ts` centralizar o `fetch` de eventos:
 // um único lugar pra trocar a biblioteca por baixo sem tocar toda tela.
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
@@ -25,7 +25,7 @@ export {
 } from './Table';
 export { Badge, type BadgeProps, type BadgeVariant } from './Badge';
 export { Tooltip, type TooltipProps } from './Tooltip';
-export { Dialog, type DialogProps } from './Dialog';
+export { Dialog, DialogCancel, type DialogProps } from './Dialog';
 export { Heading, type HeadingProps, type HeadingLevel } from './Heading';
 export { Text, type TextProps, type TextTone, type TextSize } from './Text';
 export { InlineFeedback, type InlineFeedbackProps, type FeedbackKind } from './InlineFeedback';

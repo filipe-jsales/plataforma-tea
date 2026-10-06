@@ -50,7 +50,7 @@ function renderPage() {
 }
 
 describe('TeacherChallengeEdit', () => {
-  it('AC5/AC6 — opens in the same guided form, pre-filled with the saved parameters, never a raw editor', async () => {
+  it('AC5/AC6 - opens in the same guided form, pre-filled with the saved parameters, never a raw editor', async () => {
     mockedGet.mockResolvedValueOnce({
       id: 'c1',
       title: 'Hexágonos',

@@ -6,7 +6,7 @@
 
 /*
   Abre pela DIREITA (pedido explícito) via transform, nunca `left`/`right`
-  animado — `transition` só tem efeito de verdade dentro de `.staff-theme`
+  animado - `transition` só tem efeito de verdade dentro de `.staff-theme`
   ou com `data-motion='full'` ligado (ver a exceção em
   theme/sensory-theme.css); pro aluno sem motion, o painel só aparece/some
   sem deslizar, o token de duração é zerado globalmente, não precisa de
@@ -47,17 +47,39 @@
 }
 
 .app-sidebar__close {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  min-width: var(--hit-area-min);
-  min-height: var(--hit-area-min);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
+  justify-content: center;
+  width: var(--hit-area-min);
+  height: var(--hit-area-min);
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
   cursor: pointer;
+}
+
+
+.app-sidebar__close::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.app-sidebar__close:hover {
+  color: var(--color-bg);
+}
+
+.app-sidebar__close:hover::before {
+  background: var(--color-primary);
 }
 
 .app-sidebar__close:focus-visible {

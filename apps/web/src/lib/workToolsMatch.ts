@@ -1,10 +1,10 @@
 import type { WorkToolsMatchPair, WorkToolsScenario, WorkToolsStatement } from './workToolsLevelTypes';
 
-// MJ10 — lógica pura de avaliação do jogo "Ferramentas do Mundo do
+// MJ10 - lógica pura de avaliação do jogo "Ferramentas do Mundo do
 // Trabalho" (ligar + verdadeiro ou falso), mesmo racional de
 // lib/fractionsFactory.ts: nada aqui depende de React/Zustand, testável
 // isolado. Nada é gabarito oculto (ver mini-game-level-config.interface.ts
-// no backend) — estas funções só COMPARAM o que o config já expõe por
+// no backend) - estas funções só COMPARAM o que o config já expõe por
 // inteiro, nunca escondem a resposta.
 
 export function isMatchCorrect(pair: WorkToolsMatchPair, correctMatches: WorkToolsMatchPair[]): boolean {
@@ -18,7 +18,7 @@ export function isStatementAnswerCorrect(statement: WorkToolsStatement, answered
 }
 
 // AC de MJ10: as afirmações só liberam depois que TODO cenário visível tem
-// um par E esse par está correto — nunca "todo cenário tem ALGUM par", o
+// um par E esse par está correto - nunca "todo cenário tem ALGUM par", o
 // que deixaria passar um par errado sem correção.
 export function allScenariosCorrectlyMatched(
   scenarios: WorkToolsScenario[],
@@ -38,7 +38,7 @@ export function allStatementsAnsweredCorrectly(
   return statements.every((statement) => answers[statement.id] === statement.isTrue);
 }
 
-// "Novo cenário" (fase Make do Create) — mesmo racional de `pickFraction`
+// "Novo cenário" (fase Make do Create) - mesmo racional de `pickFraction`
 // em FractionsGamePage: amostragem simples, sem garantia de nunca repetir a
 // rodada anterior (mesma simplicidade já aceita lá).
 export function pickRandomScenarios(pool: WorkToolsScenario[], count: number): WorkToolsScenario[] {

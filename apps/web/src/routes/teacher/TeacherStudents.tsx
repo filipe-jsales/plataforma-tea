@@ -6,6 +6,7 @@ import type { ResetCredentialResult } from "../../lib/studentAccountTypes";
 import {
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   Select,
@@ -25,9 +26,9 @@ interface TeacherClassroomOption {
   joinCode: string;
 }
 
-// 1.5 — Vínculo aluno ↔ turma ↔ professor. Lista os alunos da turma
+// 1.5 - Vínculo aluno ↔ turma ↔ professor. Lista os alunos da turma
 // selecionada e permite transferir um aluno pra outra turma sem perder o
-// histórico (o backend encerra a matrícula anterior e cria uma nova — ver
+// histórico (o backend encerra a matrícula anterior e cria uma nova - ver
 // EnrollmentsService.transfer).
 export function TeacherStudents() {
   const [classrooms, setClassrooms] = useState<TeacherClassroomOption[] | null>(
@@ -43,7 +44,7 @@ export function TeacherStudents() {
   const [transferSaving, setTransferSaving] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  // 1.3 — recuperação de acesso: professor titular da turma gera uma
+  // 1.3 - recuperação de acesso: professor titular da turma gera uma
   // sequência de login NOVA pro aluno que esqueceu a credencial.
   const [resettingStudent, setResettingStudent] =
     useState<ClassroomRosterStudent | null>(null);
@@ -235,10 +236,26 @@ export function TeacherStudents() {
             ? `Transferir ${transferringStudent.displayName}`
             : "Transferir aluno"
         }
-        description="A matrícula atual é encerrada e uma nova é criada na turma de destino — o histórico de progresso do aluno não é perdido."
+        description="A matrícula atual é encerrada e uma nova é criada na turma de destino - o histórico de progresso do aluno não é perdido."
+        footer={
+          transferringStudent && (
+            <>
+              <DialogCancel />
+              <Button
+                type="submit"
+                form="transfer-student-form"
+                variant="success"
+                disabled={transferSaving || !destinationClassroomId}
+              >
+                {transferSaving ? "Transferindo…" : "Confirmar transferência"}
+              </Button>
+            </>
+          )
+        }
       >
         {transferringStudent && (
           <form
+            id="transfer-student-form"
             className="teacher-students__transfer-form"
             onSubmit={handleTransfer}
           >
@@ -256,12 +273,6 @@ export function TeacherStudents() {
             {transferError && (
               <InlineFeedback kind="retry">{transferError}</InlineFeedback>
             )}
-            <Button
-              type="submit"
-              disabled={transferSaving || !destinationClassroomId}
-            >
-              {transferSaving ? "Transferindo…" : "Confirmar transferência"}
-            </Button>
           </form>
         )}
       </Dialog>
@@ -271,10 +282,21 @@ export function TeacherStudents() {
         onOpenChange={(open) => !open && setResettingStudent(null)}
         title={
           resettingStudent
-            ? `Recuperar acesso — ${resettingStudent.displayName}`
+            ? `Recuperar acesso - ${resettingStudent.displayName}`
             : "Recuperar acesso"
         }
         description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+        footer={
+          resettingStudent &&
+          !resetResult && (
+            <>
+              <DialogCancel />
+              <Button variant="success" onClick={handleReset} disabled={resetSaving}>
+                {resetSaving ? "Gerando…" : "Gerar nova credencial"}
+              </Button>
+            </>
+          )
+        }
       >
         {resettingStudent && !resetResult && (
           <div className="teacher-students__reset-body">
@@ -286,9 +308,6 @@ export function TeacherStudents() {
             {resetError && (
               <InlineFeedback kind="retry">{resetError}</InlineFeedback>
             )}
-            <Button onClick={handleReset} disabled={resetSaving}>
-              {resetSaving ? "Gerando…" : "Gerar nova credencial"}
-            </Button>
           </div>
         )}
 
@@ -309,12 +328,6 @@ export function TeacherStudents() {
                 </div>
               ))}
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => setResettingStudent(null)}
-            >
-              Fechar
-            </Button>
           </div>
         )}
       </Dialog>

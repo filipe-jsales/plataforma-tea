@@ -5,8 +5,8 @@ import { completeLogin } from '../../lib/authFlow';
 import { Button } from '../../components/ui';
 import './StaffLogin.css';
 
-// 1.2.1 — fluxo professor: e-mail + senha, microcópia sem jargão técnico
-// (nunca menciona "token"/"JWT" — RQ4 barreiras institucionais, 17,39%).
+// 1.2.1 - fluxo professor: e-mail + senha, microcópia sem jargão técnico
+// (nunca menciona "token"/"JWT" - RQ4 barreiras institucionais, 17,39%).
 export function TeacherLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');

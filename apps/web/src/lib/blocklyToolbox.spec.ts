@@ -10,7 +10,7 @@ import {
 } from './blocklyToolbox';
 
 // Testes deste describe usam um Blockly.Workspace headless de verdade (sem
-// SVG/DOM) — o suficiente pra exercitar isMovable/getField/setConstraints,
+// SVG/DOM) - o suficiente pra exercitar isMovable/getField/setConstraints,
 // que não dependem de renderização. `applyModifyFieldLocking` só declara
 // `WorkspaceSvg` na assinatura porque é o tipo que react-blockly entrega em
 // produção (ver onInject em ChallengePage/WaterStateChallengePage); o cast
@@ -79,7 +79,7 @@ describe('buildToolboxConfiguration', () => {
     });
   });
 
-  it('only ever includes the block types passed in — never the full built-in Blockly palette', () => {
+  it('only ever includes the block types passed in - never the full built-in Blockly palette', () => {
     const toolbox = buildToolboxConfiguration(categories) as {
       contents: Array<{ contents: Array<{ type: string }> }>;
     };
@@ -104,7 +104,7 @@ describe('registerBlockDefinitions', () => {
     expect(Blockly.Blocks.test_repeat_times).toBeDefined();
   });
 
-  it('is idempotent — calling it again does not throw or double-register', () => {
+  it('is idempotent - calling it again does not throw or double-register', () => {
     registerBlockDefinitions(categories);
 
     expect(() => registerBlockDefinitions(categories)).not.toThrow();
@@ -112,7 +112,7 @@ describe('registerBlockDefinitions', () => {
 });
 
 describe('applyGenerousSnapTolerance', () => {
-  it('defaults to 100% — the same generous tolerance every curriculum challenge already had', () => {
+  it('defaults to 100% - the same generous tolerance every curriculum challenge already had', () => {
     applyGenerousSnapTolerance();
 
     expect(Blockly.config.dragRadius).toBe(20);
@@ -120,7 +120,7 @@ describe('applyGenerousSnapTolerance', () => {
     expect(Blockly.config.connectingSnapRadius).toBe(48);
   });
 
-  it('4.2 — scales tolerance down proportionally for a teacher-chosen percent below 100', () => {
+  it('4.2 - scales tolerance down proportionally for a teacher-chosen percent below 100', () => {
     applyGenerousSnapTolerance(60);
 
     expect(Blockly.config.dragRadius).toBe(12);
@@ -138,7 +138,7 @@ describe('applyGenerousSnapTolerance', () => {
 });
 
 // Extraída de ChallengePage.tsx (era local/não-exportada) pra ser
-// reaproveitada por WaterStateChallengePage — domínio-agnóstica de
+// reaproveitada por WaterStateChallengePage - domínio-agnóstica de
 // propósito, então os testes aqui usam um bloco de teste genérico, nunca
 // um bloco real de tartaruga/condicional.
 describe('applyModifyFieldLocking', () => {

@@ -5,6 +5,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   Table,
@@ -25,8 +26,8 @@ interface SchoolForm {
 
 const EMPTY_SCHOOL_FORM: SchoolForm = { name: '', externalId: '' };
 
-// Gestão de escolas e turmas (admin) — CRUD sobre "escola" (container
-// multi-tenant). "Desativar" nunca apaga turmas/matrículas vinculadas — é
+// Gestão de escolas e turmas (admin) - CRUD sobre "escola" (container
+// multi-tenant). "Desativar" nunca apaga turmas/matrículas vinculadas - é
 // soft delete (B1), mesma filosofia de reversibilidade de 1.4 (usuários).
 // Reaproveita components/ui, mesmo padrão visual de AdminUsers.tsx (1.4).
 export function AdminSchools() {
@@ -122,7 +123,7 @@ export function AdminSchools() {
       <h1>Escolas</h1>
       <p className="admin-schools__subtitle">
         Cada turma pertence a exatamente uma escola. Desativar uma escola bloqueia a criação de turmas novas
-        nela, mas nunca apaga turmas/matrículas já existentes — não há exclusão permanente aqui.
+        nela, mas nunca apaga turmas/matrículas já existentes - não há exclusão permanente aqui.
       </p>
 
       <div className="admin-schools__toolbar">
@@ -149,7 +150,7 @@ export function AdminSchools() {
               {schools.map((school) => (
                 <TableRow key={school.id}>
                   <TableCell>{school.name}</TableCell>
-                  <TableCell>{school.externalId ?? '—'}</TableCell>
+                  <TableCell>{school.externalId ?? '-'}</TableCell>
                   <TableCell>
                     <Badge variant={school.active ? 'success' : 'neutral'}>
                       {school.active ? 'Ativa' : 'Desativada'}
@@ -181,8 +182,20 @@ export function AdminSchools() {
         </>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen} title="Criar escola">
-        <form className="admin-schools__form" onSubmit={handleCreateSubmit}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        title="Criar escola"
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="create-school-form" variant="success" disabled={createSaving}>
+              {createSaving ? 'Criando…' : 'Criar'}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-school-form" className="admin-schools__form" onSubmit={handleCreateSubmit}>
           <TextField
             id="school-name"
             label="Nome da escola"
@@ -196,9 +209,6 @@ export function AdminSchools() {
             onChange={(e) => setCreateForm((f) => ({ ...f, externalId: e.target.value }))}
           />
           {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
-          <Button type="submit" disabled={createSaving}>
-            {createSaving ? 'Criando…' : 'Criar'}
-          </Button>
         </form>
       </Dialog>
 
@@ -206,9 +216,17 @@ export function AdminSchools() {
         open={editingSchool !== null}
         onOpenChange={(open) => !open && setEditingSchool(null)}
         title={editingSchool ? `Editar ${editingSchool.name}` : 'Editar'}
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="edit-school-form" variant="success" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </>
+        }
       >
         {editingSchool && (
-          <form className="admin-schools__form" onSubmit={handleEditSubmit}>
+          <form id="edit-school-form" className="admin-schools__form" onSubmit={handleEditSubmit}>
             <TextField
               id="edit-school-name"
               label="Nome da escola"
@@ -222,9 +240,6 @@ export function AdminSchools() {
               onChange={(e) => setEditForm((f) => ({ ...f, externalId: e.target.value }))}
             />
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
-            <Button type="submit" disabled={editSaving}>
-              {editSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
           </form>
         )}
       </Dialog>

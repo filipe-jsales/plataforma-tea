@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import type { WorkToolsMatchPair } from '../lib/workToolsLevelTypes';
 
-// Estado da rodada ATUAL do jogo "Ferramentas do Mundo do Trabalho" —
+// Estado da rodada ATUAL do jogo "Ferramentas do Mundo do Trabalho" -
 // separado do `MiniGameStore` genérico (fase PRIMM/tentativas, comum a
 // qualquer mini jogo), mesmo racional de fractionsRoundStore.ts: isto é o
 // dado ESPECÍFICO deste jogo (quais pares o aluno já ligou, como
@@ -15,7 +15,7 @@ export interface WorkToolsRoundState {
   matches: WorkToolsMatchPair[];
   statementAnswers: Record<string, boolean>;
   // Reatribuir o mesmo cenário substitui o par anterior (nunca acumula
-  // dois pares pro mesmo cenário) — é o que permite ao aluno corrigir sem
+  // dois pares pro mesmo cenário) - é o que permite ao aluno corrigir sem
   // precisar "desfazer" primeiro.
   setMatch: (scenarioId: string, toolId: string) => void;
   removeMatch: (scenarioId: string) => void;

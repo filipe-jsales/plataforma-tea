@@ -1,7 +1,7 @@
 import { SegmentedControl } from './SegmentedControl';
 import './LikertScaleField.css';
 
-// Escala de concordância de 5 pontos — mesma âncora textual nos dois
+// Escala de concordância de 5 pontos - mesma âncora textual nos dois
 // extremos e no meio, nunca só "1"/"5" nus (rotulagem redundante, regra
 // não-negociável 9): quem responde não precisa lembrar "o que era o 4
 // mesmo?" nem decorar uma legenda separada. Ordem sempre discordo→concordo,
@@ -18,14 +18,14 @@ export const LIKERT_SCALE_OPTIONS = [
 export interface LikertScaleFieldProps {
   id: string;
   statement: string;
-  // '' = ainda sem resposta — nunca um valor default 1–5 forçado (resposta
+  // '' = ainda sem resposta - nunca um valor default 1–5 forçado (resposta
   // parcial é válida em survey research; um item pré-marcado seria uma
   // resposta que a pessoa nunca deu de verdade).
   value: string;
   onChange: (value: string) => void;
 }
 
-// Um item de escala Likert — reutilizável por qualquer survey (não só o de
+// Um item de escala Likert - reutilizável por qualquer survey (não só o de
 // criação de desafio). Reaproveita `SegmentedControl` (Radix
 // `role="radiogroup"`/`role="radio"`, teclado de graça) em vez de um radio
 // group HTML cru.

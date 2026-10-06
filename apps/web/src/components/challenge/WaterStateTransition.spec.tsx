@@ -28,7 +28,7 @@ describe('WaterStateTransition', () => {
     vi.unstubAllGlobals();
   });
 
-  it('regra não-negociável 9 — always shows icon and text together for the current state, never color-only', () => {
+  it('regra não-negociável 9 - always shows icon and text together for the current state, never color-only', () => {
     render(<WaterStateTransition state="LIQUID" />);
 
     expect(screen.getByText('💧')).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe('WaterStateTransition', () => {
     expect(screen.queryByText('💧')).not.toBeInTheDocument();
   });
 
-  it('3.16 AC2 — never plays a sound when the sensory profile has sound disabled (default)', () => {
+  it('3.16 AC2 - never plays a sound when the sensory profile has sound disabled (default)', () => {
     const { ctor } = stubAudioContext();
 
     const { rerender } = render(<WaterStateTransition state="LIQUID" />);

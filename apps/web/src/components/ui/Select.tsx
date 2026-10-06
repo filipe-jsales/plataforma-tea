@@ -15,11 +15,11 @@ export interface SelectProps {
   placeholder?: string;
 }
 
-// 3.11 — "Ordenar por"/"Desafio" deixam de ser <select> nativo sem estilo
+// 3.11 - "Ordenar por"/"Desafio" deixam de ser <select> nativo sem estilo
 // (AC "estilizado de forma consistente com o resto dos inputs da
-// plataforma") e passam a usar @radix-ui/react-select — mesma base
+// plataforma") e passam a usar @radix-ui/react-select - mesma base
 // headless já adotada em 3.10, não uma lib nova. `label` é sempre visível
-// (nunca só placeholder — rotulagem redundante, mesma regra de todo
+// (nunca só placeholder - rotulagem redundante, mesma regra de todo
 // componente em components/ui/).
 export function Select({ id, label, options, value, onValueChange, placeholder }: SelectProps) {
   return (

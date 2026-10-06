@@ -5,6 +5,7 @@
 }
 
 .home__greeting {
+  text-align: center;
   margin-bottom: var(--space-4);
 }
 
@@ -14,7 +15,7 @@
   gap: var(--space-3);
 }
 
-/* Botões de ação vêm de components/ui/LinkButton (3.11) — home__action*
+/* Botões de ação vêm de components/ui/LinkButton (3.11) - home__action*
    foi removido daqui. */
 
 .home__progress-detail {
@@ -37,7 +38,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  /* `none` fora de `.staff-theme` — mesmo token de elevação de Card.css
+  /* `none` fora de `.staff-theme` - mesmo token de elevação de Card.css
      (3.11), aplicado aqui direto porque este item de lista não passa pelo
      SelectableCard (não é selecionável, só informativo). */
   box-shadow: var(--shadow-card);

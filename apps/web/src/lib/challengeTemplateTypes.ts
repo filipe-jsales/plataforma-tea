@@ -1,7 +1,7 @@
-// 4.2 — mesma forma que apps/api/src/challenge-templates/challenge-template-
+// 4.2 - mesma forma que apps/api/src/challenge-templates/challenge-template-
 // parameter.interface.ts e challenge-templates.service.ts devolvem via API.
 // Duplicado aqui de propósito (mesmo padrão de ChallengeConfig/
-// SerializedBlockState — não há pacote compartilhado entre as duas apps
+// SerializedBlockState - não há pacote compartilhado entre as duas apps
 // neste monorepo, ver challenge-config.interface.ts no backend).
 import type { ContentCategory } from './contentCategory';
 
@@ -37,12 +37,12 @@ export interface ChallengeTemplateSummary {
   name: string;
   description: string;
   icon: string;
-  // CC1 — categoria do tópico ao qual este template pertence, só leitura.
+  // CC1 - categoria do tópico ao qual este template pertence, só leitura.
   category: ContentCategory;
 }
 
-// 7.5 (AC2) — sugestão pré-escrita por template, editável (nunca só um
-// placeholder cinza como feedbackMessages — aqui a resposta vazia não é
+// 7.5 (AC2) - sugestão pré-escrita por template, editável (nunca só um
+// placeholder cinza como feedbackMessages - aqui a resposta vazia não é
 // válida, então o formulário pré-preenche com texto real).
 export interface PrimmQuestionSuggestion {
   predictQuestion: string;
@@ -79,7 +79,7 @@ export interface TeacherChallengeSummary {
   createdAt: string;
 }
 
-// 3.7 (AC4) — mesma forma que ChallengeFeedbackMessages do backend
+// 3.7 (AC4) - mesma forma que ChallengeFeedbackMessages do backend
 // (challenge-config.interface.ts), mas nunca `undefined` aqui: o formulário
 // (TemplateChallengeForm) precisa de um input controlado, então usa string
 // vazia pra "sem valor", nunca omite a chave.
@@ -96,14 +96,14 @@ export interface TeacherChallengeDetail {
   templateKey: string;
   params: Record<string, unknown>;
   feedbackMessages: Partial<ChallengeFeedbackMessagesDraft>;
-  // 7.5 (AC3) — perguntas PRIMM já salvas (nunca `undefined`: string vazia
+  // 7.5 (AC3) - perguntas PRIMM já salvas (nunca `undefined`: string vazia
   // só no caso defensivo de um desafio sem config válido ainda, ver
   // ChallengeTemplatesService.getMineOrThrow).
   predictQuestion: string;
   investigationQuestion: string;
 }
 
-// Parâmetros do formulário guiado — valores já no tipo esperado pelo
+// Parâmetros do formulário guiado - valores já no tipo esperado pelo
 // handler (número, boolean, ou lista de blockType), nunca string crua de
 // input sem coerção (ver lib/templateParameterForm.ts).
 export type TemplateParamsDraft = Record<string, unknown>;

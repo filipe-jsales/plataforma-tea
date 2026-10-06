@@ -13,7 +13,7 @@ export interface TextProps {
 }
 
 // Texto de corpo/instrução. `tone` muda cor (ex.: `warning` pro aviso "quase
-// lá"), mas nunca é o único jeito de comunicar o que está acontecendo — todo
+// lá"), mas nunca é o único jeito de comunicar o que está acontecendo - todo
 // lugar que usa `tone="warning"`/`"success"` pra feedback de tentativa
 // (nunca erro fixo) deve vir acompanhado de ícone, ver InlineFeedback, que
 // já embute essa combinação pronta em vez de deixar cada tela reinventar.

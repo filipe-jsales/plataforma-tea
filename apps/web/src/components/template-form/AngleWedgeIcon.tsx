@@ -1,5 +1,5 @@
-// AC2 — miniatura inline do parâmetro "ângulo de giro": um leque (wedge)
-// cuja abertura é o próprio valor em graus — independente do número de
+// AC2 - miniatura inline do parâmetro "ângulo de giro": um leque (wedge)
+// cuja abertura é o próprio valor em graus - independente do número de
 // lados, é o efeito ISOLADO deste campo específico (AC2 exige um exemplo
 // visual "daquele parâmetro", não da combinação).
 interface AngleWedgeIconProps {

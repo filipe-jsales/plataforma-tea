@@ -25,14 +25,14 @@ function renderPage() {
 
 const challenges = [
   { id: 'c1', title: 'Monte o quadrado', stage: 'use' as const, topicName: 'Ângulos e formas' },
-  { id: 'c2', title: 'Monte o quadrado — agora mude!', stage: 'modify' as const, topicName: 'Ângulos e formas' },
-  { id: 'c3', title: 'Monte o quadrado — sua vez!', stage: 'create' as const, topicName: 'Ângulos e formas' },
+  { id: 'c2', title: 'Monte o quadrado - agora mude!', stage: 'modify' as const, topicName: 'Ângulos e formas' },
+  { id: 'c3', title: 'Monte o quadrado - sua vez!', stage: 'create' as const, topicName: 'Ângulos e formas' },
 ];
 
 const emptyStats = { n: 0, mean: null, median: null, stdDev: null, min: null, max: null, q1: null, q3: null };
 
 // 3.11: o picker deixou de ser um <select> nativo (Select via
-// @radix-ui/react-select, ver components/ui/Select.tsx) — abrir/escolher
+// @radix-ui/react-select, ver components/ui/Select.tsx) - abrir/escolher
 // uma opção agora é clique + clique no item, não mais `selectOptions`.
 async function pickChallenge(titleFragment: string) {
   const user = userEvent.setup();
@@ -43,7 +43,7 @@ async function pickChallenge(titleFragment: string) {
 function baseReport(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     challengeId: 'c3',
-    title: 'Monte o quadrado — sua vez!',
+    title: 'Monte o quadrado - sua vez!',
     stage: 'create' as const,
     minSampleSizeThreshold: 5,
     studentsReached: 0,
@@ -72,7 +72,7 @@ describe('ChallengeReport', () => {
     renderPage();
 
     // 3.11: opções de um Select (Radix) só existem no DOM com o dropdown
-    // aberto — diferente de um <select> nativo, onde as <option> sempre
+    // aberto - diferente de um <select> nativo, onde as <option> sempre
     // estão presentes.
     await userEvent.click(await screen.findByLabelText(/Desafio/));
 
@@ -90,7 +90,7 @@ describe('ChallengeReport', () => {
     expect(mockedGet).toHaveBeenCalledTimes(1);
     await pickChallenge('sua vez');
 
-    expect(await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Monte o quadrado - sua vez!' })).toBeInTheDocument();
     expect(mockedGet).toHaveBeenCalledWith('/metrics/admin/challenges/c3');
   });
 
@@ -99,7 +99,7 @@ describe('ChallengeReport', () => {
     mockedGet.mockResolvedValueOnce(
       baseReport({
         challengeId: 'c2',
-        title: 'Monte o quadrado — agora mude!',
+        title: 'Monte o quadrado - agora mude!',
         stage: 'modify',
         modifyInsights: {
           attemptsUntilMatch: emptyStats,
@@ -130,7 +130,7 @@ describe('ChallengeReport', () => {
 
     await pickChallenge('sua vez');
 
-    await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' });
+    await screen.findByRole('heading', { name: 'Monte o quadrado - sua vez!' });
     expect(screen.queryByRole('heading', { name: 'Estágio Modify' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Estágio Use' })).not.toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe('ChallengeReport', () => {
 
     await pickChallenge('sua vez');
 
-    expect(await screen.findByText(/N=3 — abaixo do mínimo configurado \(5\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/N=3 - abaixo do mínimo configurado \(5\)/)).toBeInTheDocument();
   });
 
   it('never shows an individual student name/pseudonym anywhere on the report', async () => {
@@ -159,7 +159,7 @@ describe('ChallengeReport', () => {
     renderPage();
 
     await pickChallenge('sua vez');
-    await screen.findByRole('heading', { name: 'Monte o quadrado — sua vez!' });
+    await screen.findByRole('heading', { name: 'Monte o quadrado - sua vez!' });
 
     expect(screen.queryByText(/pseudo/i)).not.toBeInTheDocument();
   });

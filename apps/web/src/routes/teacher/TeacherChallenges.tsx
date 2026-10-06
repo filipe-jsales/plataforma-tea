@@ -4,14 +4,14 @@ import type { TeacherChallengeSummary } from "../../lib/challengeTemplateTypes";
 import { Button, Dialog, LinkButton } from "../../components/ui";
 import { AllocationDialog } from "./AllocationDialog";
 import "./TeacherChallenges.css";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, Dna, Pencil, School, Trash } from "lucide-react";
 
-// 4.2 (AC5) — "Meus desafios": lista só os desafios que O PRÓPRIO professor
+// 4.2 (AC5) - "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
-// expõe `Challenge.config`/estrutura de blocos — editar e duplicar reabrem
+// expõe `Challenge.config`/estrutura de blocos - editar e duplicar reabrem
 // exatamente o mesmo formulário guiado da criação (ver TeacherChallengeForm
 // route), nunca um editor bruto. "Alocar à turma" (4.3) é o que decide se
-// o desafio chega a algum aluno — sem alocação, o desafio fica só aqui,
+// o desafio chega a algum aluno - sem alocação, o desafio fica só aqui,
 // nunca vaza pra área de nenhum aluno (AC3 de 4.3).
 export function TeacherChallenges() {
   const [challenges, setChallenges] = useState<
@@ -49,7 +49,7 @@ export function TeacherChallenges() {
       <h1>Meus desafios</h1>
       <p className="teacher-challenges__subtitle">
         Desafios que você criou escolhendo um template pronto e ajustando só os
-        parâmetros — nunca blocos ou código.
+        parâmetros.
       </p>
 
       <LinkButton to="/teacher/challenges/new" icon={<CirclePlus />}>
@@ -86,7 +86,7 @@ export function TeacherChallenges() {
               <span className="teacher-challenges__item-actions">
                 <Button
                   variant="secondary"
-                  icon="🏫"
+                  icon={<School />}
                   onClick={() => setAllocatingChallenge(challenge)}
                 >
                   Alocar à turma
@@ -94,20 +94,20 @@ export function TeacherChallenges() {
                 <LinkButton
                   to={`/teacher/challenges/${challenge.id}/edit`}
                   variant="secondary"
-                  icon="✏️"
+                  icon={<Pencil />}
                 >
                   Editar
                 </LinkButton>
                 <LinkButton
                   to={`/teacher/challenges/new?fromChallengeId=${challenge.id}`}
                   variant="secondary"
-                  icon="🧬"
+                  icon={<Dna />}
                 >
                   Duplicar
                 </LinkButton>
                 <Button
-                  variant="ghost"
-                  icon="🗑️"
+                  variant="danger"
+                  icon={<Trash />}
                   onClick={() => setPendingDeleteId(challenge.id)}
                 >
                   Excluir
@@ -123,19 +123,25 @@ export function TeacherChallenges() {
         onOpenChange={(open) => !open && setPendingDeleteId(null)}
         title="Excluir este desafio?"
         description="Os alunos que já acessaram este desafio por link direto deixam de conseguir abri-lo. Esta ação não pode ser desfeita."
-      >
-        <Button
-          variant="secondary"
-          disabled={deleting}
-          onClick={async () => {
-            await confirmDelete();
-            setPendingDeleteId(null);
-            reload();
-          }}
-        >
-          {deleting ? "Excluindo…" : "Excluir mesmo assim"}
-        </Button>
-      </Dialog>
+        footer={
+          <>
+            <Button variant="success" onClick={() => setPendingDeleteId(null)}>
+              Manter desafio
+            </Button>
+            <Button
+              variant="danger"
+              disabled={deleting}
+              onClick={async () => {
+                await confirmDelete();
+                setPendingDeleteId(null);
+                reload();
+              }}
+            >
+              {deleting ? "Excluindo…" : "Excluir mesmo assim"}
+            </Button>
+          </>
+        }
+      />
 
       {allocatingChallenge && (
         <AllocationDialog

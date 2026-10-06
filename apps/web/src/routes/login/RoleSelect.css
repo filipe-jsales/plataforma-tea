@@ -29,3 +29,11 @@
 .role-select__icon {
   font-size: 1.8rem;
 }
+
+.role-select__logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 160px;
+  margin-inline: auto;
+}

@@ -6,10 +6,10 @@ export interface TableProps {
   ariaLabel?: string;
 }
 
-// 3.11 — base semântica pra qualquer tabela de dado do professor/admin
+// 3.11 - base semântica pra qualquer tabela de dado do professor/admin
 // (hoje só TeacherMetrics "Por aluno"). Radix não tem primitivo de tabela
 // (não é dialog/tooltip/toggle/tabs, e a semântica de leitor de tela de uma
-// tabela de dados de verdade — <table>/<th scope>/<td> — já é o padrão
+// tabela de dados de verdade - <table>/<th scope>/<td> - já é o padrão
 // correto, headless por natureza); aqui só padronizamos espaçamento/zebra/
 // divisor/hierarquia do cabeçalho (Table.css), nunca a semântica.
 export function Table({ children, ariaLabel }: TableProps) {

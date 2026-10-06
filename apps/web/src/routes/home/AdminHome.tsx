@@ -11,7 +11,7 @@ interface AdminHomeData {
   usersCount: number;
 }
 
-// 2.1 — home do admin. Só contagens agregadas (AC4) — nenhum dado no nível
+// 2.1 - home do admin. Só contagens agregadas (AC4) - nenhum dado no nível
 // de aluno individual nesta tela, mesmo que o admin tenha acesso técnico a
 // isso em outra tela futura.
 export function AdminHome() {
@@ -26,7 +26,7 @@ export function AdminHome() {
 
   return (
     <main className="home staff-theme">
-      {/* 1.5.1 — "Sair" saiu do topbar solto e foi pra sidebar global
+      {/* 1.5.1 - "Sair" saiu do topbar solto e foi pra sidebar global
           (AppSidebar), aberta pelo hambúrguer do AppHeader. */}
       <h1 className="home__greeting">Olá, {user.displayName}!</h1>
 

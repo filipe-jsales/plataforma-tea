@@ -96,7 +96,7 @@
   gap: var(--space-2);
 }
 
-/* AC de coordenação motora fina (RQ4, regra 4) — alvo de toque grande em
+/* AC de coordenação motora fina (RQ4, regra 4) - alvo de toque grande em
    vez de um campo numérico pequeno, mesmo racional do login por imagem. */
 .challenge-page__predict-option {
   min-width: 56px;

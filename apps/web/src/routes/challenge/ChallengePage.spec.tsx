@@ -14,7 +14,7 @@ import { ChallengePage } from './ChallengePage';
 // dos dois roda em jsdom): BlocklyWorkspace vira um stub que só entrega uma
 // instância de workspace fake pro onInject, com o suficiente pra
 // `handleRun` funcionar (getTopBlocks/getAllBlocks); Blockly.serialization.
-// blocks.save é mockado pra devolver um programa fixo — o CONTEÚDO do
+// blocks.save é mockado pra devolver um programa fixo - o CONTEÚDO do
 // programa não importa pra estes testes, porque runTurtleProgram/
 // evaluateSquareGoal/closedPolygonSides (a lógica real de turtleWorld.ts,
 // já testada em turtleWorld.spec.ts) também são mockados aqui: o que este
@@ -135,10 +135,10 @@ beforeEach(() => {
   lastInitialJsonHolder.current = undefined;
   lastWorkspaceConfigHolder.current = undefined;
   mockedGet.mockReset();
-  // C2 — toda tela de desafio não-travada busca o rascunho salvo logo
+  // C2 - toda tela de desafio não-travada busca o rascunho salvo logo
   // depois de buscar o desafio (2ª chamada de `apiClient.get`); os testes
   // deste arquivo não são sobre autosave, então o valor-padrão (sem
-  // rascunho) cobre a 2ª chamada em diante — cada teste só precisa
+  // rascunho) cobre a 2ª chamada em diante - cada teste só precisa
   // continuar enfileirando a 1ª (`mockResolvedValueOnce(baseCreateChallenge)`).
   mockedGet.mockResolvedValue({ workspaceJson: null });
   mockedPost.mockReset().mockResolvedValue(undefined);
@@ -160,35 +160,35 @@ function renderChallenge(challengeId: string) {
   );
 }
 
-describe('ChallengePage — feedback (3.7)', () => {
-  it('AC1/AC3 — retry feedback combines a neutral icon with descriptive, non-punitive text (default message)', async () => {
+describe('ChallengePage - feedback (3.7)', () => {
+  it('AC1/AC3 - retry feedback combines a neutral icon with descriptive, non-punitive text (default message)', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
     mockedEvaluateSquareGoal.mockReturnValue({ success: false });
 
     renderChallenge('challenge-1');
     await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
 
-    const message = await screen.findByText('Quase lá — quer tentar de novo?');
+    const message = await screen.findByText('Quase lá - quer tentar de novo?');
     expect(message.textContent?.toLowerCase()).not.toMatch(/errad|errou|falh/);
-    // InlineFeedback sempre combina ícone + texto — nunca só a cor/classe.
-    expect(screen.getByText('🔁')).toBeInTheDocument();
+    // InlineFeedback sempre combina ícone + texto - nunca só a cor/classe.
+    expect(message.closest('.ui-feedback')?.querySelector('.ui-feedback__icon svg.lucide-repeat')).not.toBeNull();
   });
 
-  it('AC4 — uses the teacher-customized retry message instead of the default when the challenge declares one', async () => {
+  it('AC4 - uses the teacher-customized retry message instead of the default when the challenge declares one', async () => {
     mockedGet.mockResolvedValueOnce({
       ...baseCreateChallenge,
-      feedbackMessages: { retry: 'Esse ângulo ainda não fecha o quadrado — quer ajustar?', success: null },
+      feedbackMessages: { retry: 'Esse ângulo ainda não fecha o quadrado - quer ajustar?', success: null },
     });
     mockedEvaluateSquareGoal.mockReturnValue({ success: false });
 
     renderChallenge('challenge-1');
     await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
 
-    expect(await screen.findByText('Esse ângulo ainda não fecha o quadrado — quer ajustar?')).toBeInTheDocument();
-    expect(screen.queryByText('Quase lá — quer tentar de novo?')).not.toBeInTheDocument();
+    expect(await screen.findByText('Esse ângulo ainda não fecha o quadrado - quer ajustar?')).toBeInTheDocument();
+    expect(screen.queryByText('Quase lá - quer tentar de novo?')).not.toBeInTheDocument();
   });
 
-  it('AC4 — uses the teacher-customized success message when the goal is met', async () => {
+  it('AC4 - uses the teacher-customized success message when the goal is met', async () => {
     mockedGet.mockResolvedValueOnce({
       ...baseCreateChallenge,
       feedbackMessages: { retry: null, success: 'Mandou bem! 🎉' },
@@ -239,7 +239,7 @@ describe('ChallengePage — feedback (3.7)', () => {
     expect(payloads.some((p) => /other|rank|compar/i.test(p))).toBe(false);
   });
 
-  it('AC6 — the Modify-phase reflection reuses the same icon+text feedback component', async () => {
+  it('AC6 - the Modify-phase reflection reuses the same icon+text feedback component', async () => {
     mockedGet.mockResolvedValueOnce({
       ...baseCreateChallenge,
       id: 'challenge-2',
@@ -254,15 +254,15 @@ describe('ChallengePage — feedback (3.7)', () => {
     renderChallenge('challenge-2');
     await userEvent.click(await screen.findByRole('button', { name: /executar/i }));
 
-    expect(await screen.findByText(/a figura fechou com 4 lados/i)).toBeInTheDocument();
+    const reflection = await screen.findByText(/a figura fechou com 4 lados/i);
     // Mesmo ícone default de sucesso do InlineFeedback usado no feedback de
-    // Use/Create — é o MESMO componente reutilizado, não uma reflexão com
+    // Use/Create - é o MESMO componente reutilizado, não uma reflexão com
     // marcação própria.
-    expect(screen.getByText('✅')).toBeInTheDocument();
+    expect(reflection.closest('.ui-feedback')?.querySelector('.ui-feedback__icon svg.lucide-check')).not.toBeNull();
   });
 });
 
-describe('ChallengePage — closure tolerance (7.4 AC3)', () => {
+describe('ChallengePage - closure tolerance (7.4 AC3)', () => {
   it('passes the challenge-configured closureTolerancePx through to the goal/closure evaluation', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
     mockedEvaluateSquareGoal.mockReturnValue({ success: true });
@@ -290,7 +290,7 @@ describe('ChallengePage — closure tolerance (7.4 AC3)', () => {
   });
 });
 
-describe('ChallengePage — tamanho dos blocos', () => {
+describe('ChallengePage - tamanho dos blocos', () => {
   it('uses the Blockly default scale (1) when the challenge does not customize blockScale (curriculum-seeded)', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
 
@@ -317,7 +317,7 @@ describe('ChallengePage — tamanho dos blocos', () => {
 });
 
 // Dispara um evento de mudança de CONTEÚDO (nunca UI/seleção) em todo
-// listener registrado via `workspace.addChangeListener` — `handleWorkspaceEvent`
+// listener registrado via `workspace.addChangeListener` - `handleWorkspaceEvent`
 // (que só reage a BlockDrag) simplesmente ignora, então isto é seguro pra
 // exercitar só o autosave (handleWorkspaceAutosave) sem precisar saber qual
 // dos dois listeners é qual.
@@ -329,12 +329,12 @@ function fireContentChangeOnAllListeners() {
   listeners.forEach((listener) => listener(event));
 }
 
-describe('ChallengePage — autosave do workspace (C2)', () => {
+describe('ChallengePage - autosave do workspace (C2)', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('AC2 — restores the workspace from the saved draft, taking priority over the curriculum program', async () => {
+  it('AC2 - restores the workspace from the saved draft, taking priority over the curriculum program', async () => {
     mockedGet.mockResolvedValueOnce({
       ...baseCreateChallenge,
       toolbox: { stage: 'modify', categories: [] },
@@ -368,7 +368,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     });
   });
 
-  it('never fetches a draft for the locked (`use`) stage — nothing to autosave there', async () => {
+  it('never fetches a draft for the locked (`use`) stage - nothing to autosave there', async () => {
     mockedGet.mockResolvedValueOnce({
       ...baseCreateChallenge,
       locked: true,
@@ -382,7 +382,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     expect(mockedGet).toHaveBeenCalledTimes(1);
   });
 
-  it('AC1 — debounces content changes and saves the current workspace only after the aluno stops editing', async () => {
+  it('AC1 - debounces content changes and saves the current workspace only after the aluno stops editing', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
 
     renderChallenge('challenge-1');
@@ -402,7 +402,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     );
   });
 
-  it('AC1 — a burst of changes resets the debounce, saving only once', async () => {
+  it('AC1 - a burst of changes resets the debounce, saving only once', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
 
     renderChallenge('challenge-1');
@@ -419,7 +419,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     expect(mockedPatch).toHaveBeenCalledTimes(1);
   });
 
-  it('AC5 — retries once, silently, after a failed autosave, never surfacing the error to the aluno', async () => {
+  it('AC5 - retries once, silently, after a failed autosave, never surfacing the error to the aluno', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
     mockedPatch.mockReset();
     mockedPatch.mockRejectedValueOnce(new Error('network down'));
@@ -437,7 +437,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     expect(screen.queryByText(/erro|falhou|failed/i)).not.toBeInTheDocument();
   });
 
-  it('AC4 — autosave never renders any "saving…" indicator, on purpose', async () => {
+  it('AC4 - autosave never renders any "saving…" indicator, on purpose', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
 
     renderChallenge('challenge-1');
@@ -450,7 +450,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
     expect(screen.queryByText(/salvando/i)).not.toBeInTheDocument();
   });
 
-  it('AC3 — discards the draft once the challenge is completed and submitted, never conflicting with the final result', async () => {
+  it('AC3 - discards the draft once the challenge is completed and submitted, never conflicting with the final result', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
     mockedEvaluateSquareGoal.mockReturnValue({ success: true });
 
@@ -482,7 +482,7 @@ describe('ChallengePage — autosave do workspace (C2)', () => {
   });
 });
 
-describe('ChallengePage — marca o desafio como visto (E1, AC2)', () => {
+describe('ChallengePage - marca o desafio como visto (E1, AC2)', () => {
   it('calls the "viewed" endpoint scoped to this challenge as soon as it opens', async () => {
     mockedGet.mockResolvedValueOnce(baseCreateChallenge);
 

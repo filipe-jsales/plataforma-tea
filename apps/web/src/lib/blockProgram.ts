@@ -1,7 +1,7 @@
 // Formato de bloco serializado igual ao de Blockly.serialization.blocks.save()
 // (só o subconjunto que os 3 blocos da paleta MVP usam: encadeamento via
 // `next`, bloco de estatuto aninhado via `inputs.DO`). ChallengePage.tsx
-// serializa o workspace real nesse formato antes de chamar interpretProgram —
+// serializa o workspace real nesse formato antes de chamar interpretProgram -
 // manter esse tipo separado de Blockly permite testar a interpretação sem
 // precisar de um workspace de verdade (sem DOM/jsdom).
 export interface SerializedBlock {
@@ -12,20 +12,20 @@ export interface SerializedBlock {
 }
 
 // `angle` é opcional: o bloco "turn" só ganhou o campo ANGLE na fase Modify
-// (3.4, ver migration AddAngleFieldToTurnBlock) — um `turn` sem esse campo
+// (3.4, ver migration AddAngleFieldToTurnBlock) - um `turn` sem esse campo
 // (nenhum programa serializado antigo tinha) cai no default de 90° já
 // aplicado por turtleWorld.runTurtleProgram, sem precisar de um valor aqui.
 export type TurtleAction =
   | { kind: 'move' }
   | { kind: 'turn'; direction: 'LEFT' | 'RIGHT'; angle?: number };
 
-// Máximo de repetições somadas — trava simples contra um "repetir 999999
+// Máximo de repetições somadas - trava simples contra um "repetir 999999
 // vezes" travar a animação/thread; generoso o bastante pra qualquer desafio
 // MVP (nenhum precisa de mais que algumas dezenas de passos).
 const MAX_ACTIONS = 500;
 
 // Achata a árvore de blocos (incluindo blocos de "repetir" aninhados) numa
-// lista sequencial de ações — é essa lista que turtleWorld.ts executa.
+// lista sequencial de ações - é essa lista que turtleWorld.ts executa.
 // Bloco de tipo desconhecido é ignorado (nunca deveria acontecer: a toolbox
 // só oferece os blocos do catálogo do desafio), não é erro fatal do aluno.
 export function interpretProgram(topBlock: SerializedBlock | null | undefined): TurtleAction[] {

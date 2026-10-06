@@ -42,7 +42,7 @@ const templateDetail = {
 beforeEach(() => {
   mockedGet.mockReset();
   mockedPost.mockReset();
-  // Tour já visto por padrão — sem isso, o GuidedTour abriria sozinho em
+  // Tour já visto por padrão - sem isso, o GuidedTour abriria sozinho em
   // TODO teste que chega no formulário (Radix Dialog é modal: esconde o
   // resto da árvore via aria-hidden enquanto aberto, o que quebraria
   // `getByRole`/`getByLabelText` nos campos do formulário por baixo). Os
@@ -63,7 +63,7 @@ function renderPage(initialEntry = '/teacher/challenges/new') {
 }
 
 describe('TeacherChallengeNew', () => {
-  it('AC1 — the gallery shows the pedagogical name/description/icon, never the technical template key', async () => {
+  it('AC1 - the gallery shows the pedagogical name/description/icon, never the technical template key', async () => {
     mockedGet.mockResolvedValueOnce([templateSummary]);
 
     renderPage();
@@ -73,7 +73,7 @@ describe('TeacherChallengeNew', () => {
     expect(screen.queryByText('regular_polygon')).not.toBeInTheDocument();
   });
 
-  it('CC1 — the gallery shows the template category as read-only metadata', async () => {
+  it('CC1 - the gallery shows the template category as read-only metadata', async () => {
     mockedGet.mockResolvedValueOnce([templateSummary]);
 
     renderPage();
@@ -81,7 +81,7 @@ describe('TeacherChallengeNew', () => {
     expect(await screen.findByText(/Informática Educacional/i)).toBeInTheDocument();
   });
 
-  it('CC1 — the selected template form also shows the category as a read-only badge', async () => {
+  it('CC1 - the selected template form also shows the category as a read-only badge', async () => {
     mockedGet.mockResolvedValueOnce([templateSummary]);
     mockedGet.mockResolvedValueOnce(templateDetail);
 
@@ -91,7 +91,7 @@ describe('TeacherChallengeNew', () => {
     expect(await screen.findByText('Informática Educacional')).toBeInTheDocument();
   });
 
-  it('AC2 — selecting a template opens its guided parameter form', async () => {
+  it('AC2 - selecting a template opens its guided parameter form', async () => {
     mockedGet.mockResolvedValueOnce([templateSummary]);
     mockedGet.mockResolvedValueOnce(templateDetail);
 
@@ -102,7 +102,7 @@ describe('TeacherChallengeNew', () => {
     expect(mockedGet).toHaveBeenCalledWith('/challenge-templates/template-1');
   });
 
-  it('AC6 — duplicating pre-selects the same template and pre-fills the same parameters, title suffixed "(cópia)"', async () => {
+  it('AC6 - duplicating pre-selects the same template and pre-fills the same parameters, title suffixed "(cópia)"', async () => {
     mockedGet.mockResolvedValueOnce([templateSummary]);
     mockedGet.mockResolvedValueOnce({
       id: 'c1',

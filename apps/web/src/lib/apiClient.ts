@@ -10,7 +10,7 @@ export interface ApiFieldError {
 export class ApiError extends Error {
   status: number;
   // Presente só quando o backend devolve erro por campo (ex.: validação de
-  // template ao salvar desafio, ver ChallengeTemplatesService) — permite a
+  // template ao salvar desafio, ver ChallengeTemplatesService) - permite a
   // tela focar o campo certo em vez de só mostrar uma mensagem genérica no
   // topo do formulário.
   errors?: ApiFieldError[];
@@ -32,13 +32,13 @@ async function authorizedFetch(path: string, options: RequestInit = {}): Promise
       ...options.headers,
     },
   });
-  // 1.5.1 — sessão expirada/token inválido: só quando a requisição JÁ TINHA
+  // 1.5.1 - sessão expirada/token inválido: só quando a requisição JÁ TINHA
   // um token (isto é, achávamos que havia sessão) e o backend responde 401
-  // é que isso significa "sessão morreu" — nunca dispara em uma tentativa
+  // é que isso significa "sessão morreu" - nunca dispara em uma tentativa
   // de login sem sessão ainda (essas chamadas não carregam token, e um 401
   // ali é só "credenciais erradas", tratado normalmente por
   // throwForErrorResponse, a tela de login precisa continuar montada pra
-  // mostrar a mensagem). Encerra a sessão local (JWT é stateless — não há
+  // mostrar a mensagem). Encerra a sessão local (JWT é stateless - não há
   // endpoint de revogação no backend) e manda pro login, em vez de deixar a
   // tela presa repetindo o mesmo 401 em todo request seguinte.
   if (response.status === 401 && token) {
@@ -81,12 +81,12 @@ export const apiClient = {
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
-  // 4.2 — exclusão de desafio do professor (AC5: mesma tela de gestão,
+  // 4.2 - exclusão de desafio do professor (AC5: mesma tela de gestão,
   // nenhuma delas expõe estrutura de blocos). `request` já trata 204 sem
   // corpo (ver acima), então isto funciona igual pra qualquer DELETE futuro.
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
-  // 6.6 — para respostas que não são JSON (ex.: exportação em CSV,
-  // `GET /metrics/admin/export?format=csv`) — `get`/`post`/`patch` sempre
+  // 6.6 - para respostas que não são JSON (ex.: exportação em CSV,
+  // `GET /metrics/admin/export?format=csv`) - `get`/`post`/`patch` sempre
   // fazem `response.json()`, o que quebraria num corpo CSV. Mesma
   // autenticação/tratamento de erro de `request`, só sem assumir o
   // Content-Type da resposta de sucesso.

@@ -21,10 +21,10 @@ interface IllustrationOption {
 
 type Step = "code" | "avatar" | "sequence";
 
-// 1.2.1 — fluxo aluno: código de turma → avatar (roster) → sequência de 3
+// 1.2.1 - fluxo aluno: código de turma → avatar (roster) → sequência de 3
 // imagens em posição fixa. Sem digitação de usuário/senha (RQ4 motora fina
 // + cognitiva). Mensagens de erro sempre descritivas e reversíveis, nunca
-// "senha incorreta" cru — regra não-negociável 4.
+// "senha incorreta" cru - regra não-negociável 4.
 export function StudentLogin() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("code");
@@ -42,7 +42,7 @@ export function StudentLogin() {
   const [retryCount, setRetryCount] = useState(0);
   const [screenOpenedAt] = useState(() => Date.now());
 
-  // Catálogo de imagens de login é o mesmo pra qualquer aluno — busca uma
+  // Catálogo de imagens de login é o mesmo pra qualquer aluno - busca uma
   // vez, layout fica pronto antes do aluno chegar no passo 3.
   useEffect(() => {
     apiClient
@@ -63,7 +63,7 @@ export function StudentLogin() {
       setStep("avatar");
     } catch {
       setError(
-        "Não encontramos essa turma — confira o código com seu professor.",
+        "Não encontramos essa turma - confira o código com seu professor.",
       );
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ export function StudentLogin() {
         setSequence([]);
         setError(
           err instanceof ApiError && err.status === 401
-            ? "Quase lá — essa sequência não bateu. Quer tentar de novo?"
+            ? "Quase lá - essa sequência não bateu. Quer tentar de novo?"
             : "Não deu pra entrar agora. Quer tentar de novo?",
         );
       } finally {

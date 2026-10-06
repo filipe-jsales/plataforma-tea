@@ -5,7 +5,7 @@ import { BarChart } from './BarChart';
 describe('BarChart', () => {
   it('shows an empty state when there is no data, never a broken/NaN chart', () => {
     render(<BarChart data={[]} ariaLabel="teste" />);
-    expect(screen.getByText('N=0 — sem dados.')).toBeInTheDocument();
+    expect(screen.getByText('N=0 - sem dados.')).toBeInTheDocument();
   });
 
   it('shows an empty state when every bucket has count 0', () => {
@@ -18,7 +18,7 @@ describe('BarChart', () => {
         ariaLabel="teste"
       />,
     );
-    expect(screen.getByText('N=0 — sem dados.')).toBeInTheDocument();
+    expect(screen.getByText('N=0 - sem dados.')).toBeInTheDocument();
   });
 
   it('renders the accessible chart with one label per bar', () => {

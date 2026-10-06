@@ -1,12 +1,12 @@
 /*
-  Painel do professor (6.3/6.4). Área de staff — mesmo racional de
+  Painel do professor (6.3/6.4). Área de staff - mesmo racional de
   AdminMetrics.css/StaffLogin.css: a regra não-negociável 1 protege a
   experiência do ALUNO, não a do professor, então esta tela pode usar mais
-  cor/densidade visual (3.11, `.staff-theme` — ver theme/staff-theme.css).
+  cor/densidade visual (3.11, `.staff-theme` - ver theme/staff-theme.css).
 
   Layout de página (largura máxima/margem), botão "Voltar", card de turma,
   toggle de visão, dropdown "Ordenar por", tabela e badge de status vêm de
-  `.page` + components/ui/ (3.11) — só o que é específico DESTA tela fica
+  `.page` + components/ui/ (3.11) - só o que é específico DESTA tela fica
   aqui.
 */
 
@@ -131,7 +131,7 @@
   opacity: 0.75;
 }
 
-/* 4.3/7.3 — toggle "comparação entre alunos", sempre acima das visões de
+/* 4.3/7.3 - toggle "comparação entre alunos", sempre acima das visões de
    dado da turma (nunca dentro de uma aba, pra não ficar escondido). */
 .teacher-metrics__comparison-setting {
   padding: var(--space-3);

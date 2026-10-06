@@ -15,6 +15,7 @@ import { createFractionsRoundStore } from '../../../stores/fractionsRoundStore';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { Button, InlineFeedback, LinkButton, Text, TextField } from '../../../components/ui';
 import './FractionsGamePage.css';
+import { Eye, Play, Search } from 'lucide-react';
 
 const CONCEPT_ID = 'fractions_equal_parts';
 const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
@@ -22,9 +23,9 @@ const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
 function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
   if (stage === 'use') {
     return [
-      { icon: '👀', label: 'Observe a sequência de cartões já pronta' },
-      { icon: '▶️', label: 'Aperte Executar' },
-      { icon: '🔍', label: 'Veja o resultado comparado ao pedido' },
+      { icon: <Eye />, label: 'Observe a sequência de cartões já pronta' },
+      { icon: <Play />, label: 'Aperte Executar' },
+      { icon: <Search />, label: 'Veja o resultado comparado ao pedido' },
     ];
   }
   if (stage === 'modify') {
@@ -60,7 +61,7 @@ function cloneSequence(cards: FractionsFactoryCard[] | undefined): FractionsFact
 // tentativa incorreta seguinte fica em 'run' via recordAttempt() (mesmo
 // significado de "tentativa dentro da mesma fase" já documentado em
 // MJ7); ao acertar, run→investigate→modify→make em sequência marca
-// 'completed' — a correção de cartão (Modify do design original) já
+// 'completed' - a correção de cartão (Modify do design original) já
 // aconteceu DURANTE os retries em 'run', não como uma fase separada da
 // store (mesma divergência documentada já registrada pro desafio de
 // blocos, "Predict mora em 3.3 e 3.4").
@@ -84,7 +85,7 @@ export function FractionsGamePage() {
 
   // Sem `.catch()` aqui, uma falha do backend (ex.: 500 por schema
   // desatualizado num ambiente que ainda não rodou a migration mais
-  // recente) deixava `levels` em `null` pra sempre — a tela ficava presa
+  // recente) deixava `levels` em `null` pra sempre - a tela ficava presa
   // em "Carregando…" indefinidamente, sem nenhum sinal do que deu errado.
   useEffect(() => {
     apiClient
@@ -104,7 +105,7 @@ export function FractionsGamePage() {
     if (!level) return;
     setTarget(level.config.targetFraction);
     setCards(cloneSequence(level.config.presetSequence));
-    // A store da rodada é iniciada aqui, pela própria tela — não delegada ao
+    // A store da rodada é iniciada aqui, pela própria tela - não delegada ao
     // mount assíncrono de MiniGameEngine (que também chama `startScene` ao
     // montar a Application Pixi, ver MiniGameEngine.tsx): assim `Executar`
     // funciona mesmo antes/independente do motor de renderização terminar
@@ -274,7 +275,7 @@ export function FractionsGamePage() {
                 <InlineFeedback kind={result.matched ? 'success' : 'retry'}>
                   {result.matched
                     ? `${result.totalParts} pedaços iguais, ${result.deliveredParts} entregue(s) ✓`
-                    : `${result.totalParts ?? '—'} pedaços, ${result.deliveredParts ?? '—'} entregue(s) — o pedido pedia ${target.numerator}/${target.denominator}. Quer ajustar a sequência?`}
+                    : `${result.totalParts ?? '-'} pedaços, ${result.deliveredParts ?? '-'} entregue(s) - o pedido pedia ${target.numerator}/${target.denominator}. Quer ajustar a sequência?`}
                 </InlineFeedback>
               )}
 

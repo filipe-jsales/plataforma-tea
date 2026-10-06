@@ -25,9 +25,9 @@ const THEME_OPTIONS = [
 ];
 
 const STAGE_LABEL: Record<string, string> = {
-  use: "Nível 1 — Use",
-  modify: "Nível 2 — Modify",
-  create: "Nível 3 — Create",
+  use: "Nível 1 - Use",
+  modify: "Nível 2 - Modify",
+  create: "Nível 3 - Create",
 };
 
 interface LevelDraft {
@@ -49,7 +49,7 @@ function draftFromLevel(level: MiniGameLevelDto): LevelDraft {
 // Painel do professor pro jogo "Fábrica de Pedaços Iguais" (pedido
 // explícito do produto: "professor possa configurar"). Mesmo padrão de
 // fetch/save de AdminSettings.tsx, mas com TextField/Select de verdade em
-// vez de <input> cru — operável sem formação técnica (regra
+// vez de <input> cru - operável sem formação técnica (regra
 // não-negociável 9): tema por nome, fração por dois campos numéricos
 // simples, nunca "edite o JSON de config".
 export function TeacherMiniGameSettings() {
@@ -129,7 +129,7 @@ export function TeacherMiniGameSettings() {
       const text =
         error instanceof ApiError
           ? error.message
-          : "Não foi possível salvar — tente novamente.";
+          : "Não foi possível salvar - tente novamente.";
       setMessages((prev) => ({ ...prev, [level.id]: { kind: "retry", text } }));
     } finally {
       setSavingId(null);
@@ -137,12 +137,12 @@ export function TeacherMiniGameSettings() {
   }
 
   return (
-    <main className="teacher-minigame-settings staff-theme page">
+    <main className="teacher-minigame-settings staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>
       <h1>Fábrica de Pedaços Iguais</h1>
-      {/* CC1 — categoria só leitura (curada via seed/MiniGameLevel.category,
+      {/* CC1 - categoria só leitura (curada via seed/MiniGameLevel.category,
           nunca escolhida pelo professor aqui); as 3 linhas do jogo
           compartilham a mesma categoria, então a 1ª já basta. */}
       {levels && levels.length > 0 && (

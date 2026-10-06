@@ -36,8 +36,8 @@ function renderPage() {
   );
 }
 
-// 1.5.1 — "Sair" saiu desta tela e foi pra AppSidebar (ver
-// components/layout/AppSidebar.spec.tsx) — cobertura de logout vive lá.
+// 1.5.1 - "Sair" saiu desta tela e foi pra AppSidebar (ver
+// components/layout/AppSidebar.spec.tsx) - cobertura de logout vive lá.
 describe('AdminHome', () => {
   it('greets the admin by display name', async () => {
     renderPage();

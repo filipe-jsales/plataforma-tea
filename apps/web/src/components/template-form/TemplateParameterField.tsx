@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { CircleHelp } from 'lucide-react';
 import { InlineFeedback, SegmentedControl, ToggleSwitch } from '../ui';
 import { toggleBlockType } from '../../lib/templateParameterForm';
 import type { TemplateParameterDefinition } from '../../lib/challengeTemplateTypes';
@@ -13,10 +15,10 @@ export interface TemplateParameterFieldProps {
   onChange: (value: number | boolean | string | string[]) => void;
 }
 
-// AC2 — "exemplo visual inline do efeito daquele parâmetro": dispatch só por
+// AC2 - "exemplo visual inline do efeito daquele parâmetro": dispatch só por
 // `visualPreview` (nunca por nome de parâmetro), então um template novo
 // ganha miniatura reaproveitando um dos três tipos já existentes, ou exige
-// só mais um `case` aqui + 1 componente novo — nunca reabrir este
+// só mais um `case` aqui + 1 componente novo - nunca reabrir este
 // formulário inteiro.
 function renderVisualPreview(definition: TemplateParameterDefinition, value: unknown) {
   switch (definition.visualPreview) {
@@ -31,20 +33,20 @@ function renderVisualPreview(definition: TemplateParameterDefinition, value: unk
   }
 }
 
-// 4.2 — um campo do formulário guiado, renderizado só a partir de
+// 4.2 - um campo do formulário guiado, renderizado só a partir de
 // `definition.type`/`visualPreview` (nunca por nome de parâmetro
 // hardcoded, ver nota de pesquisa em ChallengeTemplatesService no backend)
-// — é o que torna um template novo "funcionar sem refazer o formulário do
+// - é o que torna um template novo "funcionar sem refazer o formulário do
 // zero". Rótulo sempre ícone+texto (AC2, regra não-negociável 9 do
-// mapeamento — acessibilidade de interface); erro de validação sempre em
+// mapeamento - acessibilidade de interface); erro de validação sempre em
 // linguagem pedagógica, nunca um asterisco vermelho sozinho.
 export function TemplateParameterField({ definition, value, error, onChange }: TemplateParameterFieldProps) {
   const fieldId = `template-param-${definition.key}`;
   // Id separado do `fieldId` do controle interno (`<input id={fieldId}>`
-  // já existe pro tipo integer/percentage) — dois elementos com o mesmo id
+  // já existe pro tipo integer/percentage) - dois elementos com o mesmo id
   // no DOM quebraria `document.getElementById`. `tabIndex={-1}` não entra
   // na ordem normal de tab (o controle interno continua tabável do jeito de
-  // sempre) — serve só pra permitir `document.getElementById(wrapperId)
+  // sempre) - serve só pra permitir `document.getElementById(wrapperId)
   // ?.focus()` depois de uma validação falhar
   // (TemplateChallengeForm#focusFirstInvalidField), sem precisar de um ref
   // por tipo de controle (número/toggle/segmented control cada um foca
@@ -52,6 +54,10 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
   const wrapperId = `template-param-field-${definition.key}`;
   const preview = renderVisualPreview(definition, value);
   const isBlockSelection = definition.type === 'blockSelection';
+  // A explicação só aparece quando a pessoa pede (botão "?"), pra não
+  // despejar texto em todos os campos de uma vez.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpId = `${wrapperId}-help`;
 
   return (
     <fieldset
@@ -65,9 +71,25 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
           {definition.icon}
         </span>
         <span className="template-parameter-field__label">{definition.label}</span>
+        {definition.helpText && (
+          <button
+            type="button"
+            className="template-parameter-field__help-toggle"
+            aria-label={`Explicação: ${definition.label}`}
+            aria-expanded={helpOpen}
+            aria-controls={helpId}
+            onClick={() => setHelpOpen((open) => !open)}
+          >
+            <CircleHelp aria-hidden="true" size={20} strokeWidth={2} />
+          </button>
+        )}
       </legend>
 
-      {definition.helpText && <p className="template-parameter-field__help">{definition.helpText}</p>}
+      {definition.helpText && helpOpen && (
+        <p id={helpId} className="template-parameter-field__help">
+          {definition.helpText}
+        </p>
+      )}
 
       <div className="template-parameter-field__control-row">
         <div className="template-parameter-field__control">
@@ -120,7 +142,7 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
             <div className="template-parameter-field__block-list">
               {(definition.options ?? []).length === 0 && (
                 <p className="template-parameter-field__empty">
-                  Nenhum bloco disponível ainda para este módulo — apresente um bloco novo num desafio de
+                  Nenhum bloco disponível ainda para este módulo - apresente um bloco novo num desafio de
                   introdução antes de usá-lo aqui.
                 </p>
               )}

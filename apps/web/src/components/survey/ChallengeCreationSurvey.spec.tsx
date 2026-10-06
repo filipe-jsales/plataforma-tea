@@ -24,7 +24,7 @@ describe('ChallengeCreationSurvey', () => {
     ).toBeInTheDocument();
   });
 
-  it('never forces an answer — every Likert item starts unanswered and the qualitative fields start empty', () => {
+  it('never forces an answer - every Likert item starts unanswered and the qualitative fields start empty', () => {
     render(<ChallengeCreationSurvey challengeId="challenge-1" onDone={vi.fn()} />);
 
     expect(screen.getAllByRole('radiogroup')[0].querySelector('[data-state="on"]')).toBeNull();

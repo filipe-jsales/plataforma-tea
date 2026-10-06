@@ -24,8 +24,8 @@ import { ChallengeCreationSurvey } from '../../components/survey/ChallengeCreati
 import "./TeacherChallengeNew.css";
 import { CircleQuestionMark } from "lucide-react";
 
-// 4.2 (AC1/AC2) — "Criar desafio": galeria de templates em linguagem
-// pedagógica simples (nome, ícone, descrição — nunca o blockType técnico),
+// 4.2 (AC1/AC2) - "Criar desafio": galeria de templates em linguagem
+// pedagógica simples (nome, ícone, descrição - nunca o blockType técnico),
 // seguida do formulário guiado do template escolhido. `fromChallengeId`
 // (query string) é o mecanismo de duplicação (AC6): pré-seleciona o mesmo
 // template e pré-preenche os mesmos parâmetros de um desafio já existente,
@@ -46,7 +46,7 @@ export function TeacherChallengeNew() {
   const [sourceChallenge, setSourceChallenge] =
     useState<TeacherChallengeDetail | null>(null);
   const [sourceLoading, setSourceLoading] = useState(Boolean(fromChallengeId));
-  // Preenchido só depois que o `POST` de criação já teve sucesso — vira o
+  // Preenchido só depois que o `POST` de criação já teve sucesso - vira o
   // gatilho pro survey de pesquisa (ChallengeCreationSurvey) substituir o
   // formulário na tela, ANTES de navegar pra "Meus desafios" (ver
   // `handleSubmit`/render abaixo). `null` = ainda não criou (mostra o
@@ -58,10 +58,10 @@ export function TeacherChallengeNew() {
   const markTourSeen = useGuidedTourStore((state) => state.markTourSeen);
 
   // Abre sozinho na PRIMEIRA vez que o professor chega no formulário guiado
-  // (nunca antes — os alvos do tour só existem no DOM depois que
+  // (nunca antes - os alvos do tour só existem no DOM depois que
   // `TemplateChallengeForm` renderiza, ver ids `template-challenge-form-*`
   // lá). Da segunda vez em diante fica quieto (`hasSeenTour`,
-  // useGuidedTourStore) — nunca interromper quem já sabe usar a tela; o
+  // useGuidedTourStore) - nunca interromper quem já sabe usar a tela; o
   // link "❔ Rever tutorial" abaixo sempre reabre manualmente.
   useEffect(() => {
     if (templateDetail && !hasSeenTour(CHALLENGE_FORM_TOUR_KEY)) {
@@ -116,14 +116,14 @@ export function TeacherChallengeNew() {
       `/challenge-templates/${templateDetail.id}/challenges`,
       input,
     );
-    // Nunca navega direto — o survey de pesquisa (7.6) entra ANTES,
+    // Nunca navega direto - o survey de pesquisa (7.6) entra ANTES,
     // substituindo o formulário na tela; só `onDone` do survey (responder
     // OU recusar) navega de verdade (ver render abaixo).
     setCreatedChallengeId(created.id);
   }
 
   return (
-    <main className="teacher-challenge-new staff-theme page">
+    <main className="teacher-challenge-new staff-theme page page--narrow">
       <LinkButton to="/teacher/challenges" variant="ghost" icon="←">
         Voltar
       </LinkButton>
@@ -188,7 +188,7 @@ export function TeacherChallengeNew() {
               <CircleQuestionMark /> Rever tutorial
             </Button>
           </div>
-          {/* CC1 — categoria só leitura (curada via seed/Topic.category,
+          {/* CC1 - categoria só leitura (curada via seed/Topic.category,
               nunca escolhida pelo professor aqui). */}
           <Badge variant="neutral">
             {CONTENT_CATEGORY_LABEL[templateDetail.category]}

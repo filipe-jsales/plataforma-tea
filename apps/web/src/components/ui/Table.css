@@ -11,7 +11,7 @@
 }
 
 /* Cabeçalho com hierarquia clara por PESO de fonte, não só posição (AC de
-   3.11) — fundo levemente diferenciado + texto em caixa normal (nunca
+   3.11) - fundo levemente diferenciado + texto em caixa normal (nunca
    uppercase, ver regra de ênfase de Typography.css) mas mais pesado. */
 .ui-table__head {
   background: var(--color-surface);
@@ -32,7 +32,7 @@
   white-space: nowrap;
 }
 
-/* Divisor sutil entre linhas — ritmo de espaçamento, não uma borda pesada. */
+/* Divisor sutil entre linhas - ritmo de espaçamento, não uma borda pesada. */
 .ui-table__row {
   border-top: 1px solid var(--color-border);
 }
@@ -41,7 +41,7 @@
   border-top: none;
 }
 
-/* Zebra — só um reforço visual adicional pra tabelas longas; a MESMA
+/* Zebra - só um reforço visual adicional pra tabelas longas; a MESMA
    informação (delimitação de linha) já vem do divisor acima, isto nunca é
    o único jeito de saber onde uma linha termina. */
 .ui-table__row:nth-child(even) {

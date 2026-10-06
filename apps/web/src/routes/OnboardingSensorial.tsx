@@ -6,9 +6,10 @@ import { useAuthStore, type SessionUser } from '../stores/useAuthStore';
 import { useSensoryProfileStore } from '../stores/useSensoryProfileStore';
 import { Button, ToggleSwitch } from '../components/ui';
 import './OnboardingSensorial.css';
+import { Sparkles, Volume2 } from 'lucide-react';
 
-// 2.2 — Onboarding sensorial do aluno. Regra não-negociável 1: tudo nasce
-// OFF. Esta tela em si não anima nem toca som (AC7) — nenhum exemplo
+// 2.2 - Onboarding sensorial do aluno. Regra não-negociável 1: tudo nasce
+// OFF. Esta tela em si não anima nem toca som (AC7) - nenhum exemplo
 // "vendendo" a opção. Ícone + texto sempre juntos (AC3 / RQ4 acessibilidade
 // de interface).
 export function OnboardingSensorial() {
@@ -35,7 +36,7 @@ export function OnboardingSensorial() {
         { soundEnabled, animationEnabled },
       );
       updateUser(updated);
-      // Aplica na hora, sem precisar recarregar (AC4) — o tema sensorial
+      // Aplica na hora, sem precisar recarregar (AC4) - o tema sensorial
       // (data-motion/data-sound no <html>) reage imediatamente.
       setMotionEnabled(animationEnabled);
       setSoundEnabled(soundEnabled);
@@ -59,7 +60,7 @@ export function OnboardingSensorial() {
       <div className="onboarding-sensorial__options">
         <ToggleSwitch
           id="onboarding-sound"
-          icon="🔊"
+          icon={<Volume2 />}
           label="Quer som?"
           checked={soundEnabled}
           onCheckedChange={setSoundChoice}
@@ -67,7 +68,7 @@ export function OnboardingSensorial() {
 
         <ToggleSwitch
           id="onboarding-animation"
-          icon="✨"
+          icon= {<Sparkles />}
           label="Quer animação?"
           checked={animationEnabled}
           onCheckedChange={setAnimationChoice}

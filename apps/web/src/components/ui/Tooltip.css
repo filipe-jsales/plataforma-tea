@@ -6,7 +6,7 @@
   background: var(--color-text);
   color: var(--color-bg);
   font-size: 0.85rem;
-  /* Sem animation-name/keyframes de entrada — Radix não aplica nenhuma por
+  /* Sem animation-name/keyframes de entrada - Radix não aplica nenhuma por
      ser headless; não adicionamos uma aqui de propósito (AC "nasce sem
      transição/animação de entrada"). */
 }

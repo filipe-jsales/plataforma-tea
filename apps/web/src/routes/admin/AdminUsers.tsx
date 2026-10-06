@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogCancel,
   InlineFeedback,
   LinkButton,
   SegmentedControl,
@@ -48,8 +49,8 @@ interface StaffForm {
 
 const EMPTY_STAFF_FORM: StaffForm = { displayName: '', email: '', role: 'teacher' };
 
-// 1.4 — CRUD de usuários (admin). Tela administrativa única pra
-// professores/admins e (indiretamente) alunos — nunca hard delete (AC
+// 1.4 - CRUD de usuários (admin). Tela administrativa única pra
+// professores/admins e (indiretamente) alunos - nunca hard delete (AC
 // explícita); toda criação/edição/ativação é feita por
 // components/ui (regra de engenharia 3.11), nunca HTML cru.
 export function AdminUsers() {
@@ -72,14 +73,14 @@ export function AdminUsers() {
 
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
-  // A2 (AC4) — "quando um admin consulta o cadastro daquele aluno...
+  // A2 (AC4) - "quando um admin consulta o cadastro daquele aluno...
   // consegue visualizar quando e por quem o consentimento foi coletado".
   const [consentStudent, setConsentStudent] = useState<AdminUserProfile | null>(null);
   const [consentData, setConsentData] = useState<GuardianConsentAdminView | null>(null);
 
-  // 1.3 — recuperação de acesso: admin gera uma sequência de login nova
+  // 1.3 - recuperação de acesso: admin gera uma sequência de login nova
   // pro aluno que esqueceu a credencial (mesmo endpoint que o painel do
-  // professor usa — ver StudentAccountsController, @Roles(TEACHER, ADMIN)).
+  // professor usa - ver StudentAccountsController, @Roles(TEACHER, ADMIN)).
   const [resettingStudent, setResettingStudent] = useState<AdminUserProfile | null>(null);
   const [resetSaving, setResetSaving] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
@@ -201,7 +202,7 @@ export function AdminUsers() {
       <h1>Usuários</h1>
       <p className="admin-users__subtitle">
         Professores, admins e alunos da escola. Desativar bloqueia o login imediatamente, mas nunca apaga o
-        histórico — não existe exclusão permanente aqui.
+        histórico - não existe exclusão permanente aqui.
       </p>
 
       <div className="admin-users__toolbar">
@@ -232,7 +233,7 @@ export function AdminUsers() {
                 <TableRow key={user.id}>
                   <TableCell>{user.displayName}</TableCell>
                   <TableCell>{ROLE_LABEL[user.role]}</TableCell>
-                  <TableCell>{user.email ?? '—'}</TableCell>
+                  <TableCell>{user.email ?? '-'}</TableCell>
                   <TableCell>
                     <Badge variant={user.active ? 'success' : 'neutral'}>{user.active ? 'Ativo' : 'Desativado'}</Badge>
                   </TableCell>
@@ -288,10 +289,20 @@ export function AdminUsers() {
           if (!open) setCreateResult(null);
         }}
         title="Criar professor ou admin"
-        description="Alunos nunca são criados aqui — use 'Adicionar aluno', no painel do professor (1.2)."
+        description="Alunos nunca são criados aqui - use 'Adicionar aluno', no painel do professor (1.2)."
+        footer={
+          !createResult && (
+            <>
+              <DialogCancel />
+              <Button type="submit" form="create-staff-form" variant="success" disabled={createSaving}>
+                {createSaving ? 'Criando…' : 'Criar'}
+              </Button>
+            </>
+          )
+        }
       >
         {!createResult && (
-          <form className="admin-users__form" onSubmit={handleCreateSubmit}>
+          <form id="create-staff-form" className="admin-users__form" onSubmit={handleCreateSubmit}>
             <TextField
               id="staff-name"
               label="Nome completo"
@@ -315,9 +326,6 @@ export function AdminUsers() {
               onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v as 'teacher' | 'admin' }))}
             />
             {createError && <InlineFeedback kind="retry">{createError}</InlineFeedback>}
-            <Button type="submit" disabled={createSaving}>
-              {createSaving ? 'Criando…' : 'Criar'}
-            </Button>
           </form>
         )}
 
@@ -325,10 +333,12 @@ export function AdminUsers() {
           <div className="admin-users__result">
             <InlineFeedback kind="success">
               Conta de {createResult.user.displayName} criada. Repasse o link abaixo pra pessoa definir a
-              própria senha — hoje isso ainda não é enviado por e-mail automaticamente.
+              própria senha - hoje isso ainda não é enviado por e-mail automaticamente.
             </InlineFeedback>
             <p className="admin-users__result-label">Link de definição de senha (uso único):</p>
-            <code className="admin-users__result-token">{createResult.passwordSetupToken}</code>
+            <code className="admin-users__result-token">
+              {`${window.location.origin}/set-password?token=${createResult.passwordSetupToken}`}
+            </code>
             {createResult.totpOtpauthUri && (
               <>
                 <p className="admin-users__result-label">
@@ -337,7 +347,6 @@ export function AdminUsers() {
                 <code className="admin-users__result-token">{createResult.totpOtpauthUri}</code>
               </>
             )}
-            <Button onClick={() => setCreateOpen(false)}>Fechar</Button>
           </div>
         )}
       </Dialog>
@@ -346,9 +355,17 @@ export function AdminUsers() {
         open={editingUser !== null}
         onOpenChange={(open) => !open && setEditingUser(null)}
         title={editingUser ? `Editar ${editingUser.displayName}` : 'Editar'}
+        footer={
+          <>
+            <DialogCancel />
+            <Button type="submit" form="edit-user-form" variant="success" disabled={editSaving}>
+              {editSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </>
+        }
       >
         {editingUser && (
-          <form className="admin-users__form" onSubmit={handleEditSubmit}>
+          <form id="edit-user-form" className="admin-users__form" onSubmit={handleEditSubmit}>
             <TextField
               id="edit-name"
               label="Nome completo"
@@ -378,13 +395,10 @@ export function AdminUsers() {
             {editingUser.role === 'student' && (
               <p className="admin-users__hint">
                 Credencial de aluno (avatar/sequência de imagens) segue o fluxo próprio (1.3, botão "Recuperar
-                acesso" na lista) — aqui só o nome é editável.
+                acesso" na lista) - aqui só o nome é editável.
               </p>
             )}
             {editError && <InlineFeedback kind="retry">{editError}</InlineFeedback>}
-            <Button type="submit" disabled={editSaving}>
-              {editSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
           </form>
         )}
       </Dialog>
@@ -392,12 +406,12 @@ export function AdminUsers() {
       <Dialog
         open={consentStudent !== null}
         onOpenChange={(open) => !open && setConsentStudent(null)}
-        title={consentStudent ? `Consentimento do responsável — ${consentStudent.displayName}` : 'Consentimento do responsável'}
+        title={consentStudent ? `Consentimento do responsável - ${consentStudent.displayName}` : 'Consentimento do responsável'}
       >
         {consentStudent && consentData === null && <p>Carregando…</p>}
         {consentStudent && consentData && !consentData.recorded && (
           <InlineFeedback kind="retry">
-            Consentimento do responsável legal ainda não registrado — a credencial de acesso deste aluno
+            Consentimento do responsável legal ainda não registrado - a credencial de acesso deste aluno
             está pendente até essa etapa ser concluída.
           </InlineFeedback>
         )}
@@ -410,9 +424,9 @@ export function AdminUsers() {
             <dt>Contato</dt>
             <dd>{consentData.guardianContact}</dd>
             <dt>Registrado em</dt>
-            <dd>{consentData.consentedAt ? new Date(consentData.consentedAt).toLocaleString('pt-BR') : '—'}</dd>
+            <dd>{consentData.consentedAt ? new Date(consentData.consentedAt).toLocaleString('pt-BR') : '-'}</dd>
             <dt>Registrado por</dt>
-            <dd>{consentData.collectedByDisplayName ?? '—'}</dd>
+            <dd>{consentData.collectedByDisplayName ?? '-'}</dd>
           </dl>
         )}
       </Dialog>
@@ -420,8 +434,19 @@ export function AdminUsers() {
       <Dialog
         open={resettingStudent !== null}
         onOpenChange={(open) => !open && setResettingStudent(null)}
-        title={resettingStudent ? `Recuperar acesso — ${resettingStudent.displayName}` : 'Recuperar acesso'}
+        title={resettingStudent ? `Recuperar acesso - ${resettingStudent.displayName}` : 'Recuperar acesso'}
         description="Gera uma sequência de login nova pro aluno. A sequência antiga deixa de funcionar imediatamente."
+        footer={
+          resettingStudent &&
+          !resetResult && (
+            <>
+              <DialogCancel />
+              <Button variant="success" onClick={handleReset} disabled={resetSaving}>
+                {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
+              </Button>
+            </>
+          )
+        }
       >
         {resettingStudent && !resetResult && (
           <div className="admin-users__reset-body">
@@ -430,9 +455,6 @@ export function AdminUsers() {
               depois desta ação. Confirme só se o aluno realmente esqueceu a credencial.
             </p>
             {resetError && <InlineFeedback kind="retry">{resetError}</InlineFeedback>}
-            <Button onClick={handleReset} disabled={resetSaving}>
-              {resetSaving ? 'Gerando…' : 'Gerar nova credencial'}
-            </Button>
           </div>
         )}
 
@@ -449,9 +471,6 @@ export function AdminUsers() {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" onClick={() => setResettingStudent(null)}>
-              Fechar
-            </Button>
           </div>
         )}
       </Dialog>

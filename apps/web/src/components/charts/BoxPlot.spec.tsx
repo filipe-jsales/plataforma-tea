@@ -5,9 +5,9 @@ import { BoxPlot } from './BoxPlot';
 const emptyStats = { n: 0, mean: null, median: null, stdDev: null, min: null, max: null, q1: null, q3: null };
 
 describe('BoxPlot', () => {
-  it('shows "N=0 — sem dados" for an empty distribution, never a broken chart', () => {
+  it('shows "N=0 - sem dados" for an empty distribution, never a broken chart', () => {
     render(<BoxPlot stats={emptyStats} ariaLabel="teste" />);
-    expect(screen.getByText('N=0 — sem dados.')).toBeInTheDocument();
+    expect(screen.getByText('N=0 - sem dados.')).toBeInTheDocument();
   });
 
   it('shows a dedicated N=1 message instead of a degenerate box (stdDev/quartiles undefined)', () => {

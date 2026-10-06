@@ -102,7 +102,9 @@ describe('AdminUsers', () => {
     await userEvent.type(within(dialog).getByLabelText(/e-mail/i), 'nova@escola.com');
     await userEvent.click(within(dialog).getByRole('button', { name: /^criar$/i }));
 
-    expect(await screen.findByText('token-abc-123')).toBeInTheDocument();
+    expect(
+      await screen.findByText(`${window.location.origin}/set-password?token=token-abc-123`),
+    ).toBeInTheDocument();
     expect(mockedPost).toHaveBeenCalledWith('/admin/users', {
       displayName: 'Prof. Nova',
       email: 'nova@escola.com',
@@ -147,7 +149,7 @@ describe('AdminUsers', () => {
     expect(studentRow && within(studentRow).getByRole('button', { name: /consentimento/i })).toBeTruthy();
   });
 
-  it('AC4 — shows a pending state when the guardian consent has not been registered yet', async () => {
+  it('AC4 - shows a pending state when the guardian consent has not been registered yet', async () => {
     mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
     mockedGet.mockResolvedValueOnce({
       recorded: false,
@@ -166,7 +168,7 @@ describe('AdminUsers', () => {
     expect(await screen.findByText(/ainda não registrado/i)).toBeInTheDocument();
   });
 
-  it('AC4 — shows when and by whom the consent was recorded', async () => {
+  it('AC4 - shows when and by whom the consent was recorded', async () => {
     mockedGet.mockResolvedValueOnce({ items: [studentUser], total: 1, page: 1, pageSize: 20 });
     mockedGet.mockResolvedValueOnce({
       recorded: true,
@@ -187,7 +189,7 @@ describe('AdminUsers', () => {
     expect(screen.getByText('Prof. Ana')).toBeInTheDocument();
   });
 
-  it('1.3 — "Recuperar acesso" only appears for ACTIVE student rows (no credential to reset otherwise)', async () => {
+  it('1.3 - "Recuperar acesso" only appears for ACTIVE student rows (no credential to reset otherwise)', async () => {
     mockedGet.mockResolvedValueOnce({ items: [studentUser, activeStudentUser], total: 2, page: 1, pageSize: 20 });
 
     renderPage();
@@ -200,7 +202,7 @@ describe('AdminUsers', () => {
     expect(activeRow && within(activeRow).getByRole('button', { name: /recuperar acesso/i })).toBeTruthy();
   });
 
-  it('1.3 — resets the credential via POST /teacher/students/:id/reset-credential and shows the new sequence', async () => {
+  it('1.3 - resets the credential via POST /teacher/students/:id/reset-credential and shows the new sequence', async () => {
     mockedGet.mockResolvedValueOnce({ items: [activeStudentUser], total: 1, page: 1, pageSize: 20 });
     mockedPost.mockResolvedValueOnce({
       student: { id: 'u3', displayName: 'Aluno Dois', pseudonymId: 'p3' },
@@ -219,7 +221,7 @@ describe('AdminUsers', () => {
     await screen.findByText('Aluno Dois');
     await userEvent.click(screen.getByRole('button', { name: /recuperar acesso/i }));
 
-    const dialog = await screen.findByRole('dialog', { name: /recuperar acesso — aluno dois/i });
+    const dialog = await screen.findByRole('dialog', { name: /recuperar acesso - aluno dois/i });
     await userEvent.click(within(dialog).getByRole('button', { name: /gerar nova credencial/i }));
 
     expect(mockedPost).toHaveBeenCalledWith('/teacher/students/u3/reset-credential', {});

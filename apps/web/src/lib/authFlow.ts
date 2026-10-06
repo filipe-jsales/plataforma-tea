@@ -8,7 +8,7 @@ interface LoginResponse {
   displayName: string;
 }
 
-// POST /auth/*/login só devolve { accessToken, role, displayName } — o
+// POST /auth/*/login só devolve { accessToken, role, displayName } - o
 // resto do perfil (avatar, prefs sensoriais, etc.) vem de GET /users/me,
 // que só pode ser chamado depois do token existir. Centralizado aqui pra
 // não repetir essa sequência nos 3 fluxos de login.

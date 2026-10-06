@@ -10,17 +10,17 @@ export interface SurveyQualitativeItem {
   label: string;
 }
 
-// Parte QUANTITATIVA — escala Likert de concordância (1–5), metodologia
+// Parte QUANTITATIVA - escala Likert de concordância (1–5), metodologia
 // "Personal Opinion Surveys in Software Engineering" (Ciolkowski,
 // Laitenberger, Rombach, Biffl, cap. em Shull/Singer/Sjøberg (eds.), Guide
 // to Advanced Empirical Software Engineering, 2008): opinião/percepção
-// auto-reportada, um conceito por item (nunca "dupla-barreled" — nunca
+// auto-reportada, um conceito por item (nunca "dupla-barreled" - nunca
 // "foi fácil E rápido" no mesmo item), linguagem direta sem jargão. Cada
 // item mapeia numa barreira institucional/formação docente do RQ4 (ver
-// docs/ai/persona.md) — a mesma pergunta de pesquisa que motivou o
+// docs/ai/persona.md) - a mesma pergunta de pesquisa que motivou o
 // GuidedTour, agora com um instrumento de medida validado, não uma escala
 // inventada ad-hoc. `id` é a chave persistida em `SurveyResponse
-// .quantitative` (backend) — renomear aqui sem atualizar dado histórico
+// .quantitative` (backend) - renomear aqui sem atualizar dado histórico
 // quebra a série temporal desse item; preferir ACRESCENTAR um item novo a
 // renomear um existente.
 export const CHALLENGE_CREATION_SURVEY_QUANTITATIVE_ITEMS: SurveyQuantitativeItem[] = [
@@ -41,7 +41,7 @@ export const CHALLENGE_CREATION_SURVEY_QUANTITATIVE_ITEMS: SurveyQuantitativeIte
   { id: 'overall_satisfaction', statement: 'No geral, estou satisfeito(a) com o processo de criar este desafio.' },
 ];
 
-// Parte QUALITATIVA — perguntas abertas, metodologia "Case Study Research
+// Parte QUALITATIVA - perguntas abertas, metodologia "Case Study Research
 // in Software Engineering: Guidelines and Examples" (Runeson, Höst,
 // Rainer, Regnell, 2012): perguntas não-indutivas buscando CONTEXTO/
 // RACIONAL ("o que foi difícil", "o que ajudaria"), nunca uma pergunta
@@ -58,7 +58,7 @@ export interface SubmitChallengeCreationSurveyInput {
   qualitative?: Record<string, string>;
 }
 
-// Wrapper fino sobre `POST /surveys/challenge-creation` — mesmo racional de
+// Wrapper fino sobre `POST /surveys/challenge-creation` - mesmo racional de
 // `logEvent.ts` (nunca `apiClient`/`fetch` direto espalhado pela tela).
 export function submitChallengeCreationSurvey(input: SubmitChallengeCreationSurveyInput): Promise<void> {
   return apiClient.post('/surveys/challenge-creation', input);
