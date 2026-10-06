@@ -1,7 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { mergeProps, useButton, useFocusRing } from 'react-aria';
 import './Card.css';
-import { Diamond } from 'lucide-react';
 
 export type SelectableCardAlign = 'center' | 'start';
 
