@@ -56,11 +56,11 @@
 /* Sidebar fixa do desktop. */
 .app-sidebar-desktop {
   position: sticky;
-  top: 0;
+  top: var(--app-header-height, 4.75rem);
   align-self: flex-start;
   flex-shrink: 0;
   width: 16rem;
-  height: 100svh;
+  height: calc(100svh - var(--app-header-height, 4.75rem));
   display: flex;
   flex-direction: column;
   padding: var(--space-3);

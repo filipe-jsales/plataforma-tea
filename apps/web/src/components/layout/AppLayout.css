@@ -1,4 +1,7 @@
 .app-layout {
+  /* Altura fixa do header: a sidebar do desktop desconta isto de 100svh
+     para caber inteira na tela ("Sair" sempre visível, sem rolar). */
+  --app-header-height: 4.75rem;
   display: flex;
   flex-direction: column;
   flex: 1;
