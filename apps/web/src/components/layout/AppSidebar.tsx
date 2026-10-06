@@ -13,6 +13,7 @@ import {
   Puzzle,
   Settings,
   UserGroup,
+  X,
 } from 'lucide-react';
 import { CONTENT_CATEGORY_STUDENT_LABEL } from '../../lib/contentCategory';
 import { performLogout } from '../../lib/logout';
@@ -62,13 +63,14 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
         <DialogPrimitive.Overlay className="app-sidebar__overlay" />
         <DialogPrimitive.Content
           className={['app-sidebar__content', isStaff ? 'staff-theme' : ''].filter(Boolean).join(' ')}
-        >
+        > 
           <div className="app-sidebar__header">
             <DialogPrimitive.Title className="app-sidebar__title">Menu</DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
-              <button type="button" className="app-sidebar__close">
-                <span aria-hidden="true">✕</span> Fechar
-              </button>
+              <Button variant="ghost" className="">
+                <span aria-hidden="true"></span>
+                {<X /> }
+              </Button>
             </DialogPrimitive.Close>
           </div>
 

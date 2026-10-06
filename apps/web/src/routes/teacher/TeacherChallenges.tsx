@@ -4,7 +4,7 @@ import type { TeacherChallengeSummary } from "../../lib/challengeTemplateTypes";
 import { Button, Dialog, LinkButton } from "../../components/ui";
 import { AllocationDialog } from "./AllocationDialog";
 import "./TeacherChallenges.css";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, Trash } from "lucide-react";
 
 // 4.2 (AC5) — "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
@@ -49,7 +49,7 @@ export function TeacherChallenges() {
       <h1>Meus desafios</h1>
       <p className="teacher-challenges__subtitle">
         Desafios que você criou escolhendo um template pronto e ajustando só os
-        parâmetros — nunca blocos ou código.
+        parâmetros.
       </p>
 
       <LinkButton to="/teacher/challenges/new" icon={<CirclePlus />}>
@@ -107,7 +107,7 @@ export function TeacherChallenges() {
                 </LinkButton>
                 <Button
                   variant="ghost"
-                  icon="🗑️"
+                  icon={ <Trash />}
                   onClick={() => setPendingDeleteId(challenge.id)}
                 >
                   Excluir
