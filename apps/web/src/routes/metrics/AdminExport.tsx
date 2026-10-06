@@ -139,7 +139,7 @@ export function AdminExport() {
   }
 
   return (
-    <main className="admin-export staff-theme page">
+    <main className="admin-export staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>

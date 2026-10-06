@@ -50,7 +50,7 @@ export function AdminSettings() {
   }
 
   return (
-    <main className="admin-settings staff-theme page">
+    <main className="admin-settings staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>

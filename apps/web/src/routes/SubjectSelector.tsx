@@ -136,7 +136,7 @@ export function SubjectSelector() {
         );
       })}
 
-      <Button onClick={handleConfirm} disabled={!selected}>
+      <Button variant="success" onClick={handleConfirm} disabled={!selected}>
         Confirmar
       </Button>
 

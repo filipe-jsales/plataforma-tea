@@ -106,8 +106,8 @@ export function TeacherChallenges() {
                   Duplicar
                 </LinkButton>
                 <Button
-                  variant="ghost"
-                  icon={ <Trash />}
+                  variant="danger"
+                  icon={<Trash />}
                   onClick={() => setPendingDeleteId(challenge.id)}
                 >
                   Excluir
@@ -125,7 +125,7 @@ export function TeacherChallenges() {
         description="Os alunos que já acessaram este desafio por link direto deixam de conseguir abri-lo. Esta ação não pode ser desfeita."
       >
         <Button
-          variant="secondary"
+          variant="danger"
           disabled={deleting}
           onClick={async () => {
             await confirmDelete();

@@ -151,7 +151,7 @@ export function TeacherAddStudent() {
 
   if (step === 'credential' && credential) {
     return (
-      <main className="teacher-add-student staff-theme page">
+      <main className="teacher-add-student staff-theme page page--narrow">
         <LinkButton to="/home" variant="ghost" icon="←">
           Voltar
         </LinkButton>
@@ -206,7 +206,7 @@ export function TeacherAddStudent() {
 
   if (step === 'guardian' && pending) {
     return (
-      <main className="teacher-add-student staff-theme page">
+      <main className="teacher-add-student staff-theme page page--narrow">
         <LinkButton to="/home" variant="ghost" icon="←">
           Voltar
         </LinkButton>
@@ -256,7 +256,7 @@ export function TeacherAddStudent() {
   }
 
   return (
-    <main className="teacher-add-student staff-theme page">
+    <main className="teacher-add-student staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>

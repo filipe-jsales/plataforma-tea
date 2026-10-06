@@ -44,6 +44,10 @@ Nunca rode `npm install` de dentro de `apps/web` ou `apps/api` isoladamente.
 
 ## 2. Banco de dados (PostgreSQL)
 
+### 2.01 Instalar o WSL
+```powershell
+wsl --install
+```
 ### 2a. Via Docker (padrão)
 
 Suba o Postgres local definido em `docker-compose.yml`:
@@ -106,7 +110,7 @@ Copie o exemplo e ajuste se necessário (os valores padrão já batem com o
 Copy-Item apps\api\.env.example apps\api\.env
 ```
 
-```
+```powershell
 Copy-Item apps\web\.env.example apps\web\.env
 ```
 

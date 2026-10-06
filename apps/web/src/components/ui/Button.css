@@ -49,6 +49,18 @@
   color: var(--color-text);
 }
 
+.ui-button--success {
+  border: 1px solid var(--color-success);
+  background: var(--color-success);
+  color: var(--color-bg);
+}
+
+.ui-button--danger {
+  border: 1px solid var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-bg);
+}
+
 .ui-button--ghost {
   border: 1px solid transparent;
   background: transparent;
@@ -58,6 +70,16 @@
 .ui-button--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-primary) 85%, var(--color-text));
   border-color: color-mix(in srgb, var(--color-primary) 85%, var(--color-text));
+}
+
+.ui-button--success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-success) 85%, var(--color-text));
+  border-color: color-mix(in srgb, var(--color-success) 85%, var(--color-text));
+}
+
+.ui-button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 85%, var(--color-text));
+  border-color: color-mix(in srgb, var(--color-danger) 85%, var(--color-text));
 }
 
 .ui-button--secondary:hover:not(:disabled) {
@@ -71,6 +93,8 @@
 }
 
 .ui-button--primary:active:not(:disabled),
+.ui-button--success:active:not(:disabled),
+.ui-button--danger:active:not(:disabled),
 .ui-button--secondary:active:not(:disabled),
 .ui-button--ghost:active:not(:disabled) {
   filter: brightness(0.95);

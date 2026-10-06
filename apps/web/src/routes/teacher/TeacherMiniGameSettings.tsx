@@ -137,7 +137,7 @@ export function TeacherMiniGameSettings() {
   }
 
   return (
-    <main className="teacher-minigame-settings staff-theme page">
+    <main className="teacher-minigame-settings staff-theme page page--narrow">
       <LinkButton to="/home" variant="ghost" icon="←">
         Voltar
       </LinkButton>

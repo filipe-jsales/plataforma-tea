@@ -15,6 +15,7 @@
   --color-text: #1c1e21;
   --color-primary: #2b6cb0;
   --color-success: #2f855a;
+  --color-danger: #c53030;
   --color-warning: #b7791f;
   --color-border: #d7dbe0;
 
@@ -93,6 +94,8 @@
   --color-surface: #0d0d0d;
   --color-text: #ffffff;
   --color-primary: #7fb2ff;
+  --color-success: #6ee7a0;
+  --color-danger: #ff9b9b;
   --color-border: #ffffff;
 }
 
@@ -113,6 +116,13 @@ body {
   margin-inline: auto;
   padding-inline: var(--space-4);
   padding-block-end: var(--space-5);
+}
+
+/* Páginas de formulário: uma única coluna estreita e centralizada que
+   contém voltar, título, subtítulo e formulário juntos (nunca só o
+   formulário centralizado com o cabeçalho colado à esquerda). */
+.page--narrow {
+  max-width: 44rem;
 }
 
 /*

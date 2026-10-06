@@ -272,6 +272,7 @@ export function TeacherMetrics() {
             }
           >
             <Button
+              variant="success"
               icon={<ChartColumn />}
               onClick={() => {
                 setConfirmComparisonDialogOpen(false);
