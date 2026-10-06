@@ -15,6 +15,7 @@
 .template-parameter-field__header {
   display: flex;
   align-items: center;
+  min-height: var(--hit-area-min, 56px);
   gap: 0.5rem;
   padding: 0;
 }
@@ -25,6 +26,48 @@
 
 .template-parameter-field__label {
   font-weight: var(--font-weight-heading, 600);
+}
+
+/* "?" vazado; só ganha fundo primary no hover (mesmo padrão do X do Dialog). */
+.template-parameter-field__help-toggle {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hit-area-min, 56px);
+  height: var(--hit-area-min, 56px);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+
+.template-parameter-field__help-toggle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.template-parameter-field__help-toggle:hover {
+  color: var(--color-bg);
+}
+
+.template-parameter-field__help-toggle:hover::before {
+  background: var(--color-primary);
+}
+
+.template-parameter-field__help-toggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .template-parameter-field__help {

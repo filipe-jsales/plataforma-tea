@@ -2072,6 +2072,72 @@ manteve seu link "Configurações" na própria grade de ações (não duplicava
 ("não renderiza mais 'Sair' aqui") e a cobertura de logout/link de
 configurações migrou pra `AppSidebar.spec.tsx`/`AppLayout.spec.tsx`.
 
+## Padrões de UI consolidados (2026-10)
+
+Regras que valem para toda tela e componente novo. Estão em `components/ui/`
+e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
+
+### Botão (`Button`/`LinkButton`)
+
+- Variantes: `primary`, `secondary`, `ghost`, `success`, `danger`.
+  `success` é o botão de **confirmar** e `danger` o de **negar/destrutivo**
+  (cancelar, excluir). Tokens `--color-success`/`--color-danger` em
+  `theme/sensory-theme.css`, com valores próprios no alto contraste.
+- Toda variante tem `:hover` e `:active` em `Button.css`, sem `transition`
+  (a regra sensorial vale; só `.staff-theme` anima).
+- Cor de texto é sempre `var(--color-bg)` sobre fundo sólido, nunca um
+  branco fixo, para funcionar no alto contraste.
+
+### Modal (`Dialog`) e rodapé
+
+- Todo modal de dado/confirmação usa `components/ui/Dialog`. Não criar
+  modal próprio sobre Radix. Exceções históricas: `AppSidebar` (painel
+  lateral) e `GuidedTour` (tour), que têm layout próprio.
+- Fechar é só o ícone **X** no canto superior direito (botão vazado, fundo
+  `--color-primary` só no hover) com `aria-label="Fechar"`. Nunca um botão
+  com o texto "Fechar". O mesmo vale para o X do `AppSidebar`.
+- Ações de confirmar/negar vão na prop `footer`, centralizadas e com
+  espaçamento: confirmar com `variant="success"`, negar com `variant="danger"`.
+  `DialogCancel` é o "Cancelar" padrão (fecha sem executar).
+- Formulário dentro de modal: o botão de envio fica no `footer` e liga ao
+  formulário por `form="<id>"` + `type="submit"` (o `<form>` ganha o mesmo `id`).
+- Estado de resultado (ex.: credencial gerada) não repete botão "Fechar":
+  o X já cobre. Modal sem ação de confirmar/negar (ex.: `AllocationDialog`)
+  só tem o X.
+- `headerClassName="ui-dialog__header--centered"` centraliza título/descrição.
+
+### Layout de página e centralização
+
+- `#root` e `.app-layout__content` são flex em coluna; filhos diretos têm
+  `width: 100%`. Sem isso, `max-width` + `margin: auto` faz o bloco encolher
+  ao conteúdo e colar à esquerda.
+- Tela de staff usa `.page` (largura `--page-max-width`, 1200px, com padding
+  de topo para o botão "Voltar" não colar no header).
+- Tela de formulário usa `.page page--narrow`: uma coluna estreita e
+  centralizada que contém voltar, título, subtítulo **e** formulário
+  juntos. Nunca centralizar só o formulário deixando o cabeçalho à esquerda.
+  Tela com galeria larga (ex.: criar desafio) não usa `--narrow`.
+- O header (`AppHeader`) alinha logo e menu à mesma largura de `.page`.
+
+### Marca
+
+- Favicon: `public/favicon-tea.jpg`. Logo: `public/logo-tea.jpg`, usado no
+  `AppHeader` e na tela "Quem é você?" com `alt="Plataforma TEA"`. Não
+  voltar a usar o texto "Plataforma TEA" como placeholder de logo.
+
+### Texto de ajuda sob demanda
+
+- Explicação longa de um campo não fica visível por padrão. Um botão "?"
+  (`CircleHelp`, vazado, fundo primary no hover) ao lado do rótulo abre/
+  fecha o texto, com `aria-expanded`/`aria-controls`. Implementado em
+  `TemplateParameterField`; reaproveitar o mesmo padrão em campos novos.
+
+### Texto e pontuação
+
+- Não usar travessão longo (`—`) em código, comentários, textos de UI,
+  testes ou documentação nova. Usar `-` (ou reescrever a frase). Valor
+  vazio em tabela é `-`.
+
 ## Próximos passos (fora do escopo já implementado)
 
 - O painel de reflexão da fase `modify` (`challenge-page__modify-reflection`)

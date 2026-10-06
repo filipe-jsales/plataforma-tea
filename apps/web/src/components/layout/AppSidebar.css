@@ -47,6 +47,8 @@
 }
 
 .app-sidebar__close {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -60,9 +62,24 @@
   cursor: pointer;
 }
 
+
+.app-sidebar__close::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  z-index: -1;
+}
+
 .app-sidebar__close:hover {
-  background: var(--color-primary);
   color: var(--color-bg);
+}
+
+.app-sidebar__close:hover::before {
+  background: var(--color-primary);
 }
 
 .app-sidebar__close:focus-visible {

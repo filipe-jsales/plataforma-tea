@@ -55,6 +55,25 @@ const blocksDefinition: TemplateParameterDefinition = {
 };
 
 describe('TemplateParameterField', () => {
+  it('hides the help text until the "?" button is clicked, and hides it again on a second click', async () => {
+    render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
+    const toggle = screen.getByRole('button', { name: /explicação: número de lados/i });
+    expect(screen.queryByText('Quantos lados a figura vai ter.')).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await userEvent.click(toggle);
+    expect(screen.getByText('Quantos lados a figura vai ter.')).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.click(toggle);
+    expect(screen.queryByText('Quantos lados a figura vai ter.')).not.toBeInTheDocument();
+  });
+
+  it('does not render a "?" button when the parameter has no help text', () => {
+    render(<TemplateParameterField definition={toleranceDefinition} value={60} onChange={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /explicação/i })).not.toBeInTheDocument();
+  });
+
   it('AC2 - always shows icon and text together for the label, never icon-only', () => {
     render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
 

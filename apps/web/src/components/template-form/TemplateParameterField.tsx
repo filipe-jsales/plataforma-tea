@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { CircleHelp } from 'lucide-react';
 import { InlineFeedback, SegmentedControl, ToggleSwitch } from '../ui';
 import { toggleBlockType } from '../../lib/templateParameterForm';
 import type { TemplateParameterDefinition } from '../../lib/challengeTemplateTypes';
@@ -52,6 +54,10 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
   const wrapperId = `template-param-field-${definition.key}`;
   const preview = renderVisualPreview(definition, value);
   const isBlockSelection = definition.type === 'blockSelection';
+  // A explicação só aparece quando a pessoa pede (botão "?"), pra não
+  // despejar texto em todos os campos de uma vez.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpId = `${wrapperId}-help`;
 
   return (
     <fieldset
@@ -65,9 +71,25 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
           {definition.icon}
         </span>
         <span className="template-parameter-field__label">{definition.label}</span>
+        {definition.helpText && (
+          <button
+            type="button"
+            className="template-parameter-field__help-toggle"
+            aria-label={`Explicação: ${definition.label}`}
+            aria-expanded={helpOpen}
+            aria-controls={helpId}
+            onClick={() => setHelpOpen((open) => !open)}
+          >
+            <CircleHelp aria-hidden="true" size={20} strokeWidth={2} />
+          </button>
+        )}
       </legend>
 
-      {definition.helpText && <p className="template-parameter-field__help">{definition.helpText}</p>}
+      {definition.helpText && helpOpen && (
+        <p id={helpId} className="template-parameter-field__help">
+          {definition.helpText}
+        </p>
+      )}
 
       <div className="template-parameter-field__control-row">
         <div className="template-parameter-field__control">
