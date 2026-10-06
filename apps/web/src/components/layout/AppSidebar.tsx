@@ -67,10 +67,9 @@ export function AppSidebar({ open, onOpenChange }: AppSidebarProps) {
           <div className="app-sidebar__header">
             <DialogPrimitive.Title className="app-sidebar__title">Menu</DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
-              <Button variant="ghost" className="">
-                <span aria-hidden="true"></span>
-                {<X /> }
-              </Button>
+              <button type="button" className="app-sidebar__close" aria-label="Fechar">
+                <X aria-hidden="true" strokeWidth={2} />
+              </button>
             </DialogPrimitive.Close>
           </div>
 

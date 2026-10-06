@@ -38,6 +38,11 @@
   margin-top: var(--space-4);
 }
 
+/* Cabeçalho centralizado (opt-in via headerClassName). */
+.ui-dialog__header--centered {
+  text-align: center;
+}
+
 /* Fechar: só o ícone X, vazado; ganha fundo primary apenas no hover. */
 .ui-dialog__close {
   position: absolute;
@@ -65,3 +70,4 @@
   outline: var(--focus-ring-width) solid var(--focus-ring-color);
   outline-offset: var(--focus-ring-offset);
 }
+
