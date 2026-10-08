@@ -70,7 +70,8 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
         <span className="template-parameter-field__icon" aria-hidden="true">
           {definition.icon}
         </span>
-        <span className="template-parameter-field__label">{definition.label}</span>
+        <span className="template-parameter-field__label">{definition.label} <span className="template-challenge-form__required" aria-hidden="true">*</span>
+ </span>
         {definition.helpText && (
           <button
             type="button"

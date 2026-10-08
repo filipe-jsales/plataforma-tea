@@ -23,6 +23,8 @@
   flex-direction: column;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+  width: fit-content;
+  margin-inline: auto;
 }
 
 /* Card selecionável e botão de confirmação vêm de
@@ -45,4 +47,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.subject-selector__category-title{
+  text-align: center;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: center;
 }

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { BlocklyWorkspace, type WorkspaceSvg } from "react-blockly";
 import { PixiTurtleWorld } from "../../components/challenge/PixiTurtleWorld";
-import { InlineFeedback } from "../../components/ui";
+import { Button, InlineFeedback } from "../../components/ui";
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,
@@ -34,6 +34,7 @@ import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
 import "./ChallengePage.css";
+import { Play, Repeat2 } from "lucide-react";
 
 // AC3 (3.1) - tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
@@ -752,13 +753,13 @@ export function ChallengePage() {
               </div>
             </div>
           ) : (
-            <button
+            <Button
               type="button"
               className="challenge-page__run-button"
               onClick={handleRun}
             >
-              {attempts > 0 ? "🔁 Repetir execução" : "▶️ Executar"}
-            </button>
+              {attempts > 0 ?(<><Repeat2 style={{marginBottom: '-0.3rem' }}/>Repetir Execução</>) : (<><Play style={{marginBottom: '-0.3rem' }}/>Executar</>)}
+            </Button>
           )}
 
           {/* 3.2 AC2 - padrão sensorial sem animação: o aluno controla o
