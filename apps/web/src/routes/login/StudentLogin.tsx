@@ -123,9 +123,9 @@ export function StudentLogin() {
             autoFocus
           />
           {error && <p className="student-login__error">{error}</p>}
-          <button type="submit" disabled={loading || !joinCode.trim()}>
+          <Button type="submit" className="ui-button--secondary" disabled={loading || !joinCode.trim()}>
             {loading ? "Procurando…" : "Entrar na turma"}
-          </button>
+          </Button>
         </form>
       )}
 

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import './InlineFeedback.css';
-import { Check, Info, Repeat } from 'lucide-react';
+import { Check, Info, TriangleAlert } from 'lucide-react';
 
 export type FeedbackKind = 'success' | 'retry' | 'info';
 
 const DEFAULT_ICON: Record<FeedbackKind, ReactNode> = {
   success: <Check />,
-  retry: <Repeat />,
+  retry: <TriangleAlert />,
   info: <Info />,
 };
 

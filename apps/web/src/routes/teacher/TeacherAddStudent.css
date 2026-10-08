@@ -43,6 +43,11 @@
 .teacher-add-student__credential-name {
   font-size: 1.25rem;
   font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
 }
 
 .teacher-add-student__credential-meta {
@@ -51,11 +56,22 @@
 
 .teacher-add-student__credential-section {
   margin-top: var(--space-4);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
 }
 
 .teacher-add-student__credential-avatar {
   width: 96px;
   height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .teacher-add-student__credential-images {

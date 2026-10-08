@@ -5,6 +5,8 @@
   font-size: var(--font-size-small);
   font-weight: 700;
   line-height: 1.4;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .ui-badge--success {

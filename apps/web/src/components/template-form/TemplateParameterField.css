@@ -26,6 +26,7 @@
 
 .template-parameter-field__label {
   font-weight: var(--font-weight-heading, 600);
+  font-size: 16px;
 }
 
 /* "?" vazado; só ganha fundo primary no hover (mesmo padrão do X do Dialog). */
@@ -129,4 +130,8 @@
   margin: 0;
   color: var(--color-text-muted, #5a6472);
   font-size: var(--font-size-small, 0.875rem);
+}
+
+.template-challenge-form__required {
+  color: var(--color-danger, #b3261e);
 }

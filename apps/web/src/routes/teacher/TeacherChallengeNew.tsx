@@ -177,7 +177,9 @@ export function TeacherChallengeNew() {
         <>
           <div className="teacher-challenge-new__form-header">
             <h2>
-              <span aria-hidden="true">{templateDetail.icon}</span>{" "}
+              <span className="teacher-challenge-new__form-icon" aria-hidden="true">
+                {templateDetail.icon}
+              </span>
               {templateDetail.name}
             </h2>
             <Button
@@ -185,7 +187,7 @@ export function TeacherChallengeNew() {
               variant="ghost"
               onClick={() => setTourOpen(true)}
             >
-              <CircleQuestionMark /> Rever tutorial
+              <CircleQuestionMark  style={{marginBottom: '-0.3rem' }} /> Rever tutorial
             </Button>
           </div>
           {/* CC1 - categoria só leitura (curada via seed/Topic.category,
