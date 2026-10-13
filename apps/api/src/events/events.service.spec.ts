@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { InteractionEvent } from './entities/interaction-event.entity';
@@ -712,6 +713,57 @@ describe('EventsService', () => {
       expect(queryBuilder.andWhere).toHaveBeenCalledWith('event.type = :type', {
         type: 'minigame_round_executed',
       });
+    });
+  });
+
+  describe('recordPreLoginEvent', () => {
+    beforeEach(() => {
+      repository.create.mockImplementation((entity) => entity as InteractionEvent);
+      repository.save.mockImplementation(async (entity) => entity as InteractionEvent);
+    });
+
+    it('stores login_screen_viewed with no student/teacher identity', async () => {
+      const result = await service.recordPreLoginEvent({
+        type: 'login_screen_viewed',
+        payload: { screen: 'student' },
+        sessionId: 'abc_123',
+      });
+
+      expect(result).toEqual({ recorded: true });
+      expect(repository.create).toHaveBeenCalledWith({
+        studentPseudoId: null,
+        teacherUserId: null,
+        category: EventCategory.INTERACTION,
+        type: 'login_screen_viewed',
+        payload: { screen: 'student' },
+        sessionId: 'abc_123',
+      });
+    });
+
+    it('stores sensory_setting_changed_pre_login with a boolean value', async () => {
+      await service.recordPreLoginEvent({
+        type: 'sensory_setting_changed_pre_login',
+        payload: { setting: 'contrast', value: true },
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sensory_setting_changed_pre_login',
+          payload: { setting: 'contrast', value: true },
+          sessionId: null,
+        }),
+      );
+    });
+
+    it.each([
+      ['unknown screen', { type: 'login_screen_viewed', payload: { screen: 'hacker' } }],
+      ['extra payload key', { type: 'login_screen_viewed', payload: { screen: 'admin', email: 'x@y.z' } }],
+      ['missing payload', { type: 'login_screen_viewed' }],
+      ['unknown setting', { type: 'sensory_setting_changed_pre_login', payload: { setting: 'x', value: true } }],
+      ['non-boolean value', { type: 'sensory_setting_changed_pre_login', payload: { setting: 'sound', value: 'yes' } }],
+    ] as const)('rejects %s without saving anything', async (_label, dto) => {
+      await expect(service.recordPreLoginEvent(dto as never)).rejects.toThrow(BadRequestException);
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 });

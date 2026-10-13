@@ -174,16 +174,44 @@ Para proteger uma rota nova (fora do auth):
 export class TurmasController { ... }
 ```
 
-### Gap conhecido: eventos pré-login
+### Eventos pré-login (`POST /events/pre-login`)
 
-`login_screen_viewed` e `sensory_setting_changed_pre_login` (ver spec de
-login) acontecem **antes** de qualquer autenticação — não têm como carregar
-JWT. `POST /events` hoje exige `JwtAuthGuard` sempre, então esses dois tipos
-de evento não têm por onde entrar ainda. Não implementado de propósito:
-abrir um endpoint de ingestão sem autenticação é uma decisão de segurança
-(superfície de abuso/spam) que merece ser tomada explicitamente, não
-resolvida por conveniência. Próxima decisão necessária antes do frontend
-precisar disso.
+`login_screen_viewed` e `sensory_setting_changed_pre_login` acontecem
+**antes** de qualquer autenticação — não têm JWT nem pseudônimo, então não
+cabiam em `POST /events` (que segue exigindo `JwtAuthGuard` e
+`studentPseudoId`, inalterado). Decisão (2026-10): endpoint **separado e
+público**, com a superfície de abuso reduzida ao mínimo, em vez de afrouxar
+o endpoint autenticado:
+
+- **Lista fechada de tipos** (`PRE_LOGIN_EVENT_TYPES` em
+  `events/dto/create-pre-login-event.dto.ts`): só esses dois; qualquer outro
+  `type` é 400.
+- **Payload de forma fixa por tipo**, validado em
+  `EventsService.recordPreLoginEvent` (nunca jsonb livre): `login_screen_
+  viewed` → `{ screen: 'role_select'|'student'|'teacher'|'admin' }`;
+  `sensory_setting_changed_pre_login` → `{ setting: 'motion'|'sound'|
+  'contrast', value: boolean }`. Chave extra ou valor fora da lista = 400 e
+  nada é gravado.
+- **Rate limit por IP**: `ThrottlerGuard` + `@Throttle(30 req/min)` só
+  nesta rota (o `ThrottlerModule.forRoot` global vive em `MetricsModule`, ver
+  "Rate limiting"). Verificado manualmente: a 29ª requisição seguida já
+  recebe 429.
+- **Sem identidade**: a linha entra em `interaction_events` com
+  `studentPseudoId = null` **e** `teacherUserId = null` (categoria RD-I) e
+  `sessionId` = id anônimo gerado pelo navegador (por aba, só pra ligar os
+  eventos da mesma visita). A exportação 6.6 já filtra `studentPseudoId IS
+  NOT NULL`, então essas linhas nunca entram em exportação de aluno; as
+  consultas por `pseudoIds`/`challengeId` também não as alcançam.
+- **Resposta**: `201 { recorded: true }` — nada do banco é devolvido.
+
+Frontend: `lib/logEvent.ts` (`logLoginScreenViewed`,
+`logSensorySettingChangedPreLogin`), hook `lib/useLoginScreenViewed.ts`
+chamado em `RoleSelect`/`StudentLogin`/`TeacherLogin`/`AdminLogin`. O
+evento sensorial sai dos setters de `useSensoryProfileStore` **somente sem
+sessão** (`token` nulo) — a hidratação de `main.tsx` e o onboarding pós-login
+passam pelos mesmos setters e nunca viram evento pré-login. Hoje nenhuma
+tela de login tem controle sensorial, então esse evento só dispara quando
+uma for adicionada (ver `docs/ai/backlog/roadmap-melhorias.md`, item F1).
 
 ### Credenciais de desenvolvimento (seed)
 

@@ -1,9 +1,14 @@
 import * as Blockly from "blockly/core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { BlocklyWorkspace, type WorkspaceSvg } from "react-blockly";
 import { PixiTurtleWorld } from "../../components/challenge/PixiTurtleWorld";
-import { Button, InlineFeedback } from "../../components/ui";
+import {
+  Button,
+  InlineFeedback,
+  LinkButton,
+  TextareaField,
+} from "../../components/ui";
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,
@@ -34,7 +39,7 @@ import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
 import "./ChallengePage.css";
-import { Play, Repeat2, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Play, Repeat2, Search } from "lucide-react";
 
 // AC3 (3.1) - tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
@@ -657,7 +662,9 @@ export function ChallengePage() {
     return (
       <main className="challenge-page">
         <p>Este módulo ainda não tem um desafio disponível.</p>
-        <Link to="/subjects">Voltar</Link>
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+          Voltar
+        </LinkButton>
       </main>
     );
   }
@@ -672,9 +679,9 @@ export function ChallengePage() {
 
   return (
     <main className="challenge-page">
-      <Link to="/subjects" className="challenge-page__back-link">
-        ← Voltar
-      </Link>
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+        Voltar
+      </LinkButton>
       <h1>{challenge.title}</h1>
       <p className="challenge-page__prompt">{challenge.prompt}</p>
 
@@ -741,24 +748,22 @@ export function ChallengePage() {
               <p>{challenge.predictQuestion}</p>
               <div className="challenge-page__predict-options">
                 {predictOptions.map((sides) => (
-                  <button
+                  <Button
                     key={sides}
-                    type="button"
-                    className="challenge-page__predict-option"
+                    variant="secondary"
                     onClick={() => handlePredict(sides)}
                   >
                     {sides}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
           ) : (
             <Button
-              type="button"
-              className="challenge-page__run-button"
+              icon={attempts > 0 ? <Repeat2 /> : <Play />}
               onClick={handleRun}
             >
-              {attempts > 0 ?(<><Repeat2 style={{marginBottom: '-0.3rem' }}/>Repetir Execução</>) : (<><Play style={{marginBottom: '-0.3rem' }}/>Executar</>)}
+              {attempts > 0 ? "Repetir Execução" : "Executar"}
             </Button>
           )}
 
@@ -767,13 +772,13 @@ export function ChallengePage() {
               depois de rodar (nada pra avançar antes disso) e some quando o
               caminho termina (status volta a 'idle'). */}
           {!motionEnabled && executionStatus === "stepping" && (
-            <button
-              type="button"
-              className="challenge-page__step-button"
+            <Button
+              variant="secondary"
+              icon={<ArrowRight />}
               onClick={() => executionStore.getState().advanceStep()}
             >
-              Próximo passo →
-            </button>
+              Próximo passo
+            </Button>
           )}
 
           {/* Botão de Ajuda mostra a forma-ALVO escondida - só faz sentido na
@@ -782,13 +787,13 @@ export function ChallengePage() {
               revelar. */}
           {isCreate && (
             <>
-              <button
-                type="button"
-                className="challenge-page__help-button"
+              <Button
+                variant="secondary"
+                icon={<Search />}
                 onClick={handleHelp}
               >
-                <Search /> Ajuda: ver a forma
-              </button>
+                Ajuda: ver a forma
+              </Button>
               {helpOpen && (
                 <div className="challenge-page__help-panel">
                   <p>
@@ -830,11 +835,9 @@ export function ChallengePage() {
             <div className="challenge-page__investigation">
               {challenge.investigationQuestion && (
                 <>
-                  <label htmlFor="investigation-answer">
-                    {challenge.investigationQuestion}
-                  </label>
-                  <textarea
+                  <TextareaField
                     id="investigation-answer"
+                    label={challenge.investigationQuestion}
                     value={investigationAnswer}
                     onChange={(event) =>
                       setInvestigationAnswer(event.target.value)
@@ -843,14 +846,14 @@ export function ChallengePage() {
                   />
                 </>
               )}
-              <button
-                type="button"
-                className="challenge-page__proceed-button"
+              <Button
+                variant="success"
+                icon={<ArrowRight />}
                 onClick={handleProceed}
                 disabled={attempts < 1}
               >
                 Avançar
-              </button>
+              </Button>
               {proceeded && !challenge.nextChallengeId && (
                 <p>
                   Você concluiu esta fase! O próximo desafio ainda está sendo

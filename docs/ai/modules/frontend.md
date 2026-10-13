@@ -297,13 +297,16 @@ de design compartilhado (professor/admin, 3.11)" logo abaixo — `TeacherHome`/
 `SegmentedControl`/`Select`/`Table`/`Badge`, só com tema mais rico
 (`.staff-theme`) em vez das restrições sensoriais do aluno.
 
-**Não migrado ainda** (débito reconhecido, não silencioso):
-`ChallengePage.tsx` (botões Executar/Ajuda/Avançar/Predict e o
-`challenge-page__feedback`) — critério pra migrar continua o mesmo: só
-quando a tela for tocada por outro motivo (evita um PR gigante só de
-refactor visual sem mudança funcional), e ela já tem lógica PRIMM densa o
-bastante pra não misturar com uma troca de biblioteca de UI no mesmo
-commit.
+**Migração concluída (2026-10, DS1):** `ChallengePage.tsx` e
+`WaterStateChallengePage.tsx` agora usam só o barril: `LinkButton` ("Voltar"),
+`Button` (Executar/Repetir/Próximo passo/Ajuda/Avançar e as opções de
+predição — `variant="secondary"` nas escolhas, `success` em "Avançar"),
+`TextareaField` (resposta de investigação) e `InlineFeedback`. Saíram ~10
+regras de CSS próprio (botões, link de voltar, textarea) e o `style` inline
+com `marginBottom` nos ícones: o alinhamento ícone/texto vem do `.ui-button`.
+Só sobrou CSS de **layout** (`__layout`, `__sidebar`, `__editor`,
+`__predict`, `__investigation`...). Comportamento, eventos e endpoints
+inalterados; testes existentes passam sem mudar asserção.
 
 ### Testes
 
@@ -2153,18 +2156,16 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
   só cobre o próprio desafio — não existe ainda uma visão agregada (pro
   aluno ou pro professor) de "quais combinações de TIMES/ANGLE você já
   tentou", só o log bruto (`challenge_modify_attempt`) por trás.
-- Ingestão de eventos pré-login (`login_screen_viewed`,
-  `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
-  documentado em `backend.md`.
-- Logout / expiração de sessão: `useAuthStore` tem `clearSession()`, mas
-  nenhuma tela chama isso ainda, e `RequireAuth` não valida se o JWT
-  expirou (só se existe uma sessão salva).
+- Eventos pré-login (`login_screen_viewed`,
+  `sensory_setting_changed_pre_login`): **✅ implementados** (2026-10) — ver
+  "Eventos pré-login" em `backend.md`.
+- Logout / expiração de sessão: **✅ já resolvido** (`lib/logout.ts`,
+  tratamento de 401 em `apiClient.ts` e checagem em `RequireAuth`) — esta
+  linha estava desatualizada.
 - Rate limiting nos 3 endpoints de login (gap do backend, ver
   `backend.md`).
-- Migrar `ChallengePage` pra `components/ui/` (3.10/3.11 já migraram todo o
-  resto — professor/admin inteiros, ver "Onde já está em uso vs. débito de
-  migração" acima) — débito reconhecido, não bloqueante; migrar quando a
-  tela for tocada por outro motivo.
+- Migrar `ChallengePage` pra `components/ui/`: **✅ concluído** (2026-10, ver
+  "Migração concluída" acima).
 - `components/ui/Tooltip`/`Tabs` seguem sem nenhum uso real em produção
   (3.10) — **decisão DS4: manter como infraestrutura pronta**, sem forçar
   uso artificial (`TeacherMetrics` já usa `SegmentedControl`, o componente

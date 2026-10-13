@@ -4,10 +4,12 @@ import { apiClient } from '../../lib/apiClient';
 import { completeLogin } from '../../lib/authFlow';
 import { Button } from '../../components/ui';
 import './StaffLogin.css';
+import { useLoginScreenViewed } from '../../lib/useLoginScreenViewed';
 
 // 1.2.1 - fluxo professor: e-mail + senha, microcópia sem jargão técnico
 // (nunca menciona "token"/"JWT" - RQ4 barreiras institucionais, 17,39%).
 export function TeacherLogin() {
+  useLoginScreenViewed('teacher');
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

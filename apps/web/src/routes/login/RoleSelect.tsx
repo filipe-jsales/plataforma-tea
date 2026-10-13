@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import './RoleSelect.css';
 import { Backpack, GraduationCap, UserShield } from 'lucide-react';
 import { Button } from '../../components/ui';
+import { useLoginScreenViewed } from '../../lib/useLoginScreenViewed';
 
 // 1.2.1 - tela inicial "Quem é você?". Três botões grandes, ícone+texto,
 // nenhum papel pré-selecionado, sem geolocalização/IP tentando adivinhar.
 export function RoleSelect() {
+  useLoginScreenViewed('role_select');
   const navigate = useNavigate();
 
   return (

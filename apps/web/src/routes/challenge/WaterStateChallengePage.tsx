@@ -1,9 +1,9 @@
 import * as Blockly from 'blockly/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { BlocklyWorkspace, type WorkspaceSvg } from 'react-blockly';
 import { WaterStateTransition } from '../../components/challenge/WaterStateTransition';
-import { InlineFeedback, Slider } from '../../components/ui';
+import { Button, InlineFeedback, LinkButton, Slider } from '../../components/ui';
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,
@@ -30,7 +30,7 @@ import {
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import './WaterStateChallengePage.css';
-import { Cloud, Droplet, Play, Repeat, Snowflake } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Cloud, Droplet, Play, Repeat, Snowflake } from 'lucide-react';
 
 // Mesma técnica de PixiTurtleWorld.tsx (loop com `sleep` redesenhando a
 // cada passo, sem lib de animação) - aqui em vez de segmentos de linha,
@@ -610,7 +610,9 @@ export function WaterStateChallengePage() {
     return (
       <main className="water-challenge-page">
         <p>Este módulo ainda não tem um desafio disponível.</p>
-        <Link to="/subjects">Voltar</Link>
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+          Voltar
+        </LinkButton>
       </main>
     );
   }
@@ -621,9 +623,9 @@ export function WaterStateChallengePage() {
 
   return (
     <main className="water-challenge-page">
-      <Link to="/subjects" className="water-challenge-page__back-link">
-        ← Voltar
-      </Link>
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+        Voltar
+      </LinkButton>
       <h1>{challenge.title}</h1>
       <p className="water-challenge-page__prompt">{challenge.prompt}</p>
 
@@ -675,68 +677,39 @@ export function WaterStateChallengePage() {
             <div className="water-challenge-page__predict">
               <p>{challenge.predictQuestion}</p>
               <div className="water-challenge-page__predict-options">
-                <button
-                  type="button"
-                  className="water-challenge-page__predict-option"
-                  onClick={() => handlePredict('SOLID')}
-                >
-                  <Snowflake /> Sólido
-                </button>
-                <button
-                  type="button"
-                  className="water-challenge-page__predict-option"
-                  onClick={() => handlePredict('LIQUID')}
-                >
-                  <Droplet /> Líquido
-                </button>
-                <button
-                  type="button"
-                  className="water-challenge-page__predict-option"
-                  onClick={() => handlePredict('GAS')}
-                >
-                  <Cloud /> Gasoso
-                </button>
+                <Button variant="secondary" icon={<Snowflake />} onClick={() => handlePredict('SOLID')}>
+                  Sólido
+                </Button>
+                <Button variant="secondary" icon={<Droplet />} onClick={() => handlePredict('LIQUID')}>
+                  Líquido
+                </Button>
+                <Button variant="secondary" icon={<Cloud />} onClick={() => handlePredict('GAS')}>
+                  Gasoso
+                </Button>
               </div>
             </div>
           ) : (
-            <button type="button" className="water-challenge-page__run-button" onClick={handleRun}>
-              {attempts > 0 ? (
-                <>
-                  <Repeat /> Repetir execução
-                </>
-              ) : (
-                <>
-                  <Play /> Executar
-                </>
-              )}
-            </button>
+            <Button icon={attempts > 0 ? <Repeat /> : <Play />} onClick={handleRun}>
+              {attempts > 0 ? 'Repetir execução' : 'Executar'}
+            </Button>
           )}
 
           {/* 3.16 AC2 - contraparte do "Próximo passo" de ChallengePage: só
               aparece com movimento reduzido (perfil sensorial padrão) e some
               assim que a fila de temperaturas intermediárias termina. */}
           {!motionEnabled && stepStatus === 'stepping' && (
-            <button
-              type="button"
-              className="water-challenge-page__step-button"
-              onClick={handleAdvanceWaterStep}
-            >
-              Próximo passo →
-            </button>
+            <Button variant="secondary" icon={<ArrowRight />} onClick={handleAdvanceWaterStep}>
+              Próximo passo
+            </Button>
           )}
 
           {feedback && <InlineFeedback kind={feedback.kind}>{feedback.message}</InlineFeedback>}
 
           {attempts > 0 && (
             <div className="water-challenge-page__proceed">
-              <button
-                type="button"
-                className="water-challenge-page__proceed-button"
-                onClick={handleProceed}
-                disabled={attempts < 1}
-              >
+              <Button variant="success" icon={<ArrowRight />} onClick={handleProceed} disabled={attempts < 1}>
                 Avançar
-              </button>
+              </Button>
               {proceeded && !challenge.nextChallengeId && (
                 <p>Você concluiu esta fase! O próximo desafio ainda está sendo preparado.</p>
               )}

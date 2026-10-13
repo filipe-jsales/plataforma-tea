@@ -4,10 +4,12 @@ import { apiClient } from '../../lib/apiClient';
 import { completeLogin } from '../../lib/authFlow';
 import { Button } from '../../components/ui';
 import './StaffLogin.css';
+import { useLoginScreenViewed } from '../../lib/useLoginScreenViewed';
 
 // 1.2.1 - fluxo admin: e-mail + senha + segundo fator. "otp" nunca aparece
 // na tela - só "código do aplicativo autenticador" (sem jargão técnico).
 export function AdminLogin() {
+  useLoginScreenViewed('admin');
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

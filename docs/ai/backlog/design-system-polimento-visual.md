@@ -32,6 +32,9 @@ por quem for construir uma tela nova).
 
 ## DS1 — Migrar `ChallengePage.tsx` para `components/ui/`
 
+**Status: ✅ Implementado** (2026-10) — `ChallengePage` e `WaterStateChallengePage`.
+Detalhes em `docs/ai/modules/frontend.md` ("Migração concluída").
+
 ### Descrição
 
 `ChallengePage.tsx` é a única tela de aluno que ainda não usa a base de
