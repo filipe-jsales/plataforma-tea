@@ -419,7 +419,7 @@ export class ChallengeTemplatesService {
       id: challenge.id,
       title: challenge.title,
       templateName: template?.name ?? '—',
-      templateIcon: template?.icon ?? '🧩',
+      templateIcon: template?.icon ?? '',
       createdAt: challenge.createdAt,
     };
   }

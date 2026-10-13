@@ -30,8 +30,8 @@ export class ChallengeTemplate {
   @Column({ type: 'text' })
   description: string;
 
-  // Emoji — mesmo "sistema de ícone" do resto da plataforma (ver
-  // "Ícone" em docs/ai/modules/frontend.md), sem lib de ícone nova.
+  // Sem emoji (o design system não os usa mais) — string vazia por padrão;
+  // o frontend decide o ícone (lucide-react).
   @Column({ type: 'varchar', length: 8 })
   icon: string;
 
