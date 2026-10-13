@@ -31,7 +31,7 @@ describe('WaterStateTransition', () => {
   it('regra não-negociável 9 - always shows icon and text together for the current state, never color-only', () => {
     render(<WaterStateTransition state="LIQUID" />);
 
-    expect(screen.getByText('💧')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-droplet')).not.toBeNull();
     expect(screen.getByText('Líquido')).toBeInTheDocument();
   });
 
@@ -39,9 +39,9 @@ describe('WaterStateTransition', () => {
     const { rerender } = render(<WaterStateTransition state="LIQUID" />);
     rerender(<WaterStateTransition state="GAS" />);
 
-    expect(screen.getByText('☁️')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-cloud')).not.toBeNull();
     expect(screen.getByText('Gasoso')).toBeInTheDocument();
-    expect(screen.queryByText('💧')).not.toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-droplet')).toBeNull();
   });
 
   it('3.16 AC2 - never plays a sound when the sensory profile has sound disabled (default)', () => {

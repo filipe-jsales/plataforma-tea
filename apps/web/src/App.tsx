@@ -44,9 +44,26 @@ const FractionsGamePage = lazy(() => import('./routes/minigame/fractions/Fractio
 // lazy-loading.
 const WorkToolsGamePage = lazy(() => import('./routes/minigame/work-tools/WorkToolsGamePage'))
 
+// DS2 - guia vivo do design system: ferramenta de dev, só registrada em modo
+// dev (o `import()` fica atrás de `import.meta.env.DEV`, que o Vite elimina
+// no build de produção).
+const DesignSystemGuide = import.meta.env.DEV
+  ? lazy(() => import('./routes/dev/DesignSystemGuide'))
+  : null
+
 function App() {
   return (
     <Routes>
+      {DesignSystemGuide && (
+        <Route
+          path="/dev/design-system"
+          element={
+            <Suspense fallback={null}>
+              <DesignSystemGuide />
+            </Suspense>
+          }
+        />
+      )}
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<RoleSelect />} />
       <Route path="/login/student" element={<StudentLogin />} />

@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../../lib/apiClient';
 import { getIllustrationAsset } from '../../lib/illustrationAssets';
@@ -196,7 +197,7 @@ export function AdminUsers() {
 
   return (
     <main className="admin-users staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Usuários</h1>

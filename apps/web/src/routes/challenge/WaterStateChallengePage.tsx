@@ -30,6 +30,7 @@ import {
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import './WaterStateChallengePage.css';
+import { Cloud, Droplet, Play, Repeat, Snowflake } from 'lucide-react';
 
 // Mesma técnica de PixiTurtleWorld.tsx (loop com `sleep` redesenhando a
 // cada passo, sem lib de animação) - aqui em vez de segmentos de linha,
@@ -679,27 +680,35 @@ export function WaterStateChallengePage() {
                   className="water-challenge-page__predict-option"
                   onClick={() => handlePredict('SOLID')}
                 >
-                  ❄️ Sólido
+                  <Snowflake /> Sólido
                 </button>
                 <button
                   type="button"
                   className="water-challenge-page__predict-option"
                   onClick={() => handlePredict('LIQUID')}
                 >
-                  💧 Líquido
+                  <Droplet /> Líquido
                 </button>
                 <button
                   type="button"
                   className="water-challenge-page__predict-option"
                   onClick={() => handlePredict('GAS')}
                 >
-                  ☁️ Gasoso
+                  <Cloud /> Gasoso
                 </button>
               </div>
             </div>
           ) : (
             <button type="button" className="water-challenge-page__run-button" onClick={handleRun}>
-              {attempts > 0 ? '🔁 Repetir execução' : '▶️ Executar'}
+              {attempts > 0 ? (
+                <>
+                  <Repeat /> Repetir execução
+                </>
+              ) : (
+                <>
+                  <Play /> Executar
+                </>
+              )}
             </button>
           )}
 

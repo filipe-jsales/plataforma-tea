@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight, Check, ClipboardList, Eye, MousePointerClick, Pencil, Repeat, Search, Undo2 } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../lib/apiClient';
@@ -27,6 +28,7 @@ import {
   Text,
 } from '../../../components/ui';
 import './WorkToolsGamePage.css';
+import { contentIcon } from '../../../lib/contentIcons';
 
 const CONCEPT_ID = 'digital_tools_workplace';
 const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
@@ -43,22 +45,22 @@ const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
 function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
   if (stage === 'use') {
     return [
-      { icon: '👀', label: 'Observe como cada situação já foi ligada à ferramenta certa' },
-      { icon: '🔎', label: 'Veja as afirmações verdadeiro ou falso já respondidas' },
-      { icon: '✅', label: 'Aperte Conferir' },
+      { icon: <Eye />, label: 'Observe como cada situação já foi ligada à ferramenta certa' },
+      { icon: <Search />, label: 'Veja as afirmações verdadeiro ou falso já respondidas' },
+      { icon: <Check />, label: 'Aperte Conferir' },
     ];
   }
   if (stage === 'modify') {
     return [
-      { icon: '👀', label: 'Observe as situações e as ferramentas já ligadas' },
-      { icon: '✏️', label: 'Corrija o par ou a afirmação que não está certa' },
-      { icon: '🔎', label: 'Veja o resultado de cada correção na hora' },
+      { icon: <Eye />, label: 'Observe as situações e as ferramentas já ligadas' },
+      { icon: <Pencil />, label: 'Corrija o par ou a afirmação que não está certa' },
+      { icon: <Search />, label: 'Veja o resultado de cada correção na hora' },
     ];
   }
   return [
-    { icon: '👉', label: 'Toque numa situação, depois na ferramenta certa' },
-    { icon: '✅', label: 'Responda verdadeiro ou falso quando os pares liberarem' },
-    { icon: '🔁', label: 'Peça um novo cenário quando terminar' },
+    { icon: <MousePointerClick />, label: 'Toque numa situação, depois na ferramenta certa' },
+    { icon: <Check />, label: 'Responda verdadeiro ou falso quando os pares liberarem' },
+    { icon: <Repeat />, label: 'Peça um novo cenário quando terminar' },
   ];
 }
 
@@ -187,7 +189,7 @@ export function WorkToolsGamePage() {
   if (levelsError) {
     return (
       <main className="work-tools-game-page">
-        <LinkButton to="/subjects" variant="ghost" icon="←">
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
         <InlineFeedback kind="retry">{levelsError}</InlineFeedback>
@@ -206,7 +208,7 @@ export function WorkToolsGamePage() {
   if (!level) {
     return (
       <main className="work-tools-game-page">
-        <LinkButton to="/subjects" variant="ghost" icon="←">
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
         <p>Este nível ainda não está disponível.</p>
@@ -316,7 +318,7 @@ export function WorkToolsGamePage() {
 
   return (
     <main className="work-tools-game-page">
-      <LinkButton to="/subjects" variant="ghost" icon="←">
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
 
@@ -334,7 +336,7 @@ export function WorkToolsGamePage() {
             <Text size="lg">{level.prompt}</Text>
             <Button
               variant="ghost"
-              icon="📋"
+              icon={<ClipboardList />}
               onClick={() => {
                 setReopenedBriefing(true);
                 setShowBriefing(true);
@@ -374,9 +376,9 @@ export function WorkToolsGamePage() {
                   return (
                     <li key={scenario.id}>
                       <Text>
-                        <span aria-hidden="true">{scenario.icon}</span> {scenario.label}{' '}
-                        <span aria-hidden="true">→</span> <span aria-hidden="true">{tool?.icon}</span>{' '}
-                        {tool?.label} <span aria-hidden="true">✅</span>
+                        <span aria-hidden="true">{contentIcon(scenario.id)}</span> {scenario.label}{' '}
+                        <span aria-hidden="true">→</span> <span aria-hidden="true">{contentIcon(tool?.id)}</span>{' '}
+                        {tool?.label} <Check aria-hidden="true" />
                       </Text>
                     </li>
                   );
@@ -454,13 +456,17 @@ export function WorkToolsGamePage() {
                         }}
                       >
                         <SelectableCard
-                          icon={scenario.icon}
+                          icon={contentIcon(scenario.id)}
                           align="start"
                           selected={selectedScenarioId === scenario.id}
                           onSelect={() => handleSelectScenario(scenario.id)}
                           meta={
                             matchedTool
-                              ? `${correct ? '✅' : '🔁'} Ligado a: ${matchedTool.label}`
+                              ? (
+                                <>
+                                  {correct ? <Check /> : <Repeat />} Ligado a: {matchedTool.label}
+                                </>
+                              )
                               : 'Toque aqui, depois na ferramenta certa'
                           }
                         >
@@ -469,7 +475,7 @@ export function WorkToolsGamePage() {
                         {match && (
                           <Button
                             variant="ghost"
-                            icon="↩️"
+                            icon={<Undo2 />}
                             onClick={() => handleUndoMatch(scenario.id)}
                             aria-label={`Desfazer par de ${scenario.label}`}
                           >
@@ -493,7 +499,7 @@ export function WorkToolsGamePage() {
                         else toolRowRefs.current.delete(tool.id);
                       }}
                     >
-                      <SelectableCard icon={tool.icon} align="start" selected={false} onSelect={() => handleSelectTool(tool.id)}>
+                      <SelectableCard icon={contentIcon(tool.id)} align="start" selected={false} onSelect={() => handleSelectTool(tool.id)}>
                         {tool.label}
                       </SelectableCard>
                     </div>
@@ -557,7 +563,7 @@ export function WorkToolsGamePage() {
                 </Button>
               )}
               {nextStage && (
-                <LinkButton to={`/minigame/work-tools/${nextStage}`} icon="➡️">
+                <LinkButton to={`/minigame/work-tools/${nextStage}`} icon={<ArrowRight />}>
                   Próximo nível
                 </LinkButton>
               )}

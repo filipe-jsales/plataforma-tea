@@ -11,12 +11,12 @@
 
 .ui-badge--success {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text-on-dark);
 }
 
 .ui-badge--warning {
   background: var(--color-warning);
-  color: #fff;
+  color: var(--color-text-on-dark);
 }
 
 .ui-badge--neutral {

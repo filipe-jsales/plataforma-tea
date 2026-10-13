@@ -75,7 +75,7 @@ export function ChallengeCreationSurvey({ challengeId, onDone }: ChallengeCreati
 
   return (
     <form className="challenge-creation-survey" onSubmit={handleSubmit}>
-      <h2>🎉 Desafio criado! Uma pergunta rápida antes de continuar</h2>
+      <h2>Desafio criado! Uma pergunta rápida antes de continuar</h2>
       <p className="challenge-creation-survey__intro">
         Suas respostas ajudam a melhorar esta ferramenta para outros professores - leva menos de um minuto, e é
         totalmente opcional.

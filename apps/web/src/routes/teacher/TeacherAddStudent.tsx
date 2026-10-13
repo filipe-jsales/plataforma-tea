@@ -1,3 +1,4 @@
+import { ArrowLeft, Plus, Printer } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { ApiError, apiClient } from "../../lib/apiClient";
 import { getIllustrationAsset } from "../../lib/illustrationAssets";
@@ -15,7 +16,6 @@ import {
   ToggleSwitch,
 } from "../../components/ui";
 import "./TeacherAddStudent.css";
-import { Plus, Printer } from "lucide-react";
 
 interface TeacherClassroomOption {
   id: string;
@@ -188,7 +188,7 @@ export function TeacherAddStudent() {
   if (step === "credential" && credential) {
     return (
       <main className="teacher-add-student staff-theme page page--narrow">
-        <LinkButton to="/home" variant="ghost" icon="←">
+        <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
 
@@ -256,7 +256,7 @@ export function TeacherAddStudent() {
   if (step === "guardian" && pending) {
     return (
       <main className="teacher-add-student staff-theme page page--narrow">
-        <LinkButton to="/home" variant="ghost" icon="←">
+        <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
         <h1>Responsável legal</h1>
@@ -329,7 +329,7 @@ export function TeacherAddStudent() {
 
   return (
     <main className="teacher-add-student staff-theme page page--narrow">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Adicionar aluno</h1>

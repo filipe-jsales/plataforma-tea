@@ -1,5 +1,6 @@
 import * as SelectPrimitive from '@radix-ui/react-select';
 import './Select.css';
+import { Check } from 'lucide-react';
 
 export interface SelectOption {
   value: string;
@@ -39,7 +40,7 @@ export function Select({ id, label, options, value, onValueChange, placeholder }
                 <SelectPrimitive.Item key={option.value} value={option.value} className="ui-select__item">
                   <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                   <SelectPrimitive.ItemIndicator className="ui-select__item-indicator" aria-hidden="true">
-                    ✓
+                    <Check />
                   </SelectPrimitive.ItemIndicator>
                 </SelectPrimitive.Item>
               ))}

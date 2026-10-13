@@ -1,3 +1,4 @@
+import { BookOpenCheck, Gamepad2, Laptop, Puzzle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
@@ -9,7 +10,6 @@ import { MINI_GAMES_CATALOG } from '../lib/miniGamesCatalog';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
-import { BookOpenCheck, Gamepad2, Laptop } from 'lucide-react';
 
 interface TopicOption {
   topicId: string;
@@ -147,7 +147,7 @@ export function SubjectSelector() {
           <ul className="subject-selector__list">
             {classroomChallenges.map((challenge) => (
               <li key={challenge.id} className="subject-selector__classroom-challenge">
-                <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon="🧩">
+                <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon={<Puzzle />}>
                   {challenge.title}
                 </LinkButton>
                 {/* E1 - marcador discreto, nunca contagem/urgência (AC1/AC4):

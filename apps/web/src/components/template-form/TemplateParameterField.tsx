@@ -7,6 +7,7 @@ import { AngleWedgeIcon } from './AngleWedgeIcon';
 import { PolygonPreviewIcon } from './PolygonPreviewIcon';
 import { ToleranceGaugeIcon } from './ToleranceGaugeIcon';
 import './TemplateParameterField.css';
+import { contentIcon } from '../../lib/contentIcons';
 
 export interface TemplateParameterFieldProps {
   definition: TemplateParameterDefinition;
@@ -68,7 +69,7 @@ export function TemplateParameterField({ definition, value, error, onChange }: T
     >
       <legend className="template-parameter-field__header">
         <span className="template-parameter-field__icon" aria-hidden="true">
-          {definition.icon}
+          {contentIcon(definition.key)}
         </span>
         <span className="template-parameter-field__label">{definition.label} <span className="template-challenge-form__required" aria-hidden="true">*</span>
  </span>

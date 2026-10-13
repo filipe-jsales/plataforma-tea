@@ -1,3 +1,4 @@
+import { ArrowLeft, CircleQuestionMark } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiClient } from "../../lib/apiClient";
@@ -22,7 +23,7 @@ import { useGuidedTourStore } from "../../stores/useGuidedTourStore";
 import { TemplateChallengeForm } from "../../components/template-form/TemplateChallengeForm";
 import { ChallengeCreationSurvey } from '../../components/survey/ChallengeCreationSurvey';
 import "./TeacherChallengeNew.css";
-import { CircleQuestionMark } from "lucide-react";
+import { contentIcon } from '../../lib/contentIcons';
 
 // 4.2 (AC1/AC2) - "Criar desafio": galeria de templates em linguagem
 // pedagógica simples (nome, ícone, descrição - nunca o blockType técnico),
@@ -62,7 +63,7 @@ export function TeacherChallengeNew() {
   // `TemplateChallengeForm` renderiza, ver ids `template-challenge-form-*`
   // lá). Da segunda vez em diante fica quieto (`hasSeenTour`,
   // useGuidedTourStore) - nunca interromper quem já sabe usar a tela; o
-  // link "❔ Rever tutorial" abaixo sempre reabre manualmente.
+  // link "Rever tutorial" abaixo sempre reabre manualmente.
   useEffect(() => {
     if (templateDetail && !hasSeenTour(CHALLENGE_FORM_TOUR_KEY)) {
       setTourOpen(true);
@@ -124,7 +125,7 @@ export function TeacherChallengeNew() {
 
   return (
     <main className="teacher-challenge-new staff-theme page page--narrow">
-      <LinkButton to="/teacher/challenges" variant="ghost" icon="←">
+      <LinkButton to="/teacher/challenges" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Criar desafio</h1>
@@ -153,7 +154,7 @@ export function TeacherChallengeNew() {
               {templates.map((template) => (
                 <SelectableCard
                   key={template.id}
-                  icon={template.icon}
+                  icon={contentIcon(template.key)}
                   align="start"
                   meta={
                     <>
@@ -178,7 +179,7 @@ export function TeacherChallengeNew() {
           <div className="teacher-challenge-new__form-header">
             <h2>
               <span className="teacher-challenge-new__form-icon" aria-hidden="true">
-                {templateDetail.icon}
+                {contentIcon(templateDetail.key)}
               </span>
               {templateDetail.name}
             </h2>

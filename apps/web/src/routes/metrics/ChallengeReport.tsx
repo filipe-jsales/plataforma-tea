@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BarChart, type BarDatum } from '../../components/charts/BarChart';
 import { BoxPlot, type DescriptiveStats } from '../../components/charts/BoxPlot';
@@ -148,7 +149,7 @@ export function ChallengeReport() {
 
   return (
     <main className="challenge-report staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Relatório de profundidade por desafio</h1>

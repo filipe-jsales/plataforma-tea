@@ -64,3 +64,22 @@
 /* ---------- interação (RQ4 coordenação motora fina - mesmo token que
    Button.css/Card.css usam, nunca um px inventado na tela) ---------- */
 .u-hit-area { min-width: var(--hit-area-min); min-height: var(--hit-area-min); }
+
+
+/* Ícone Lucide dentro de texto corrido (Lucide nasce 24px): acompanha o
+   tamanho da fonte e herda a cor (currentColor), sem cor/animação própria. */
+:is(
+    .ui-card__selected-badge,
+    .ui-card__meta,
+    .ui-select__item-indicator,
+    .ui-toast__dismiss,
+    .water-challenge-page__predict-option,
+    .water-challenge-page__run-button,
+    .challenge-page__help-button,
+    .teacher-metrics__table th span
+  )
+  svg.lucide {
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+}

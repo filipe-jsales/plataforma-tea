@@ -34,7 +34,7 @@ import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
 import "./ChallengePage.css";
-import { Play, Repeat2 } from "lucide-react";
+import { Play, Repeat2, Search } from "lucide-react";
 
 // AC3 (3.1) - tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
@@ -787,7 +787,7 @@ export function ChallengePage() {
                 className="challenge-page__help-button"
                 onClick={handleHelp}
               >
-                🔎 Ajuda: ver a forma
+                <Search /> Ajuda: ver a forma
               </button>
               {helpOpen && (
                 <div className="challenge-page__help-panel">

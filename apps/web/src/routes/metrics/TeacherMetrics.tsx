@@ -1,3 +1,4 @@
+import { ArrowLeft, ChartColumn, Gamepad2, LibraryBig, Puzzle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/apiClient';
 import {
@@ -19,7 +20,6 @@ import {
   type BadgeVariant,
 } from '../../components/ui';
 import './TeacherMetrics.css';
-import { ChartColumn, LibraryBig } from 'lucide-react';
 
 type ChallengeStage = 'use' | 'modify' | 'create';
 type ChallengeStatus = 'not_started' | 'in_progress' | 'completed';
@@ -205,7 +205,7 @@ export function TeacherMetrics() {
 
   return (
     <main className="teacher-metrics staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Painel da turma</h1>
@@ -408,13 +408,13 @@ export function TeacherMetrics() {
                           <TableHeaderCell>Aluno</TableHeaderCell>
                           {conceptComparison.students[0].blocks.map((signal, index) => (
                             <TableHeaderCell key={`blocks-${index}`}>
-                              <span>🧩 {signal.title}</span>
+                              <span><Puzzle /> {signal.title}</span>
                               <span className="teacher-metrics__stage-tag">{STAGE_LABEL[signal.stage]}</span>
                             </TableHeaderCell>
                           ))}
                           {conceptComparison.students[0].miniGame.map((signal, index) => (
                             <TableHeaderCell key={`minigame-${index}`}>
-                              <span>🎮 {signal.title}</span>
+                              <span><Gamepad2 /> {signal.title}</span>
                               <span className="teacher-metrics__stage-tag">{STAGE_LABEL[signal.stage]}</span>
                             </TableHeaderCell>
                           ))}

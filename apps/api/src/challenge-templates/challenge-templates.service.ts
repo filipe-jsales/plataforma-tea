@@ -58,6 +58,7 @@ export interface TeacherChallengeSummary {
   title: string;
   templateName: string;
   templateIcon: string;
+  templateKey?: string;
   createdAt: Date;
 }
 
@@ -420,6 +421,7 @@ export class ChallengeTemplatesService {
       title: challenge.title,
       templateName: template?.name ?? '—',
       templateIcon: template?.icon ?? '',
+      templateKey: template?.key,
       createdAt: challenge.createdAt,
     };
   }

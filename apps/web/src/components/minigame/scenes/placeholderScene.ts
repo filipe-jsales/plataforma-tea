@@ -49,12 +49,12 @@ export function createPlaceholderScene(conceptId: string): MiniGameSceneDefiniti
         const totalSteps = PRIMM_PHASES.length;
         const completed = scene.status === 'completed';
 
-        label.text = completed ? 'Você concluiu! ✅' : `Etapa ${stepNumber} de ${totalSteps}`;
+        label.text = completed ? 'Você concluiu!' : `Etapa ${stepNumber} de ${totalSteps}`;
 
         button.clear();
         button.circle(0, 0, BUTTON_RADIUS).fill({ color: completed ? 0x2f9e44 : 0x2b6cb0 });
         buttonLabel.position.set(origin.x, origin.y);
-        buttonLabel.text = completed ? '🏁' : '➡️';
+        buttonLabel.text = completed ? 'Fim' : '→';
         button.eventMode = completed ? 'none' : 'static';
         button.cursor = completed ? 'default' : 'pointer';
       }

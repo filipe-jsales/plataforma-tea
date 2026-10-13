@@ -386,18 +386,26 @@ acontecem só dentro dela:
    de TEA, é acessibilidade geral, então nunca teve motivo pra ficar de
    fora do reset.
 
-**Ícone**: nenhuma lib nova — emoji continua sendo o "sistema de ícone"
-compartilhado dos 3 módulos (já era assim desde antes de 3.10/3.11).
-Introduzir um set de ícone SVG dedicado contradiria a proibição explícita
-do card ("não uma biblioteca nova"); decisão registrada aqui, não um
-esquecimento.
-
-⚠️ **Decisão reaberta em 2026-09** (`docs/ai/backlog/
-design-system-polimento-visual.md`, DS5–DS9): emoji está sendo trocado por
-`lucide-react` — decisão explícita do usuário, não uma reversão silenciosa
-da nota acima. Ver "Guia de referência do design system (v1)" a seguir.
+**Ícone**: sem emoji em nenhum lugar (frontend, backend ou banco) — o
+glifo é sempre um ícone `lucide-react`, importado direto do pacote
+(`import { ArrowLeft } from 'lucide-react'`), herdando `currentColor`.
+Decisão tomada em 2026-09 (DS5–DS9 em `docs/ai/backlog/
+design-system-polimento-visual.md`) e concluída em 2026-10: o backend não
+envia mais emoji (campos `icon` de templates, parâmetros e níveis de mini
+jogo vêm vazios — migration `RemoveEmojisFromSeededData`). Ícone de
+**conteúdo vindo do banco** é escolhido no cliente, por chave estável, em
+`lib/contentIcons.tsx` (`contentIcon(template.key | parameter.key |
+scenario.id | tool.id)`); chave desconhecida cai num ícone genérico.
+Guardas automáticos: `lib/noEmoji.spec.ts` (frontend) e `src/no-emoji.spec.ts`
+(API) falham se qualquer emoji voltar ao código-fonte.
 
 ## Guia de referência do design system (v1, 2026-09-15)
+
+Além do Artifact abaixo, há um guia **dentro do repositório**, só em modo
+dev: `npm run dev:web` e abrir `/dev/design-system` (rota registrada em
+`App.tsx` atrás de `import.meta.env.DEV`, ausente do bundle de produção).
+Mostra os tokens com o valor atual, os componentes de `components/ui/` com
+seus estados e os toggles ao vivo de movimento/alto contraste/som.
 
 O sistema de design da plataforma (3.10/3.11 acima) ganhou uma
 **documentação viva navegável**, publicada como Artifact:
@@ -2158,7 +2166,11 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
   migração" acima) — débito reconhecido, não bloqueante; migrar quando a
   tela for tocada por outro motivo.
 - `components/ui/Tooltip`/`Tabs` seguem sem nenhum uso real em produção
-  (3.10) — infraestrutura pronta, nenhuma tela pediu ainda. `Dialog` saiu
+  (3.10) — **decisão DS4: manter como infraestrutura pronta**, sem forçar
+  uso artificial (`TeacherMetrics` já usa `SegmentedControl`, o componente
+  certo ali); entram na primeira tela que pedir navegação por seções /
+  reforço textual. Hoje só são exercitados pelo guia de dev
+  (`/dev/design-system`, DS2). `Dialog` saiu
   dessa lista em 4.2 (confirmação de exclusão em `TeacherChallenges`,
   primeiro uso real).
 - **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver seção

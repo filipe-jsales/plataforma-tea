@@ -8,10 +8,10 @@ const THEME_COLOUR: Record<string, number> = {
   garden: 0x2f9e44,
 };
 
-const THEME_ICON: Record<string, string> = {
-  chocolate_bar: '🍫',
-  pizza: '🍕',
-  garden: '🌱',
+const THEME_NAME: Record<string, string> = {
+  chocolate_bar: 'Barra de chocolate',
+  pizza: 'Pizza',
+  garden: 'Jardim',
 };
 
 const STRIP_WIDTH = 380;
@@ -32,7 +32,7 @@ export function createFractionsFactoryScene(
   conceptId: string,
 ): MiniGameSceneDefinition {
   const colour = THEME_COLOUR[theme] ?? THEME_COLOUR.chocolate_bar;
-  const icon = THEME_ICON[theme] ?? THEME_ICON.chocolate_bar;
+  const themeName = THEME_NAME[theme] ?? THEME_NAME.chocolate_bar;
 
   return {
     id: `fractions-factory:${theme}`,
@@ -41,7 +41,7 @@ export function createFractionsFactoryScene(
       const origin = { x: app.screen.width / 2, y: app.screen.height / 2 };
 
       const label = new Text({
-        text: `${icon} Inteiro ainda não cortado`,
+        text: `${themeName}: inteiro ainda não cortado`,
         style: { fill: 0x1a1a1a, fontSize: 16, fontWeight: '600', align: 'center' },
       });
       label.anchor.set(0.5);
@@ -68,7 +68,7 @@ export function createFractionsFactoryScene(
             )
             .fill({ color: colour, alpha: 0.25 })
             .stroke({ width: 2, color: colour });
-          label.text = `${icon} Inteiro ainda não cortado`;
+          label.text = `${themeName}: inteiro ainda não cortado`;
           return;
         }
 
@@ -95,7 +95,7 @@ export function createFractionsFactoryScene(
           }
         }
 
-        label.text = `${icon} ${totalParts} pedaços iguais - ${deliveredParts ?? 0} entregue(s)`;
+        label.text = `${themeName}: ${totalParts} pedaços iguais - ${deliveredParts ?? 0} entregue(s)`;
       }
 
       // MJ2 - anima só se o perfil sensorial permitir (motionEnabled); caso

@@ -28,17 +28,17 @@ const studentUser = {
 };
 
 const scenarios = {
-  threeDPrint: { id: 's-3d-print', label: 'Preciso imprimir um protótipo físico de uma peça', icon: '🏭' },
-  projectMgmt: { id: 's-project-mgmt', label: 'Preciso organizar as tarefas de um projeto com o time', icon: '🗂️' },
-  tractor: { id: 's-tractor', label: 'Preciso lavrar um grande terreno agrícola', icon: '🌾' },
-  mindMap: { id: 's-mindmap', label: 'Preciso estruturar visualmente as ideias de um brainstorm', icon: '💡' },
+  threeDPrint: { id: 's-3d-print', label: 'Preciso imprimir um protótipo físico de uma peça', icon: '' },
+  projectMgmt: { id: 's-project-mgmt', label: 'Preciso organizar as tarefas de um projeto com o time', icon: '' },
+  tractor: { id: 's-tractor', label: 'Preciso lavrar um grande terreno agrícola', icon: '' },
+  mindMap: { id: 's-mindmap', label: 'Preciso estruturar visualmente as ideias de um brainstorm', icon: '' },
 };
 
 const tools = {
-  threeDPrinter: { id: 't-3d-printer', label: 'Impressora 3D', icon: '🖨️' },
-  projectTool: { id: 't-project-tool', label: 'Ferramenta de gestão de projetos', icon: '📋' },
-  tractor: { id: 't-tractor', label: 'Trator', icon: '🚜' },
-  mindMapTool: { id: 't-mindmap-tool', label: 'Mapa mental digital', icon: '🧠' },
+  threeDPrinter: { id: 't-3d-printer', label: 'Impressora 3D', icon: '' },
+  projectTool: { id: 't-project-tool', label: 'Ferramenta de gestão de projetos', icon: '' },
+  tractor: { id: 't-tractor', label: 'Trator', icon: '' },
+  mindMapTool: { id: 't-mindmap-tool', label: 'Mapa mental digital', icon: '' },
 };
 
 const statements = [
@@ -176,9 +176,9 @@ describe('WorkToolsGamePage - nível Modify', () => {
     ).toBeInTheDocument();
 
     // O par errado (mapa mental -> ferramenta de gestão de projetos) mostra
-    // feedback de retentativa (ícone 🔁), nunca "errado".
+    // feedback de retentativa (ícone de repetir), nunca "errado".
     const mindMapRow = screen.getByText(/estruturar visualmente as ideias/).closest('.work-tools-game-page__row')!;
-    expect(mindMapRow.textContent).toMatch(/🔁/);
+    expect(mindMapRow.querySelector('svg.lucide-repeat')).not.toBeNull();
     expect(mindMapRow.textContent?.toLowerCase()).not.toMatch(/errado/);
   });
 
@@ -192,7 +192,7 @@ describe('WorkToolsGamePage - nível Modify', () => {
     await userEvent.click(screen.getByText(/estruturar visualmente as ideias/));
     await userEvent.click(screen.getByText('Mapa mental digital'));
 
-    expect(mindMapRow.textContent).toMatch(/✅/);
+    expect(mindMapRow.querySelector('svg.lucide-check')).not.toBeNull();
 
     // Afirmações liberadas - a errada ("trator imprime documento" = true)
     // mostra retentativa.
@@ -224,7 +224,7 @@ describe('WorkToolsGamePage - nível Create', () => {
     await userEvent.click(screen.getByText('Impressora 3D'));
 
     const row = screen.getByText(/imprimir um protótipo físico/).closest('.work-tools-game-page__row')!;
-    expect(row.textContent).toMatch(/✅/);
+    expect(row.querySelector('svg.lucide-check')).not.toBeNull();
     expect(row.textContent).toMatch(/Impressora 3D/);
   });
 

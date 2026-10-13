@@ -1,3 +1,4 @@
+import { ArrowLeft, Ban, Check, Pencil, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ApiError, apiClient } from '../../lib/apiClient';
@@ -148,7 +149,7 @@ export function AdminSchoolClassrooms() {
 
   return (
     <main className="admin-schools staff-theme page">
-      <LinkButton to="/admin/schools" variant="ghost" icon="←">
+      <LinkButton to="/admin/schools" variant="secondary" icon={<ArrowLeft />}>
         Voltar para escolas
       </LinkButton>
       <h1>Turmas{school ? ` - ${school.name}` : ''}</h1>
@@ -165,7 +166,7 @@ export function AdminSchoolClassrooms() {
 
       <div className="admin-schools__toolbar">
         <Button
-          icon="➕"
+          icon={<Plus />}
           disabled={!school?.active}
           onClick={() => { setCreateError(null); setCreateForm(EMPTY_CLASSROOM_FORM); setCreateOpen(true); }}
         >
@@ -200,12 +201,12 @@ export function AdminSchoolClassrooms() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="secondary" icon="✏️" onClick={() => openEdit(classroom)}>
+                    <Button variant="secondary" icon={<Pencil />} onClick={() => openEdit(classroom)}>
                       Editar
                     </Button>
                     <Button
                       variant="ghost"
-                      icon={classroom.active ? '🚫' : '✅'}
+                      icon={classroom.active ? <Ban /> : <Check />}
                       disabled={pendingStatusId === classroom.id}
                       onClick={() => toggleStatus(classroom)}
                     >

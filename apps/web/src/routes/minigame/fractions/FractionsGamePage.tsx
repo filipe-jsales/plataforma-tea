@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight, ArrowUpDown, ClipboardList, Eye, Pencil, Play, Puzzle, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../lib/apiClient';
@@ -15,7 +16,6 @@ import { createFractionsRoundStore } from '../../../stores/fractionsRoundStore';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { Button, InlineFeedback, LinkButton, Text, TextField } from '../../../components/ui';
 import './FractionsGamePage.css';
-import { Eye, Play, Search } from 'lucide-react';
 
 const CONCEPT_ID = 'fractions_equal_parts';
 const STAGE_SEQUENCE: MiniGameStage[] = ['use', 'modify', 'create'];
@@ -30,17 +30,17 @@ function briefingSteps(stage: MiniGameStage): MiniGameBriefingStep[] {
   }
   if (stage === 'modify') {
     return [
-      { icon: '👀', label: 'Observe a sequência de cartões' },
-      { icon: '✏️', label: 'Corrija o cartão que não bate com o pedido' },
-      { icon: '▶️', label: 'Aperte Executar' },
-      { icon: '🔍', label: 'Veja o resultado comparado ao pedido' },
+      { icon: <Eye />, label: 'Observe a sequência de cartões' },
+      { icon: <Pencil />, label: 'Corrija o cartão que não bate com o pedido' },
+      { icon: <Play />, label: 'Aperte Executar' },
+      { icon: <Search />, label: 'Veja o resultado comparado ao pedido' },
     ];
   }
   return [
-    { icon: '🧩', label: 'Escolha os cartões da paleta' },
-    { icon: '↕️', label: 'Ordene a sequência com os botões subir/descer' },
-    { icon: '▶️', label: 'Aperte Executar' },
-    { icon: '🔍', label: 'Veja o resultado comparado ao pedido' },
+    { icon: <Puzzle />, label: 'Escolha os cartões da paleta' },
+    { icon: <ArrowUpDown />, label: 'Ordene a sequência com os botões subir/descer' },
+    { icon: <Play />, label: 'Aperte Executar' },
+    { icon: <Search />, label: 'Veja o resultado comparado ao pedido' },
   ];
 }
 
@@ -127,7 +127,7 @@ export function FractionsGamePage() {
   if (levelsError) {
     return (
       <main className="fractions-game-page">
-        <LinkButton to="/subjects" variant="ghost" icon="←">
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
         <InlineFeedback kind="retry">{levelsError}</InlineFeedback>
@@ -146,7 +146,7 @@ export function FractionsGamePage() {
   if (!level || !scene || !target) {
     return (
       <main className="fractions-game-page">
-        <LinkButton to="/subjects" variant="ghost" icon="←">
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>
         <p>Este nível ainda não está disponível.</p>
@@ -209,7 +209,7 @@ export function FractionsGamePage() {
 
   return (
     <main className="fractions-game-page">
-      <LinkButton to="/subjects" variant="ghost" icon="←">
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
 
@@ -227,7 +227,7 @@ export function FractionsGamePage() {
             <Text size="lg">{level.prompt}</Text>
             <Button
               variant="ghost"
-              icon="📋"
+              icon={<ClipboardList />}
               onClick={() => {
                 setReopenedBriefing(true);
                 setShowBriefing(true);
@@ -274,7 +274,7 @@ export function FractionsGamePage() {
               {result && (
                 <InlineFeedback kind={result.matched ? 'success' : 'retry'}>
                   {result.matched
-                    ? `${result.totalParts} pedaços iguais, ${result.deliveredParts} entregue(s) ✓`
+                    ? `${result.totalParts} pedaços iguais, ${result.deliveredParts} entregue(s)`
                     : `${result.totalParts ?? '-'} pedaços, ${result.deliveredParts ?? '-'} entregue(s) - o pedido pedia ${target.numerator}/${target.denominator}. Quer ajustar a sequência?`}
                 </InlineFeedback>
               )}
@@ -285,7 +285,7 @@ export function FractionsGamePage() {
                     Novo pedido
                   </Button>
                   {nextStage && (
-                    <LinkButton to={`/minigame/fractions/${nextStage}`} icon="➡️">
+                    <LinkButton to={`/minigame/fractions/${nextStage}`} icon={<ArrowRight />}>
                       Próximo nível
                     </LinkButton>
                   )}

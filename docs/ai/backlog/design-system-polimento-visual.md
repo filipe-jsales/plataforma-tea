@@ -87,6 +87,9 @@ Nenhum evento novo — troca puramente de camada de apresentação.
 
 ## DS2 — Guia vivo do design system (tokens e componentes navegáveis)
 
+**Status: ✅ Implementado** — Artifact publicado (ver `frontend.md`) + rota de dev
+`/dev/design-system` (sem Storybook; zero dependência nova).
+
 ### Descrição
 
 O design system da plataforma (tokens de `sensory-theme.css`/
@@ -155,6 +158,10 @@ Não aplicável — ferramenta de desenvolvimento, não emite eventos RD-*.
 
 ## DS3 — Tokenizar cor de texto sobre fundo saturado (`--color-text-on-dark`)
 
+**Status: ✅ Implementado** (2026-10) — token em `sensory-theme.css` (`#ffffff` no
+tema base, `#000000` em alto contraste, onde `--color-primary`/`--color-success`
+ficam claros); os 5 arquivos CSS leem o token.
+
 ### Descrição
 
 `color: #fff` está hardcoded (sem token) em 5 arquivos CSS —
@@ -207,6 +214,9 @@ Nenhum evento novo — mudança de CSS/token.
 
 ## DS4 — Ativar `Tabs`/`Tooltip` do sistema de design no primeiro uso real (ou remover se seguirem sem uso)
 
+**Status: ✅ Decidido (b)** (2026-10) — mantidos como infraestrutura pronta, sem
+uso forçado; decisão registrada em `frontend.md` ("Próximos passos").
+
 ### Descrição
 
 `components/ui/Tabs` e `components/ui/Tooltip` (Radix, parte de 3.10)
@@ -252,6 +262,10 @@ caso, seguir o padrão de logging já existente na tela escolhida.
 ---
 
 ## DS5–DS9 — Troca de emoji por `lucide-react` + alinhamento ícone/texto
+
+**Status: ✅ Concluído** (2026-10) — sem wrapper `Icon` (import direto de
+`lucide-react`); emoji também removido do backend/banco; ícones de conteúdo
+via `lib/contentIcons.tsx`. Os 2 canvases Pixi deixaram de usar emoji (texto).
 
 ### Contexto e decisão (reabre nota de 3.11)
 
@@ -405,6 +419,8 @@ Nenhum evento novo em nenhum dos 5 cards — troca de glifo visual.
 
 ## DS10 — Corrigir sublinhado herdado em todo `LinkButton` (bug, não cosmético por design)
 
+**Status: ✅ Implementado.**
+
 ### Descrição
 
 Auditoria visual (screenshots reais das telas de aluno/professor/admin,
@@ -465,6 +481,9 @@ Nenhum evento novo — mudança de CSS.
 ---
 
 ## DS11 — "Sair"/"Configurações"/"Voltar" sem fundo: trocar `ghost` → `secondary`
+
+**Status: ✅ Implementado** (2026-10) — todos os `LinkButton` "Voltar" agora `secondary`;
+"Sair"/"Configurações" já estavam na sidebar como `secondary`.
 
 ### Descrição
 

@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { Button, Select } from '../ui';
 import { CARD_ICON, CARD_LABEL, cardDisplayLabel } from './cardLabels';
 import type { FractionsFactoryCard } from '../../lib/fractionsFactory';
@@ -96,7 +97,7 @@ export function CardSequenceEditor({ cards, onChange, readOnly }: CardSequenceEd
             <span className="card-sequence-editor__controls">
               <Button
                 variant="ghost"
-                icon="↑"
+                icon={<ArrowUp />}
                 aria-label={`Mover "${CARD_LABEL[card.type]}" para cima`}
                 onClick={() => moveUp(index)}
                 disabled={index === 0}
@@ -105,7 +106,7 @@ export function CardSequenceEditor({ cards, onChange, readOnly }: CardSequenceEd
               </Button>
               <Button
                 variant="ghost"
-                icon="↓"
+                icon={<ArrowDown />}
                 aria-label={`Mover "${CARD_LABEL[card.type]}" para baixo`}
                 onClick={() => moveDown(index)}
                 disabled={index === cards.length - 1}
@@ -114,7 +115,7 @@ export function CardSequenceEditor({ cards, onChange, readOnly }: CardSequenceEd
               </Button>
               <Button
                 variant="ghost"
-                icon="🗑️"
+                icon={<Trash2 />}
                 aria-label={`Remover "${CARD_LABEL[card.type]}"`}
                 onClick={() => remove(index)}
               >

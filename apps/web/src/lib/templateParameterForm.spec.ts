@@ -8,11 +8,11 @@ import {
 } from './templateParameterForm';
 
 const schema: TemplateParameterDefinition[] = [
-  { key: 'sides', label: 'Lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+  { key: 'sides', label: 'Lados', icon: '', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
   {
     key: 'enabledBlockTypes',
     label: 'Blocos',
-    icon: '🧩',
+    icon: '',
     type: 'blockSelection',
     defaultValue: ['move_forward', 'turn'],
     visualPreview: 'none',

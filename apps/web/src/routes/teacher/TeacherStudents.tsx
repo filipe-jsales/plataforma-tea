@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRightLeft, KeyRound } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { ApiError, apiClient } from "../../lib/apiClient";
 import { getIllustrationAsset } from "../../lib/illustrationAssets";
@@ -18,7 +19,6 @@ import {
   TableRow,
 } from "../../components/ui";
 import "./TeacherStudents.css";
-import { ArrowRightLeft, KeyRound } from "lucide-react";
 
 interface TeacherClassroomOption {
   id: string;
@@ -145,7 +145,7 @@ export function TeacherStudents() {
 
   return (
     <main className="teacher-students staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Meus alunos</h1>

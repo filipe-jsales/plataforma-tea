@@ -76,6 +76,7 @@ export interface TeacherChallengeSummary {
   title: string;
   templateName: string;
   templateIcon: string;
+  templateKey?: string;
   createdAt: string;
 }
 

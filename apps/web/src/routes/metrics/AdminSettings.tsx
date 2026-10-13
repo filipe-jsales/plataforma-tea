@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/apiClient';
 import { Button, LinkButton } from '../../components/ui';
@@ -51,7 +52,7 @@ export function AdminSettings() {
 
   return (
     <main className="admin-settings staff-theme page page--narrow">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Configurações</h1>

@@ -223,6 +223,13 @@ npm run build:api
 | `npm run dev:web` | Roda o frontend em modo dev |
 | `npm run build:api` / `npm run build:web` | Builds de produção |
 
+## Guia do design system (dev)
+
+Com o frontend rodando (`npm run dev:web`), abra `/dev/design-system`: tokens com
+valores atuais, componentes de `components/ui/` e toggles ao vivo do perfil
+sensorial. Só existe em modo dev. Ícones: sempre `lucide-react`, nunca emoji
+(há testes que falham se emoji voltar ao código).
+
 ## Contas demo
 
 Semeadas automaticamente pela migration `AddLoginMechanisms` (passo 2, `npm

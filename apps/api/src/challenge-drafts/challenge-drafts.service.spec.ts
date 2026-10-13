@@ -51,7 +51,7 @@ describe('ChallengeDraftsService', () => {
         studentId: 'student-1',
         challengeId: 'challenge-1',
         workspaceJson: { type: 'old' },
-      } as StudentChallengeDraft;
+      } as unknown as StudentChallengeDraft;
       repository.findOne.mockResolvedValue(existing);
       repository.save.mockImplementation(async (d) => d as StudentChallengeDraft);
 
