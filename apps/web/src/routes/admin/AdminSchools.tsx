@@ -1,3 +1,4 @@
+import { ArrowLeft, Ban, Check, Pencil, Plus, School } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ApiError, apiClient } from '../../lib/apiClient';
 import type { AdminSchoolProfile } from '../../lib/adminSchoolTypes';
@@ -17,7 +18,6 @@ import {
   TextField,
 } from '../../components/ui';
 import './AdminSchools.css';
-import { Ban, Check, Pencil, Plus, School,} from 'lucide-react';
 
 interface SchoolForm {
   name: string;
@@ -117,7 +117,7 @@ export function AdminSchools() {
 
   return (
     <main className="admin-schools staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Escolas</h1>

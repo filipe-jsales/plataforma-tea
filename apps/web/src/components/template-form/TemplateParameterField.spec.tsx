@@ -7,7 +7,7 @@ import { TemplateParameterField } from './TemplateParameterField';
 const sidesDefinition: TemplateParameterDefinition = {
   key: 'sides',
   label: 'Número de lados',
-  icon: '🔺',
+  icon: '',
   type: 'integer',
   min: 3,
   max: 12,
@@ -19,7 +19,7 @@ const sidesDefinition: TemplateParameterDefinition = {
 const toleranceDefinition: TemplateParameterDefinition = {
   key: 'snapTolerancePercent',
   label: 'Tolerância de encaixe',
-  icon: '🧲',
+  icon: '',
   type: 'percentage',
   min: 10,
   max: 100,
@@ -30,7 +30,7 @@ const toleranceDefinition: TemplateParameterDefinition = {
 const blockSizeDefinition: TemplateParameterDefinition = {
   key: 'blockSize',
   label: 'Tamanho dos blocos',
-  icon: '🔍',
+  icon: '',
   type: 'select',
   defaultValue: 'medium',
   visualPreview: 'none',
@@ -44,7 +44,7 @@ const blockSizeDefinition: TemplateParameterDefinition = {
 const blocksDefinition: TemplateParameterDefinition = {
   key: 'enabledBlockTypes',
   label: 'Blocos disponíveis',
-  icon: '🧩',
+  icon: '',
   type: 'blockSelection',
   defaultValue: ['move_forward'],
   visualPreview: 'none',
@@ -77,7 +77,7 @@ describe('TemplateParameterField', () => {
   it('AC2 - always shows icon and text together for the label, never icon-only', () => {
     render(<TemplateParameterField definition={sidesDefinition} value={4} onChange={vi.fn()} />);
 
-    expect(screen.getByText('🔺')).toBeInTheDocument();
+    expect(document.querySelector('.template-parameter-field__icon svg')).not.toBeNull();
     expect(screen.getByText('Número de lados')).toBeInTheDocument();
   });
 

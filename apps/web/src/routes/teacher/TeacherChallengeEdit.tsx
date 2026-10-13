@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '../../lib/apiClient';
@@ -5,6 +6,7 @@ import type { ChallengeTemplateDetail, TeacherChallengeDetail } from '../../lib/
 import { LinkButton } from '../../components/ui';
 import { TemplateChallengeForm } from '../../components/template-form/TemplateChallengeForm';
 import './TeacherChallengeNew.css';
+import { contentIcon } from '../../lib/contentIcons';
 
 // 4.2 (AC5) - edição: abre no MESMO formulário guiado da criação, com os
 // valores pré-preenchidos (`challenge.params`) - nunca um editor bruto de
@@ -45,7 +47,7 @@ export function TeacherChallengeEdit() {
 
   return (
     <main className="teacher-challenge-new staff-theme page page--narrow">
-      <LinkButton to="/teacher/challenges" variant="ghost" icon="←">
+      <LinkButton to="/teacher/challenges" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Editar desafio</h1>
@@ -56,7 +58,7 @@ export function TeacherChallengeEdit() {
       {challenge && templateDetail && (
         <>
           <h2>
-            <span aria-hidden="true">{templateDetail.icon}</span> {templateDetail.name}
+            <span aria-hidden="true">{contentIcon(templateDetail.key)}</span> {templateDetail.name}
           </h2>
           <TemplateChallengeForm
             template={templateDetail}

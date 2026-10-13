@@ -1,8 +1,8 @@
+import { ArrowDownToLine, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient, ApiError } from '../../lib/apiClient';
 import { Button, InlineFeedback, LinkButton, Select } from '../../components/ui';
 import './AdminExport.css';
-import { ArrowDownToLine } from 'lucide-react';
 
 interface SchoolOption {
   id: string;
@@ -140,7 +140,7 @@ export function AdminExport() {
 
   return (
     <main className="admin-export staff-theme page page--narrow">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Exportar dados brutos</h1>

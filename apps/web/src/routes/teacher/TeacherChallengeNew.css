@@ -1,5 +1,6 @@
 .teacher-challenge-new__subtitle {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   max-width: 40rem;
 }
 

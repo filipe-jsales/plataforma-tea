@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { InlineFeedback, type FeedbackKind } from './InlineFeedback';
 import './Toast.css';
+import { X } from 'lucide-react';
 
 export interface ToastProps {
   kind: FeedbackKind;
@@ -30,7 +31,7 @@ export function Toast({ kind, children, onDismiss, autoDismissMs = 8000 }: Toast
     <div className="ui-toast" role="alert">
       <InlineFeedback kind={kind}>{children}</InlineFeedback>
       <button type="button" className="ui-toast__dismiss" onClick={onDismiss} aria-label="Fechar aviso">
-        ✕
+        <X />
       </button>
     </div>
   );

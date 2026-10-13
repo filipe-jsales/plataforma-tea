@@ -1,3 +1,4 @@
+import { BookOpenCheck, Gamepad2, Laptop, Puzzle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../lib/apiClient';
@@ -9,7 +10,6 @@ import { MINI_GAMES_CATALOG } from '../lib/miniGamesCatalog';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
 import './SubjectSelector.css';
-import { BookOpenCheck, Gamepad2, Laptop } from 'lucide-react';
 
 interface TopicOption {
   topicId: string;
@@ -85,7 +85,7 @@ export function SubjectSelector() {
 
   return (
     <main className="subject-selector">
-      <h1>Onde você quer entrar?</h1>
+      <h1 style={{ textAlign: "center" }}>Onde você quer entrar?</h1>
 
       {/* CC1 - duas seções fixas (nunca uma 3ª), agrupadas pelo assunto
           ensinado (Informática Educacional × Educação em Computação) -
@@ -101,7 +101,7 @@ export function SubjectSelector() {
 
         return (
           <section key={category} className="subject-selector__category">
-            <h2>
+            <h2 className="subject-selector__category-title">
               <span aria-hidden="true">{CATEGORY_ICON[category]}</span>{' '}
               {CONTENT_CATEGORY_STUDENT_LABEL[category]}
             </h2>
@@ -135,10 +135,11 @@ export function SubjectSelector() {
           </section>
         );
       })}
-
-      <Button variant="success" onClick={handleConfirm} disabled={!selected}>
+      <div className="confirm-actions">
+      <Button className="flex justify-center" variant="success" onClick={handleConfirm} disabled={!selected}>
         Confirmar
       </Button>
+      </div>
 
       {classroomChallenges && classroomChallenges.length > 0 && (
         <section className="subject-selector__classroom-challenges">
@@ -146,7 +147,7 @@ export function SubjectSelector() {
           <ul className="subject-selector__list">
             {classroomChallenges.map((challenge) => (
               <li key={challenge.id} className="subject-selector__classroom-challenge">
-                <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon="🧩">
+                <LinkButton to={`/challenge/${challenge.id}`} variant="secondary" icon={<Puzzle />}>
                   {challenge.title}
                 </LinkButton>
                 {/* E1 - marcador discreto, nunca contagem/urgência (AC1/AC4):

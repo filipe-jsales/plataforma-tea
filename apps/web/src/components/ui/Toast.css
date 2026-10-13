@@ -22,8 +22,8 @@
 
 .ui-toast__dismiss {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: var(--hit-area-min);
+  height: var(--hit-area-min);
   display: flex;
   align-items: center;
   justify-content: center;

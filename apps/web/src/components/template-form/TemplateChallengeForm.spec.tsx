@@ -242,3 +242,61 @@ describe('TemplateChallengeForm', () => {
     expect(screen.queryByTestId('pixi-turtle-world-stub')).not.toBeInTheDocument();
   });
 });
+
+describe('TemplateChallengeForm - fase da atividade (F13)', () => {
+  const stageTemplate: ChallengeTemplateDetail = {
+    ...template,
+    parameterSchema: [
+      {
+        key: 'stage',
+        label: 'Tipo de atividade',
+        icon: '',
+        type: 'select',
+        defaultValue: 'create',
+        visualPreview: 'none',
+        options: [
+          { value: 'create', label: 'Montar do zero' },
+          { value: 'modify', label: 'Mudar um programa pronto' },
+        ],
+      },
+      ...template.parameterSchema.map((param) =>
+        param.key === 'enabledBlockTypes' || param.key === 'snapTolerancePercent'
+          ? { ...param, visibleWhen: { key: 'stage', equals: 'create' } }
+          : param,
+      ),
+    ],
+  };
+
+  it('asks for the block palette and snap tolerance when building from scratch (the default)', () => {
+    render(<TemplateChallengeForm template={stageTemplate} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    expect(screen.getByText('Blocos disponíveis')).toBeInTheDocument();
+    expect(screen.getByText('Tolerância de encaixe')).toBeInTheDocument();
+  });
+
+  it('hides the palette and snap tolerance once "Mudar um programa pronto" is chosen, keeping sides and angle', async () => {
+    render(<TemplateChallengeForm template={stageTemplate} submitLabel="Salvar desafio" onSubmit={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Mudar um programa pronto' }));
+
+    expect(screen.queryByText('Blocos disponíveis')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tolerância de encaixe')).not.toBeInTheDocument();
+    expect(screen.getByText('Número de lados')).toBeInTheDocument();
+    expect(screen.getByText('Ângulo de giro')).toBeInTheDocument();
+  });
+
+  it('submits stage "modify" in the params so the backend builds the ready-made program', async () => {
+    mockedPost.mockResolvedValueOnce({ valid: true, errors: [], goal: { shape: 'regular_polygon', sides: 4, turnAngleDeg: 90 } });
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<TemplateChallengeForm template={stageTemplate} submitLabel="Salvar desafio" onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByPlaceholderText(/triângulos/i), 'Mude os números');
+    await userEvent.click(screen.getByRole('radio', { name: 'Mudar um programa pronto' }));
+
+    await userEvent.click(screen.getByRole('button', { name: /salvar desafio/i }));
+
+    await screen.findByRole('button', { name: /salvar desafio/i });
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ stage: 'modify' }) }),
+    );
+  });
+});

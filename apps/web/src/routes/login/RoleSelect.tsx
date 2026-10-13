@@ -1,22 +1,24 @@
 import { useNavigate } from 'react-router-dom';
 import './RoleSelect.css';
 import { Backpack, GraduationCap, UserShield } from 'lucide-react';
+import { Button } from '../../components/ui';
+import { useLoginScreenViewed } from '../../lib/useLoginScreenViewed';
 
 // 1.2.1 - tela inicial "Quem é você?". Três botões grandes, ícone+texto,
 // nenhum papel pré-selecionado, sem geolocalização/IP tentando adivinhar.
 export function RoleSelect() {
+  useLoginScreenViewed('role_select');
   const navigate = useNavigate();
 
   return (
     <main className="role-select">
-      <h1>
-        <img src="/logo-tea.jpg" alt="Plataforma TEA" className="role-select__logo" />
-      </h1>
-      <p>Quem é você?</p>
+      <img src="/logo-tea.jpg" alt="Plataforma TEA" className="role-select__logo" />
+      <h1>Quem é você?</h1>
 
       <div className="role-select__options">
-        <button
+        <Button
           type="button"
+          variant = 'secondary'
           className="role-select__option"
           onClick={() => navigate('/login/student')}
         >
@@ -24,9 +26,10 @@ export function RoleSelect() {
             <Backpack />
           </span>
           Aluno(a)
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant = 'secondary'
           className="role-select__option"
           onClick={() => navigate('/login/teacher')}
         >
@@ -34,9 +37,10 @@ export function RoleSelect() {
             <GraduationCap />
           </span>
           Professor(a)
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant = 'secondary'
           className="role-select__option"
           onClick={() => navigate('/login/admin')}
         >
@@ -44,7 +48,7 @@ export function RoleSelect() {
             <UserShield />
           </span>
           Administrador(a)
-        </button>
+        </Button>
       </div>
     </main>
   );

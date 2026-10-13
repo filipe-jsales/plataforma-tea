@@ -297,7 +297,7 @@ describe('StudentAccountsService', () => {
       });
       usersService.activateStudentCredential.mockImplementation(async () => {
         callOrder.push('activateStudentCredential');
-        return { ...pendingStudent, active: true };
+        return { ...pendingStudent, active: true } as User;
       });
 
       await service.registerGuardianConsent(
@@ -348,7 +348,7 @@ describe('StudentAccountsService', () => {
       usersService.findById.mockResolvedValue({
         ...pendingStudent,
         active: true,
-      });
+      } as User);
 
       await expect(service.activateCredential('student-1')).rejects.toBeInstanceOf(
         ConflictException,
@@ -379,7 +379,7 @@ describe('StudentAccountsService', () => {
   });
 
   describe('resetCredential (1.3)', () => {
-    const activeStudent = { ...pendingStudent, active: true };
+    const activeStudent = { ...pendingStudent, active: true } as User;
 
     beforeEach(() => {
       usersService.findById.mockResolvedValue(activeStudent);

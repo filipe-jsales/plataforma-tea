@@ -1,3 +1,4 @@
+import { ArrowLeft, ArrowRight, ClipboardList } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MiniGameBriefing } from '../../components/minigame/MiniGameBriefing';
@@ -43,7 +44,7 @@ export function MiniGamePage() {
 
   return (
     <main className="mini-game-page">
-      <LinkButton to="/subjects" variant="ghost" icon="←">
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Mini jogo</h1>
@@ -51,7 +52,7 @@ export function MiniGamePage() {
         <MiniGameBriefing
           title="Mini jogo"
           objective="Toque no botão até concluir todas as etapas."
-          steps={[{ icon: '➡️', label: 'Toque no botão para avançar' }]}
+          steps={[{ icon: <ArrowRight />, label: 'Toque no botão para avançar' }]}
           reopened={reopenedBriefing}
           onStart={() => setShowBriefing(false)}
         />
@@ -59,7 +60,7 @@ export function MiniGamePage() {
         <>
           <Button
             variant="ghost"
-            icon="📋"
+            icon={<ClipboardList />}
             onClick={() => {
               setReopenedBriefing(true);
               setShowBriefing(true);

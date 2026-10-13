@@ -5,16 +5,18 @@
   font-size: var(--font-size-small);
   font-weight: 700;
   line-height: 1.4;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .ui-badge--success {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text-on-dark);
 }
 
 .ui-badge--warning {
   background: var(--color-warning);
-  color: #fff;
+  color: var(--color-text-on-dark);
 }
 
 .ui-badge--neutral {

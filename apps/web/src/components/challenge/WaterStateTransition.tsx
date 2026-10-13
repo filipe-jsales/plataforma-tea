@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { WaterState } from '../../lib/waterProgram';
 import { useSensoryProfileStore } from '../../stores/useSensoryProfileStore';
 import './WaterStateTransition.css';
+import { Cloud, Droplet, Snowflake } from 'lucide-react';
 
 export interface WaterStateTransitionProps {
   state: WaterState;
@@ -12,10 +13,10 @@ export interface WaterStateTransitionProps {
   temperatureC?: number;
 }
 
-const STATE_ICON: Record<WaterState, string> = {
-  SOLID: '❄️',
-  LIQUID: '💧',
-  GAS: '☁️',
+const STATE_ICON: Record<WaterState, ReactNode> = {
+  SOLID: <Snowflake />,
+  LIQUID: <Droplet />,
+  GAS: <Cloud />,
 };
 
 const STATE_LABEL: Record<WaterState, string> = {

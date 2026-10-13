@@ -1,3 +1,4 @@
+import { ArrowLeft, School } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/apiClient';
 import {
@@ -11,7 +12,6 @@ import {
   TableRow,
 } from '../../components/ui';
 import './AdminMetrics.css';
-import { School } from 'lucide-react';
 
 interface SchoolOverview {
   id: string;
@@ -58,7 +58,7 @@ export function AdminMetrics() {
 
   return (
     <main className="admin-metrics staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Painel institucional</h1>

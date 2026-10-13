@@ -24,14 +24,14 @@ const templateSummary = {
   key: 'regular_polygon',
   name: 'Desenhar um polígono regular',
   description: 'O aluno monta um desenho com o número de lados escolhido por você.',
-  icon: '🔷',
+  icon: '',
   category: 'informatica_educacional' as const,
 };
 
 const templateDetail = {
   ...templateSummary,
   parameterSchema: [
-    { key: 'sides', label: 'Número de lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+    { key: 'sides', label: 'Número de lados', icon: '', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
   ],
   primmQuestionSuggestion: {
     predictQuestion: 'Quantos lados você acha que essa figura vai ter?',

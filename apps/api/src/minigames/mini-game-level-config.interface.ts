@@ -93,10 +93,9 @@ export function isFractionsFactoryLevelConfig(value: unknown): value is Fraction
 export interface WorkToolsScenario {
   id: string;
   label: string;
-  // Emoji — mesmo "sistema de ícone" do resto da plataforma. Deliberadamente
-  // DIFERENTE do ícone da ferramenta correta (nunca emojis idênticos entre
-  // um cenário e seu par certo): a tarefa é ler e raciocinar sobre o
-  // contexto, não "achar o emoji igual".
+  // Sem emoji (o design system não os usa mais) — string vazia por padrão.
+  // A tarefa é ler e raciocinar sobre o contexto do cenário, não casar
+  // ícones iguais.
   icon: string;
 }
 

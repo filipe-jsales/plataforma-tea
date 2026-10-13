@@ -35,7 +35,7 @@ describe('SelectableCard', () => {
         Geometria
       </SelectableCard>,
     );
-    expect(screen.getByText('✓ Selecionado')).toBeInTheDocument();
+    expect(screen.getByText('Selecionado')).toBeInTheDocument();
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
   });
 

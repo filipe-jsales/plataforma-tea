@@ -250,7 +250,7 @@ describe('TeacherMetrics', () => {
         await screen.findByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
       ).toBeInTheDocument();
       expect(await screen.findByText('Ana')).toBeInTheDocument();
-      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      expect(screen.getByText('Observe o pedido pronto')).toBeInTheDocument();
       expect(screen.getByText('Concluído')).toBeInTheDocument();
     });
 
@@ -284,8 +284,8 @@ describe('TeacherMetrics', () => {
       expect(
         screen.queryByText(/Nenhum desafio de blocos deste assunto cadastrado ainda/),
       ).not.toBeInTheDocument();
-      expect(screen.getByText('🧩 Monte a fração')).toBeInTheDocument();
-      expect(screen.getByText('🎮 Observe o pedido pronto')).toBeInTheDocument();
+      expect(screen.getByText('Monte a fração')).toBeInTheDocument();
+      expect(screen.getByText('Observe o pedido pronto')).toBeInTheDocument();
       const row = (await screen.findByText('Ana')).closest('tr')!;
       expect(row).toHaveTextContent('Concluído');
       expect(row).toHaveTextContent('Em andamento');

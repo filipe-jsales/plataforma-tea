@@ -1,3 +1,4 @@
+import { ArrowLeft, Plus, Trash } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { apiClient, ApiError } from "../../lib/apiClient";
 import type {
@@ -14,7 +15,6 @@ import {
 } from "../../components/ui";
 import { CONTENT_CATEGORY_LABEL } from "../../lib/contentCategory";
 import "./TeacherMiniGameSettings.css";
-import { Plus, Trash } from "lucide-react";
 
 const CONCEPT_ID = "fractions_equal_parts";
 
@@ -138,7 +138,7 @@ export function TeacherMiniGameSettings() {
 
   return (
     <main className="teacher-minigame-settings staff-theme page page--narrow">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Fábrica de Pedaços Iguais</h1>

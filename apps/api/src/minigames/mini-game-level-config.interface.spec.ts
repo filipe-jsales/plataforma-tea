@@ -27,8 +27,8 @@ describe('isWorkToolsLevelConfig', () => {
   it('accepts optional fields (presetMatches/presetStatementAnswers/scenarioPool) when present', () => {
     expect(
       isWorkToolsLevelConfig({
-        scenarios: [{ id: 's1', label: 'Cenário', icon: '💡' }],
-        tools: [{ id: 't1', label: 'Ferramenta', icon: '🖨️' }],
+        scenarios: [{ id: 's1', label: 'Cenário', icon: '' }],
+        tools: [{ id: 't1', label: 'Ferramenta', icon: '' }],
         correctMatches: [{ scenarioId: 's1', toolId: 't1' }],
         statements: [{ id: 'st1', text: 'Afirmação', isTrue: true, explanation: 'Porque sim.' }],
         presetMatches: [{ scenarioId: 's1', toolId: 't1' }],

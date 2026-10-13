@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { logSensorySettingChangedPreLogin, type PreLoginSensorySetting } from '../lib/logEvent';
+import { useAuthStore } from './useAuthStore';
 
 // Perfil sensorial do aluno: estado global observável por qualquer componente
 // (editor de blocos, mundo PixiJS, feedback de desafio), lido antes de decidir
@@ -24,6 +26,16 @@ function applyToDocument(profile: SensoryProfile) {
   root.dataset.sound = profile.soundEnabled ? 'on' : 'off';
 }
 
+// `sensory_setting_changed_pre_login` (RD-I): só quando a mudança acontece
+// SEM sessão (antes do login). Com sessão, o perfil já é persistido pelo
+// PATCH /users/:id/sensory-profile e a hidratação de main.tsx (que também
+// passa por estes setters) nunca deve virar evento.
+function logIfPreLogin(setting: PreLoginSensorySetting, value: boolean) {
+  if (!useAuthStore.getState().token) {
+    logSensorySettingChangedPreLogin(setting, value);
+  }
+}
+
 export const useSensoryProfileStore = create<SensoryProfileState>((set, get) => ({
   motionEnabled: false,
   soundEnabled: false,
@@ -32,14 +44,17 @@ export const useSensoryProfileStore = create<SensoryProfileState>((set, get) => 
   setMotionEnabled: (value) => {
     set({ motionEnabled: value });
     applyToDocument(get());
+    logIfPreLogin('motion', value);
   },
   setSoundEnabled: (value) => {
     set({ soundEnabled: value });
     applyToDocument(get());
+    logIfPreLogin('sound', value);
   },
   setHighContrast: (value) => {
     set({ highContrast: value });
     applyToDocument(get());
+    logIfPreLogin('contrast', value);
   },
 }));
 

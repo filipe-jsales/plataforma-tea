@@ -121,7 +121,7 @@ describe('FractionsGamePage - nível Use', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Executar' }));
 
-    expect(await screen.findByText(/2 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+    expect(await screen.findByText(/2 pedaços iguais, 1 entregue\(s\)/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Novo pedido' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Próximo nível/ })).toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe('FractionsGamePage - nível Modify', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Executar' }));
 
-    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\)/)).toBeInTheDocument();
   });
 });
 
@@ -163,7 +163,7 @@ describe('FractionsGamePage - MJ3 (reabrir o roteiro sem perder o progresso)', (
     await userEvent.click(partsSelect);
     await userEvent.click(await screen.findByRole('option', { name: '4' }));
     await userEvent.click(screen.getByRole('button', { name: 'Executar' }));
-    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\)/)).toBeInTheDocument();
 
     // Reabre o roteiro (MJ3) e continua.
     await userEvent.click(screen.getByRole('button', { name: /Ver roteiro/ }));
@@ -172,7 +172,7 @@ describe('FractionsGamePage - MJ3 (reabrir o roteiro sem perder o progresso)', (
 
     // O resultado da rodada e a sequência corrigida (4, não o preset com 3)
     // continuam lá - nada foi resetado ao reabrir/fechar o roteiro.
-    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\) ✓/)).toBeInTheDocument();
+    expect(await screen.findByText(/4 pedaços iguais, 1 entregue\(s\)/)).toBeInTheDocument();
     expect(await screen.findByRole('combobox', { name: /Quantas partes/ })).toHaveTextContent('4');
   });
 });

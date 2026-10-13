@@ -1,0 +1,42 @@
+.ds-guide {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ds-guide section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-guide__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.ds-guide__tokens {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ds-guide__tokens th,
+.ds-guide__tokens td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ds-guide__swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border: 1px solid var(--color-border);
+}

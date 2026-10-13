@@ -23,9 +23,10 @@ export class InteractionEvent {
 
   // Nunca o id reversível do aluno — sempre o pseudônimo. `null` só nos
   // poucos eventos de AUTORIA do professor (ver `teacherUserId` abaixo) —
-  // um evento de aluno de verdade sempre tem os dois preenchidos
-  // exclusivamente entre si, nunca os dois juntos nem os dois nulos
-  // (responsabilidade de `EventsService.record`/`recordTeacherEvent`, não
+  // um evento de aluno de verdade sempre tem este preenchido e
+  // `teacherUserId` nulo, e vice-versa nos de autoria. Exceção: eventos
+  // PRÉ-LOGIN (`login_screen_viewed`, `sensory_setting_changed_pre_login`)
+  // têm os DOIS nulos - ainda não há identidade (responsabilidade de `EventsService.record`/`recordTeacherEvent`, não
   // de uma constraint de banco).
   @Column({ type: 'varchar', length: 64, nullable: true })
   studentPseudoId: string | null;

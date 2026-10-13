@@ -5,6 +5,7 @@ import { completeLogin } from "../../lib/authFlow";
 import { getIllustrationAsset } from "../../lib/illustrationAssets";
 import "./StudentLogin.css";
 import { Button } from "../../components/ui";
+import { useLoginScreenViewed } from '../../lib/useLoginScreenViewed';
 
 interface RosterEntry {
   userId: string;
@@ -26,6 +27,7 @@ type Step = "code" | "avatar" | "sequence";
 // + cognitiva). Mensagens de erro sempre descritivas e reversíveis, nunca
 // "senha incorreta" cru - regra não-negociável 4.
 export function StudentLogin() {
+  useLoginScreenViewed('student');
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("code");
   const [joinCode, setJoinCode] = useState("");
@@ -123,9 +125,9 @@ export function StudentLogin() {
             autoFocus
           />
           {error && <p className="student-login__error">{error}</p>}
-          <button type="submit" disabled={loading || !joinCode.trim()}>
+          <Button type="submit" className="ui-button--secondary" disabled={loading || !joinCode.trim()}>
             {loading ? "Procurando…" : "Entrar na turma"}
-          </button>
+          </Button>
         </form>
       )}
 

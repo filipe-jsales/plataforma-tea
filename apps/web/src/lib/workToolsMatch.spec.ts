@@ -14,8 +14,8 @@ const correctMatches: WorkToolsMatchPair[] = [
 ];
 
 const scenarios: WorkToolsScenario[] = [
-  { id: 's1', label: 'Cenário 1', icon: '🏭' },
-  { id: 's2', label: 'Cenário 2', icon: '🗂️' },
+  { id: 's1', label: 'Cenário 1', icon: '' },
+  { id: 's2', label: 'Cenário 2', icon: '' },
 ];
 
 const statements: WorkToolsStatement[] = [

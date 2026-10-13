@@ -1,5 +1,6 @@
 .admin-users__subtitle {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   max-width: 42rem;
 }
 
@@ -12,7 +13,8 @@
 }
 
 .admin-users__empty {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
 }
 
 .admin-users__pagination {
@@ -30,7 +32,8 @@
 }
 
 .admin-users__hint {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   font-size: var(--font-size-small);
 }
 
@@ -64,7 +67,8 @@
 }
 
 .admin-users__consent-details dt {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   font-weight: 600;
 }
 

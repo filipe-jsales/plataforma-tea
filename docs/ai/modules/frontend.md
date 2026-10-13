@@ -29,6 +29,7 @@ apps/web/src/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
 │   ├── useGuidedTourStore.ts        # 2026-09 — "já vi esse tutorial" por chave, persistida em localStorage
+│   ├── useReadingPrefsStore.ts      # F15/F16 — tamanho do texto + "ouvir o enunciado", só no aparelho (localStorage)
 │   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
 │   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer (+ getRaw, 6.6)
@@ -40,6 +41,9 @@ apps/web/src/
 │   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 │   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
 │   ├── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   ├── speech.ts                    # F16 — Web Speech API (pt-BR), sem dependência nova
+│   ├── helpLadder.ts                # F18 — degraus da Ajuda (texto derivado do `goal`)
+│   ├── sessionAgenda.ts             # F17 — etapas da sessão a partir de `agenda` da API
 │   ├── tourPositioning.ts           # 2026-09 — função pura: onde encaixar o card do GuidedTour
 │   ├── teacherChallengeFormTour.ts  # 2026-09 — passos do tutorial do formulário de desafio
 │   └── challengeAllocationTypes.ts  # 4.3 — mesma forma que a API de challenge-allocations devolve
@@ -73,7 +77,9 @@ apps/web/src/
 │   ├── survey/
 │   │   └── ChallengeCreationSurvey.tsx / .css   # 2026-09 — survey pós-criação de desafio, ver seção própria
 │   ├── challenge/
-│   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   │   ├── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   │   ├── SessionAgenda.tsx / .css # F17 — agenda visual das etapas do tópico (ícone + palavra, sem tempo)
+│   │   └── ReadAloudButton.tsx      # F16 — "Ouvir o enunciado", opt-in, nunca fala sozinho
 │   ├── template-form/               # 4.2 — formulário guiado do professor, ver seção própria
 │   │   ├── TemplateChallengeForm.tsx       # form completo — reusado por criar/editar/duplicar
 │   │   ├── TemplateParameterField.tsx      # 1 campo, dispatch só por type/visualPreview
@@ -202,6 +208,66 @@ rodando só uma vez (`sensoryOnboardingCompletedAt`).
 CSS puro) antes de decidir animar/tocar — nunca assumir que motion/som estão
 ligados.
 
+## Preferências de leitura (`useReadingPrefsStore`, F15/F16)
+
+Segundo store de preferências do aluno, **separado** de
+`useSensoryProfileStore` de propósito: o perfil sensorial é por aluno e vive
+no backend; estas duas são conveniência de leitura de quem está naquele
+computador, então ficam **só no aparelho** (`persist`, chave
+`plataforma-tea-reading-prefs`, sem coluna nova nem endpoint). Valor salvo
+desconhecido ou corrompido cai no padrão neutro (`merge` valida). Os dois
+nascem no mais neutro (regra não-negociável 1).
+
+| Preferência | Padrão | Efeito |
+|---|---|---|
+| `fontScale` (`normal` / `large` / `xlarge`) | `normal` | escreve `data-font-scale` no `<html>`; `sensory-theme.css` sobe o `font-size` do documento para 125% / 150% e o `line-height` do corpo. Como toda a escala tipográfica é em `rem`, títulos, corpo e espaçamento proporcional acompanham sem mexer em componente. Alvos de toque seguem em px (`--hit-area-min`) e não encolhem |
+| `readAloudEnabled` | `false` | só habilita o botão "Ouvir o enunciado" nos desafios. **Nunca fala sozinho** |
+
+**Onde o aluno escolhe:** `StudentSensorySettings` (`/settings/sensory`),
+numa seção abaixo dos toggles de som/animação: um `SegmentedControl`
+("Normal / Grande / Muito grande") e um `ToggleSwitch` ("Quer ouvir o
+enunciado?"). Diferente dos dois toggles de cima, estes valem **na hora**,
+sem "Salvar" (o aluno vê o texto mudar enquanto escolhe) e a tela diz que
+"valem só neste computador". O toggle de voz só aparece se o navegador sabe
+falar (`isSpeechSupported()`), para nunca oferecer algo que não funciona.
+
+### Ouvir o enunciado (F16)
+
+- `lib/speech.ts`: Web Speech API do navegador (`speechSynthesis`), **zero
+  dependência nova** e nenhum áudio sai do aparelho. `pt-BR`, `rate` 0.9
+  (ritmo previsível). `speak()` sempre cancela a fala anterior (nunca duas
+  vozes ao mesmo tempo) e chama `onEnd` também em erro, para a tela nunca
+  ficar presa em "falando". Navegador sem suporte vira "não mostrar o botão".
+- `components/challenge/ReadAloudButton.tsx`: usado em `ChallengePage` e
+  `WaterStateChallengePage`, logo abaixo do enunciado. Só renderiza se
+  `readAloudEnabled` **e** o navegador suporta. Clicar fala; clicar de novo
+  ("Parar de ouvir") para. A voz para ao trocar de desafio e ao sair da tela.
+- É um som, mas é acionado pelo aluno a cada vez e vive em um opt-in próprio;
+  por isso **não depende** de `soundEnabled` (que governa sons ambientes e de
+  feedback), decisão registrada aqui para não ser "corrigida" por engano.
+- Evento: `challenge.read_aloud_used` (RD-I, `challengeId`), a cada vez que o
+  aluno manda ler (não ao parar).
+
+## Agenda visual da sessão (F17)
+
+`components/challenge/SessionAgenda.tsx` + `lib/sessionAgenda.ts`. Mostra, no
+topo do desafio, as etapas do tópico e onde o aluno está: "Ver como funciona
+(feita)", "Mudar os números (agora)", "Montar sozinho (depois)". Ideia do
+TEACCH (RQ2, 39,13%): previsibilidade de "o que vem depois" para que nenhuma
+troca de tela seja surpresa.
+
+- Dado vem do backend (`agenda: { stages, currentIndex } | null` em
+  `GET /challenges/*`, ver `backend.md`); o frontend não monta sequência por
+  conta própria.
+- **Regra 5:** só estágio e posição. Nunca tempo estimado, contagem
+  regressiva nem pontuação. Estática: não anima e não lê o perfil sensorial.
+- **RQ4:** estado sempre em ícone (`Check` / `CircleDot` / `Circle`) **e**
+  palavra "(feita)" / "(agora)" / "(depois)", mais `aria-current="step"` e
+  borda mais grossa na etapa atual. Nunca só cor.
+- **Regra 3:** rótulos em linguagem de aluno, nunca "Use / Modify / Create".
+- Não renderiza nada quando `agenda` é `null` (desafio de professor fora da
+  sequência oficial) ou quando há uma etapa só.
+
 ## Sistema de componentes acessíveis do aluno (`components/ui/`, 3.10)
 
 Base de UI compartilhada pra toda a área do aluno — botões, toggle de
@@ -297,13 +363,16 @@ de design compartilhado (professor/admin, 3.11)" logo abaixo — `TeacherHome`/
 `SegmentedControl`/`Select`/`Table`/`Badge`, só com tema mais rico
 (`.staff-theme`) em vez das restrições sensoriais do aluno.
 
-**Não migrado ainda** (débito reconhecido, não silencioso):
-`ChallengePage.tsx` (botões Executar/Ajuda/Avançar/Predict e o
-`challenge-page__feedback`) — critério pra migrar continua o mesmo: só
-quando a tela for tocada por outro motivo (evita um PR gigante só de
-refactor visual sem mudança funcional), e ela já tem lógica PRIMM densa o
-bastante pra não misturar com uma troca de biblioteca de UI no mesmo
-commit.
+**Migração concluída (2026-10, DS1):** `ChallengePage.tsx` e
+`WaterStateChallengePage.tsx` agora usam só o barril: `LinkButton` ("Voltar"),
+`Button` (Executar/Repetir/Próximo passo/Ajuda/Avançar e as opções de
+predição — `variant="secondary"` nas escolhas, `success` em "Avançar"),
+`TextareaField` (resposta de investigação) e `InlineFeedback`. Saíram ~10
+regras de CSS próprio (botões, link de voltar, textarea) e o `style` inline
+com `marginBottom` nos ícones: o alinhamento ícone/texto vem do `.ui-button`.
+Só sobrou CSS de **layout** (`__layout`, `__sidebar`, `__editor`,
+`__predict`, `__investigation`...). Comportamento, eventos e endpoints
+inalterados; testes existentes passam sem mudar asserção.
 
 ### Testes
 
@@ -386,18 +455,26 @@ acontecem só dentro dela:
    de TEA, é acessibilidade geral, então nunca teve motivo pra ficar de
    fora do reset.
 
-**Ícone**: nenhuma lib nova — emoji continua sendo o "sistema de ícone"
-compartilhado dos 3 módulos (já era assim desde antes de 3.10/3.11).
-Introduzir um set de ícone SVG dedicado contradiria a proibição explícita
-do card ("não uma biblioteca nova"); decisão registrada aqui, não um
-esquecimento.
-
-⚠️ **Decisão reaberta em 2026-09** (`docs/ai/backlog/
-design-system-polimento-visual.md`, DS5–DS9): emoji está sendo trocado por
-`lucide-react` — decisão explícita do usuário, não uma reversão silenciosa
-da nota acima. Ver "Guia de referência do design system (v1)" a seguir.
+**Ícone**: sem emoji em nenhum lugar (frontend, backend ou banco) — o
+glifo é sempre um ícone `lucide-react`, importado direto do pacote
+(`import { ArrowLeft } from 'lucide-react'`), herdando `currentColor`.
+Decisão tomada em 2026-09 (DS5–DS9 em `docs/ai/backlog/
+design-system-polimento-visual.md`) e concluída em 2026-10: o backend não
+envia mais emoji (campos `icon` de templates, parâmetros e níveis de mini
+jogo vêm vazios — migration `RemoveEmojisFromSeededData`). Ícone de
+**conteúdo vindo do banco** é escolhido no cliente, por chave estável, em
+`lib/contentIcons.tsx` (`contentIcon(template.key | parameter.key |
+scenario.id | tool.id)`); chave desconhecida cai num ícone genérico.
+Guardas automáticos: `lib/noEmoji.spec.ts` (frontend) e `src/no-emoji.spec.ts`
+(API) falham se qualquer emoji voltar ao código-fonte.
 
 ## Guia de referência do design system (v1, 2026-09-15)
+
+Além do Artifact abaixo, há um guia **dentro do repositório**, só em modo
+dev: `npm run dev:web` e abrir `/dev/design-system` (rota registrada em
+`App.tsx` atrás de `import.meta.env.DEV`, ausente do bundle de produção).
+Mostra os tokens com o valor atual, os componentes de `components/ui/` com
+seus estados e os toggles ao vivo de movimento/alto contraste/som.
 
 O sistema de design da plataforma (3.10/3.11 acima) ganhou uma
 **documentação viva navegável**, publicada como Artifact:
@@ -721,7 +798,29 @@ partir de blocos — não existe como essa função "vazar" quais instruções
 resolvem o desafio, porque ela não sabe o que são blocos. Toca num segundo
 `PixiTurtleWorld`, com sua própria instância de store (`helpStore`,
 independente da execução do aluno — abrir a Ajuda nunca apaga o traçado que
-o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I).
+o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I). Desde F18 a Ajuda
+é uma escada de 3 degraus (ver abaixo); o último é este traçado-alvo.
+
+**Ajuda em degraus (F18)** - o botão de Ajuda deixou de ser um passo único.
+`lib/helpLadder.ts` define 3 degraus, abertos **um por vez e só quando o aluno
+pede** (o botão descreve o que o próximo revela):
+
+1. `Ajuda: uma pista` - texto sobre COMO a figura é feita, **sem números**.
+2. `Ajuda: mais uma pista` - texto com os números (`A figura tem N lados, e o
+   personagem vira X graus a cada lado.`).
+3. `Ajuda: ver a forma` - o traçado-alvo do parágrafo acima.
+
+Os textos dos degraus 1 e 2 são **derivados do `goal`** (`buildHelpHint`),
+nunca escritos à mão por desafio: todo desafio `create`, inclusive os criados
+por professor, ganha a escada sem conteúdo novo a curar. O painel é
+`role="status"` (anuncia a pista nova sem roubar o foco) e acumula as pistas já
+abertas. Depois do degrau 3 o botão some.
+
+Eventos (RD-I): `challenge.help_viewed` agora dispara **só no 1º degrau**
+(continua significando "o aluno recorreu à Ajuda", que é o que
+`helpButtonUsageRate` do painel do professor conta) e
+`challenge.hint_level_opened` (`payload.level` 1-3) a cada degrau, para a
+pesquisa ver até onde cada aluno precisou ir.
 
 ### Motor PRIMM: vocabulário de config, não FSM de tela única
 
@@ -2145,20 +2244,22 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
   só cobre o próprio desafio — não existe ainda uma visão agregada (pro
   aluno ou pro professor) de "quais combinações de TIMES/ANGLE você já
   tentou", só o log bruto (`challenge_modify_attempt`) por trás.
-- Ingestão de eventos pré-login (`login_screen_viewed`,
-  `sensory_setting_changed_pre_login`) — bloqueada no backend, ver gap
-  documentado em `backend.md`.
-- Logout / expiração de sessão: `useAuthStore` tem `clearSession()`, mas
-  nenhuma tela chama isso ainda, e `RequireAuth` não valida se o JWT
-  expirou (só se existe uma sessão salva).
+- Eventos pré-login (`login_screen_viewed`,
+  `sensory_setting_changed_pre_login`): **✅ implementados** (2026-10) — ver
+  "Eventos pré-login" em `backend.md`.
+- Logout / expiração de sessão: **✅ já resolvido** (`lib/logout.ts`,
+  tratamento de 401 em `apiClient.ts` e checagem em `RequireAuth`) — esta
+  linha estava desatualizada.
 - Rate limiting nos 3 endpoints de login (gap do backend, ver
   `backend.md`).
-- Migrar `ChallengePage` pra `components/ui/` (3.10/3.11 já migraram todo o
-  resto — professor/admin inteiros, ver "Onde já está em uso vs. débito de
-  migração" acima) — débito reconhecido, não bloqueante; migrar quando a
-  tela for tocada por outro motivo.
+- Migrar `ChallengePage` pra `components/ui/`: **✅ concluído** (2026-10, ver
+  "Migração concluída" acima).
 - `components/ui/Tooltip`/`Tabs` seguem sem nenhum uso real em produção
-  (3.10) — infraestrutura pronta, nenhuma tela pediu ainda. `Dialog` saiu
+  (3.10) — **decisão DS4: manter como infraestrutura pronta**, sem forçar
+  uso artificial (`TeacherMetrics` já usa `SegmentedControl`, o componente
+  certo ali); entram na primeira tela que pedir navegação por seções /
+  reforço textual. Hoje só são exercitados pelo guia de dev
+  (`/dev/design-system`, DS2). `Dialog` saiu
   dessa lista em 4.2 (confirmação de exclusão em `TeacherChallenges`,
   primeiro uso real).
 - **Alocação de desafio a uma turma: ✅ implementado** (4.3, ver seção
@@ -2170,3 +2271,45 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
   disciplina que precise de um tipo de miniatura genuinamente novo (não
   reaproveitável) precisa de 1 componente SVG novo + 1 `case` em
   `renderVisualPreview`, o resto do formulário continua igual.
+
+## Travessia do Rio (Educação em Computação)
+
+`/minigame/river-crossing` (`routes/minigame/river-crossing/RiverCrossingPage.tsx`,
+regras puras em `lib/riverCrossing.ts`, sons em `lib/riverSounds.ts`, desenhos
+em `components/minigame/RiverPieceIcon.tsx`). Jogo desplugado de algoritmo
+(repetição, decisão e verificação) baseado no plano de aula "Travessia do Rio:
+Edição Fazenda Complicada". É um jogo **à parte**: sem Use-Modify-Create, sem
+backend, sem logging de eventos RD-* (decisão explícita do pedido; reavaliar
+se virar objeto de coleta de pesquisa).
+
+- Mostra as regras antes do jogo; "Ver regras" no meio da partida **não
+  reinicia** o estado (a tela de regras oferece "Continuar a travessia").
+- Duas rodadas, como no plano de aula: rodada 1 (sem o Lobo, 7 gotas) e rodada 2
+  (todos, 13 gotas). `lib/riverCrossing.spec.ts` confere por busca exaustiva os
+  números do plano (mínimo de 5 e 11 travessias, 2 soluções em cada).
+- Personagens são só SVG (sem nome visível); o nome vai em `aria-label` e o
+  peso aparece como badge numérico no canto superior direito.
+- Barco: peso 3, Fazendeiro pesa 1, carga até peso 2. Conflito é checado só na
+  margem sem o barco; travessia inválida é desfeita e a gota continua gasta.
+- Animação mínima (barco, conflito, fim de jogo) e sons (Web Audio sintetizado,
+  com toggle "Som") **sem limitação sensorial**, por pedido: a raiz usa
+  `.staff-theme`, a única exceção ao reset global de movimento.
+  `prefers-reduced-motion` do SO continua valendo para a animação.
+- Fim de jogo por combustível usa texto não punitivo ("O combustível acabou",
+  "Tentar de novo").
+
+### Travessia do Rio: dicas e eventos
+
+- **Dicas** (`lib/riverHints.ts`, componente `HintCards`): 3 cartas na rodada 1
+  e 5 na rodada 2, com os textos e descontos do plano de aula. Cartas viradas
+  para baixo (estilo Codenames, na paleta do design system: --color-primary e --color-surface); clicar vira
+  e a carta fica aberta. O jogo não tem nota, então o desconto só vai no
+  evento. As dicas abertas persistem ao recomeçar a mesma rodada.
+- **Eventos** (`lib/riverEvents.ts`, `payload.game = 'river_crossing'`, sem
+  `miniGameLevelId`), só quando há aluno logado: `river_round_started` (RD-P),
+  `river_crossing_attempted` (RD-P, carga, resultado, regras violadas, gotas),
+  `river_cargo_changed` / `river_cargo_rejected_overweight` /
+  `river_hint_requested` / `river_restarted` / `river_rules_viewed` /
+  `river_rules_resumed` / `river_sound_toggled` (RD-I),
+  `river_round_completed` / `river_fuel_depleted` (RD-C) e `river_abandoned`
+  (RD-E, só números brutos, regra 7).

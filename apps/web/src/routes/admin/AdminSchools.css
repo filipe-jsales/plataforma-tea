@@ -1,5 +1,6 @@
 .admin-schools__subtitle {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   max-width: 42rem;
 }
 
@@ -12,7 +13,8 @@
 }
 
 .admin-schools__empty {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
 }
 
 .admin-schools__form {

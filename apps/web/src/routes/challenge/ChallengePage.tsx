@@ -1,9 +1,16 @@
 import * as Blockly from "blockly/core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { BlocklyWorkspace, type WorkspaceSvg } from "react-blockly";
 import { PixiTurtleWorld } from "../../components/challenge/PixiTurtleWorld";
-import { InlineFeedback } from "../../components/ui";
+import { ReadAloudButton } from "../../components/challenge/ReadAloudButton";
+import { SessionAgenda } from "../../components/challenge/SessionAgenda";
+import {
+  Button,
+  InlineFeedback,
+  LinkButton,
+  TextareaField,
+} from "../../components/ui";
 import {
   applyGenerousSnapTolerance,
   applyModifyFieldLocking,
@@ -23,7 +30,13 @@ import {
   resolveSuccessMessage,
   type ChallengeFeedbackMessages,
 } from "../../lib/feedbackMessages";
+import {
+  buildHelpHint,
+  HELP_LADDER_LAST_LEVEL,
+  nextHelpLabel,
+} from "../../lib/helpLadder";
 import { logEvent } from "../../lib/logEvent";
+import type { ChallengeAgenda } from "../../lib/sessionAgenda";
 import {
   buildGoalPreviewPath,
   closedPolygonSides,
@@ -34,6 +47,7 @@ import { createTurtleExecutionStore } from "../../stores/turtleExecutionStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useSensoryProfileStore } from "../../stores/useSensoryProfileStore";
 import "./ChallengePage.css";
+import { ArrowLeft, ArrowRight, Play, Repeat2, Search } from "lucide-react";
 
 // AC3 (3.1) - tolerância ampla de encaixe. Chamado uma vez no carregamento
 // do módulo (mesmo raciocínio de applyToDocument em
@@ -92,6 +106,8 @@ interface ChallengeDetail {
   // (ou campo individual `null`) usa o conjunto de mensagens-padrão
   // sugeridas (ver lib/feedbackMessages.ts).
   feedbackMessages: ChallengeFeedbackMessages | null;
+  // F17 - etapas da sequência do tópico; `null` fora do currículo.
+  agenda: ChallengeAgenda | null;
 }
 
 type Feedback = { kind: "success" | "retry"; message: string } | null;
@@ -141,7 +157,9 @@ export function ChallengePage() {
   const [attempts, setAttempts] = useState(0);
   const [investigationAnswer, setInvestigationAnswer] = useState("");
   const [proceeded, setProceeded] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+  // F18 - degrau de Ajuda já aberto (0 = nenhum). Só sobe quando o aluno
+  // pede, um degrau por vez.
+  const [helpLevel, setHelpLevel] = useState(0);
   const [primmStage, setPrimmStage] = useState<PrimmStage>("predict");
   const [predictAnswer, setPredictAnswer] = useState<number | null>(null);
   const [modifyResult, setModifyResult] = useState<ModifyResult | null>(null);
@@ -169,7 +187,7 @@ export function ChallengePage() {
     setAttempts(0);
     setInvestigationAnswer("");
     setProceeded(false);
-    setHelpOpen(false);
+    setHelpLevel(0);
     setPrimmStage("predict");
     setPredictAnswer(null);
     setModifyResult(null);
@@ -639,15 +657,30 @@ export function ChallengePage() {
 
   function handleHelp() {
     if (!challenge) return;
-    setHelpOpen(true);
-    const preview = buildGoalPreviewPath(challenge.goal);
-    helpStore.getState().play(preview.points, motionEnabled);
+    const level = helpLevel + 1;
+    if (level > HELP_LADDER_LAST_LEVEL) return;
+    setHelpLevel(level);
+    if (level === HELP_LADDER_LAST_LEVEL) {
+      const preview = buildGoalPreviewPath(challenge.goal);
+      helpStore.getState().play(preview.points, motionEnabled);
+    }
     if (user) {
+      // `help_viewed` segue significando "o aluno recorreu à Ajuda" (as
+      // métricas do professor contam quem usou); dispara só no 1º degrau.
+      if (level === 1) {
+        logEvent({
+          studentPseudoId: user.pseudonymId,
+          category: "RD-I",
+          type: "challenge.help_viewed",
+          challengeId: challenge.id,
+        });
+      }
       logEvent({
         studentPseudoId: user.pseudonymId,
         category: "RD-I",
-        type: "challenge.help_viewed",
+        type: "challenge.hint_level_opened",
         challengeId: challenge.id,
+        payload: { challenge_id: challenge.id, level },
       });
     }
   }
@@ -656,7 +689,9 @@ export function ChallengePage() {
     return (
       <main className="challenge-page">
         <p>Este módulo ainda não tem um desafio disponível.</p>
-        <Link to="/subjects">Voltar</Link>
+        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+          Voltar
+        </LinkButton>
       </main>
     );
   }
@@ -671,11 +706,24 @@ export function ChallengePage() {
 
   return (
     <main className="challenge-page">
-      <Link to="/subjects" className="challenge-page__back-link">
-        ← Voltar
-      </Link>
+      <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+        Voltar
+      </LinkButton>
+      <SessionAgenda agenda={challenge.agenda} />
       <h1>{challenge.title}</h1>
       <p className="challenge-page__prompt">{challenge.prompt}</p>
+      <ReadAloudButton
+        text={challenge.prompt}
+        onRead={() =>
+          logEvent({
+            studentPseudoId: user.pseudonymId,
+            category: "RD-I",
+            type: "challenge.read_aloud_used",
+            challengeId: challenge.id,
+            payload: { challenge_id: challenge.id },
+          })
+        }
+      />
 
       <div className="challenge-page__layout">
         <BlocklyWorkspace
@@ -740,25 +788,23 @@ export function ChallengePage() {
               <p>{challenge.predictQuestion}</p>
               <div className="challenge-page__predict-options">
                 {predictOptions.map((sides) => (
-                  <button
+                  <Button
                     key={sides}
-                    type="button"
-                    className="challenge-page__predict-option"
+                    variant="secondary"
                     onClick={() => handlePredict(sides)}
                   >
                     {sides}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
           ) : (
-            <button
-              type="button"
-              className="challenge-page__run-button"
+            <Button
+              icon={attempts > 0 ? <Repeat2 /> : <Play />}
               onClick={handleRun}
             >
-              {attempts > 0 ? "🔁 Repetir execução" : "▶️ Executar"}
-            </button>
+              {attempts > 0 ? "Repetir Execução" : "Executar"}
+            </Button>
           )}
 
           {/* 3.2 AC2 - padrão sensorial sem animação: o aluno controla o
@@ -766,13 +812,13 @@ export function ChallengePage() {
               depois de rodar (nada pra avançar antes disso) e some quando o
               caminho termina (status volta a 'idle'). */}
           {!motionEnabled && executionStatus === "stepping" && (
-            <button
-              type="button"
-              className="challenge-page__step-button"
+            <Button
+              variant="secondary"
+              icon={<ArrowRight />}
               onClick={() => executionStore.getState().advanceStep()}
             >
-              Próximo passo →
-            </button>
+              Próximo passo
+            </Button>
           )}
 
           {/* Botão de Ajuda mostra a forma-ALVO escondida - só faz sentido na
@@ -781,20 +827,32 @@ export function ChallengePage() {
               revelar. */}
           {isCreate && (
             <>
-              <button
-                type="button"
-                className="challenge-page__help-button"
-                onClick={handleHelp}
-              >
-                🔎 Ajuda: ver a forma
-              </button>
-              {helpOpen && (
-                <div className="challenge-page__help-panel">
-                  <p>
-                    É essa a forma que você precisa montar - mas os blocos que
-                    fazem isso acontecer são com você.
-                  </p>
-                  <PixiTurtleWorld store={helpStore} />
+              {nextHelpLabel(helpLevel) && (
+                <Button
+                  variant="secondary"
+                  icon={<Search />}
+                  onClick={handleHelp}
+                >
+                  {nextHelpLabel(helpLevel)}
+                </Button>
+              )}
+              {helpLevel > 0 && (
+                <div className="challenge-page__help-panel" role="status">
+                  {helpLevel >= 1 && (
+                    <p>{buildHelpHint(1, challenge.goal)}</p>
+                  )}
+                  {helpLevel >= 2 && (
+                    <p>{buildHelpHint(2, challenge.goal)}</p>
+                  )}
+                  {helpLevel >= HELP_LADDER_LAST_LEVEL && (
+                    <>
+                      <p>
+                        É essa a forma que você precisa montar - mas os blocos
+                        que fazem isso acontecer são com você.
+                      </p>
+                      <PixiTurtleWorld store={helpStore} />
+                    </>
+                  )}
                 </div>
               )}
             </>
@@ -829,11 +887,9 @@ export function ChallengePage() {
             <div className="challenge-page__investigation">
               {challenge.investigationQuestion && (
                 <>
-                  <label htmlFor="investigation-answer">
-                    {challenge.investigationQuestion}
-                  </label>
-                  <textarea
+                  <TextareaField
                     id="investigation-answer"
+                    label={challenge.investigationQuestion}
                     value={investigationAnswer}
                     onChange={(event) =>
                       setInvestigationAnswer(event.target.value)
@@ -842,14 +898,14 @@ export function ChallengePage() {
                   />
                 </>
               )}
-              <button
-                type="button"
-                className="challenge-page__proceed-button"
+              <Button
+                variant="success"
+                icon={<ArrowRight />}
                 onClick={handleProceed}
                 disabled={attempts < 1}
               >
                 Avançar
-              </button>
+              </Button>
               {proceeded && !challenge.nextChallengeId && (
                 <p>
                   Você concluiu esta fase! O próximo desafio ainda está sendo

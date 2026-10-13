@@ -1,10 +1,11 @@
+import { ArrowLeft, CirclePlus, Dna, Pencil, School, Trash } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { apiClient } from "../../lib/apiClient";
 import type { TeacherChallengeSummary } from "../../lib/challengeTemplateTypes";
 import { Button, Dialog, LinkButton } from "../../components/ui";
 import { AllocationDialog } from "./AllocationDialog";
 import "./TeacherChallenges.css";
-import { CirclePlus, Dna, Pencil, School, Trash } from "lucide-react";
+import { contentIcon } from '../../lib/contentIcons';
 
 // 4.2 (AC5) - "Meus desafios": lista só os desafios que O PRÓPRIO professor
 // criou via template. Nenhuma ação aqui (editar/duplicar/excluir/alocar)
@@ -43,7 +44,7 @@ export function TeacherChallenges() {
 
   return (
     <main className="teacher-challenges staff-theme page">
-      <LinkButton to="/home" variant="ghost" icon="←">
+      <LinkButton to="/home" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
       <h1>Meus desafios</h1>
@@ -73,7 +74,7 @@ export function TeacherChallenges() {
                 className="teacher-challenges__item-icon"
                 aria-hidden="true"
               >
-                {challenge.templateIcon}
+                {contentIcon(challenge.templateKey)}
               </span>
               <span className="teacher-challenges__item-body">
                 <span className="teacher-challenges__item-title">

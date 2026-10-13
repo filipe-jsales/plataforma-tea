@@ -84,7 +84,6 @@
 
 .ui-button--secondary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--color-surface) 90%, var(--color-text));
-  border-color: var(--color-primary);
 }
 
 .ui-button--ghost:hover:not(:disabled) {

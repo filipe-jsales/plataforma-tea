@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { mergeProps, useButton, useFocusRing } from 'react-aria';
 import './Card.css';
+import { Check } from 'lucide-react';
 
 export type SelectableCardAlign = 'center' | 'start';
 
@@ -78,7 +79,7 @@ export function SelectableCard({
       {/* Redundância textual da seleção - nunca só a borda/cor de destaque. */}
       {selected && (
         <span className="ui-card__selected-badge" aria-hidden="true">
-          ✓ Selecionado
+          <Check /> Selecionado
         </span>
       )}
     </div>

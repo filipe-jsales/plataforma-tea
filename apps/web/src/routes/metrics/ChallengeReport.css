@@ -37,7 +37,7 @@
   padding: 2px var(--space-2);
   border-radius: 999px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-on-dark);
   font-size: 0.8rem;
   font-weight: 600;
 }

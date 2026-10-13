@@ -5,14 +5,15 @@ import {
   coerceParameterValue,
   errorsByParameterKey,
   toggleBlockType,
+  visibleParameters,
 } from './templateParameterForm';
 
 const schema: TemplateParameterDefinition[] = [
-  { key: 'sides', label: 'Lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+  { key: 'sides', label: 'Lados', icon: '', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
   {
     key: 'enabledBlockTypes',
     label: 'Blocos',
-    icon: '🧩',
+    icon: '',
     type: 'blockSelection',
     defaultValue: ['move_forward', 'turn'],
     visualPreview: 'none',
@@ -111,5 +112,44 @@ describe('toggleBlockType', () => {
 
   it('treats a non-array current value as an empty list, never throwing', () => {
     expect(toggleBlockType(undefined, 'turn', true)).toEqual(['turn']);
+  });
+});
+
+describe('visibleParameters (F13)', () => {
+  const gated: TemplateParameterDefinition[] = [
+    {
+      key: 'stage',
+      label: 'Tipo',
+      icon: '',
+      type: 'select',
+      defaultValue: 'create',
+      visualPreview: 'none',
+      options: [],
+    },
+    ...schema,
+    {
+      key: 'snap',
+      label: 'Encaixe',
+      icon: '',
+      type: 'percentage',
+      defaultValue: 60,
+      visualPreview: 'none',
+      visibleWhen: { key: 'stage', equals: 'create' },
+    },
+  ];
+
+  it('always shows fields that declare no condition', () => {
+    const keys = visibleParameters(gated, { stage: 'modify' }).map((p) => p.key);
+
+    expect(keys).toEqual(['stage', 'sides', 'enabledBlockTypes']);
+  });
+
+  it('shows a conditional field only while its controlling parameter has the required value', () => {
+    expect(visibleParameters(gated, { stage: 'create' }).map((p) => p.key)).toContain('snap');
+    expect(visibleParameters(gated, { stage: 'modify' }).map((p) => p.key)).not.toContain('snap');
+  });
+
+  it('hides a conditional field when the controlling parameter is missing from the draft', () => {
+    expect(visibleParameters(gated, {}).map((p) => p.key)).not.toContain('snap');
   });
 });

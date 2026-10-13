@@ -162,6 +162,81 @@ describe('RegularPolygonTemplateHandler', () => {
     });
   });
 
+  describe('F13 - stage modify (professor authors the middle phase)', () => {
+    const modifyParams = { ...validParams, stage: 'modify', enabledBlockTypes: [], snapTolerancePercent: undefined };
+
+    it('treats a missing stage as create, so challenges saved before F13 keep working', () => {
+      expect(handler.validateParameters(validParams, introduced).valid).toBe(true);
+      expect(handler.buildChallengeConfig(validParams).stage).toBe('create');
+    });
+
+    it('rejects an unknown stage with a pedagogical message, never a technical one', () => {
+      const result = handler.validateParameters({ ...validParams, stage: 'use' }, introduced);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual({
+        parameterKey: 'stage',
+        message: 'Escolha o tipo de atividade: montar do zero ou mudar um programa pronto.',
+      });
+    });
+
+    it('does not ask for a block palette or snap tolerance when the program comes ready-made', () => {
+      const result = handler.validateParameters(modifyParams, introduced);
+
+      expect(result).toEqual({ valid: true, errors: [] });
+    });
+
+    it('still blocks an impossible polygon in modify (the starting program must close)', () => {
+      const result = handler.validateParameters({ ...modifyParams, sides: 3, turnAngleDeg: 200 }, introduced);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.find((e) => e.parameterKey === 'turnAngleDeg')?.message).toContain('não fecha');
+    });
+
+    it('requires repeat, move and turn to have been introduced in a Use challenge of the topic', () => {
+      const result = handler.validateParameters(modifyParams, { introducedBlockTypes: ['move_forward', 'turn'] });
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.map((e) => e.parameterKey)).toEqual(['stage']);
+      expect(result.errors[0].message).toContain('Repetir');
+    });
+
+    it('builds a stage modify config: ready program, editable sides/angle, no teacher-chosen palette', () => {
+      const config = handler.buildChallengeConfig({ ...modifyParams, sides: 6, turnAngleDeg: 60 });
+
+      expect(config.stage).toBe('modify');
+      expect(config.allowedBlockTypes).toEqual(['repeat_times', 'move_forward', 'turn']);
+      expect(config.goal).toEqual({ shape: 'regular_polygon', sides: 6, turnAngleDeg: 60, closureTolerancePx: 5 });
+      expect(config.program).toEqual({
+        type: 'repeat_times',
+        fields: { TIMES: 6 },
+        inputs: {
+          DO: {
+            block: {
+              type: 'move_forward',
+              next: { block: { type: 'turn', fields: { DIR: 'RIGHT', ANGLE: 60 } } },
+            },
+          },
+        },
+      });
+      expect(config.snapTolerancePercent).toBeUndefined();
+      expect(config.blockScale).toBe(1.3);
+    });
+
+    it('unlocks exactly TIMES and ANGLE, with bounds that always contain the starting values', () => {
+      const config = handler.buildChallengeConfig({ ...modifyParams, sides: 12, turnAngleDeg: 30 });
+
+      expect(config.editableFields).toEqual([
+        { blockType: 'repeat_times', fieldName: 'TIMES', label: 'Número de lados', min: 3, max: 12 },
+        { blockType: 'turn', fieldName: 'ANGLE', label: 'Ângulo de giro (graus)', min: 1, max: 359 },
+      ]);
+    });
+
+    it('keeps the preview goal identical to the create stage (same target shape)', () => {
+      expect(handler.buildPreviewGoal(modifyParams)).toEqual(handler.buildPreviewGoal(validParams));
+    });
+  });
+
   describe('buildPreviewGoal', () => {
     it('exposes only the numeric goal — never the block palette or any Blockly structure', () => {
       const goal = handler.buildPreviewGoal(validParams);

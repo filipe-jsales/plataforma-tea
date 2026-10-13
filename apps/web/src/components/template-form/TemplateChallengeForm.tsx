@@ -5,6 +5,7 @@ import { buildGoalPreviewPath } from "../../lib/turtleWorld";
 import {
   buildInitialParams,
   errorsByParameterKey,
+  visibleParameters,
 } from "../../lib/templateParameterForm";
 import {
   DEFAULT_RETRY_MESSAGE,
@@ -303,7 +304,7 @@ export function TemplateChallengeForm({
         id="template-challenge-form-title"
         className="template-challenge-form__title-field"
       >
-        <span><Pencil />Nome do desafio</span>
+        <span className="template-challenge-form__title-label"><Pencil />Nome do desafio <span className="template-challenge-form__required" aria-hidden="true">*</span></span>
         <input
           id="challenge-title"
           type="text"
@@ -318,7 +319,7 @@ export function TemplateChallengeForm({
         id="template-challenge-form-params"
         className="template-challenge-form__fields"
       >
-        {template.parameterSchema.map((definition) => (
+        {visibleParameters(template.parameterSchema, params).map((definition) => (
           <TemplateParameterField
             key={definition.key}
             definition={definition}
@@ -365,7 +366,7 @@ export function TemplateChallengeForm({
       >
         <TextField
           id="feedback-retry-message"
-          label="Mensagem quando o aluno ainda não atingiu o objetivo (opcional)"
+          label="Mensagem quando o aluno ainda não atingiu o objetivo."
           value={feedbackMessages.retry}
           error={fieldErrors.retryMessage}
           placeholder={DEFAULT_RETRY_MESSAGE}
@@ -379,7 +380,7 @@ export function TemplateChallengeForm({
         />
         <TextField
           id="feedback-success-message"
-          label="Mensagem de sucesso (opcional)"
+          label="Mensagem de sucesso."
           value={feedbackMessages.success}
           error={fieldErrors.successMessage}
           placeholder={DEFAULT_SUCCESS_MESSAGE}

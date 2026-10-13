@@ -52,6 +52,10 @@ export interface TemplateParameterDefinition {
   // resolução em runtime (nenhum filtro Use-Modify-Create se aplica a um
   // valor que não é blockType).
   options?: TemplateParameterOption[];
+  // F13: o campo só aparece (e só é pedido) quando o parâmetro `key` tem o
+  // valor `equals`. Dado, não código: o formulário genérico lê isto sem saber
+  // de qual template se trata.
+  visibleWhen?: { key: string; equals: string };
 }
 
 // Versão resolvida em runtime, devolvida por GET /challenge-templates/:id —

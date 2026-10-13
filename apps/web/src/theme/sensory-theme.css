@@ -18,6 +18,8 @@
   --color-danger: #c53030;
   --color-warning: #b7791f;
   --color-border: #d7dbe0;
+  /* Texto sobre fundo saturado (badge, faixa de feedback, cabeçalho de gráfico). */
+  --color-text-on-dark: #ffffff;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -97,6 +99,25 @@
   --color-success: #6ee7a0;
   --color-danger: #ff9b9b;
   --color-border: #ffffff;
+  /* Fundos de destaque ficam claros no alto contraste: texto sobre eles escurece. */
+  --color-text-on-dark: #000000;
+}
+
+/*
+  F15 - tamanho de texto ajustável (data-font-scale, escrito no <html> por
+  stores/useReadingPrefsStore.ts). Toda a escala tipográfica é em rem, então
+  mudar o tamanho-base do documento escala títulos, corpo e espaçamento
+  proporcional de uma vez, sem tocar em componente. Alvos de toque seguem em
+  px (--hit-area-min) e não encolhem. O padrão 'normal' não altera nada.
+*/
+:root[data-font-scale='large'] {
+  font-size: 125%;
+  --line-height-body: 1.6;
+}
+
+:root[data-font-scale='xlarge'] {
+  font-size: 150%;
+  --line-height-body: 1.7;
 }
 
 body {

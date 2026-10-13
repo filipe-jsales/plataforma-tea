@@ -21,7 +21,7 @@ describe('ChallengeTemplatesService', () => {
     key: 'regular_polygon',
     name: 'Desenhar um polígono regular',
     description: 'O aluno monta um desenho com o número de lados escolhido por você.',
-    icon: '🔷',
+    icon: '',
     topicId: 'topic-1',
     topic: { category: 'informatica_educacional' },
     position: 1,
@@ -29,7 +29,7 @@ describe('ChallengeTemplatesService', () => {
       {
         key: 'sides',
         label: 'Número de lados',
-        icon: '🔺',
+        icon: '',
         type: 'integer',
         min: 3,
         max: 12,
@@ -39,7 +39,7 @@ describe('ChallengeTemplatesService', () => {
       {
         key: 'enabledBlockTypes',
         label: 'Blocos disponíveis',
-        icon: '🧩',
+        icon: '',
         type: 'blockSelection',
         defaultValue: ['move_forward', 'turn'],
         visualPreview: 'none',
@@ -103,7 +103,7 @@ describe('ChallengeTemplatesService', () => {
           key: 'regular_polygon',
           name: 'Desenhar um polígono regular',
           description: 'O aluno monta um desenho com o número de lados escolhido por você.',
-          icon: '🔷',
+          icon: '',
           category: 'informatica_educacional',
         },
       ]);

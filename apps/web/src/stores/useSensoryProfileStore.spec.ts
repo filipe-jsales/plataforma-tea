@@ -1,8 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { logSensorySettingChangedPreLogin } from '../lib/logEvent';
+import { useAuthStore } from './useAuthStore';
 import { useSensoryProfileStore } from './useSensoryProfileStore';
+
+vi.mock('../lib/logEvent', () => ({ logSensorySettingChangedPreLogin: vi.fn() }));
 
 describe('useSensoryProfileStore', () => {
   beforeEach(() => {
+    vi.mocked(logSensorySettingChangedPreLogin).mockClear();
+    useAuthStore.setState({ token: null, user: null });
     useSensoryProfileStore.setState({
       motionEnabled: false,
       soundEnabled: false,
@@ -38,5 +44,26 @@ describe('useSensoryProfileStore', () => {
 
     expect(useSensoryProfileStore.getState().highContrast).toBe(true);
     expect(document.documentElement.dataset.contrast).toBe('high');
+  });
+
+  describe('sensory_setting_changed_pre_login', () => {
+    it('logs each setter when there is no session', () => {
+      const store = useSensoryProfileStore.getState();
+      store.setMotionEnabled(true);
+      store.setSoundEnabled(true);
+      store.setHighContrast(true);
+
+      expect(logSensorySettingChangedPreLogin).toHaveBeenNthCalledWith(1, 'motion', true);
+      expect(logSensorySettingChangedPreLogin).toHaveBeenNthCalledWith(2, 'sound', true);
+      expect(logSensorySettingChangedPreLogin).toHaveBeenNthCalledWith(3, 'contrast', true);
+    });
+
+    it('never logs when a session exists (profile hydration and post-login changes are not pre-login)', () => {
+      useAuthStore.setState({ token: 'jwt' });
+
+      useSensoryProfileStore.getState().setMotionEnabled(true);
+
+      expect(logSensorySettingChangedPreLogin).not.toHaveBeenCalled();
+    });
   });
 });

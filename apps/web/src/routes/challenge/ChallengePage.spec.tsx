@@ -8,6 +8,7 @@ import { apiClient } from '../../lib/apiClient';
 import { logEvent } from '../../lib/logEvent';
 import { evaluateSquareGoal, closedPolygonSides } from '../../lib/turtleWorld';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useReadingPrefsStore } from '../../stores/useReadingPrefsStore';
 import { ChallengePage } from './ChallengePage';
 
 // Mocks mínimos pra rodar ChallengePage fora do Blockly/PixiJS reais (nenhum
@@ -499,5 +500,175 @@ describe('ChallengePage - marca o desafio como visto (E1, AC2)', () => {
     renderChallenge('challenge-1');
 
     expect(await screen.findByRole('button', { name: /executar/i })).toBeInTheDocument();
+  });
+});
+
+describe('ChallengePage - Ajuda em degraus (F18)', () => {
+  async function openChallenge() {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+  }
+
+  it('starts with no help shown and offers only the first, lightest step', async () => {
+    await openChallenge();
+
+    expect(screen.getByRole('button', { name: 'Ajuda: uma pista' })).toBeInTheDocument();
+    expect(screen.queryByText(/a figura tem 4 lados/i)).not.toBeInTheDocument();
+  });
+
+  it('reveals one step at a time: text hint, then the numbers, then the target shape - never skipping ahead', async () => {
+    await openChallenge();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: uma pista' }));
+    expect(screen.getByText(/anda um pedaço, vira, e repete/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a figura tem 4 lados/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: mais uma pista' }));
+    expect(screen.getByText('A figura tem 4 lados, e o personagem vira 90 graus a cada lado.')).toBeInTheDocument();
+    expect(screen.queryByText(/é essa a forma que você precisa montar/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: ver a forma' }));
+    expect(screen.getByText(/é essa a forma que você precisa montar/i)).toBeInTheDocument();
+    // Último degrau aberto: nada mais a oferecer.
+    expect(screen.queryByRole('button', { name: /^ajuda:/i })).not.toBeInTheDocument();
+  });
+
+  it('announces new help politely (role=status) instead of stealing focus', async () => {
+    await openChallenge();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: uma pista' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(/anda um pedaço/i);
+  });
+
+  it('logs help_viewed only once (first step) and hint_level_opened for every step, with the level', async () => {
+    await openChallenge();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: uma pista' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: mais uma pista' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ajuda: ver a forma' }));
+
+    const types = mockedLogEvent.mock.calls.map((call) => call[0].type);
+    expect(types.filter((type) => type === 'challenge.help_viewed')).toHaveLength(1);
+    const levels = mockedLogEvent.mock.calls
+      .filter((call) => call[0].type === 'challenge.hint_level_opened')
+      .map((call) => call[0].payload);
+    expect(levels).toEqual([
+      { challenge_id: 'challenge-1', level: 1 },
+      { challenge_id: 'challenge-1', level: 2 },
+      { challenge_id: 'challenge-1', level: 3 },
+    ]);
+  });
+});
+
+describe('ChallengePage - agenda da sessão (F17)', () => {
+  it('shows the steps of the topic with the current one marked, in icon + word (never only color)', async () => {
+    mockedGet.mockResolvedValueOnce({
+      ...baseCreateChallenge,
+      agenda: { stages: ['use', 'modify', 'create'], currentIndex: 2 },
+    });
+
+    renderChallenge('challenge-1');
+    const agenda = await screen.findByRole('navigation', { name: 'Etapas de hoje' });
+
+    const items = agenda.querySelectorAll('li');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Ver como funciona (feita)');
+    expect(items[2]).toHaveTextContent('Montar sozinho (agora)');
+    expect(items[2]).toHaveAttribute('aria-current', 'step');
+    expect(items[0].querySelector('svg')).not.toBeNull();
+  });
+
+  it('shows nothing for a challenge outside the official sequence', async () => {
+    mockedGet.mockResolvedValueOnce({ ...baseCreateChallenge, agenda: null });
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(screen.queryByRole('navigation', { name: 'Etapas de hoje' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ChallengePage - ouvir o enunciado (F16)', () => {
+  const speakSpy = vi.fn();
+  const cancelSpy = vi.fn();
+
+  beforeEach(() => {
+    speakSpy.mockReset();
+    cancelSpy.mockReset();
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      class {
+        text: string;
+        lang = '';
+        rate = 1;
+        onend: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(text: string) {
+          this.text = text;
+        }
+      },
+    );
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: { speak: speakSpy, cancel: cancelSpy },
+    });
+    useReadingPrefsStore.setState({ readAloudEnabled: false });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(window, 'speechSynthesis');
+  });
+
+  it('does not show the button by default, and never speaks on its own', async () => {
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(screen.queryByRole('button', { name: /ouvir o enunciado/i })).not.toBeInTheDocument();
+    expect(speakSpy).not.toHaveBeenCalled();
+  });
+
+  it('reads the prompt in pt-BR only when the student opted in AND presses the button, and logs it', async () => {
+    useReadingPrefsStore.setState({ readAloudEnabled: true });
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await userEvent.click(await screen.findByRole('button', { name: /ouvir o enunciado/i }));
+
+    expect(speakSpy).toHaveBeenCalledTimes(1);
+    const utterance = speakSpy.mock.calls[0][0];
+    expect(utterance.text).toBe('Monte o desenho.');
+    expect(utterance.lang).toBe('pt-BR');
+    expect(mockedLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'RD-I', type: 'challenge.read_aloud_used', challengeId: 'challenge-1' }),
+    );
+  });
+
+  it('pressing again stops the voice instead of restarting it', async () => {
+    useReadingPrefsStore.setState({ readAloudEnabled: true });
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await userEvent.click(await screen.findByRole('button', { name: /ouvir o enunciado/i }));
+    cancelSpy.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: /parar de ouvir/i }));
+
+    expect(cancelSpy).toHaveBeenCalled();
+    expect(speakSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the button when the browser cannot speak, instead of showing a control that fails', async () => {
+    Reflect.deleteProperty(window, 'speechSynthesis');
+    useReadingPrefsStore.setState({ readAloudEnabled: true });
+    mockedGet.mockResolvedValueOnce(baseCreateChallenge);
+
+    renderChallenge('challenge-1');
+    await screen.findByRole('button', { name: /executar/i });
+
+    expect(screen.queryByRole('button', { name: /ouvir o enunciado/i })).not.toBeInTheDocument();
   });
 });

@@ -154,6 +154,36 @@ npm run migration:create --workspace apps/api -- src/database/migrations/NomeDes
 
 e escreva o `up`/`down` à mão.
 
+#### Rodando uma migration que você criou
+
+Vale tanto para migrations geradas (`migration:generate`) quanto para as
+criadas à mão (`migration:create`):
+
+1. Confirme que o arquivo está em `apps/api/src/database/migrations/` e que a
+   classe implementa `MigrationInterface` com um `name` único (convenção:
+   `NomeDescritivo<timestamp>`). O `data-source.ts` carrega todo o diretório —
+   não precisa registrar nada.
+2. Com o Postgres rodando e o `apps/api/.env` configurado, aplique as
+   pendentes (o TypeORM só executa as que ainda não estão na tabela
+   `migrations`, em ordem de timestamp):
+
+   ```powershell
+   npm run migration:run --workspace apps/api
+   ```
+
+3. Confirme no final da saída:
+   `Migration <Nome><timestamp> has been executed successfully.`
+4. Se algo estiver errado, reverta a última (executa o `down`) e corrija:
+
+   ```powershell
+   npm run migration:revert --workspace apps/api
+   ```
+
+Cada migration roda dentro de uma transação: se o `up` falhar, nada é
+gravado e ela continua pendente. Migrations de limpeza de dado que não têm
+como desfazer (ex.: `RemoveEmojisFromSeededData`) têm `down` vazio — o
+`revert` apenas as remove da tabela `migrations`.
+
 ## 3. Rodando o backend
 
 ```powershell
@@ -192,6 +222,13 @@ npm run build:api
 | `npm run dev:api` | Roda o backend em modo dev |
 | `npm run dev:web` | Roda o frontend em modo dev |
 | `npm run build:api` / `npm run build:web` | Builds de produção |
+
+## Guia do design system (dev)
+
+Com o frontend rodando (`npm run dev:web`), abra `/dev/design-system`: tokens com
+valores atuais, componentes de `components/ui/` e toggles ao vivo do perfil
+sensorial. Só existe em modo dev. Ícones: sempre `lucide-react`, nunca emoji
+(há testes que falham se emoji voltar ao código).
 
 ## Contas demo
 

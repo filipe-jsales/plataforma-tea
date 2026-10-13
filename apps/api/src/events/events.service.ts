@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventCategory } from '../common/enums/event-category.enum';
 import { CreateEventDto } from './dto/create-event.dto';
+import { CreatePreLoginEventDto } from './dto/create-pre-login-event.dto';
 import { InteractionEvent } from './entities/interaction-event.entity';
 
 @Injectable()
@@ -23,6 +24,63 @@ export class EventsService {
       miniGameLevelId: dto.miniGameLevelId ?? null,
     });
     return this.eventsRepository.save(event);
+  }
+
+  // Eventos PRÉ-LOGIN (`login_screen_viewed`, `sensory_setting_changed_
+  // pre_login`) - acontecem antes de qualquer autenticação, então não há
+  // aluno nem professor a quem atribuir: `studentPseudoId` e `teacherUserId`
+  // ficam AMBOS `null` (a exportação 6.6 já filtra `studentPseudoId IS NOT
+  // NULL`, então essas linhas nunca entram em exportação de aluno).
+  // Chamado só por `POST /events/pre-login` (público + rate limit). Aceita
+  // apenas payload de forma fixa por tipo - qualquer chave/valor fora da
+  // lista é rejeitado, nunca gravado como jsonb livre.
+  async recordPreLoginEvent(
+    dto: CreatePreLoginEventDto,
+  ): Promise<{ recorded: true }> {
+    const payload = this.validatePreLoginPayload(dto.type, dto.payload ?? {});
+    const event = this.eventsRepository.create({
+      studentPseudoId: null,
+      teacherUserId: null,
+      category: EventCategory.INTERACTION,
+      type: dto.type,
+      payload,
+      sessionId: dto.sessionId ?? null,
+    });
+    await this.eventsRepository.save(event);
+    return { recorded: true };
+  }
+
+  private validatePreLoginPayload(
+    type: CreatePreLoginEventDto['type'],
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const keys = Object.keys(payload);
+    const reject = (): never => {
+      throw new BadRequestException('Payload inválido para este evento.');
+    };
+
+    if (type === 'login_screen_viewed') {
+      const screens = ['role_select', 'student', 'teacher', 'admin'];
+      if (
+        keys.some((key) => key !== 'screen') ||
+        typeof payload.screen !== 'string' ||
+        !screens.includes(payload.screen)
+      ) {
+        reject();
+      }
+      return { screen: payload.screen };
+    }
+
+    const settings = ['motion', 'sound', 'contrast'];
+    if (
+      keys.some((key) => key !== 'setting' && key !== 'value') ||
+      typeof payload.setting !== 'string' ||
+      !settings.includes(payload.setting) ||
+      typeof payload.value !== 'boolean'
+    ) {
+      reject();
+    }
+    return { setting: payload.setting, value: payload.value };
   }
 
   // 7.5 — contraparte de `record()` pra eventos de AUTORIA do professor

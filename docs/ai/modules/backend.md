@@ -174,16 +174,44 @@ Para proteger uma rota nova (fora do auth):
 export class TurmasController { ... }
 ```
 
-### Gap conhecido: eventos pré-login
+### Eventos pré-login (`POST /events/pre-login`)
 
-`login_screen_viewed` e `sensory_setting_changed_pre_login` (ver spec de
-login) acontecem **antes** de qualquer autenticação — não têm como carregar
-JWT. `POST /events` hoje exige `JwtAuthGuard` sempre, então esses dois tipos
-de evento não têm por onde entrar ainda. Não implementado de propósito:
-abrir um endpoint de ingestão sem autenticação é uma decisão de segurança
-(superfície de abuso/spam) que merece ser tomada explicitamente, não
-resolvida por conveniência. Próxima decisão necessária antes do frontend
-precisar disso.
+`login_screen_viewed` e `sensory_setting_changed_pre_login` acontecem
+**antes** de qualquer autenticação — não têm JWT nem pseudônimo, então não
+cabiam em `POST /events` (que segue exigindo `JwtAuthGuard` e
+`studentPseudoId`, inalterado). Decisão (2026-10): endpoint **separado e
+público**, com a superfície de abuso reduzida ao mínimo, em vez de afrouxar
+o endpoint autenticado:
+
+- **Lista fechada de tipos** (`PRE_LOGIN_EVENT_TYPES` em
+  `events/dto/create-pre-login-event.dto.ts`): só esses dois; qualquer outro
+  `type` é 400.
+- **Payload de forma fixa por tipo**, validado em
+  `EventsService.recordPreLoginEvent` (nunca jsonb livre): `login_screen_
+  viewed` → `{ screen: 'role_select'|'student'|'teacher'|'admin' }`;
+  `sensory_setting_changed_pre_login` → `{ setting: 'motion'|'sound'|
+  'contrast', value: boolean }`. Chave extra ou valor fora da lista = 400 e
+  nada é gravado.
+- **Rate limit por IP**: `ThrottlerGuard` + `@Throttle(30 req/min)` só
+  nesta rota (o `ThrottlerModule.forRoot` global vive em `MetricsModule`, ver
+  "Rate limiting"). Verificado manualmente: a 29ª requisição seguida já
+  recebe 429.
+- **Sem identidade**: a linha entra em `interaction_events` com
+  `studentPseudoId = null` **e** `teacherUserId = null` (categoria RD-I) e
+  `sessionId` = id anônimo gerado pelo navegador (por aba, só pra ligar os
+  eventos da mesma visita). A exportação 6.6 já filtra `studentPseudoId IS
+  NOT NULL`, então essas linhas nunca entram em exportação de aluno; as
+  consultas por `pseudoIds`/`challengeId` também não as alcançam.
+- **Resposta**: `201 { recorded: true }` — nada do banco é devolvido.
+
+Frontend: `lib/logEvent.ts` (`logLoginScreenViewed`,
+`logSensorySettingChangedPreLogin`), hook `lib/useLoginScreenViewed.ts`
+chamado em `RoleSelect`/`StudentLogin`/`TeacherLogin`/`AdminLogin`. O
+evento sensorial sai dos setters de `useSensoryProfileStore` **somente sem
+sessão** (`token` nulo) — a hidratação de `main.tsx` e o onboarding pós-login
+passam pelos mesmos setters e nunca viram evento pré-login. Hoje nenhuma
+tela de login tem controle sensorial, então esse evento só dispara quando
+uma for adicionada (ver `docs/ai/backlog/roadmap-melhorias.md`, item F1).
 
 ### Credenciais de desenvolvimento (seed)
 
@@ -633,6 +661,28 @@ documentada):**
    cobre os três — Run é implícito em toda execução — não só o nome que dá
    título ao desafio).
 
+### Agenda da sessão no detalhe do desafio (F17)
+
+`GET /challenges/by-topic/:topicId` e `GET /challenges/:id` devolvem
+`agenda: { stages: ChallengeStage[]; currentIndex: number } | null`.
+`stages` é a sequência **oficial** do tópico (`findByTopicIdOrdered`, por
+`position`, sem desafios de professor) e `currentIndex` é a posição deste
+desafio nela. É `null` quando o desafio não está na sequência oficial
+(desafio de professor) ou quando sua `config` é inválida. Só estágios e um
+índice: nenhum campo de tempo, contagem ou pontuação (regra 5), e há teste
+que trava isso. O frontend traduz para linguagem de aluno
+(`lib/sessionAgenda.ts`), o backend nunca manda rótulo de tela.
+
+**Eventos de leitura e ajuda (F16/F18)** - todos RD-I, escopados ao aluno,
+emitidos pelo frontend via `POST /events` (nenhum endpoint novo; `type` é
+string livre validada só por tamanho):
+
+| Evento | Quando | Payload |
+|---|---|---|
+| `challenge.help_viewed` | 1º degrau da Ajuda do desafio `create` (F18 - antes era o único clique) | - |
+| `challenge.hint_level_opened` | a cada degrau da Ajuda aberto | `challenge_id`, `level` (1-3) |
+| `challenge.read_aloud_used` | aluno manda ler o enunciado em voz alta | `challenge_id` |
+
 ### Eventos desta feature
 
 Além de `toolbox_rendered`/`block_dragged` (3.1, RD-I), `program_executed`
@@ -851,6 +901,53 @@ tolerância... necessário para mitigar imprecisão de coordenação motora
 fina"). O resto do card já estava coberto por 4.2 antes mesmo deste
 trabalho começar — ver "Seletores visuais pré-definidos" logo abaixo.
 
+### Autoria da fase Modify pelo professor (F13)
+
+Antes de F13 o template só gerava `stage: 'create'`: o professor autorava a
+última fase do ciclo Use-Modify-Create e não conseguia criar a do meio. Agora
+o primeiro campo do formulário é **"Tipo de atividade"** (`stage`, `select`):
+"Montar do zero" (`create`, padrão) ou "Mudar um programa pronto" (`modify`).
+
+- **Parâmetro, não rota nova.** `stage` é mais um item de
+  `challenge_templates.parameterSchema` (migration
+  `AddStageToRegularPolygonTemplate`, só `UPDATE` de dado, sem mudança de
+  schema; `down` desfaz). `defaultValue: "create"` e `readStage()` tratam
+  parâmetro ausente como `create`, então **todo desafio salvo antes de F13
+  continua igual**. Valor desconhecido (`use`, texto livre) é rejeitado com
+  mensagem pedagógica; `use` fica de fora de propósito (é a fase que introduz
+  blocos e vive no currículo curado, `block-progression.ts`).
+- **`visibleWhen`** (novo, opcional, em `TemplateParameterDefinition`):
+  `{ key, equals }`. O formulário genérico só mostra o campo quando o
+  parâmetro `key` vale `equals` (`visibleParameters()` em
+  `lib/templateParameterForm.ts`). Em `modify`, `enabledBlockTypes` e
+  `snapTolerancePercent` ficam escondidos: não há paleta (blocos nascem
+  encaixados e travados) nem encaixe a tolerar. É dado do schema, então um
+  template futuro usa o mesmo mecanismo sem tocar no formulário.
+- **O que `buildChallengeConfig` gera em `modify`** (mesma forma do desafio
+  `modify` curado de `SeedModifyChallenge`): `program` = `repeat_times`
+  (`TIMES = sides`) contendo `move_forward` + `turn` (`ANGLE = turnAngleDeg`,
+  `DIR = RIGHT`); `editableFields` destrava só `TIMES` (3-12, "Número de
+  lados") e `ANGLE` (1-359, "Ângulo de giro (graus)"); `allowedBlockTypes`
+  fixo em `repeat_times / move_forward / turn`; `blockScale` e
+  `closureTolerancePx` valem como em `create`; **sem** `snapTolerancePercent`.
+  Os limites editáveis são o domínio inteiro que o template já aceita, o que
+  garante que o valor inicial escolhido pelo professor sempre cabe neles. O
+  professor não escreve min/max (regra 9). Uma faixa configurável é
+  melhoria futura, não pendência.
+- **Validação em `modify`:** a figura inicial precisa fechar (mesma regra de
+  `create`); os 3 blocos do programa precisam já ter sido introduzidos num
+  desafio `use` do tópico (erro no campo `stage`, linguagem de professor).
+  `enabledBlockTypes` e `snapTolerancePercent` não são exigidos.
+- **Perguntas PRIMM:** continuam obrigatórias e já servem a `modify`
+  (`predictQuestion` abre a rodada, `investigationQuestion` aparece após
+  Executar). O enunciado padrão muda: "Esse programa desenha uma figura com N
+  lados. Agora você pode mudar os números ...".
+- **Nada no aluno mudou:** `ChallengePage` já decidia tudo por
+  `toolbox.stage` e por presença de `editableFields`/`program`. Métricas
+  (`metrics-*`) já tratavam os 3 estágios.
+- Como todo desafio de professor, **não entra na sequência oficial**: chega
+  ao aluno por alocação (4.3) ou link direto, e por isso `agenda` é `null`.
+
 ### Seletores visuais pré-definidos e preview (7.4, AC1/AC2/AC4) — já cobertos por 4.2
 
 O card pede "seletores visuais pré-definidos (nº de lados, ângulo final,
@@ -876,12 +973,10 @@ correspondência:
   validado no client antes da execução) — **já implementado como
   capacidade de dado** desde antes de 4.2: `EditableFieldConfig.min/max`
   (ver "Blocos por desafio" acima) é aplicado via `Blockly.FieldNumber.
-  setConstraints` no client. O que NÃO existe é uma tela onde o professor
-  autora um desafio `stage: 'modify'` via template (`RegularPolygonTemplateHandler.
-  buildChallengeConfig` sempre produz `stage: 'create'`) — mesma decisão já
-  documentada de "sem autoria de toolbox LIVRE pelo professor", nunca
-  revisitada nesta sessão por ser um escopo bem maior (autoria de fase
-  Modify inteira) que o card não pedia explicitamente.
+  setConstraints` no client. Até F13 não existia uma tela onde o professor
+  autorasse um desafio `stage: 'modify'` via template (o handler só produzia
+  `stage: 'create'`). **F13 fechou isso**: ver "Autoria da fase Modify pelo
+  professor (F13)" logo acima.
 
 ### Autorização e escopo — desafio do professor nunca entra na sequência forçada
 

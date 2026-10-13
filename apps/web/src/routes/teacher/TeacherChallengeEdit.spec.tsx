@@ -23,9 +23,9 @@ const templateDetail = {
   key: 'regular_polygon',
   name: 'Desenhar um polígono regular',
   description: 'descrição',
-  icon: '🔷',
+  icon: '',
   parameterSchema: [
-    { key: 'sides', label: 'Número de lados', icon: '🔺', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
+    { key: 'sides', label: 'Número de lados', icon: '', type: 'integer', min: 3, max: 12, defaultValue: 4, visualPreview: 'polygonSides' },
   ],
   primmQuestionSuggestion: {
     predictQuestion: 'Quantos lados você acha que essa figura vai ter?',

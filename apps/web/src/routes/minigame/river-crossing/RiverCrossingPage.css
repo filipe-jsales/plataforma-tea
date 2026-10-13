@@ -1,0 +1,407 @@
+/* Sem restrição sensorial de propósito: a página usa `.staff-theme`, a única
+   exceção ao reset global de animação, para que o movimento mínimo (barco
+   atravessando, conflito, fim de jogo) funcione. `prefers-reduced-motion` do
+   sistema continua valendo. */
+.river-page {
+  --river-water-top: #4dabf7;
+  --river-water-bottom: #1c7ed6;
+  --river-grass: #8ce99a;
+  --river-grass-dark: #51cf66;
+  --river-sand: #f1d9a8;
+  --river-boat-wood: #b9824b;
+  --river-boat-wood-dark: #7a4a22;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.river-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.river-page__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.river-page__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.river-page__feedback {
+  min-height: 3rem;
+}
+
+.river-fuel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.river-fuel__drops {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  color: var(--color-primary);
+}
+
+.river-fuel__drops svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.river-fuel__drops svg[data-used='true'] {
+  fill: none;
+  color: var(--color-border);
+}
+
+.river {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 1.3fr) minmax(8rem, 1fr);
+  align-items: stretch;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.river__bank {
+  position: relative;
+  background: radial-gradient(circle at 20% 15%, var(--river-grass) 0 40%, var(--river-grass-dark) 100%);
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  color: #1b4332;
+}
+
+/* Faixa de areia na beira, voltada para a água. */
+.river__bank[data-side='E'] {
+  border-right: 14px solid var(--river-sand);
+}
+
+.river__bank[data-side='D'] {
+  border-left: 14px solid var(--river-sand);
+}
+
+.river__bank[data-conflict='true'] {
+  box-shadow: inset 0 0 0 4px var(--color-danger);
+  animation: river-shake 400ms ease-in-out 2;
+}
+
+.river__pieces,
+.river__cargo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.river__water {
+  position: relative;
+  min-height: 15rem;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.14) 0 2px,
+      transparent 2px 26px
+    ),
+    linear-gradient(180deg, var(--river-water-top), var(--river-water-bottom));
+  overflow: hidden;
+}
+
+.river__water::before,
+.river__water::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: radial-gradient(circle at 10px 0, transparent 8px, rgba(255, 255, 255, 0.35) 9px 11px, transparent 12px)
+    0 0 / 24px 10px repeat-x;
+}
+
+.river__water::before {
+  top: 18%;
+}
+
+.river__water::after {
+  bottom: 14%;
+}
+
+.river__boat {
+  position: absolute;
+  top: 50%;
+  left: var(--space-2);
+  width: 10rem;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: left 700ms ease-in-out;
+}
+
+.river__boat[data-side='D'] {
+  left: calc(100% - 10rem - var(--space-2));
+}
+
+.river__crew {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--space-1);
+  min-height: 4rem;
+  position: relative;
+  z-index: 1;
+}
+
+.river__hull {
+  display: block;
+  width: 100%;
+  height: 1.6rem;
+  margin-top: -0.6rem;
+  background: linear-gradient(180deg, var(--river-boat-wood), var(--river-boat-wood-dark));
+  border-radius: 4px 4px 2.4rem 2.4rem / 4px 4px 1.6rem 1.6rem;
+  border: 2px solid var(--river-boat-wood-dark);
+}
+
+.river-piece {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+}
+
+.river-piece--button {
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.river-piece--static {
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+}
+
+.river-piece__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.river-icon {
+  display: block;
+}
+
+.river-page__result {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  animation: river-pop 400ms ease-out;
+}
+
+.river-page__result--won {
+  border-color: var(--color-success);
+}
+
+.river-page__result--lost {
+  border-color: var(--color-warning);
+}
+
+.river-page[data-result='lost'] .river {
+  opacity: 0.55;
+  filter: grayscale(0.8);
+  transition: opacity 600ms ease, filter 600ms ease;
+}
+
+.river-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.river-rules__list {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+@keyframes river-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes river-pop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Dicas em cartas viradas, no estilo de Codenames: verso com faixas
+   coloridas e número; ao virar, a frente mostra o texto. */
+.hint-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hint-cards__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+}
+
+.hint-cards__item {
+  --hint-accent: var(--color-primary);
+}
+
+.hint-card {
+  position: relative;
+  width: 100%;
+  min-height: 9rem;
+  border-radius: 12px;
+  border: 3px solid var(--hint-accent);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.hint-card--back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--hint-accent);
+  background:
+    linear-gradient(var(--hint-accent), var(--hint-accent)) top / 100% 14px no-repeat,
+    linear-gradient(var(--hint-accent), var(--hint-accent)) bottom / 100% 14px no-repeat,
+    repeating-linear-gradient(
+      45deg,
+      var(--color-surface) 0 10px,
+      color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)) 10px 20px
+    );
+}
+
+.hint-card--back:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.hint-card--front {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  color: var(--color-text);
+  animation: hint-flip 450ms ease-out;
+}
+
+.hint-card__number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hint-card--front .hint-card__number {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 1.4rem;
+  color: var(--hint-accent);
+}
+
+.hint-card__text {
+  margin: 0;
+  padding-right: var(--space-4);
+  line-height: 1.4;
+}
+
+@keyframes hint-flip {
+  from {
+    transform: perspective(600px) rotateY(90deg);
+  }
+  to {
+    transform: perspective(600px) rotateY(0);
+  }
+}
+
+@media (max-width: 40rem) {
+  .river {
+    grid-template-columns: 1fr;
+  }
+
+  .river__bank[data-side='E'],
+  .river__bank[data-side='D'] {
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+/* Controles só com ícone: centralizados, com o span recebendo o hover para o
+   tooltip aparecer também no botão bloqueado. */
+.river-page__actions--controls {
+  justify-content: center;
+}
+
+.river-control {
+  display: inline-flex;
+}
+
+.river-control .ui-button:disabled {
+  pointer-events: none;
+}
+
+.river-control .ui-button__label:empty {
+  display: none;
+}
