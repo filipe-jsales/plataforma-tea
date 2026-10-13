@@ -45,8 +45,8 @@ describe('canAddToCargo', () => {
 });
 
 describe('cross', () => {
-  it('primeiro movimento válido da rodada 2 é só Alface + Galinha', () => {
-    const start = createInitialState(2);
+  it('primeiro movimento válido é só Alface + Galinha', () => {
+    const start = createInitialState();
     const candidates: PieceId[][] = [
       [],
       ['wolf'],
@@ -58,15 +58,12 @@ describe('cross', () => {
       ['lettuce', 'chicken'],
       ['dog', 'chicken'],
     ];
-    const valid = candidates.filter((cargo) => {
-      const { outcome } = cross(start, cargo);
-      return outcome === 'ok';
-    });
+    const valid = candidates.filter((cargo) => cross(start, cargo).outcome === 'ok');
     expect(valid).toEqual([['lettuce', 'chicken']]);
   });
 
   it('travessia inválida é desfeita, mas a gota continua gasta', () => {
-    const start = createInitialState(2);
+    const start = createInitialState();
     const result = cross(start, ['sheep']);
     expect(result.outcome).toBe('conflict');
     expect(result.settled.bank).toEqual(start.bank);
@@ -75,7 +72,7 @@ describe('cross', () => {
     expect(result.arrived.boat).toBe('D');
   });
 
-  it('a solução de 11 travessias do gabarito vence da rodada 2 com 2 gotas sobrando', () => {
+  it('a solução de 11 travessias do gabarito vence com 2 gotas sobrando', () => {
     const solution: PieceId[][] = [
       ['lettuce', 'chicken'],
       ['lettuce'],
@@ -89,36 +86,24 @@ describe('cross', () => {
       ['lettuce'],
       ['lettuce', 'chicken'],
     ];
-    const { state, last } = play(createInitialState(2), solution);
+    const { state, last } = play(createInitialState(), solution);
     expect(last.outcome).toBe('won');
     expect(state.fuel).toBe(2);
   });
 
-  it('a solução de 5 travessias da rodada 1 vence', () => {
-    const solution: PieceId[][] = [['lettuce', 'dog'], [], ['sheep'], ['lettuce'], ['lettuce', 'chicken']];
-    const { last } = play(createInitialState(1), solution);
-    expect(last.outcome).toBe('won');
-  });
-
   it('esvaziar o tanque antes de terminar é perda, inclusive numa travessia desfeita', () => {
-    let state = createInitialState(1);
-    let result = cross(state, []);
-    for (let i = 0; i < 6; i += 1) {
-      state = result.settled;
-      result = cross(state, []);
-    }
+    let result = cross(createInitialState(), []);
+    for (let i = 0; i < 12; i += 1) result = cross(result.settled, []);
     expect(result.outcome).toBe('lost');
     expect(result.settled.fuel).toBe(0);
 
-    const almostEmpty: RiverState = { ...createInitialState(2), fuel: 1 };
+    const almostEmpty: RiverState = { ...createInitialState(), fuel: 1 };
     expect(cross(almostEmpty, ['sheep']).outcome).toBe('lost');
   });
 
   it('terminar com a última gota conta como vitória, não perda', () => {
-    const state = createInitialState(1);
     const lastStep: RiverState = {
-      ...state,
-      bank: { sheep: 'D', lettuce: 'E', dog: 'D', chicken: 'E' },
+      bank: { wolf: 'D', sheep: 'D', lettuce: 'E', dog: 'D', chicken: 'E' },
       boat: 'E',
       fuel: 1,
     };

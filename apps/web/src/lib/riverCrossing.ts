@@ -1,6 +1,5 @@
 export type PieceId = 'wolf' | 'sheep' | 'lettuce' | 'dog' | 'chicken';
 export type Bank = 'E' | 'D';
-export type RoundId = 1 | 2;
 
 export const PIECE_LABEL: Record<PieceId, string> = {
   wolf: 'Lobo',
@@ -18,18 +17,11 @@ export const PIECE_WEIGHT: Record<PieceId, number> = {
   chicken: 1,
 };
 
+export const PIECES: PieceId[] = ['wolf', 'sheep', 'lettuce', 'dog', 'chicken'];
+export const INITIAL_FUEL = 13;
+
 // Peso máximo do barco (3) menos o Fazendeiro (1), que nunca sai do barco.
 export const BOAT_CARGO_CAPACITY = 2;
-
-export interface RoundConfig {
-  pieces: PieceId[];
-  fuel: number;
-}
-
-export const ROUNDS: Record<RoundId, RoundConfig> = {
-  1: { pieces: ['sheep', 'lettuce', 'dog', 'chicken'], fuel: 7 },
-  2: { pieces: ['wolf', 'sheep', 'lettuce', 'dog', 'chicken'], fuel: 13 },
-};
 
 export interface ConflictRule {
   id: 'R1' | 'R2' | 'R3' | 'R4';
@@ -54,20 +46,19 @@ export const CONFLICT_RULES: ConflictRule[] = [
 ];
 
 export interface RiverState {
-  round: RoundId;
   bank: Partial<Record<PieceId, Bank>>;
   boat: Bank;
   fuel: number;
 }
 
-export function createInitialState(round: RoundId): RiverState {
+export function createInitialState(): RiverState {
   const bank: RiverState['bank'] = {};
-  for (const piece of ROUNDS[round].pieces) bank[piece] = 'E';
-  return { round, bank, boat: 'E', fuel: ROUNDS[round].fuel };
+  for (const piece of PIECES) bank[piece] = 'E';
+  return { bank, boat: 'E', fuel: INITIAL_FUEL };
 }
 
 export function piecesOnBank(state: RiverState, side: Bank): PieceId[] {
-  return ROUNDS[state.round].pieces.filter((piece) => state.bank[piece] === side);
+  return PIECES.filter((piece) => state.bank[piece] === side);
 }
 
 export function cargoWeight(cargo: PieceId[]): number {
@@ -88,7 +79,7 @@ export function findConflicts(present: PieceId[]): ConflictRule[] {
 }
 
 export function hasWon(state: RiverState): boolean {
-  return ROUNDS[state.round].pieces.every((piece) => state.bank[piece] === 'D');
+  return PIECES.every((piece) => state.bank[piece] === 'D');
 }
 
 export type CrossingOutcome = 'ok' | 'conflict' | 'won' | 'lost';

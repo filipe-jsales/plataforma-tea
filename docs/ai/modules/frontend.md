@@ -2275,18 +2275,23 @@ e nos CSS de tema; nenhuma tela reimplementa isso por conta própria.
 ## Travessia do Rio (Educação em Computação)
 
 `/minigame/river-crossing` (`routes/minigame/river-crossing/RiverCrossingPage.tsx`,
-regras puras em `lib/riverCrossing.ts`). Jogo desplugado de algoritmo
+regras puras em `lib/riverCrossing.ts`, sons em `lib/riverSounds.ts`, desenhos
+em `components/minigame/RiverPieceIcon.tsx`). Jogo desplugado de algoritmo
 (repetição, decisão e verificação) baseado no plano de aula "Travessia do Rio:
 Edição Fazenda Complicada". É um jogo **à parte**: sem Use-Modify-Create, sem
 backend, sem logging de eventos RD-* (decisão explícita do pedido; reavaliar
 se virar objeto de coleta de pesquisa).
 
-- Mostra as regras antes do jogo (`RulesView`); `Ver regras` reabre no meio.
-- Duas rodadas: 1 (sem Lobo, 7 gotas) e 2 (completa, 13 gotas).
+- Mostra as regras antes do jogo; "Ver regras" no meio da partida **não
+  reinicia** o estado (a tela de regras oferece "Continuar a travessia").
+- Uma partida só (13 gotas, sem rodada de aquecimento).
+- Personagens são só SVG (sem nome visível); o nome vai em `aria-label` e o
+  peso aparece como badge numérico no canto superior direito.
 - Barco: peso 3, Fazendeiro pesa 1, carga até peso 2. Conflito é checado só na
   margem sem o barco; travessia inválida é desfeita e a gota continua gasta.
-- Animação mínima (barco, conflito, fim de jogo) **sem limitação sensorial**:
-  a raiz usa `.staff-theme`, a única exceção ao reset global de movimento.
-  `prefers-reduced-motion` do SO continua valendo.
+- Animação mínima (barco, conflito, fim de jogo) e sons (Web Audio sintetizado,
+  com toggle "Som") **sem limitação sensorial**, por pedido: a raiz usa
+  `.staff-theme`, a única exceção ao reset global de movimento.
+  `prefers-reduced-motion` do SO continua valendo para a animação.
 - Fim de jogo por combustível usa texto não punitivo ("O combustível acabou",
   "Tentar de novo").

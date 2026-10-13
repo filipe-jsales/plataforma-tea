@@ -3,6 +3,14 @@
    atravessando, conflito, fim de jogo) funcione. `prefers-reduced-motion` do
    sistema continua valendo. */
 .river-page {
+  --river-water-top: #4dabf7;
+  --river-water-bottom: #1c7ed6;
+  --river-grass: #8ce99a;
+  --river-grass-dark: #51cf66;
+  --river-sand: #f1d9a8;
+  --river-boat-wood: #b9824b;
+  --river-boat-wood-dark: #7a4a22;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -63,23 +71,35 @@
 
 .river {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) minmax(10rem, 1fr);
-  gap: var(--space-2);
+  grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 1.3fr) minmax(8rem, 1fr);
   align-items: stretch;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
 .river__bank {
-  background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg));
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
+  position: relative;
+  background: radial-gradient(circle at 20% 15%, var(--river-grass) 0 40%, var(--river-grass-dark) 100%);
+  padding: var(--space-3) var(--space-2);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-2);
+  color: #1b4332;
+}
+
+/* Faixa de areia na beira, voltada para a água. */
+.river__bank[data-side='E'] {
+  border-right: 14px solid var(--river-sand);
+}
+
+.river__bank[data-side='D'] {
+  border-left: 14px solid var(--river-sand);
 }
 
 .river__bank[data-conflict='true'] {
-  border-color: var(--color-danger);
+  box-shadow: inset 0 0 0 4px var(--color-danger);
   animation: river-shake 400ms ease-in-out 2;
 }
 
@@ -89,48 +109,119 @@
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-2);
-}
-
-.river__cargo-empty {
-  color: var(--color-text);
-  opacity: 0.7;
-}
-
-.river__piece-static {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
 }
 
 .river__water {
   position: relative;
-  min-height: 14rem;
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
-  border-radius: var(--radius-md);
+  min-height: 15rem;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.14) 0 2px,
+      transparent 2px 26px
+    ),
+    linear-gradient(180deg, var(--river-water-top), var(--river-water-bottom));
   overflow: hidden;
+}
+
+.river__water::before,
+.river__water::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: radial-gradient(circle at 10px 0, transparent 8px, rgba(255, 255, 255, 0.35) 9px 11px, transparent 12px)
+    0 0 / 24px 10px repeat-x;
+}
+
+.river__water::before {
+  top: 18%;
+}
+
+.river__water::after {
+  bottom: 14%;
 }
 
 .river__boat {
   position: absolute;
-  top: var(--space-2);
-  left: var(--space-1);
-  width: 11rem;
-  padding: var(--space-2);
-  background: var(--color-bg);
-  border: 2px solid var(--color-text);
-  border-radius: var(--radius-md);
+  top: 50%;
+  left: var(--space-2);
+  width: 10rem;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
   transition: left 700ms ease-in-out;
 }
 
 .river__boat[data-side='D'] {
-  left: calc(100% - 11rem - var(--space-1));
+  left: calc(100% - 10rem - var(--space-2));
+}
+
+.river__crew {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--space-1);
+  min-height: 4rem;
+  position: relative;
+  z-index: 1;
+}
+
+.river__hull {
+  display: block;
+  width: 100%;
+  height: 1.6rem;
+  margin-top: -0.6rem;
+  background: linear-gradient(180deg, var(--river-boat-wood), var(--river-boat-wood-dark));
+  border-radius: 4px 4px 2.4rem 2.4rem / 4px 4px 1.6rem 1.6rem;
+  border: 2px solid var(--river-boat-wood-dark);
+}
+
+.river-piece {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+}
+
+.river-piece--button {
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.river-piece--static {
+  min-width: var(--hit-area-min);
+  min-height: var(--hit-area-min);
+}
+
+.river-piece__badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.river-icon {
+  display: block;
 }
 
 .river-page__result {
@@ -198,5 +289,11 @@
 @media (max-width: 40rem) {
   .river {
     grid-template-columns: 1fr;
+  }
+
+  .river__bank[data-side='E'],
+  .river__bank[data-side='D'] {
+    border-left: 0;
+    border-right: 0;
   }
 }
