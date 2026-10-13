@@ -29,6 +29,9 @@ export interface TemplateParameterDefinition {
   // e pra 'select' (opções fixas já declaradas no `parameterSchema`, sem
   // nada a resolver).
   options?: TemplateParameterOption[];
+  // F13 - espelha o backend: o campo só aparece quando o parâmetro `key`
+  // vale `equals` (ex.: paleta de blocos só ao montar do zero).
+  visibleWhen?: { key: string; equals: string };
 }
 
 export interface ChallengeTemplateSummary {

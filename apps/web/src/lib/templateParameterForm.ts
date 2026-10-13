@@ -32,6 +32,18 @@ export function buildInitialParams(
   return draft;
 }
 
+// F13 - quais campos do schema aparecem dado o rascunho atual. Campo sem
+// `visibleWhen` sempre aparece. Um campo escondido continua no rascunho (com
+// o valor padrão) e o backend o ignora quando não se aplica à fase.
+export function visibleParameters(
+  parameterSchema: TemplateParameterDefinition[],
+  params: TemplateParamsDraft,
+): TemplateParameterDefinition[] {
+  return parameterSchema.filter(
+    (param) => !param.visibleWhen || params[param.visibleWhen.key] === param.visibleWhen.equals,
+  );
+}
+
 // Um input numérico nativo entrega string - nunca gravamos string crua no
 // rascunho (o preview/validate manda o valor pro backend, que espera
 // número/boolean/array já no tipo certo).

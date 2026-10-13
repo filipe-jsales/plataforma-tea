@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { ArrowLeft, Sparkles, Volume2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Type, Volume2 } from "lucide-react";
 import { apiClient } from "../lib/apiClient";
 import { logEvent } from "../lib/logEvent";
 import { useAuthStore, type SessionUser } from "../stores/useAuthStore";
 import { useSensoryProfileStore } from "../stores/useSensoryProfileStore";
 import {
+  FONT_SCALE_OPTIONS,
+  isFontScale,
+  useReadingPrefsStore,
+} from "../stores/useReadingPrefsStore";
+import { isSpeechSupported } from "../lib/speech";
+import {
   Button,
   InlineFeedback,
   LinkButton,
+  SegmentedControl,
   ToggleSwitch,
 } from "../components/ui";
 import "./OnboardingSensorial.css";
@@ -26,6 +33,18 @@ export function StudentSensorySettings() {
   );
   const setSoundEnabledGlobal = useSensoryProfileStore(
     (state) => state.setSoundEnabled,
+  );
+
+  // F15/F16 - preferências de leitura ficam só neste aparelho e valem na
+  // hora, sem passar por "Salvar" (o aluno vê o tamanho do texto mudar
+  // enquanto escolhe). Ver useReadingPrefsStore.
+  const fontScale = useReadingPrefsStore((state) => state.fontScale);
+  const setFontScale = useReadingPrefsStore((state) => state.setFontScale);
+  const readAloudEnabled = useReadingPrefsStore(
+    (state) => state.readAloudEnabled,
+  );
+  const setReadAloudEnabled = useReadingPrefsStore(
+    (state) => state.setReadAloudEnabled,
   );
 
   const [soundEnabled, setSoundChoice] = useState(user?.soundEnabled ?? false);
@@ -90,6 +109,31 @@ export function StudentSensorySettings() {
           onCheckedChange={setAnimationChoice}
         />
       </div>
+
+      <div className="onboarding-sensorial__options">
+        <p id="settings-font-scale-label">
+          <Type size={20} aria-hidden="true" /> Tamanho do texto
+        </p>
+        <SegmentedControl
+          ariaLabel="Tamanho do texto"
+          options={FONT_SCALE_OPTIONS.map((option) => ({ ...option }))}
+          value={fontScale}
+          onValueChange={(value) => {
+            if (isFontScale(value)) setFontScale(value);
+          }}
+        />
+
+        {isSpeechSupported() && (
+          <ToggleSwitch
+            id="settings-read-aloud"
+            icon={<Volume2 size={20} />}
+            label="Quer ouvir o enunciado?"
+            checked={readAloudEnabled}
+            onCheckedChange={setReadAloudEnabled}
+          />
+        )}
+      </div>
+      <p>Estas duas escolhas valem só neste computador.</p>
 
       {saved && <InlineFeedback kind="success">Salvo.</InlineFeedback>}
 

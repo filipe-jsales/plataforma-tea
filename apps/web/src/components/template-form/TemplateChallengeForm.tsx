@@ -5,6 +5,7 @@ import { buildGoalPreviewPath } from "../../lib/turtleWorld";
 import {
   buildInitialParams,
   errorsByParameterKey,
+  visibleParameters,
 } from "../../lib/templateParameterForm";
 import {
   DEFAULT_RETRY_MESSAGE,
@@ -318,7 +319,7 @@ export function TemplateChallengeForm({
         id="template-challenge-form-params"
         className="template-challenge-form__fields"
       >
-        {template.parameterSchema.map((definition) => (
+        {visibleParameters(template.parameterSchema, params).map((definition) => (
           <TemplateParameterField
             key={definition.key}
             definition={definition}

@@ -434,6 +434,9 @@ export class ChallengeTemplatesService {
   private buildDefaultPrompt(template: ChallengeTemplate, params: Record<string, unknown>): string {
     const sides = Number(params.sides);
     if (template.key === 'regular_polygon' && Number.isInteger(sides)) {
+      if (params.stage === 'modify') {
+        return `Esse programa desenha uma figura com ${sides} lados. Agora você pode mudar os números - descubra que outras formas dá para desenhar!`;
+      }
       return `Monte um desenho com ${sides} lados usando os blocos disponíveis.`;
     }
     return template.description;

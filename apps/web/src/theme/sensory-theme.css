@@ -103,6 +103,23 @@
   --color-text-on-dark: #000000;
 }
 
+/*
+  F15 - tamanho de texto ajustável (data-font-scale, escrito no <html> por
+  stores/useReadingPrefsStore.ts). Toda a escala tipográfica é em rem, então
+  mudar o tamanho-base do documento escala títulos, corpo e espaçamento
+  proporcional de uma vez, sem tocar em componente. Alvos de toque seguem em
+  px (--hit-area-min) e não encolhem. O padrão 'normal' não altera nada.
+*/
+:root[data-font-scale='large'] {
+  font-size: 125%;
+  --line-height-body: 1.6;
+}
+
+:root[data-font-scale='xlarge'] {
+  font-size: 150%;
+  --line-height-body: 1.7;
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);

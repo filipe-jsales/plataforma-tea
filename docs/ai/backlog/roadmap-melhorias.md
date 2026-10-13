@@ -50,15 +50,26 @@ issues DS12–DS25 do GitHub — conferir lá antes de abrir de novo.
 
 | ID | Melhoria | Prioridade | Evidência / notas |
 |---|---|---|---|
-| M1 | **`--color-text-muted` não existe**, mas 18 usos em CSS caem num hex fixo (`#5a6472`) | Alta | O hex não acompanha o alto contraste: texto secundário fica cinza sobre fundo preto, justamente no modo pensado para baixa visão (RQ4 acessibilidade, 26,09%). Já há `.u-text-muted` (opacidade sobre `--color-text`) e `Text tone="muted"`; migrar os 18 usos (formulário de template, `WaterStateTransition`, `GuidedTour`...) ou definir o token nos dois temas |
-| M2 | **Botão de fechar do `Toast` com 32px**, abaixo de `--hit-area-min` (56px) | Alta | Contradiz a regra de coordenação motora fina (RQ4, 21,74%) que o resto do design system respeita. Usado em `TemplateChallengeForm` |
-| M3 | **Dois `<h1>` em `RoleSelect`** (a logo é envolvida em `h1` e "Quem é você?" é outro) | Média | Leitor de tela anuncia dois títulos principais na primeira tela do produto. A logo deve ser `img` solta (ou `header`) e o único `h1` o título |
+| M1 ✅ | **`--color-text-muted` não existe**, mas 18 usos em CSS caem num hex fixo (`#5a6472`) | Alta | O hex não acompanha o alto contraste: texto secundário fica cinza sobre fundo preto, justamente no modo pensado para baixa visão (RQ4 acessibilidade, 26,09%). Já há `.u-text-muted` (opacidade sobre `--color-text`) e `Text tone="muted"`; migrar os 18 usos (formulário de template, `WaterStateTransition`, `GuidedTour`...) ou definir o token nos dois temas |
+| M2 ✅ | **Botão de fechar do `Toast` com 32px**, abaixo de `--hit-area-min` (56px) | Alta | Contradiz a regra de coordenação motora fina (RQ4, 21,74%) que o resto do design system respeita. Usado em `TemplateChallengeForm` |
+| M3 ✅ | **Dois `<h1>` em `RoleSelect`** (a logo é envolvida em `h1` e "Quem é você?" é outro) | Média | Leitor de tela anuncia dois títulos principais na primeira tela do produto. A logo deve ser `img` solta (ou `header`) e o único `h1` o título |
 | M4 | ~18 `style={{ ... }}` inline, a maioria `marginLeft: '12px'` em botões de linha (`AdminUsers`, `AdminSchools`...) | Média | Existe `theme/utilities.css` (`.u-ml-*`, `.u-flex`, `.u-gap-*`) justamente para isso. Melhor ainda: um container `flex` com `gap` em vez de margem em cada botão |
 | M5 | **Sem Error Boundary**: um erro de render derruba a tela inteira em branco | Média | Para um público com sensibilidade a surpresa, tela branca é o pior desfecho. Boundary na raiz com mensagem descritiva e reversível ("Algo não carregou. Quer tentar de novo?") + botão de recarregar; registrar o erro como evento RD-E |
 | M6 | Arquivos grandes: `ChallengePage` (869 linhas), `WaterStateChallengePage` (722), `WorkToolsGamePage` (578), `TeacherMetrics` (496), `AdminUsers` (480) | Média | Já mapeado em T7 para as duas primeiras. Nas demais, extrair subcomponentes (`AdminUsers`: diálogos de consentimento/reset; `TeacherMetrics`: as 3 abas) e hooks de estado |
 | M7 | `logo-tea.jpg` usado em 2 telas (JPEG, fundo sólido) | Baixa | Em tema de alto contraste (fundo preto) o retângulo claro do JPEG aparece. Versão SVG/PNG transparente resolve e pesa menos |
 | M8 | Teste com `TODO` aberto em `TeacherChallengeNew.spec.tsx` (Radix Dialog modal esconde o resto da página) | Baixa | Cobrir o ponto que ficou de fora, ou documentar por que não dá |
 | M9 | Falha de `logEvent` só vai para o `console.warn` | Baixa | Se a API estiver fora do ar, a pesquisa (RQ5, "logar tudo desde o primeiro commit") perde dados sem ninguém notar. Fila local curta (sessionStorage) com reenvio resolve sem expor erro ao aluno |
+
+### Achados da segunda varredura (2026-10-13)
+
+| ID | Melhoria | Prioridade | Evidência / notas |
+|---|---|---|---|
+| M10 | **Alvos de toque < `--hit-area-min` na tela de login do aluno**: `StudentLogin.css` tem submit com `min-height: 48px` e `.student-login__link` com `min-height: 44px` | Alta | É a tela do aluno com TEA antes de qualquer ajuste sensorial (ver F1). Trocar por `var(--hit-area-min)` ou migrar para `Button`/`LinkButton`. `.student-login__link` ainda usa `text-decoration: underline` e botão cru, fora do design system |
+| M11 | `ToggleSwitch` com trilho de 48x28px | Média | O `min-height` do wrapper é 56px, mas o controle em si é menor. Conferir se a área clicável é o wrapper inteiro (label) |
+| M12 | **Sem `aria-live` / `role="status"` em quase nenhuma tela** (só `InlineFeedback`, `Toast`, `TextField`, `WaterStateTransition`) | Média | Resultado de Executar, troca de fase Use/Modify/Create e erros de carregamento nas telas de professor/admin não são anunciados a leitor de tela. Entra na auditoria T3 |
+| M13 | Ainda há 18 `style={{}}` inline em 10 arquivos | Baixa | Já em M4; contagem atualizada. `GuidedTour.tsx` (2) vale checar, pois posiciona dinamicamente |
+| M14 | Sem `.github/` no repo | Alta | Confirma T1: não há workflow nenhum. Primeiro passo mínimo: um job com `npm ci`, `tsc`, `oxlint`, jest e vitest |
+| M15 | Avatar de 28px (`TeacherStudents`) e 48px (`TeacherAddStudent`) | Baixa | Se for decorativo, ok. Se for clicável, viola a regra de 56px |
 
 ## Features (alinhadas ao que a plataforma já tem)
 
@@ -73,6 +84,62 @@ issues DS12–DS25 do GitHub — conferir lá antes de abrir de novo.
 | F7 | Instrumento de avaliação de CT (escala validada) integrado ao fluxo | Média | RQ5: ausência de instrumento padronizado (39,13%) é o gap #1 que o software deve viabilizar. A pesquisa pré/pós já tem `survey_responses`; dá para conectar a um instrumento publicado |
 | F8 | MJ6 — comparação opt-in entre alunos | Bloqueado | Decisão de produto de 2026-08-24: só reaproveitando a flag #37/#27, que não existe. Reabrir só se a flag for criada |
 | F9 | Modo "sala de aula" para o professor (ver quem está travado agora) | Baixa | Exige tempo real (SSE/WebSocket) e cuidado para não virar vigilância individual — risco de colidir com a regra de nunca inferir estado clínico/emocional (regra 7). Só com revisão ética |
+
+### Features novas (varredura de 2026-10-13)
+
+| ID | Feature | Prioridade | Justificativa |
+|---|---|---|---|
+| F10 | **Lembrar preferência sensorial por dispositivo** (aplicar `data-motion`/`data-contrast`/`data-sound` já no carregamento, antes do login) | Alta | É a base técnica de F1; sem isso o toggle do login não persiste |
+| F11 | Previsibilidade de transição: aviso antes de trocar de fase/tela ("Agora vem a fase Modify") | Média | Previsibilidade/aviso prévio de mudança (RQ4). Hoje a troca é direta |
+| F12 | Página de erro 404/403 descritiva e reversível (junto de M5) | Média | Rota inexistente ou sem permissão não deve ser tela vazia |
+
+### Mais features e melhorias (varredura de 2026-10-13, 2ª rodada)
+
+Itens que nascem de lacunas já escritas em `backend.md`/`frontend.md` ou de
+barreiras de RQ4 sem nenhum controle no código hoje (buscado: não há
+tamanho de texto, leitura em voz alta nem pausa).
+
+| ID | Item | Prioridade | Justificativa / notas |
+|---|---|---|---|
+| F13 ✅ | **Professor autorar desafio de fase Modify via template** | Média | Gap explícito em `backend.md` (`buildChallengeConfig` sempre gera `stage: 'create'`). Hoje o professor só cria a fase final do ciclo Use-Modify-Create (RQ2, 21,74%). A capacidade de dado (`EditableFieldConfig.min/max`) já existe; falta a tela |
+| F14 | **Botão "preciso de uma pausa"** sempre visível no desafio, sem penalidade, que congela a tela e volta de onde parou | Alta | Hipersensibilidade (30,43%) e ansiedade (13,04%). Logar `break_requested`/`break_ended` como RD-E **só com duração**, nunca interpretar o motivo (regra 7) |
+| F15 ✅ | **Tamanho/espaçamento de texto ajustável** no perfil sensorial (3 níveis) | Média | Acessibilidade de interface (26,09%). Hoje o perfil controla só movimento/som/contraste. Tokens de fonte já existem, então é mais um `data-*` |
+| F16 ✅ | **Leitura do enunciado em voz alta (opt-in)** via `speechSynthesis` do navegador | Média | Sem dependência nova. Nasce desligado (regra 1) e respeita `data-sound`. Reduz sobrecarga de leitura (39,13%) |
+| F17 ✅ | **Agenda visual da sessão** ("hoje: 1. Use  2. Modify  3. Create") com o passo atual marcado | Média | TEACCH é o modelo mais citado (39,13%). Mostrar etapas feitas e a seguir, **sem contagem regressiva nem tempo** (regra 5). Dá previsibilidade, e F11 vira o aviso entre etapas |
+| F18 ✅ | **Dica em degraus** na Ajuda (1ª: pista curta, 2ª: exemplo, 3ª: mostrar) | Média | Hoje a Ajuda é um passo só. Degraus mantêm a autonomia e geram dado (`hint_level_opened`) sobre onde trava, sem culpar o aluno |
+| F19 | **Importar alunos por CSV** (professor/admin) | Média | Cadastro um a um é barreira institucional (17,39%). O parser/gerador de CSV já existe no export do admin (`metrics/csv.ts`); falta importação com pré-visualização e relatório de erros por linha |
+| F20 | **Progresso do aluno contra o próprio histórico** ("você já fez 3 desafios este mês"), sem comparar com colegas | Média | Regra 5 pede progressão relativa ao próprio histórico; RQ5 aponta falta de estudos longitudinais (34,78%). Os dados já são logados. Conferir antes o que `StudentHome` mostra hoje |
+| F21 | **Anotação qualitativa do professor** por aluno/desafio (texto livre curto, privado) | Baixa | Complementa o que o log não captura. Cuidado: aviso na tela de que não é laudo, e nada de campos clínicos (regra 7) |
+| F22 | Tela de auditoria para o admin (consulta ao `AuditModule`) | Baixa | Pré-requisito do Q3 (reversão de identidade): quem expôs o quê e quando |
+| M16 | Usar `Tooltip` como reforço textual de métricas curtas em `ChallengeReport`/`AdminMetrics` | Baixa | Dá o primeiro uso real ao componente (DS4). Cuidado: tooltip nunca é o único lugar da informação (RQ4) |
+| M17 | `TemplateParameterField`: preparar um registro de miniaturas (`visualPreview`) em vez de `case` fixo | Baixa | Só vale quando entrar o 2º template (F2); evita mexer no formulário a cada tipo novo |
+| M18 | Guia `/dev/design-system`: adicionar os tokens e estados novos (alvo de 56px do Toast, `.u-text-muted`) e um teste que falha se aparecer `--color-text-muted` ou `<h1>` duplicado | Baixa | Transforma as correções M1-M3 em guarda permanente, como já é feito para emoji (`no-emoji.spec.ts`) |
+
+### Implementado em 2026-10-13 (F13, F15, F16, F17, F18)
+
+| ID | Resultado | Onde está documentado |
+|---|---|---|
+| F13 | Parâmetro `stage` no template `regular_polygon` ("Montar do zero" / "Mudar um programa pronto") + `visibleWhen` no schema. Em `modify` o handler gera o programa pronto e destrava só lados e ângulo. Migration `AddStageToRegularPolygonTemplate` | `backend.md` ("Autoria da fase Modify pelo professor (F13)"), `database.md` |
+| F15 | Tamanho do texto Normal / Grande / Muito grande (`data-font-scale`, 100% / 125% / 150%), escolhido em Configurações, vale na hora e só neste aparelho | `frontend.md` ("Preferências de leitura") |
+| F16 | Botão "Ouvir o enunciado" (Web Speech, pt-BR), opt-in próprio, nunca fala sozinho. Evento `challenge.read_aloud_used` | `frontend.md`, `backend.md` (eventos) |
+| F17 | `agenda` no detalhe do desafio + `SessionAgenda` (ícone + palavra, sem tempo nem contagem). `null` fora da sequência oficial | `frontend.md` ("Agenda visual da sessão"), `backend.md` |
+| F18 | Ajuda em 3 degraus (pista, números, forma), textos derivados do `goal`. `challenge.help_viewed` só no 1º degrau + `challenge.hint_level_opened` | `frontend.md` ("Ajuda em degraus"), `backend.md` |
+
+Decisões e limites que valem lembrar:
+
+- **F15/F16 ficam só no aparelho** (não no perfil do aluno no backend). É
+  conveniência de leitura de quem está naquele computador, sem dado de
+  pesquisa nem migration. Se a escola quiser que a escolha acompanhe o aluno
+  entre computadores, vira coluna em `users` + `PATCH /users/:id/sensory-profile`.
+- **F16 não depende de `soundEnabled`**: é acionado pelo aluno a cada vez e
+  tem opt-in próprio. Reabrir só se a equipe preferir amarrar os dois.
+- **F13 usa os limites inteiros do template** (3-12 lados, 1-359 graus) como
+  faixa editável. Uma faixa configurável pelo professor ("só deixar o aluno
+  trocar de 3 a 6 lados") é melhoria futura.
+- **F18 só vale na fase `create`**, como a Ajuda já era. `use` e `modify`
+  continuam sem Ajuda (não há alvo escondido).
+- **F17 e F18 não têm escopo em `WaterStateChallengePage`** além da agenda e
+  do "Ouvir": a trilha da água nunca teve botão de Ajuda.
 
 ## Ordem sugerida
 

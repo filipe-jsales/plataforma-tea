@@ -8,6 +8,7 @@ import { Role } from '../common/enums/role.enum';
 import {
   isChallengeConfig,
   type ChallengeFeedbackMessages,
+  type ChallengeStage,
   type EditableFieldConfig,
   type SerializedBlockState,
 } from './challenge-config.interface';
@@ -19,6 +20,14 @@ interface ToolboxCategory {
   label: string;
   colour: number;
   blocks: Array<{ blockType: string; label: string; colour: number; json: Record<string, unknown> }>;
+}
+
+// F17 - agenda visual da sessão (TEACCH): as etapas da sequência oficial do
+// tópico, em ordem, e qual delas é esta. Só estágios, nunca tempo estimado ou
+// contagem (regra não-negociável 5).
+interface ChallengeAgenda {
+  stages: ChallengeStage[];
+  currentIndex: number;
 }
 
 interface ChallengeDetail {
@@ -58,6 +67,10 @@ interface ChallengeDetail {
   // (ChallengePage.tsx resolve o default, mesmo racional de
   // `snapTolerancePercent` acima).
   feedbackMessages: ChallengeFeedbackMessages | null;
+  // F17 - `null` quando o desafio não faz parte da sequência oficial do
+  // tópico (desafio criado por professor, acessado por alocação/link): sem
+  // sequência, não há "etapas feitas e a seguir" a mostrar.
+  agenda: ChallengeAgenda | null;
 }
 
 // Aluno só — rota alimenta o editor de blocos do desafio já atribuído. Não
@@ -133,7 +146,26 @@ export class ChallengesController {
       snapTolerancePercent: challenge.config.snapTolerancePercent ?? null,
       blockScale: challenge.config.blockScale ?? null,
       feedbackMessages: challenge.config.feedbackMessages ?? null,
+      agenda: this.buildAgenda(siblings, ownIndex),
     };
+  }
+
+  private buildAgenda(siblings: Challenge[], ownIndex: number): ChallengeAgenda | null {
+    if (ownIndex < 0) {
+      return null;
+    }
+    const stages: ChallengeStage[] = [];
+    let currentIndex = -1;
+    siblings.forEach((sibling, index) => {
+      if (!isChallengeConfig(sibling.config)) {
+        return;
+      }
+      if (index === ownIndex) {
+        currentIndex = stages.length;
+      }
+      stages.push(sibling.config.stage);
+    });
+    return currentIndex < 0 ? null : { stages, currentIndex };
   }
 
   // AC5: abas/grupos pequenos e nomeados, nunca uma lista única — a

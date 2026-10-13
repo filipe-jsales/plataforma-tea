@@ -29,6 +29,7 @@ apps/web/src/
 │   ├── useSensoryProfileStore.ts    # perfil sensorial (motion/som/contraste) — CSS-facing
 │   ├── useAuthStore.ts              # sessão (token + user), persistida em localStorage
 │   ├── useGuidedTourStore.ts        # 2026-09 — "já vi esse tutorial" por chave, persistida em localStorage
+│   ├── useReadingPrefsStore.ts      # F15/F16 — tamanho do texto + "ouvir o enunciado", só no aparelho (localStorage)
 │   └── turtleExecutionStore.ts      # factory Zustand — 1 instância por "mundo" PixiTurtleWorld
 ├── lib/
 │   ├── apiClient.ts                 # fetch wrapper, injeta Authorization: Bearer (+ getRaw, 6.6)
@@ -40,6 +41,9 @@ apps/web/src/
 │   ├── turtleWorld.ts               # matemática pura: caminho, checagem de meta, preview de Ajuda
 │   ├── challengeTemplateTypes.ts    # 4.2 — mesma forma que a API de challenge-templates devolve
 │   ├── templateParameterForm.ts     # 4.2 — draft inicial, coerção de valor, indexação de erros por campo
+│   ├── speech.ts                    # F16 — Web Speech API (pt-BR), sem dependência nova
+│   ├── helpLadder.ts                # F18 — degraus da Ajuda (texto derivado do `goal`)
+│   ├── sessionAgenda.ts             # F17 — etapas da sessão a partir de `agenda` da API
 │   ├── tourPositioning.ts           # 2026-09 — função pura: onde encaixar o card do GuidedTour
 │   ├── teacherChallengeFormTour.ts  # 2026-09 — passos do tutorial do formulário de desafio
 │   └── challengeAllocationTypes.ts  # 4.3 — mesma forma que a API de challenge-allocations devolve
@@ -73,7 +77,9 @@ apps/web/src/
 │   ├── survey/
 │   │   └── ChallengeCreationSurvey.tsx / .css   # 2026-09 — survey pós-criação de desafio, ver seção própria
 │   ├── challenge/
-│   │   └── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   │   ├── PixiTurtleWorld.tsx      # mundo PixiJS — só lê `store`, nunca Blockly/DOM diretamente
+│   │   ├── SessionAgenda.tsx / .css # F17 — agenda visual das etapas do tópico (ícone + palavra, sem tempo)
+│   │   └── ReadAloudButton.tsx      # F16 — "Ouvir o enunciado", opt-in, nunca fala sozinho
 │   ├── template-form/               # 4.2 — formulário guiado do professor, ver seção própria
 │   │   ├── TemplateChallengeForm.tsx       # form completo — reusado por criar/editar/duplicar
 │   │   ├── TemplateParameterField.tsx      # 1 campo, dispatch só por type/visualPreview
@@ -201,6 +207,66 @@ rodando só uma vez (`sensoryOnboardingCompletedAt`).
 `useSensoryProfileStore` (ou os atributos `data-*` do `<html>`, se for
 CSS puro) antes de decidir animar/tocar — nunca assumir que motion/som estão
 ligados.
+
+## Preferências de leitura (`useReadingPrefsStore`, F15/F16)
+
+Segundo store de preferências do aluno, **separado** de
+`useSensoryProfileStore` de propósito: o perfil sensorial é por aluno e vive
+no backend; estas duas são conveniência de leitura de quem está naquele
+computador, então ficam **só no aparelho** (`persist`, chave
+`plataforma-tea-reading-prefs`, sem coluna nova nem endpoint). Valor salvo
+desconhecido ou corrompido cai no padrão neutro (`merge` valida). Os dois
+nascem no mais neutro (regra não-negociável 1).
+
+| Preferência | Padrão | Efeito |
+|---|---|---|
+| `fontScale` (`normal` / `large` / `xlarge`) | `normal` | escreve `data-font-scale` no `<html>`; `sensory-theme.css` sobe o `font-size` do documento para 125% / 150% e o `line-height` do corpo. Como toda a escala tipográfica é em `rem`, títulos, corpo e espaçamento proporcional acompanham sem mexer em componente. Alvos de toque seguem em px (`--hit-area-min`) e não encolhem |
+| `readAloudEnabled` | `false` | só habilita o botão "Ouvir o enunciado" nos desafios. **Nunca fala sozinho** |
+
+**Onde o aluno escolhe:** `StudentSensorySettings` (`/settings/sensory`),
+numa seção abaixo dos toggles de som/animação: um `SegmentedControl`
+("Normal / Grande / Muito grande") e um `ToggleSwitch` ("Quer ouvir o
+enunciado?"). Diferente dos dois toggles de cima, estes valem **na hora**,
+sem "Salvar" (o aluno vê o texto mudar enquanto escolhe) e a tela diz que
+"valem só neste computador". O toggle de voz só aparece se o navegador sabe
+falar (`isSpeechSupported()`), para nunca oferecer algo que não funciona.
+
+### Ouvir o enunciado (F16)
+
+- `lib/speech.ts`: Web Speech API do navegador (`speechSynthesis`), **zero
+  dependência nova** e nenhum áudio sai do aparelho. `pt-BR`, `rate` 0.9
+  (ritmo previsível). `speak()` sempre cancela a fala anterior (nunca duas
+  vozes ao mesmo tempo) e chama `onEnd` também em erro, para a tela nunca
+  ficar presa em "falando". Navegador sem suporte vira "não mostrar o botão".
+- `components/challenge/ReadAloudButton.tsx`: usado em `ChallengePage` e
+  `WaterStateChallengePage`, logo abaixo do enunciado. Só renderiza se
+  `readAloudEnabled` **e** o navegador suporta. Clicar fala; clicar de novo
+  ("Parar de ouvir") para. A voz para ao trocar de desafio e ao sair da tela.
+- É um som, mas é acionado pelo aluno a cada vez e vive em um opt-in próprio;
+  por isso **não depende** de `soundEnabled` (que governa sons ambientes e de
+  feedback), decisão registrada aqui para não ser "corrigida" por engano.
+- Evento: `challenge.read_aloud_used` (RD-I, `challengeId`), a cada vez que o
+  aluno manda ler (não ao parar).
+
+## Agenda visual da sessão (F17)
+
+`components/challenge/SessionAgenda.tsx` + `lib/sessionAgenda.ts`. Mostra, no
+topo do desafio, as etapas do tópico e onde o aluno está: "Ver como funciona
+(feita)", "Mudar os números (agora)", "Montar sozinho (depois)". Ideia do
+TEACCH (RQ2, 39,13%): previsibilidade de "o que vem depois" para que nenhuma
+troca de tela seja surpresa.
+
+- Dado vem do backend (`agenda: { stages, currentIndex } | null` em
+  `GET /challenges/*`, ver `backend.md`); o frontend não monta sequência por
+  conta própria.
+- **Regra 5:** só estágio e posição. Nunca tempo estimado, contagem
+  regressiva nem pontuação. Estática: não anima e não lê o perfil sensorial.
+- **RQ4:** estado sempre em ícone (`Check` / `CircleDot` / `Circle`) **e**
+  palavra "(feita)" / "(agora)" / "(depois)", mais `aria-current="step"` e
+  borda mais grossa na etapa atual. Nunca só cor.
+- **Regra 3:** rótulos em linguagem de aluno, nunca "Use / Modify / Create".
+- Não renderiza nada quando `agenda` é `null` (desafio de professor fora da
+  sequência oficial) ou quando há uma etapa só.
 
 ## Sistema de componentes acessíveis do aluno (`components/ui/`, 3.10)
 
@@ -732,7 +798,29 @@ partir de blocos — não existe como essa função "vazar" quais instruções
 resolvem o desafio, porque ela não sabe o que são blocos. Toca num segundo
 `PixiTurtleWorld`, com sua própria instância de store (`helpStore`,
 independente da execução do aluno — abrir a Ajuda nunca apaga o traçado que
-o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I).
+o aluno já tinha montado). Loga `challenge.help_viewed` (RD-I). Desde F18 a Ajuda
+é uma escada de 3 degraus (ver abaixo); o último é este traçado-alvo.
+
+**Ajuda em degraus (F18)** - o botão de Ajuda deixou de ser um passo único.
+`lib/helpLadder.ts` define 3 degraus, abertos **um por vez e só quando o aluno
+pede** (o botão descreve o que o próximo revela):
+
+1. `Ajuda: uma pista` - texto sobre COMO a figura é feita, **sem números**.
+2. `Ajuda: mais uma pista` - texto com os números (`A figura tem N lados, e o
+   personagem vira X graus a cada lado.`).
+3. `Ajuda: ver a forma` - o traçado-alvo do parágrafo acima.
+
+Os textos dos degraus 1 e 2 são **derivados do `goal`** (`buildHelpHint`),
+nunca escritos à mão por desafio: todo desafio `create`, inclusive os criados
+por professor, ganha a escada sem conteúdo novo a curar. O painel é
+`role="status"` (anuncia a pista nova sem roubar o foco) e acumula as pistas já
+abertas. Depois do degrau 3 o botão some.
+
+Eventos (RD-I): `challenge.help_viewed` agora dispara **só no 1º degrau**
+(continua significando "o aluno recorreu à Ajuda", que é o que
+`helpButtonUsageRate` do painel do professor conta) e
+`challenge.hint_level_opened` (`payload.level` 1-3) a cada degrau, para a
+pesquisa ver até onde cada aluno precisou ir.
 
 ### Motor PRIMM: vocabulário de config, não FSM de tela única
 

@@ -499,6 +499,20 @@ divergir das duas fontes.
     `student_challenge_views` (E1). Gerada com `migration:generate`, sem
     seed.
 
+Depois da 26ª (a lista numerada acima não acompanha as migrations mais
+recentes, ver `src/database/migrations/` para a ordem completa):
+
+- `1789800000000-AddStageToRegularPolygonTemplate.ts` (F13) - só `UPDATE` de
+  dado em `challenge_templates.parameterSchema` do template `regular_polygon`
+  (sem mudança de schema): acrescenta o parâmetro `stage` ("Tipo de
+  atividade": `create` / `modify`) **na frente** da lista e marca
+  `enabledBlockTypes` e `snapTolerancePercent` com `visibleWhen: { key:
+  'stage', equals: 'create' }`. `icon` vazio (o glifo vem de
+  `lib/contentIcons.tsx`). `down` remove o `stage` e todo `visibleWhen`.
+  Aplicada, revertida e reaplicada contra o Postgres local; `parameterSchema`
+  conferido nas três etapas. Nenhuma coluna nova: as preferências de leitura
+  (F15/F16) ficam só no navegador do aluno.
+
 Todas as 12 primeiras, a 17ª, a 18ª, a 19ª, a 20ª, a 21ª, a 22ª, a 23ª, a
 24ª, a 25ª e a 26ª já foram validadas com `npm run migration:run` contra
 um Postgres real (a 21ª e a 22ª também conferidas via `curl` ponta a ponta

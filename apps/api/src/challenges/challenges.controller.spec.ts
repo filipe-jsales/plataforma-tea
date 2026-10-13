@@ -181,6 +181,43 @@ describe('ChallengesController', () => {
     });
   });
 
+  describe('F17 agenda', () => {
+    it('lists the stages of the official sequence in order and marks the current one', async () => {
+      challengesService.findById.mockResolvedValue(modifyChallenge);
+
+      const result = await controller.getById('c2');
+
+      expect(result.agenda).toEqual({ stages: ['use', 'modify', 'create'], currentIndex: 1 });
+    });
+
+    it('marks the first step on the entry challenge of the topic', async () => {
+      challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
+
+      const result = await controller.getByTopic('topic-1');
+
+      expect(result.agenda).toEqual({ stages: ['use', 'modify', 'create'], currentIndex: 0 });
+    });
+
+    it('is null for a challenge outside the official sequence (teacher-authored), never an invented sequence', async () => {
+      challengesService.findById.mockResolvedValue({
+        ...createChallenge,
+        id: 'teacher-made',
+      } as unknown as Challenge);
+
+      const result = await controller.getById('teacher-made');
+
+      expect(result.agenda).toBeNull();
+    });
+
+    it('carries only stages and an index: no time, count-down or score fields', async () => {
+      challengesService.findById.mockResolvedValue(useChallenge);
+
+      const result = await controller.getById('c1');
+
+      expect(Object.keys(result.agenda ?? {}).sort()).toEqual(['currentIndex', 'stages']);
+    });
+  });
+
   it('groups blocks by category (AC5: abas pequenas, nunca uma lista única)', async () => {
     challengesService.findFirstByTopicId.mockResolvedValue(useChallenge);
     blocksService.findByTypes.mockResolvedValue([

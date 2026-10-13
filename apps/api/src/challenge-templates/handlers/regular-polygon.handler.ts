@@ -1,4 +1,4 @@
-import type { ChallengeConfig } from '../../challenges/challenge-config.interface';
+import type { ChallengeConfig, SerializedBlockState } from '../../challenges/challenge-config.interface';
 import type {
   ChallengeTemplateHandler,
   TemplateValidationContext,
@@ -27,6 +27,30 @@ const MAX_CLOSURE_TOLERANCE_PX = 40;
 // (um template futuro de outra disciplina define os próprios obrigatórios).
 const REQUIRED_BLOCK_TYPES = ['move_forward', 'turn'];
 
+// F13 - fase do ciclo Use-Modify-Create que o professor autora com este
+// template. `create` (padrão, também o que todo desafio salvo antes de F13
+// já era) é a montagem livre; `modify` entrega um programa pronto e destrava
+// só os dois números que decidem a forma. `use` continua fora do alcance do
+// professor de propósito: é a fase que INTRODUZ blocos novos e vive no
+// currículo curado (block-progression.ts).
+const TEMPLATE_STAGES = ['create', 'modify'] as const;
+type TemplateStage = (typeof TEMPLATE_STAGES)[number];
+
+function isTemplateStage(value: unknown): value is TemplateStage {
+  return typeof value === 'string' && (TEMPLATE_STAGES as readonly string[]).includes(value);
+}
+
+// Parâmetro ausente (desafio criado antes de F13) é `create`: nunca muda o
+// comportamento de nada que já foi salvo.
+function readStage(raw: Record<string, unknown>): TemplateStage {
+  return raw.stage === 'modify' ? 'modify' : 'create';
+}
+
+// Blocos do programa pronto da fase `modify`. O professor não escolhe
+// blocos aqui (não há paleta na fase Modify), mas todos precisam já ter sido
+// introduzidos num desafio `use` do tópico (coding-rule.md).
+const MODIFY_BLOCK_TYPES = ['repeat_times', 'move_forward', 'turn'];
+
 // Tamanho dos blocos no editor — 3 opções nomeadas (nunca um número de escala
 // exposto ao professor, regra não-negociável 9). O valor numérico vira
 // `zoom.startScale` do Blockly em ChallengePage.tsx: 1.3/1.6 ampliam alvo de
@@ -48,6 +72,7 @@ interface RegularPolygonParams {
   closureTolerancePx: number;
   enabledBlockTypes: string[];
   blockSize: BlockSizePreset;
+  stage: TemplateStage;
 }
 
 function toFiniteNumber(value: unknown): number | null {
@@ -87,6 +112,14 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
   ): TemplateValidationResult {
     const errors: TemplateValidationError[] = [];
 
+    if (raw.stage !== undefined && !isTemplateStage(raw.stage)) {
+      errors.push({
+        parameterKey: 'stage',
+        message: 'Escolha o tipo de atividade: montar do zero ou mudar um programa pronto.',
+      });
+    }
+    const stage = readStage(raw);
+
     const sides = toFiniteNumber(raw.sides);
     const turnAngleDeg = toFiniteNumber(raw.turnAngleDeg);
     const snapTolerancePercent = toFiniteNumber(raw.snapTolerancePercent);
@@ -120,11 +153,14 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       });
     }
 
+    // Na fase `modify` os blocos nascem encaixados e travados: não existe
+    // encaixe pra tolerar, então o campo nem é pedido ao professor.
     const validTolerance =
-      snapTolerancePercent !== null &&
-      Number.isInteger(snapTolerancePercent) &&
-      snapTolerancePercent >= MIN_TOLERANCE_PERCENT &&
-      snapTolerancePercent <= MAX_TOLERANCE_PERCENT;
+      stage === 'modify' ||
+      (snapTolerancePercent !== null &&
+        Number.isInteger(snapTolerancePercent) &&
+        snapTolerancePercent >= MIN_TOLERANCE_PERCENT &&
+        snapTolerancePercent <= MAX_TOLERANCE_PERCENT);
     if (!validTolerance) {
       // AC3 — segundo exemplo literal do card ("tolerância de encaixe do
       // desenho = 0%"): 0% impediria o aluno de encaixar qualquer bloco
@@ -162,7 +198,19 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       });
     }
 
-    if (enabledBlockTypes.length === 0) {
+    if (stage === 'modify') {
+      const notIntroduced = MODIFY_BLOCK_TYPES.filter(
+        (blockType) => !context.introducedBlockTypes.includes(blockType),
+      );
+      if (notIntroduced.length > 0) {
+        errors.push({
+          parameterKey: 'stage',
+          message:
+            'Para mudar um programa pronto, os alunos precisam já ter visto os blocos "Repetir", ' +
+            '"Mover para frente" e "Girar" num desafio de introdução.',
+        });
+      }
+    } else if (enabledBlockTypes.length === 0) {
       errors.push({
         parameterKey: 'enabledBlockTypes',
         message: 'Selecione ao menos um bloco para este desafio.',
@@ -193,6 +241,9 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
 
   buildChallengeConfig(raw: Record<string, unknown>): ChallengeConfig {
     const params = this.readParams(raw);
+    if (params.stage === 'modify') {
+      return this.buildModifyConfig(params);
+    }
     return {
       stage: 'create',
       allowedBlockTypes: params.enabledBlockTypes,
@@ -203,6 +254,42 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
         closureTolerancePx: params.closureTolerancePx,
       },
       snapTolerancePercent: params.snapTolerancePercent,
+      blockScale: BLOCK_SIZE_SCALES[params.blockSize],
+    };
+  }
+
+  // F13 - mesma forma do desafio `modify` curado (SeedModifyChallenge): o
+  // `program` é o polígono já montado e `editableFields` destrava só TIMES
+  // (lados) e ANGLE (giro). Os limites são o domínio inteiro que o próprio
+  // template já aceita (3-12 lados, 1-359°), o que garante que o valor
+  // inicial escolhido pelo professor sempre cabe dentro deles.
+  private buildModifyConfig(params: RegularPolygonParams): ChallengeConfig {
+    const program: SerializedBlockState = {
+      type: 'repeat_times',
+      fields: { TIMES: params.sides },
+      inputs: {
+        DO: {
+          block: {
+            type: 'move_forward',
+            next: { block: { type: 'turn', fields: { DIR: 'RIGHT', ANGLE: params.turnAngleDeg } } },
+          },
+        },
+      },
+    };
+    return {
+      stage: 'modify',
+      allowedBlockTypes: MODIFY_BLOCK_TYPES,
+      goal: {
+        shape: 'regular_polygon',
+        sides: params.sides,
+        turnAngleDeg: params.turnAngleDeg,
+        closureTolerancePx: params.closureTolerancePx,
+      },
+      program,
+      editableFields: [
+        { blockType: 'repeat_times', fieldName: 'TIMES', label: 'Número de lados', min: MIN_SIDES, max: MAX_SIDES },
+        { blockType: 'turn', fieldName: 'ANGLE', label: 'Ângulo de giro (graus)', min: MIN_ANGLE, max: MAX_ANGLE },
+      ],
       blockScale: BLOCK_SIZE_SCALES[params.blockSize],
     };
   }
@@ -223,6 +310,7 @@ export class RegularPolygonTemplateHandler implements ChallengeTemplateHandler {
       closureTolerancePx: Number(raw.closureTolerancePx),
       enabledBlockTypes: toStringArray(raw.enabledBlockTypes),
       blockSize: raw.blockSize as BlockSizePreset,
+      stage: readStage(raw),
     };
   }
 }

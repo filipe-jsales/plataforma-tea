@@ -2,6 +2,8 @@ import * as Blockly from 'blockly/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BlocklyWorkspace, type WorkspaceSvg } from 'react-blockly';
+import { ReadAloudButton } from '../../components/challenge/ReadAloudButton';
+import { SessionAgenda } from '../../components/challenge/SessionAgenda';
 import { WaterStateTransition } from '../../components/challenge/WaterStateTransition';
 import { Button, InlineFeedback, LinkButton, Slider } from '../../components/ui';
 import {
@@ -20,6 +22,7 @@ import {
   type ChallengeFeedbackMessages,
 } from '../../lib/feedbackMessages';
 import { logEvent } from '../../lib/logEvent';
+import type { ChallengeAgenda } from '../../lib/sessionAgenda';
 import {
   ALL_WATER_STATES,
   evaluateWaterStatesCoverage,
@@ -85,6 +88,8 @@ interface WaterChallengeDetail {
   snapTolerancePercent: number | null;
   blockScale: number | null;
   feedbackMessages: ChallengeFeedbackMessages | null;
+  // F17 - etapas da sequência do tópico; `null` fora do currículo.
+  agenda: ChallengeAgenda | null;
 }
 
 type Feedback = { kind: 'success' | 'retry'; message: string } | null;
@@ -626,8 +631,21 @@ export function WaterStateChallengePage() {
       <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
         Voltar
       </LinkButton>
+      <SessionAgenda agenda={challenge.agenda} />
       <h1>{challenge.title}</h1>
       <p className="water-challenge-page__prompt">{challenge.prompt}</p>
+      <ReadAloudButton
+        text={challenge.prompt}
+        onRead={() =>
+          logEvent({
+            studentPseudoId: user.pseudonymId,
+            category: 'RD-I',
+            type: 'challenge.read_aloud_used',
+            challengeId: challenge.id,
+            payload: { challenge_id: challenge.id },
+          })
+        }
+      />
 
       <div className="water-challenge-page__layout">
         <BlocklyWorkspace

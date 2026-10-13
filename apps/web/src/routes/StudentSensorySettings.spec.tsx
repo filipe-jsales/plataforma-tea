@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useReadingPrefsStore } from '../stores/useReadingPrefsStore';
 import { useSensoryProfileStore } from '../stores/useSensoryProfileStore';
 import { StudentSensorySettings } from './StudentSensorySettings';
 
@@ -70,5 +71,67 @@ describe('StudentSensorySettings (3.9)', () => {
     await screen.findByText('Salvo.');
     expect(useSensoryProfileStore.getState().soundEnabled).toBe(true);
     expect(useSensoryProfileStore.getState().motionEnabled).toBe(false);
+  });
+});
+
+describe('StudentSensorySettings - leitura (F15/F16)', () => {
+  beforeEach(() => {
+    useReadingPrefsStore.setState({ fontScale: 'normal', readAloudEnabled: false });
+    document.documentElement.removeAttribute('data-font-scale');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(window, 'speechSynthesis');
+  });
+
+  function supportSpeech() {
+    vi.stubGlobal('SpeechSynthesisUtterance', class {});
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: { speak: vi.fn(), cancel: vi.fn() },
+    });
+  }
+
+  it('offers three named text sizes, with the current one (normal) selected', () => {
+    renderPage();
+
+    expect(screen.getByRole('radio', { name: 'Normal' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Grande' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Muito grande' })).not.toBeChecked();
+  });
+
+  it('F15 - applies the chosen text size right away, without pressing Salvar and without any API call', async () => {
+    renderPage();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Grande' }));
+
+    expect(useReadingPrefsStore.getState().fontScale).toBe('large');
+    expect(document.documentElement.dataset.fontScale).toBe('large');
+    expect(mockedPatch).not.toHaveBeenCalled();
+  });
+
+  it('F16 - shows the read-aloud switch, off by default, only when the browser can speak', async () => {
+    supportSpeech();
+    renderPage();
+
+    const toggle = screen.getByRole('switch', { name: /quer ouvir o enunciado\?/i });
+    expect(toggle).not.toBeChecked();
+
+    await userEvent.click(toggle);
+
+    expect(useReadingPrefsStore.getState().readAloudEnabled).toBe(true);
+  });
+
+  it('F16 - hides the read-aloud switch when the browser has no speech support, instead of offering something that cannot work', () => {
+    renderPage();
+
+    expect(screen.queryByRole('switch', { name: /ouvir o enunciado/i })).not.toBeInTheDocument();
+  });
+
+  it('says plainly that these two choices only apply to this computer', () => {
+    renderPage();
+
+    expect(screen.getByText(/valem só neste computador/i)).toBeInTheDocument();
   });
 });
