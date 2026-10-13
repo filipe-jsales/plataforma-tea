@@ -73,7 +73,8 @@
 
 .template-parameter-field__help {
   margin: 0;
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   font-size: var(--font-size-small, 0.875rem);
 }
 
@@ -128,7 +129,8 @@
 
 .template-parameter-field__empty {
   margin: 0;
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   font-size: var(--font-size-small, 0.875rem);
 }
 

@@ -12,9 +12,7 @@ export function RoleSelect() {
 
   return (
     <main className="role-select">
-      <h1>
-        <img src="/logo-tea.jpg" alt="Plataforma TEA" className="role-select__logo" />
-      </h1>
+      <img src="/logo-tea.jpg" alt="Plataforma TEA" className="role-select__logo" />
       <h1>Quem é você?</h1>
 
       <div className="role-select__options">

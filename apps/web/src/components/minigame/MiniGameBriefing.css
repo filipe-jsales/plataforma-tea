@@ -29,7 +29,8 @@
 
 .mini-game-briefing__step--marker {
   border-style: dashed;
-  color: var(--color-text-muted);
+  color: var(--color-text);
+  opacity: 0.75;
 }
 
 .mini-game-briefing__step-icon {

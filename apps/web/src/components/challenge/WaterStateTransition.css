@@ -28,5 +28,6 @@
 
 .water-state-transition__temperature {
   font-weight: var(--font-weight-body);
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
 }

@@ -26,8 +26,6 @@ e-mail.
 
 | ID | Item | Prioridade | Notas |
 |---|---|---|---|
-| Q1 | **Rate limit nos 3 logins** (`/auth/student|teacher|admin/login`) | Alta | Único gap de segurança "barato" que sobrou: `ThrottlerGuard` já está configurado (6.6), é repetir o padrão por rota. O login do aluno é por sequência de 3 imagens (espaço de busca pequeno) — é o mais exposto. Decidir: limite por IP **e** por `userId` do aluno; mensagem não-punitiva ("tente de novo em instantes"), nunca bloqueio com contagem regressiva visível (RQ4 ansiedade/RSD, 13,04%) |
-| Q2 | Mover `ThrottlerModule.forRoot` de `MetricsModule` para `AppModule` | Média | Hoje `EventsController` (pré-login) depende do módulo `@Global()` registrado em outro módulo. Funciona, mas é acoplamento implícito; mover evita quebra silenciosa se `MetricsModule` mudar |
 | Q3 | Endpoint de reversão de identidade (`IdentityService.reveal`) sem controller/guard | Média | Existe só o service. Decidir quem pode (admin? com auditoria `AuditModule`) antes de expor — regra não-negociável 8 |
 | Q4 | Rotas de leitura de eventos por turma (RD-E como sinal observável) | Baixa | Parcialmente coberto por M2/M3 de métricas; revisar se sobrou algo |
 | Q5 | Retenção/limpeza de `interaction_events` pré-login | Baixa | Tabela append-only; linhas pré-login são anônimas e de baixo valor — definir janela de retenção (ex.: 12 meses) |
@@ -43,6 +41,24 @@ e-mail.
 | T5 | Teste e2e do fluxo aluno (login → desafio → Executar) | Média | Hoje só unitário/integração de componente; um fluxo e2e pegaria regressões de integração (ex.: a troca de botões de DS1) |
 | T6 | Migrations antigas ainda contêm emoji | Baixa | É histórico imutável; o banco novo termina limpo pela migration de limpeza. Só vale mexer se alguém reclamar do diff |
 | T7 | `WaterStateChallengePage` e `ChallengePage` duplicam muito (predição, step, avançar, autosave) | Média | Extrair hook/componente comum (`usePrimmStage`, `<PredictChoice>`) reduziria divergência futura — agora que as duas usam o mesmo barril, é mais barato |
+
+## Melhorias no que já existe
+
+Achados na revisão do código atual (nada disto muda comportamento de
+produto; são correções e consolidações). Parte pode já estar mapeada nas
+issues DS12–DS25 do GitHub — conferir lá antes de abrir de novo.
+
+| ID | Melhoria | Prioridade | Evidência / notas |
+|---|---|---|---|
+| M1 | **`--color-text-muted` não existe**, mas 18 usos em CSS caem num hex fixo (`#5a6472`) | Alta | O hex não acompanha o alto contraste: texto secundário fica cinza sobre fundo preto, justamente no modo pensado para baixa visão (RQ4 acessibilidade, 26,09%). Já há `.u-text-muted` (opacidade sobre `--color-text`) e `Text tone="muted"`; migrar os 18 usos (formulário de template, `WaterStateTransition`, `GuidedTour`...) ou definir o token nos dois temas |
+| M2 | **Botão de fechar do `Toast` com 32px**, abaixo de `--hit-area-min` (56px) | Alta | Contradiz a regra de coordenação motora fina (RQ4, 21,74%) que o resto do design system respeita. Usado em `TemplateChallengeForm` |
+| M3 | **Dois `<h1>` em `RoleSelect`** (a logo é envolvida em `h1` e "Quem é você?" é outro) | Média | Leitor de tela anuncia dois títulos principais na primeira tela do produto. A logo deve ser `img` solta (ou `header`) e o único `h1` o título |
+| M4 | ~18 `style={{ ... }}` inline, a maioria `marginLeft: '12px'` em botões de linha (`AdminUsers`, `AdminSchools`...) | Média | Existe `theme/utilities.css` (`.u-ml-*`, `.u-flex`, `.u-gap-*`) justamente para isso. Melhor ainda: um container `flex` com `gap` em vez de margem em cada botão |
+| M5 | **Sem Error Boundary**: um erro de render derruba a tela inteira em branco | Média | Para um público com sensibilidade a surpresa, tela branca é o pior desfecho. Boundary na raiz com mensagem descritiva e reversível ("Algo não carregou. Quer tentar de novo?") + botão de recarregar; registrar o erro como evento RD-E |
+| M6 | Arquivos grandes: `ChallengePage` (869 linhas), `WaterStateChallengePage` (722), `WorkToolsGamePage` (578), `TeacherMetrics` (496), `AdminUsers` (480) | Média | Já mapeado em T7 para as duas primeiras. Nas demais, extrair subcomponentes (`AdminUsers`: diálogos de consentimento/reset; `TeacherMetrics`: as 3 abas) e hooks de estado |
+| M7 | `logo-tea.jpg` usado em 2 telas (JPEG, fundo sólido) | Baixa | Em tema de alto contraste (fundo preto) o retângulo claro do JPEG aparece. Versão SVG/PNG transparente resolve e pesa menos |
+| M8 | Teste com `TODO` aberto em `TeacherChallengeNew.spec.tsx` (Radix Dialog modal esconde o resto da página) | Baixa | Cobrir o ponto que ficou de fora, ou documentar por que não dá |
+| M9 | Falha de `logEvent` só vai para o `console.warn` | Baixa | Se a API estiver fora do ar, a pesquisa (RQ5, "logar tudo desde o primeiro commit") perde dados sem ninguém notar. Fila local curta (sessionStorage) com reenvio resolve sem expor erro ao aluno |
 
 ## Features (alinhadas ao que a plataforma já tem)
 
@@ -60,7 +76,7 @@ e-mail.
 
 ## Ordem sugerida
 
-1. **Q1** (rate limit nos logins) + **T1** (CI) — baratos e protegem tudo o que já foi feito.
+1. **T1** (CI) + **M1/M2/M3** (correções pequenas no que já existe) — baratos e protegem tudo o que já foi feito.
 2. **F1** (controle sensorial no login) — fecha o ciclo do evento pré-login e é o maior ganho de acessibilidade imediato.
 3. **T2/T3** — limpar warnings e auditar acessibilidade antes de crescer conteúdo.
 4. **F2** (2º template) — destrava dados reais; **F3** entra junto se houver conteúdo de frações em blocos.
@@ -69,5 +85,6 @@ e-mail.
 
 ## Não prioritário por decisão
 
+- **Rate limit nos logins** (antigo Q1) e mover o `ThrottlerModule` para o `AppModule` (antigo Q2): fora do radar por decisão de 2026-10. Reabrir quando a plataforma for exposta fora de ambiente controlado — o login do aluno (3 imagens) é o mais exposto e `ThrottlerGuard` já está configurado (6.6), então é só repetir o padrão por rota.
 - **E-mail** (definição de senha, notificação): fora do escopo agora.
 - **F8/F9**: dependem de decisão de produto/ética.

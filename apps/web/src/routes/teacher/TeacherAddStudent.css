@@ -1,5 +1,6 @@
 .teacher-add-student__subtitle {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
   max-width: 42rem;
 }
 
@@ -51,7 +52,8 @@
 }
 
 .teacher-add-student__credential-meta {
-  color: var(--color-text-muted, #5a6472);
+  color: var(--color-text);
+  opacity: 0.75;
 }
 
 .teacher-add-student__credential-section {
