@@ -21,9 +21,11 @@ const fuel = (left: number, total = 13) =>
 const start = (user: User, round: 1 | 2 = 2) =>
   user.click(screen.getByRole('button', { name: `Começar rodada ${round}` }));
 const piece = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}, peso`) });
-const cross = (user: User) => user.click(screen.getByRole('button', { name: /Atravessar para/ }));
+const enabledCross = () =>
+  screen.getAllByRole('button', { name: /Atravessar para/ }).find((button) => !(button as HTMLButtonElement).disabled);
+const cross = (user: User) => user.click(enabledCross() as HTMLElement);
 const onBank = (side: 'E' | 'D', name: string) =>
-  screen.getByRole('region', { name: `Margem ${side}` }).querySelector(`[aria-label^="${name}, peso"]`);
+  screen.getByRole('region', { name: side === 'E' ? 'Margem Esquerda' : 'Margem Direita' }).querySelector(`[aria-label^="${name}, peso"]`);
 
 describe('RiverCrossingPage', () => {
   it('mostra as regras antes do jogo, sem tabuleiro', () => {
@@ -42,7 +44,7 @@ describe('RiverCrossingPage', () => {
     expect(screen.getByRole('button', { name: 'Lobo, peso 2' })).toHaveTextContent(/^2$/);
     expect(piece('Ovelha')).toHaveTextContent(/^2$/);
     expect(piece('Alface')).toHaveTextContent(/^1$/);
-    expect(screen.getByRole('region', { name: 'Margem E' })).not.toHaveTextContent(/Ovelha|Lobo|peso|\(/);
+    expect(screen.getByRole('region', { name: 'Margem Esquerda' })).not.toHaveTextContent(/Ovelha|Lobo|peso|\(/);
   });
 
   it('Ver regras não reinicia a travessia em andamento', async () => {
@@ -84,7 +86,7 @@ describe('RiverCrossingPage', () => {
       await cross(user);
       await new Promise((resolve) => setTimeout(resolve, FAST.crossingMs + 20));
     }
-    expect(await screen.findByText('Todos chegaram à margem D')).toBeInTheDocument();
+    expect(await screen.findByText('Todos chegaram à margem direita')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Ir para a rodada 2' }));
     expect(await fuel(13)).toBeInTheDocument();
     expect(piece('Lobo')).toBeInTheDocument();
@@ -98,7 +100,7 @@ describe('RiverCrossingPage', () => {
       await cross(user);
       if (left > 0) {
         await fuel(left, 7);
-        await waitFor(() => expect(screen.getByRole('button', { name: /Atravessar para/ })).toBeEnabled());
+        await waitFor(() => expect(enabledCross()).toBeTruthy());
       }
     }
     expect(await screen.findByText('O combustível acabou')).toBeInTheDocument();
@@ -125,12 +127,12 @@ describe('RiverCrossingPage', () => {
 
     expect(screen.getByTestId('boat')).toHaveAttribute('data-side', 'D');
     await waitFor(() =>
-      expect(screen.getByRole('region', { name: 'Margem E' })).toHaveAttribute('data-conflict', 'true'),
+      expect(screen.getByRole('region', { name: 'Margem Esquerda' })).toHaveAttribute('data-conflict', 'true'),
     );
-    expect(screen.getByText(/Conflito na margem E/)).toBeInTheDocument();
+    expect(screen.getByText(/Conflito na margem esquerda/)).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(screen.getByRole('region', { name: 'Margem E' })).not.toHaveAttribute('data-conflict'),
+      expect(screen.getByRole('region', { name: 'Margem Esquerda' })).not.toHaveAttribute('data-conflict'),
     );
     expect(screen.getByTestId('boat')).toHaveAttribute('data-side', 'E');
     expect(await fuel(12)).toBeInTheDocument();
@@ -160,7 +162,7 @@ describe('RiverCrossingPage', () => {
       await cross(user);
       if (left > 0) {
         await fuel(left);
-        await waitFor(() => expect(screen.getByRole('button', { name: /Atravessar para/ })).toBeEnabled());
+        await waitFor(() => expect(enabledCross()).toBeTruthy());
       }
     }
     expect(await screen.findByText('O combustível acabou')).toBeInTheDocument();
@@ -194,6 +196,6 @@ describe('RiverCrossingPage', () => {
       await new Promise((resolve) => setTimeout(resolve, FAST.crossingMs + 20));
     }
 
-    expect(await screen.findByText('Todos chegaram à margem D')).toBeInTheDocument();
+    expect(await screen.findByText('Todos chegaram à margem direita')).toBeInTheDocument();
   });
 });

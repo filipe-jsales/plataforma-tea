@@ -2297,3 +2297,19 @@ se virar objeto de coleta de pesquisa).
   `prefers-reduced-motion` do SO continua valendo para a animação.
 - Fim de jogo por combustível usa texto não punitivo ("O combustível acabou",
   "Tentar de novo").
+
+### Travessia do Rio: dicas e eventos
+
+- **Dicas** (`lib/riverHints.ts`, componente `HintCards`): 3 cartas na rodada 1
+  e 5 na rodada 2, com os textos e descontos do plano de aula. Cartas viradas
+  para baixo (estilo Codenames, na paleta do design system: --color-primary e --color-surface); clicar vira
+  e a carta fica aberta. O jogo não tem nota, então o desconto só vai no
+  evento. As dicas abertas persistem ao recomeçar a mesma rodada.
+- **Eventos** (`lib/riverEvents.ts`, `payload.game = 'river_crossing'`, sem
+  `miniGameLevelId`), só quando há aluno logado: `river_round_started` (RD-P),
+  `river_crossing_attempted` (RD-P, carga, resultado, regras violadas, gotas),
+  `river_cargo_changed` / `river_cargo_rejected_overweight` /
+  `river_hint_requested` / `river_restarted` / `river_rules_viewed` /
+  `river_rules_resumed` / `river_sound_toggled` (RD-I),
+  `river_round_completed` / `river_fuel_depleted` (RD-C) e `river_abandoned`
+  (RD-E, só números brutos, regra 7).

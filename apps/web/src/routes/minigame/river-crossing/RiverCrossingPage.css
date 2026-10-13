@@ -286,6 +286,96 @@
   }
 }
 
+/* Dicas em cartas viradas, no estilo de Codenames: verso com faixas
+   coloridas e número; ao virar, a frente mostra o texto. */
+.hint-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.hint-cards__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+}
+
+.hint-cards__item {
+  --hint-accent: var(--color-primary);
+}
+
+.hint-card {
+  position: relative;
+  width: 100%;
+  min-height: 9rem;
+  border-radius: 12px;
+  border: 3px solid var(--hint-accent);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.hint-card--back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--hint-accent);
+  background:
+    linear-gradient(var(--hint-accent), var(--hint-accent)) top / 100% 14px no-repeat,
+    linear-gradient(var(--hint-accent), var(--hint-accent)) bottom / 100% 14px no-repeat,
+    repeating-linear-gradient(
+      45deg,
+      var(--color-surface) 0 10px,
+      color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)) 10px 20px
+    );
+}
+
+.hint-card--back:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.hint-card--front {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  color: var(--color-text);
+  animation: hint-flip 450ms ease-out;
+}
+
+.hint-card__number {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hint-card--front .hint-card__number {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 1.4rem;
+  color: var(--hint-accent);
+}
+
+.hint-card__text {
+  margin: 0;
+  padding-right: var(--space-4);
+  line-height: 1.4;
+}
+
+@keyframes hint-flip {
+  from {
+    transform: perspective(600px) rotateY(90deg);
+  }
+  to {
+    transform: perspective(600px) rotateY(0);
+  }
+}
+
 @media (max-width: 40rem) {
   .river {
     grid-template-columns: 1fr;
@@ -296,4 +386,22 @@
     border-left: 0;
     border-right: 0;
   }
+}
+
+/* Controles só com ícone: centralizados, com o span recebendo o hover para o
+   tooltip aparecer também no botão bloqueado. */
+.river-page__actions--controls {
+  justify-content: center;
+}
+
+.river-control {
+  display: inline-flex;
+}
+
+.river-control .ui-button:disabled {
+  pointer-events: none;
+}
+
+.river-control .ui-button__label:empty {
+  display: none;
 }

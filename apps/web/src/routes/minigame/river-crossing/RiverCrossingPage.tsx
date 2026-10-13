@@ -1,18 +1,21 @@
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   ArrowRight,
   BookOpen,
   Droplet,
   Fuel,
+  Lightbulb,
   Play,
   RotateCcw,
   TriangleAlert,
   Undo2,
   Volume2,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RIVER_ICON_LABEL, RiverPieceIcon } from '../../../components/minigame/RiverPieceIcon';
-import { Button, Heading, InlineFeedback, LinkButton, Text, ToggleSwitch } from '../../../components/ui';
+import { Button, Heading, InlineFeedback, LinkButton, Text, ToggleSwitch, Tooltip } from '../../../components/ui';
 import {
   BOAT_CARGO_CAPACITY,
   CONFLICT_RULES,
@@ -29,7 +32,24 @@ import {
   type RiverState,
   type RoundId,
 } from '../../../lib/riverCrossing';
+import {
+  logRiverAbandoned,
+  logRiverCargoChanged,
+  logRiverCargoRejected,
+  logRiverCrossingAttempted,
+  logRiverFuelDepleted,
+  logRiverHintRequested,
+  logRiverRestarted,
+  logRiverRoundCompleted,
+  logRiverRoundStarted,
+  logRiverRulesResumed,
+  logRiverRulesViewed,
+  logRiverSoundToggled,
+  type RoundStartReason,
+} from '../../../lib/riverEvents';
+import { RIVER_HINTS } from '../../../lib/riverHints';
 import { playRiverSound, type RiverSound } from '../../../lib/riverSounds';
+import { useAuthStore } from '../../../stores/useAuthStore';
 import './RiverCrossingPage.css';
 
 // Duração do barco atravessando (casa com a transição de `left` no CSS) e
@@ -63,7 +83,50 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
   const [conflictBank, setConflictBank] = useState<Bank | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [revealedHints, setRevealedHints] = useState<Record<RoundId, number[]>>({ 1: [], 2: [] });
   const timers = useRef<number[]>([]);
+
+  const studentId = useAuthStore((store) => store.user?.pseudonymId ?? null);
+  // Contadores só para os eventos; nunca mudam o que a tela mostra.
+  const stats = useRef({
+    attempts: 0,
+    invalid: 0,
+    roundStartedAt: 0,
+    lastActionAt: 0,
+    rulesOpenedAt: 0,
+    roundAttempt: { 1: 0, 2: 0 } as Record<RoundId, number>,
+  });
+  const live = useRef({ started: false, finished: false, round: 2 as RoundId, fuel: 0, hints: 0 });
+  live.current = {
+    started,
+    finished: result !== null,
+    round: state.round,
+    fuel: state.fuel,
+    hints: revealedHints[state.round].length,
+  };
+
+  const touch = () => {
+    const now = Date.now();
+    const since = stats.current.lastActionAt ? now - stats.current.lastActionAt : 0;
+    stats.current.lastActionAt = now;
+    return since;
+  };
+
+  useEffect(() => {
+    logRiverRulesViewed(studentId, { origin: 'before_start', round: 2 });
+    return () => {
+      const snapshot = live.current;
+      if (!snapshot.started || snapshot.finished) return;
+      logRiverAbandoned(studentId, {
+        round: snapshot.round,
+        crossings: stats.current.attempts,
+        fuelLeft: snapshot.fuel,
+        hintsUsed: snapshot.hints,
+        timeInRoundMs: Date.now() - stats.current.roundStartedAt,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const clearTimers = () => {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -79,7 +142,21 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
     if (soundOn) playRiverSound(name);
   };
 
-  const restart = (round: RoundId) => {
+  const restart = (round: RoundId, reason: RoundStartReason) => {
+    if (reason !== 'first_start' && reason !== 'next_round') {
+      logRiverRestarted(studentId, {
+        round: state.round,
+        reason,
+        crossingsInAttempt: stats.current.attempts,
+        fuelLeft: state.fuel,
+      });
+    }
+    stats.current.roundAttempt[round] += 1;
+    logRiverRoundStarted(studentId, { round, reason, roundAttempt: stats.current.roundAttempt[round] });
+    stats.current.attempts = 0;
+    stats.current.invalid = 0;
+    stats.current.roundStartedAt = Date.now();
+    stats.current.lastActionAt = Date.now();
     clearTimers();
     setState(createInitialState(round));
     setBoatSide('E');
@@ -94,19 +171,33 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
 
   const toggleOnBoat = (piece: PieceId) => {
     if (busy || result) return;
+    touch();
     if (cargo.includes(piece)) {
+      logRiverCargoChanged(studentId, {
+        round: state.round,
+        action: 'unload',
+        piece,
+        cargo: cargo.filter((p) => p !== piece),
+      });
       sound('drop');
       setCargo(cargo.filter((p) => p !== piece));
       setFeedback(null);
       return;
     }
     if (!canAddToCargo(cargo, piece)) {
+      logRiverCargoRejected(studentId, { round: state.round, piece, cargo });
       setFeedback({
         kind: 'info',
         text: `O barco leva o Fazendeiro e carga de até peso ${BOAT_CARGO_CAPACITY}. Tire alguém do barco para colocar ${PIECE_LABEL[piece]}.`,
       });
       return;
     }
+    logRiverCargoChanged(studentId, {
+      round: state.round,
+      action: 'load',
+      piece,
+      cargo: [...cargo, piece],
+    });
     sound('pick');
     setCargo([...cargo, piece]);
     setFeedback(null);
@@ -116,6 +207,42 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
     if (busy || result) return;
     const outcome = cross(state, cargo);
     const origin = state.boat;
+    const invalid = outcome.conflicts.length > 0;
+    stats.current.attempts += 1;
+    if (invalid) stats.current.invalid += 1;
+    const sincePrevious = touch();
+    const hintsUsed = revealedHints[state.round].length;
+    const durationMs = Date.now() - stats.current.roundStartedAt;
+    logRiverCrossingAttempted(studentId, {
+      round: state.round,
+      from: origin,
+      to: outcome.arrived.boat,
+      cargo,
+      outcome: outcome.outcome,
+      rulesViolated: outcome.conflicts.map((rule) => rule.id),
+      fuelAfter: outcome.settled.fuel,
+      crossingNumber: stats.current.attempts,
+      invalidSoFar: stats.current.invalid,
+      msSincePreviousAction: sincePrevious,
+    });
+    if (outcome.outcome === 'won') {
+      logRiverRoundCompleted(studentId, {
+        round: state.round,
+        crossings: stats.current.attempts,
+        invalidAttempts: stats.current.invalid,
+        fuelLeft: outcome.settled.fuel,
+        hintsUsed,
+        durationMs,
+      });
+    } else if (outcome.outcome === 'lost') {
+      logRiverFuelDepleted(studentId, {
+        round: state.round,
+        crossings: stats.current.attempts,
+        invalidAttempts: stats.current.invalid,
+        hintsUsed,
+        durationMs,
+      });
+    }
     setBusy(true);
     setFeedback(null);
     setBoatSide(outcome.arrived.boat);
@@ -130,7 +257,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
         setConflictBank(origin);
         setFeedback({
           kind: 'retry',
-          text: `Conflito na margem ${origin}. ${conflictText(outcome.conflicts)} A travessia será desfeita, mas a gota continua gasta.`,
+          text: `Conflito na margem ${origin === 'E' ? 'esquerda' : 'direita'}. ${conflictText(outcome.conflicts)} A travessia será desfeita, mas a gota continua gasta.`,
         });
         later(() => {
           setConflictBank(null);
@@ -159,10 +286,48 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
     }, timing.crossingMs);
   };
 
+  const openRules = () => {
+    touch();
+    stats.current.rulesOpenedAt = Date.now();
+    logRiverRulesViewed(studentId, { origin: 'during_round', round: state.round });
+    setPhase('rules');
+  };
+
+  const resume = () => {
+    logRiverRulesResumed(studentId, {
+      round: state.round,
+      viewDurationMs: Date.now() - stats.current.rulesOpenedAt,
+    });
+    setPhase('play');
+  };
+
+  const revealHint = (hintNumber: number) => {
+    const round = state.round;
+    const already = revealedHints[round];
+    if (already.includes(hintNumber)) return;
+    const hint = RIVER_HINTS[round].find((h) => h.number === hintNumber);
+    if (!hint) return;
+    const expectedNext = RIVER_HINTS[round].find((h) => !already.includes(h.number))?.number;
+    touch();
+    logRiverHintRequested(studentId, {
+      round,
+      hintNumber,
+      discountPoints: hint.discountPoints,
+      hintsUsedAfter: already.length + 1,
+      crossingsSoFar: stats.current.attempts,
+      outOfOrder: hintNumber !== expectedNext,
+    });
+    setRevealedHints({ ...revealedHints, [round]: [...already, hintNumber] });
+  };
+
   if (phase === 'rules') {
     return (
       <main className="river-page staff-theme">
-        <RulesView started={started} onStart={restart} onContinue={() => setPhase('play')} />
+        <RulesView
+          started={started}
+          onStart={(round) => restart(round, started ? 'manual_restart' : 'first_start')}
+          onContinue={resume}
+        />
       </main>
     );
   }
@@ -176,7 +341,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
           Voltar
         </LinkButton>
         <Heading level={1}>Travessia do Rio</Heading>
-        <Button variant="secondary" icon={<BookOpen />} onClick={() => setPhase('rules')} disabled={busy}>
+        <Button variant="secondary" icon={<BookOpen />} onClick={openRules} disabled={busy}>
           Ver regras
         </Button>
       </header>
@@ -191,14 +356,17 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
           icon={<Volume2 />}
           label="Som"
           checked={soundOn}
-          onCheckedChange={setSoundOn}
+          onCheckedChange={(enabled) => {
+            logRiverSoundToggled(studentId, { enabled });
+            setSoundOn(enabled);
+          }}
         />
       </section>
 
       <div className="river" data-testid="river">
         <BankView
           side="E"
-          title="Margem E"
+          title="Margem Esquerda"
           pieces={piecesOnBank(state, 'E').filter((p) => !cargo.includes(p))}
           interactive={boatSide === 'E' && canCross}
           conflict={conflictBank === 'E'}
@@ -237,7 +405,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
 
         <BankView
           side="D"
-          title="Margem D"
+          title="Margem Direita"
           pieces={piecesOnBank(state, 'D').filter((p) => !cargo.includes(p))}
           interactive={boatSide === 'D' && canCross}
           conflict={conflictBank === 'D'}
@@ -245,13 +413,39 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
         />
       </div>
 
-      <div className="river-page__actions">
-        <Button variant="primary" icon={<ArrowRight />} onClick={handleCross} disabled={!canCross}>
-          {boatSide === 'E' ? 'Atravessar para a margem D' : 'Atravessar para a margem E'}
-        </Button>
-        <Button variant="secondary" icon={<RotateCcw />} onClick={() => restart(state.round)} disabled={busy}>
-          Recomeçar
-        </Button>
+      <div className="river-page__actions river-page__actions--controls">
+        <ControlButton
+          label="Atravessar para a margem esquerda"
+          hint={
+            boatSide === 'E'
+              ? 'O barco já está na margem esquerda'
+              : 'Leva o barco com a carga escolhida para a margem esquerda'
+          }
+          icon={<ChevronLeft />}
+          variant="primary"
+          disabled={!canCross || boatSide === 'E'}
+          onClick={handleCross}
+        />
+        <ControlButton
+          label="Recomeçar"
+          hint="Volta a rodada ao começo: personagens na margem esquerda e tanque cheio"
+          icon={<RotateCcw />}
+          variant="secondary"
+          disabled={busy}
+          onClick={() => restart(state.round, 'manual_restart')}
+        />
+        <ControlButton
+          label="Atravessar para a margem direita"
+          hint={
+            boatSide === 'D'
+              ? 'O barco já está na margem direita'
+              : 'Leva o barco com a carga escolhida para a margem direita'
+          }
+          icon={<ChevronRight />}
+          variant="primary"
+          disabled={!canCross || boatSide === 'D'}
+          onClick={handleCross}
+        />
       </div>
 
       <div aria-live="polite" className="river-page__feedback">
@@ -262,19 +456,26 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
         )}
       </div>
 
+      <HintCards
+        key={state.round}
+        hints={RIVER_HINTS[state.round]}
+        revealed={revealedHints[state.round]}
+        onReveal={revealHint}
+      />
+
       {result === 'won' && (
         <section className="river-page__result river-page__result--won" role="status">
-          <Heading level={2}>Todos chegaram à margem D</Heading>
+          <Heading level={2}>Todos chegaram à margem direita</Heading>
           <Text>
             Você atravessou em {ROUNDS[state.round].fuel - state.fuel} viagens, sobrando {state.fuel}{' '}
             {state.fuel === 1 ? 'gota' : 'gotas'} de combustível.
           </Text>
           <div className="river-page__actions">
-            <Button variant="success" icon={<Play />} onClick={() => restart(state.round)}>
+            <Button variant="success" icon={<Play />} onClick={() => restart(state.round, 'after_win')}>
               Jogar de novo
             </Button>
             {state.round === 1 && (
-              <Button variant="primary" icon={<ArrowRight />} onClick={() => restart(2)}>
+              <Button variant="primary" icon={<ArrowRight />} onClick={() => restart(2, 'next_round')}>
                 Ir para a rodada 2
               </Button>
             )}
@@ -287,13 +488,85 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
           <Heading level={2}>O combustível acabou</Heading>
           <Text>O tanque ficou vazio antes de todos chegarem. Dá para recomeçar e tentar outro caminho.</Text>
           <div className="river-page__actions">
-            <Button variant="primary" icon={<Undo2 />} onClick={() => restart(state.round)}>
+            <Button variant="primary" icon={<Undo2 />} onClick={() => restart(state.round, 'after_out_of_fuel')}>
               Tentar de novo
             </Button>
           </div>
         </section>
       )}
     </main>
+  );
+}
+
+// Botão só com ícone (pedido explícito): o nome acessível vem do aria-label e a
+// dica visual do Tooltip. O <span> recebe o hover mesmo com o botão bloqueado.
+function ControlButton({
+  label,
+  hint,
+  icon,
+  variant,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  icon: ReactNode;
+  variant: 'primary' | 'secondary';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip content={hint}>
+      <span className="river-control">
+        <Button variant={variant} icon={icon} aria-label={label} disabled={disabled} onClick={onClick} />
+      </span>
+    </Tooltip>
+  );
+}
+
+function HintCards({
+  hints,
+  revealed,
+  onReveal,
+}: {
+  hints: Array<{ number: number; text: string }>;
+  revealed: number[];
+  onReveal: (hintNumber: number) => void;
+}) {
+  return (
+    <section className="hint-cards" aria-label="Dicas">
+      <Heading level={2}>Dicas</Heading>
+      <Text tone="muted">Vire uma carta se quiser ajuda. Ela fica aberta para você reler.</Text>
+      <ul className="hint-cards__grid">
+        {hints.map((hint) => {
+          const open = revealed.includes(hint.number);
+          return (
+            <li key={hint.number} className="hint-cards__item">
+              {open ? (
+                <article className="hint-card hint-card--front" aria-label={`Dica ${hint.number}`}>
+                  <span className="hint-card__number" aria-hidden="true">
+                    {hint.number}
+                  </span>
+                  <p className="hint-card__text">{hint.text}</p>
+                </article>
+              ) : (
+                <Button
+                  variant="secondary"
+                  className="hint-card hint-card--back"
+                  icon={<Lightbulb />}
+                  aria-label={`Virar dica ${hint.number}`}
+                  onClick={() => onReveal(hint.number)}
+                >
+                  <span className="hint-card__number" aria-hidden="true">
+                    {hint.number}
+                  </span>
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -395,7 +668,7 @@ function RulesView({
     <div className="river-rules" role="region" aria-label="Regras do jogo">
       <Heading level={1}>Travessia do Rio</Heading>
       <Text size="lg">
-        Leve o Lobo, a Ovelha, a Alface, o Cachorro e a Galinha da margem E para a margem D sem quebrar nenhuma
+        Leve o Lobo, a Ovelha, a Alface, o Cachorro e a Galinha da margem esquerda para a margem direita sem quebrar nenhuma
         regra e sem esvaziar o tanque de combustível.
       </Text>
 
@@ -418,7 +691,7 @@ function RulesView({
         </li>
         <li>
           <strong>Combustível.</strong> Cada travessia gasta uma gota,{' '}
-          <em>inclusive as que forem desfeitas</em>. Se o tanque esvaziar antes de todos chegarem à margem D, a
+          <em>inclusive as que forem desfeitas</em>. Se o tanque esvaziar antes de todos chegarem à margem direita, a
           partida recomeça.
         </li>
       </ol>
