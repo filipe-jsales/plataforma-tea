@@ -1,0 +1,202 @@
+/* Sem restrição sensorial de propósito: a página usa `.staff-theme`, a única
+   exceção ao reset global de animação, para que o movimento mínimo (barco
+   atravessando, conflito, fim de jogo) funcione. `prefers-reduced-motion` do
+   sistema continua valendo. */
+.river-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.river-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.river-page__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.river-page__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.river-page__feedback {
+  min-height: 3rem;
+}
+
+.river-fuel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.river-fuel__drops {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  color: var(--color-primary);
+}
+
+.river-fuel__drops svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.river-fuel__drops svg[data-used='true'] {
+  fill: none;
+  color: var(--color-border);
+}
+
+.river {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1.2fr) minmax(10rem, 1fr);
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.river__bank {
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-bg));
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.river__bank[data-conflict='true'] {
+  border-color: var(--color-danger);
+  animation: river-shake 400ms ease-in-out 2;
+}
+
+.river__pieces,
+.river__cargo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.river__cargo-empty {
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+.river__piece-static {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.river__water {
+  position: relative;
+  min-height: 14rem;
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-bg));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.river__boat {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-1);
+  width: 11rem;
+  padding: var(--space-2);
+  background: var(--color-bg);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  transition: left 700ms ease-in-out;
+}
+
+.river__boat[data-side='D'] {
+  left: calc(100% - 11rem - var(--space-1));
+}
+
+.river-page__result {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  animation: river-pop 400ms ease-out;
+}
+
+.river-page__result--won {
+  border-color: var(--color-success);
+}
+
+.river-page__result--lost {
+  border-color: var(--color-warning);
+}
+
+.river-page[data-result='lost'] .river {
+  opacity: 0.55;
+  filter: grayscale(0.8);
+  transition: opacity 600ms ease, filter 600ms ease;
+}
+
+.river-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.river-rules__list {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+@keyframes river-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes river-pop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 40rem) {
+  .river {
+    grid-template-columns: 1fr;
+  }
+}

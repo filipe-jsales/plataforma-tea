@@ -35,4 +35,13 @@ export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
     entryPath: '/minigame/work-tools/use',
     category: 'educacao_computacao',
   },
+  // Jogo à parte da sequência Use-Modify-Create: atividade desplugada de
+  // algoritmo (repetição, decisão e verificação), sem backend nem
+  // restrição sensorial, por decisão explícita do pedido.
+  {
+    key: 'river_crossing',
+    title: 'Travessia do Rio',
+    entryPath: '/minigame/river-crossing',
+    category: 'educacao_computacao',
+  },
 ];
