@@ -1,5 +1,6 @@
 export type PieceId = 'wolf' | 'sheep' | 'lettuce' | 'dog' | 'chicken';
 export type Bank = 'E' | 'D';
+export type RoundId = 1 | 2;
 
 export const PIECE_LABEL: Record<PieceId, string> = {
   wolf: 'Lobo',
@@ -17,8 +18,17 @@ export const PIECE_WEIGHT: Record<PieceId, number> = {
   chicken: 1,
 };
 
-export const PIECES: PieceId[] = ['wolf', 'sheep', 'lettuce', 'dog', 'chicken'];
-export const INITIAL_FUEL = 13;
+export interface RoundConfig {
+  pieces: PieceId[];
+  fuel: number;
+}
+
+// Rodada 1: o Lobo fica fora e o tanque tem 7 gotas. Rodada 2: todos jogam e
+// o tanque tem 13 gotas.
+export const ROUNDS: Record<RoundId, RoundConfig> = {
+  1: { pieces: ['sheep', 'lettuce', 'dog', 'chicken'], fuel: 7 },
+  2: { pieces: ['wolf', 'sheep', 'lettuce', 'dog', 'chicken'], fuel: 13 },
+};
 
 // Peso máximo do barco (3) menos o Fazendeiro (1), que nunca sai do barco.
 export const BOAT_CARGO_CAPACITY = 2;
@@ -46,19 +56,20 @@ export const CONFLICT_RULES: ConflictRule[] = [
 ];
 
 export interface RiverState {
+  round: RoundId;
   bank: Partial<Record<PieceId, Bank>>;
   boat: Bank;
   fuel: number;
 }
 
-export function createInitialState(): RiverState {
+export function createInitialState(round: RoundId): RiverState {
   const bank: RiverState['bank'] = {};
-  for (const piece of PIECES) bank[piece] = 'E';
-  return { bank, boat: 'E', fuel: INITIAL_FUEL };
+  for (const piece of ROUNDS[round].pieces) bank[piece] = 'E';
+  return { round, bank, boat: 'E', fuel: ROUNDS[round].fuel };
 }
 
 export function piecesOnBank(state: RiverState, side: Bank): PieceId[] {
-  return PIECES.filter((piece) => state.bank[piece] === side);
+  return ROUNDS[state.round].pieces.filter((piece) => state.bank[piece] === side);
 }
 
 export function cargoWeight(cargo: PieceId[]): number {
@@ -79,7 +90,7 @@ export function findConflicts(present: PieceId[]): ConflictRule[] {
 }
 
 export function hasWon(state: RiverState): boolean {
-  return PIECES.every((piece) => state.bank[piece] === 'D');
+  return ROUNDS[state.round].pieces.every((piece) => state.bank[piece] === 'D');
 }
 
 export type CrossingOutcome = 'ok' | 'conflict' | 'won' | 'lost';

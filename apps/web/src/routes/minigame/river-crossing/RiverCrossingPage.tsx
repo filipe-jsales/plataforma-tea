@@ -16,7 +16,7 @@ import { Button, Heading, InlineFeedback, LinkButton, Text, ToggleSwitch } from 
 import {
   BOAT_CARGO_CAPACITY,
   CONFLICT_RULES,
-  INITIAL_FUEL,
+  ROUNDS,
   PIECE_LABEL,
   PIECE_WEIGHT,
   canAddToCargo,
@@ -27,6 +27,7 @@ import {
   type ConflictRule,
   type PieceId,
   type RiverState,
+  type RoundId,
 } from '../../../lib/riverCrossing';
 import { playRiverSound, type RiverSound } from '../../../lib/riverSounds';
 import './RiverCrossingPage.css';
@@ -54,7 +55,7 @@ function conflictText(conflicts: ConflictRule[]): string {
 export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverCrossingTiming }) {
   const [phase, setPhase] = useState<Phase>('rules');
   const [started, setStarted] = useState(false);
-  const [state, setState] = useState<RiverState>(() => createInitialState());
+  const [state, setState] = useState<RiverState>(() => createInitialState(2));
   const [cargo, setCargo] = useState<PieceId[]>([]);
   const [boatSide, setBoatSide] = useState<Bank>('E');
   const [busy, setBusy] = useState(false);
@@ -78,9 +79,9 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
     if (soundOn) playRiverSound(name);
   };
 
-  const restart = () => {
+  const restart = (round: RoundId) => {
     clearTimers();
-    setState(createInitialState());
+    setState(createInitialState(round));
     setBoatSide('E');
     setCargo([]);
     setBusy(false);
@@ -181,7 +182,10 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
       </header>
 
       <section className="river-page__status" aria-label="Situação da partida">
-        <FuelTank fuel={state.fuel} total={INITIAL_FUEL} />
+        <Text>
+          <strong>{state.round === 1 ? 'Rodada 1: sem o Lobo' : 'Rodada 2: jogo completo'}</strong>
+        </Text>
+        <FuelTank fuel={state.fuel} total={ROUNDS[state.round].fuel} />
         <ToggleSwitch
           id="river-sound"
           icon={<Volume2 />}
@@ -245,7 +249,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
         <Button variant="primary" icon={<ArrowRight />} onClick={handleCross} disabled={!canCross}>
           {boatSide === 'E' ? 'Atravessar para a margem D' : 'Atravessar para a margem E'}
         </Button>
-        <Button variant="secondary" icon={<RotateCcw />} onClick={restart} disabled={busy}>
+        <Button variant="secondary" icon={<RotateCcw />} onClick={() => restart(state.round)} disabled={busy}>
           Recomeçar
         </Button>
       </div>
@@ -262,13 +266,18 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
         <section className="river-page__result river-page__result--won" role="status">
           <Heading level={2}>Todos chegaram à margem D</Heading>
           <Text>
-            Você atravessou em {INITIAL_FUEL - state.fuel} viagens, sobrando {state.fuel}{' '}
+            Você atravessou em {ROUNDS[state.round].fuel - state.fuel} viagens, sobrando {state.fuel}{' '}
             {state.fuel === 1 ? 'gota' : 'gotas'} de combustível.
           </Text>
           <div className="river-page__actions">
-            <Button variant="success" icon={<Play />} onClick={restart}>
+            <Button variant="success" icon={<Play />} onClick={() => restart(state.round)}>
               Jogar de novo
             </Button>
+            {state.round === 1 && (
+              <Button variant="primary" icon={<ArrowRight />} onClick={() => restart(2)}>
+                Ir para a rodada 2
+              </Button>
+            )}
           </div>
         </section>
       )}
@@ -278,7 +287,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
           <Heading level={2}>O combustível acabou</Heading>
           <Text>O tanque ficou vazio antes de todos chegarem. Dá para recomeçar e tentar outro caminho.</Text>
           <div className="river-page__actions">
-            <Button variant="primary" icon={<Undo2 />} onClick={restart}>
+            <Button variant="primary" icon={<Undo2 />} onClick={() => restart(state.round)}>
               Tentar de novo
             </Button>
           </div>
@@ -379,7 +388,7 @@ function RulesView({
   onContinue,
 }: {
   started: boolean;
-  onStart: () => void;
+  onStart: (round: RoundId) => void;
   onContinue: () => void;
 }) {
   return (
@@ -408,11 +417,22 @@ function RulesView({
           regras valem para qualquer par de personagens da margem, mesmo com outros junto.
         </li>
         <li>
-          <strong>Combustível.</strong> O tanque tem {INITIAL_FUEL} gotas. Cada travessia gasta uma gota,{' '}
+          <strong>Combustível.</strong> Cada travessia gasta uma gota,{' '}
           <em>inclusive as que forem desfeitas</em>. Se o tanque esvaziar antes de todos chegarem à margem D, a
           partida recomeça.
         </li>
       </ol>
+
+      <Heading level={2}>Rodadas</Heading>
+      <ul className="river-rules__list">
+        <li>
+          <strong>Rodada 1:</strong> o Lobo fica fora do jogo e o tanque tem {ROUNDS[1].fuel} gotas. Serve para
+          conhecer os personagens e a verificação.
+        </li>
+        <li>
+          <strong>Rodada 2:</strong> todos os personagens jogam e o tanque tem {ROUNDS[2].fuel} gotas.
+        </li>
+      </ul>
 
       <Heading level={2}>Regras de conflito</Heading>
       <ul className="river-rules__list">
@@ -424,15 +444,17 @@ function RulesView({
       </ul>
 
       <div className="river-page__actions">
-        {started ? (
+        {started && (
           <Button variant="success" icon={<Play />} onClick={onContinue}>
             Continuar a travessia
           </Button>
-        ) : (
-          <Button variant="success" icon={<Play />} onClick={onStart}>
-            Começar
-          </Button>
         )}
+        <Button variant={started ? 'secondary' : 'success'} icon={<Play />} onClick={() => onStart(1)}>
+          {started ? 'Recomeçar na rodada 1' : 'Começar rodada 1'}
+        </Button>
+        <Button variant={started ? 'secondary' : 'primary'} icon={<Play />} onClick={() => onStart(2)}>
+          {started ? 'Recomeçar na rodada 2' : 'Começar rodada 2'}
+        </Button>
         <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
           Voltar
         </LinkButton>

@@ -16,8 +16,10 @@ function renderPage() {
 
 type User = ReturnType<typeof userEvent.setup>;
 
-const fuel = (left: number) => screen.findByRole('img', { name: `Combustível: ${left} de 13 gotas` });
-const start = (user: User) => user.click(screen.getByRole('button', { name: 'Começar' }));
+const fuel = (left: number, total = 13) =>
+  screen.findByRole('img', { name: `Combustível: ${left} de ${total} gotas` });
+const start = (user: User, round: 1 | 2 = 2) =>
+  user.click(screen.getByRole('button', { name: `Começar rodada ${round}` }));
 const piece = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}, peso`) });
 const cross = (user: User) => user.click(screen.getByRole('button', { name: /Atravessar para/ }));
 const onBank = (side: 'E' | 'D', name: string) =>
@@ -29,7 +31,8 @@ describe('RiverCrossingPage', () => {
     expect(screen.getByRole('region', { name: 'Regras do jogo' })).toBeInTheDocument();
     expect(screen.getByText(/O Lobo devora a Ovelha, exceto se o Cachorro/)).toBeInTheDocument();
     expect(screen.queryByTestId('river')).not.toBeInTheDocument();
-    expect(screen.queryByText(/aquecimento|rodada/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/o Lobo fica fora do jogo e o tanque tem 7 gotas/)).toBeInTheDocument();
+    expect(screen.getByText(/todos os personagens jogam e o tanque tem 13 gotas/)).toBeInTheDocument();
   });
 
   it('mostra só os desenhos dos personagens, com o peso em badge e sem nome visível', async () => {
@@ -53,13 +56,54 @@ describe('RiverCrossingPage', () => {
     await fuel(12);
 
     await user.click(screen.getByRole('button', { name: 'Ver regras' }));
-    expect(screen.queryByRole('button', { name: 'Começar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Começar rodada/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continuar a travessia' }));
 
     expect(await fuel(12)).toBeInTheDocument();
     expect(screen.getByTestId('boat')).toHaveAttribute('data-side', 'D');
     expect(onBank('D', 'Alface')).not.toBeNull();
     expect(onBank('D', 'Galinha')).not.toBeNull();
+  });
+
+  it('rodada 1 começa sem o Lobo e com 7 gotas', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user, 1);
+    expect(await fuel(7, 7)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Lobo/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Rodada 1: sem o Lobo')).toBeInTheDocument();
+  });
+
+  it('vence a rodada 1 em 5 travessias e oferece a rodada 2', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user, 1);
+    const solution = [['Alface', 'Cachorro'], [], ['Ovelha'], ['Alface'], ['Alface', 'Galinha']];
+    for (const cargo of solution) {
+      for (const name of cargo) await user.click(piece(name));
+      await cross(user);
+      await new Promise((resolve) => setTimeout(resolve, FAST.crossingMs + 20));
+    }
+    expect(await screen.findByText('Todos chegaram à margem D')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Ir para a rodada 2' }));
+    expect(await fuel(13)).toBeInTheDocument();
+    expect(piece('Lobo')).toBeInTheDocument();
+  });
+
+  it('fim de jogo na rodada 1 acontece com 7 gotas', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user, 1);
+    for (let left = 6; left >= 0; left -= 1) {
+      await cross(user);
+      if (left > 0) {
+        await fuel(left, 7);
+        await waitFor(() => expect(screen.getByRole('button', { name: /Atravessar para/ })).toBeEnabled());
+      }
+    }
+    expect(await screen.findByText('O combustível acabou')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+    expect(await fuel(7, 7)).toBeInTheDocument();
   });
 
   it('não deixa passar do peso do barco', async () => {

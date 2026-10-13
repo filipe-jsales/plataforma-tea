@@ -2284,7 +2284,9 @@ se virar objeto de coleta de pesquisa).
 
 - Mostra as regras antes do jogo; "Ver regras" no meio da partida **não
   reinicia** o estado (a tela de regras oferece "Continuar a travessia").
-- Uma partida só (13 gotas, sem rodada de aquecimento).
+- Duas rodadas, como no plano de aula: rodada 1 (sem o Lobo, 7 gotas) e rodada 2
+  (todos, 13 gotas). `lib/riverCrossing.spec.ts` confere por busca exaustiva os
+  números do plano (mínimo de 5 e 11 travessias, 2 soluções em cada).
 - Personagens são só SVG (sem nome visível); o nome vai em `aria-label` e o
   peso aparece como badge numérico no canto superior direito.
 - Barco: peso 3, Fazendeiro pesa 1, carga até peso 2. Conflito é checado só na
