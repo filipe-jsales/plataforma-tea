@@ -129,6 +129,7 @@ describe('RiverCrossingPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('region', { name: 'Margem Esquerda' })).toHaveAttribute('data-conflict', 'true'),
     );
+    expect(screen.getByText(/A Galinha bicou a Alface!/)).toBeInTheDocument();
     expect(screen.getByText(/Conflito na margem esquerda/)).toBeInTheDocument();
 
     await waitFor(() =>
