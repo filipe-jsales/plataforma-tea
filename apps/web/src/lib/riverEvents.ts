@@ -168,6 +168,11 @@ export function logRiverRulesResumed(id: string | null, d: { round: RoundId; vie
   emit(id, 'RD-I', 'river_rules_resumed', { round: d.round, view_duration_ms: d.viewDurationMs });
 }
 
+// RD-I - abriu o link de um dos formulários do estudo na tela final.
+export function logRiverSurveyLinkOpened(id: string | null, d: { form: 'qual' | 'quant'; round: RoundId }): void {
+  emit(id, 'RD-I', 'river_survey_link_opened', { form: d.form, round: d.round });
+}
+
 // RD-I - ligou/desligou o som.
 export function logRiverSoundToggled(id: string | null, d: { enabled: boolean }): void {
   emit(id, 'RD-I', 'river_sound_toggled', { enabled: d.enabled });

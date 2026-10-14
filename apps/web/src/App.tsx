@@ -186,6 +186,17 @@ function App() {
           </RequireAuth>
         }
       />
+      {/* Acesso público ao jogo da Travessia do Rio (mini teste em turma, sem
+          login de aluno): fora do RequireAuth, então sem header/sidebar do app
+          e sem registro de eventos (o POST /events exige JWT de aluno). */}
+      <Route
+        path="/jogo/travessia"
+        element={
+          <Suspense fallback={null}>
+            <RiverCrossingPage standalone />
+          </Suspense>
+        }
+      />
       <Route
         path="/admin/metrics"
         element={

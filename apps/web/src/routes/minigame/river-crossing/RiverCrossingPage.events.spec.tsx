@@ -231,3 +231,61 @@ describe('Travessia do Rio - controles de travessia', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/Volta a rodada ao começo/);
   });
 });
+
+describe('Travessia do Rio - tela final', () => {
+  const solution = [
+    ['Alface', 'Galinha'],
+    ['Alface'],
+    ['Ovelha'],
+    [],
+    ['Lobo'],
+    ['Ovelha'],
+    ['Alface', 'Cachorro'],
+    ['Galinha'],
+    ['Ovelha'],
+    ['Alface'],
+    ['Alface', 'Galinha'],
+  ];
+
+  it('ao vencer a rodada 2 mostra parabéns e os links dos formulários na ordem, e registra o clique', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user);
+    for (const cargo of solution) {
+      for (const name of cargo) await user.click(piece(name));
+      await cross(user);
+      await new Promise((resolve) => setTimeout(resolve, FAST.crossingMs + 20));
+    }
+    expect(await screen.findByRole('heading', { name: 'Parabéns!' })).toBeInTheDocument();
+
+    const links = screen.getAllByRole('link', { name: /Perguntas abertas|Escalas/ });
+    expect(links.map((l) => l.textContent)).toEqual(['1. Perguntas abertas', '2. Escalas e perguntas de conhecimento']);
+    for (const link of links) {
+      expect(link).toHaveAttribute('href', expect.stringContaining('docs.google.com/forms'));
+      expect(link).toHaveAttribute('href', expect.stringContaining('Plugada'));
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    }
+
+    links[0].addEventListener('click', (event) => event.preventDefault());
+    await user.click(links[0]);
+    expect(events('river_survey_link_opened')[0]).toMatchObject({
+      category: 'RD-I',
+      payload: { form: 'qual', round: 2 },
+    });
+  });
+
+  it('na rodada 1 mostra parabéns mas ainda não pede os formulários', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user, 1);
+    const round1 = [['Alface', 'Cachorro'], [], ['Ovelha'], ['Alface'], ['Alface', 'Galinha']];
+    for (const cargo of round1) {
+      for (const name of cargo) await user.click(piece(name));
+      await cross(user);
+      await new Promise((resolve) => setTimeout(resolve, FAST.crossingMs + 20));
+    }
+    expect(await screen.findByRole('heading', { name: 'Parabéns!' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Perguntas abertas/ })).not.toBeInTheDocument();
+  });
+});
