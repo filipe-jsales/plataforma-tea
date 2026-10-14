@@ -40,6 +40,8 @@ export interface ConflictRule {
   // Peça cuja presença na mesma margem anula a regra.
   unlessPresent?: PieceId;
   description: string;
+  // Frase curta mostrada ao aluno quando a regra é violada numa travessia.
+  violation: string;
 }
 
 export const CONFLICT_RULES: ConflictRule[] = [
@@ -49,10 +51,11 @@ export const CONFLICT_RULES: ConflictRule[] = [
     prey: 'sheep',
     unlessPresent: 'dog',
     description: 'O Lobo devora a Ovelha, exceto se o Cachorro estiver na margem.',
+    violation: 'O Lobo devorou a Ovelha!',
   },
-  { id: 'R2', predator: 'sheep', prey: 'lettuce', description: 'A Ovelha devora a Alface.' },
-  { id: 'R3', predator: 'chicken', prey: 'lettuce', description: 'A Galinha bica a Alface.' },
-  { id: 'R4', predator: 'dog', prey: 'chicken', description: 'O Cachorro ataca a Galinha.' },
+  { id: 'R2', predator: 'sheep', prey: 'lettuce', description: 'A Ovelha devora a Alface.', violation: 'A Ovelha devorou a Alface!' },
+  { id: 'R3', predator: 'chicken', prey: 'lettuce', description: 'A Galinha bica a Alface.', violation: 'A Galinha bicou a Alface!' },
+  { id: 'R4', predator: 'dog', prey: 'chicken', description: 'O Cachorro ataca a Galinha.', violation: 'O Cachorro atacou a Galinha!' },
 ];
 
 export interface RiverState {

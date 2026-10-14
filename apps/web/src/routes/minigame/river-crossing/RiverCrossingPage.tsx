@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RIVER_ICON_LABEL, RiverPieceIcon } from '../../../components/minigame/RiverPieceIcon';
 import {
   Button,
+  Dialog,
   ExternalLinkButton,
   Heading,
   InlineFeedback,
@@ -81,7 +82,7 @@ type Result = 'won' | 'lost' | null;
 type Feedback = { kind: 'info' | 'retry' | 'success'; text: string } | null;
 
 function conflictText(conflicts: ConflictRule[]): string {
-  return conflicts.map((rule) => `${rule.id}: ${rule.description}`).join(' ');
+  return conflicts.map((rule) => rule.violation).join(' ');
 }
 
 // `standalone`: aberto pela rota pública (sem login e sem o layout do app), então
@@ -102,6 +103,7 @@ export function RiverCrossingPage({
   const [result, setResult] = useState<Result>(null);
   const [conflictBank, setConflictBank] = useState<Bank | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [winOpen, setWinOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [revealedHints, setRevealedHints] = useState<Record<RoundId, number[]>>({ 1: [], 2: [] });
   const timers = useRef<number[]>([]);
@@ -183,6 +185,7 @@ export function RiverCrossingPage({
     setCargo([]);
     setBusy(false);
     setResult(null);
+    setWinOpen(false);
     setConflictBank(null);
     setFeedback(null);
     setStarted(true);
@@ -277,7 +280,7 @@ export function RiverCrossingPage({
         setConflictBank(origin);
         setFeedback({
           kind: 'retry',
-          text: `Conflito na margem ${origin === 'E' ? 'esquerda' : 'direita'}. ${conflictText(outcome.conflicts)} A travessia será desfeita, mas a gota continua gasta.`,
+          text: `${conflictText(outcome.conflicts)} Conflito na margem ${origin === 'E' ? 'esquerda' : 'direita'}. A travessia será desfeita, mas a gota continua gasta.`,
         });
         later(() => {
           setConflictBank(null);
@@ -299,6 +302,7 @@ export function RiverCrossingPage({
       if (outcome.outcome === 'won') {
         sound('win');
         setResult('won');
+        setWinOpen(true);
       } else if (outcome.outcome === 'lost') {
         sound('lose');
         setResult('lost');
@@ -487,47 +491,63 @@ export function RiverCrossingPage({
       />
 
       {result === 'won' && (
-        <section className="river-page__result river-page__result--won" role="status">
-          <Heading level={2}>Parabéns!</Heading>
-          <Text>
-            <strong>Todos chegaram à margem direita</strong>
-          </Text>
-          <Text>
-            Você atravessou em {ROUNDS[state.round].fuel - state.fuel} viagens, sobrando {state.fuel}{' '}
-            {state.fuel === 1 ? 'gota' : 'gotas'} de combustível.
-          </Text>
-          {state.round === 2 && (
-            <div className="river-survey" aria-label="Formulários da pesquisa">
-              <Text>
-                Para terminar, responda os dois formulários abaixo, na ordem. Eles abrem em outra aba e levam
-                cerca de 10 minutos.
-              </Text>
-              <div className="river-page__actions">
-                {RIVER_SURVEY_ORDER.map((form) => (
-                  <ExternalLinkButton
-                    key={form}
-                    href={RIVER_SURVEY_LINKS[form].href}
-                    variant={form === 'qual' ? 'primary' : 'secondary'}
-                    icon={<ClipboardList />}
-                    onClick={() => logRiverSurveyLinkOpened(studentId, { form, round: state.round })}
-                  >
-                    {RIVER_SURVEY_LINKS[form].title}
-                  </ExternalLinkButton>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="river-page__actions">
-            <Button variant="success" icon={<Play />} onClick={() => restart(state.round, 'after_win')}>
-              Jogar de novo
-            </Button>
-            {state.round === 1 && (
-              <Button variant="primary" icon={<ArrowRight />} onClick={() => restart(2, 'next_round')}>
-                Ir para a rodada 2
+        <>
+          <section className="river-page__result river-page__result--won" role="status">
+            <Heading level={2}>Desafio concluído</Heading>
+            <div className="river-page__actions">
+              <Button variant="primary" onClick={() => setWinOpen(true)}>
+                Ver resultado
               </Button>
+            </div>
+          </section>
+          <Dialog
+            open={winOpen}
+            onOpenChange={setWinOpen}
+            title="Parabéns!"
+            description="Você completou o problema."
+            footer={
+              <>
+                <Button variant="success" icon={<Play />} onClick={() => restart(state.round, 'after_win')}>
+                  Jogar de novo
+                </Button>
+                {state.round === 1 && (
+                  <Button variant="primary" icon={<ArrowRight />} onClick={() => restart(2, 'next_round')}>
+                    Ir para a rodada 2
+                  </Button>
+                )}
+              </>
+            }
+          >
+            <Text>
+              <strong>Todos chegaram à margem direita</strong>
+            </Text>
+            <Text>
+              Você atravessou em {ROUNDS[state.round].fuel - state.fuel} viagens, sobrando {state.fuel}{' '}
+              {state.fuel === 1 ? 'gota' : 'gotas'} de combustível.
+            </Text>
+            {state.round === 2 && (
+              <div className="river-survey" aria-label="Formulários da pesquisa">
+                <Text>
+                  Para terminar, responda os dois formulários abaixo, na ordem. Eles abrem em outra aba e levam
+                  cerca de 10 minutos.
+                </Text>
+                <div className="river-page__actions">
+                  {RIVER_SURVEY_ORDER.map((form) => (
+                    <ExternalLinkButton
+                      key={form}
+                      href={RIVER_SURVEY_LINKS[form].href}
+                      variant={form === 'qual' ? 'primary' : 'secondary'}
+                      icon={<ClipboardList />}
+                      onClick={() => logRiverSurveyLinkOpened(studentId, { form, round: state.round })}
+                    >
+                      {RIVER_SURVEY_LINKS[form].title}
+                    </ExternalLinkButton>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-        </section>
+          </Dialog>
+        </>
       )}
 
       {result === 'lost' && (
