@@ -2313,3 +2313,13 @@ se virar objeto de coleta de pesquisa).
   `river_rules_resumed` / `river_sound_toggled` (RD-I),
   `river_round_completed` / `river_fuel_depleted` (RD-C) e `river_abandoned`
   (RD-E, só números brutos, regra 7).
+
+### Travessia do Rio: acesso público (mini teste em turma)
+
+`/jogo/travessia` abre o jogo **sem login**, fora do `RequireAuth` (sem
+header/sidebar/footer do app e sem o botão "Voltar", via `standalone` em
+`RiverCrossingPage`). Não grava eventos: `POST /events` exige JWT de aluno e
+`studentPseudoId` é NOT NULL de propósito, e o jogo já ignora o log quando não
+há aluno. A rota `/minigame/river-crossing` (dentro da plataforma) continua
+exigindo login de aluno. Para eventos anônimos seria preciso um endpoint
+público novo no backend (ver o padrão de `/events/pre-login`).

@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ArrowRight,
   BookOpen,
+  ClipboardList,
   Droplet,
   Fuel,
   Lightbulb,
@@ -15,7 +16,16 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RIVER_ICON_LABEL, RiverPieceIcon } from '../../../components/minigame/RiverPieceIcon';
-import { Button, Heading, InlineFeedback, LinkButton, Text, ToggleSwitch, Tooltip } from '../../../components/ui';
+import {
+  Button,
+  ExternalLinkButton,
+  Heading,
+  InlineFeedback,
+  LinkButton,
+  Text,
+  ToggleSwitch,
+  Tooltip,
+} from '../../../components/ui';
 import {
   BOAT_CARGO_CAPACITY,
   CONFLICT_RULES,
@@ -45,9 +55,11 @@ import {
   logRiverRulesResumed,
   logRiverRulesViewed,
   logRiverSoundToggled,
+  logRiverSurveyLinkOpened,
   type RoundStartReason,
 } from '../../../lib/riverEvents';
 import { RIVER_HINTS } from '../../../lib/riverHints';
+import { RIVER_SURVEY_LINKS, RIVER_SURVEY_ORDER } from '../../../lib/riverSurveyLinks';
 import { playRiverSound, type RiverSound } from '../../../lib/riverSounds';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import './RiverCrossingPage.css';
@@ -72,7 +84,15 @@ function conflictText(conflicts: ConflictRule[]): string {
   return conflicts.map((rule) => `${rule.id}: ${rule.description}`).join(' ');
 }
 
-export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverCrossingTiming }) {
+// `standalone`: aberto pela rota pública (sem login e sem o layout do app), então
+// não há para onde "voltar" dentro da plataforma.
+export function RiverCrossingPage({
+  timing = DEFAULT_TIMING,
+  standalone = false,
+}: {
+  timing?: RiverCrossingTiming;
+  standalone?: boolean;
+}) {
   const [phase, setPhase] = useState<Phase>('rules');
   const [started, setStarted] = useState(false);
   const [state, setState] = useState<RiverState>(() => createInitialState(2));
@@ -327,6 +347,7 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
           started={started}
           onStart={(round) => restart(round, started ? 'manual_restart' : 'first_start')}
           onContinue={resume}
+          showBack={!standalone}
         />
       </main>
     );
@@ -337,9 +358,11 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
   return (
     <main className="river-page staff-theme" data-result={result ?? undefined}>
       <header className="river-page__header">
-        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
-          Voltar
-        </LinkButton>
+        {!standalone && (
+          <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+            Voltar
+          </LinkButton>
+        )}
         <Heading level={1}>Travessia do Rio</Heading>
         <Button variant="secondary" icon={<BookOpen />} onClick={openRules} disabled={busy}>
           Ver regras
@@ -465,11 +488,35 @@ export function RiverCrossingPage({ timing = DEFAULT_TIMING }: { timing?: RiverC
 
       {result === 'won' && (
         <section className="river-page__result river-page__result--won" role="status">
-          <Heading level={2}>Todos chegaram à margem direita</Heading>
+          <Heading level={2}>Parabéns!</Heading>
+          <Text>
+            <strong>Todos chegaram à margem direita</strong>
+          </Text>
           <Text>
             Você atravessou em {ROUNDS[state.round].fuel - state.fuel} viagens, sobrando {state.fuel}{' '}
             {state.fuel === 1 ? 'gota' : 'gotas'} de combustível.
           </Text>
+          {state.round === 2 && (
+            <div className="river-survey" aria-label="Formulários da pesquisa">
+              <Text>
+                Para terminar, responda os dois formulários abaixo, na ordem. Eles abrem em outra aba e levam
+                cerca de 10 minutos.
+              </Text>
+              <div className="river-page__actions">
+                {RIVER_SURVEY_ORDER.map((form) => (
+                  <ExternalLinkButton
+                    key={form}
+                    href={RIVER_SURVEY_LINKS[form].href}
+                    variant={form === 'qual' ? 'primary' : 'secondary'}
+                    icon={<ClipboardList />}
+                    onClick={() => logRiverSurveyLinkOpened(studentId, { form, round: state.round })}
+                  >
+                    {RIVER_SURVEY_LINKS[form].title}
+                  </ExternalLinkButton>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="river-page__actions">
             <Button variant="success" icon={<Play />} onClick={() => restart(state.round, 'after_win')}>
               Jogar de novo
@@ -659,10 +706,12 @@ function RulesView({
   started,
   onStart,
   onContinue,
+  showBack,
 }: {
   started: boolean;
   onStart: (round: RoundId) => void;
   onContinue: () => void;
+  showBack: boolean;
 }) {
   return (
     <div className="river-rules" role="region" aria-label="Regras do jogo">
@@ -728,9 +777,11 @@ function RulesView({
         <Button variant={started ? 'secondary' : 'primary'} icon={<Play />} onClick={() => onStart(2)}>
           {started ? 'Recomeçar na rodada 2' : 'Começar rodada 2'}
         </Button>
-        <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
-          Voltar
-        </LinkButton>
+        {showBack && (
+          <LinkButton to="/subjects" variant="secondary" icon={<ArrowLeft />}>
+            Voltar
+          </LinkButton>
+        )}
       </div>
     </div>
   );
