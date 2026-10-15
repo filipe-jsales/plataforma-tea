@@ -1,0 +1,248 @@
+\documentclass[12pt]{article}
+
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+\usepackage{array}
+
+\sloppy
+
+\title{Aplicação do modelo DMC ao mini jogo Travessia do Rio: adaptação plugada de uma atividade desplugada}
+
+\author{Filipe Sales\inst{1}}
+
+\address{Plataforma TEA -- Ensino de programação e Pensamento Computacional\\
+  para estudantes com Transtorno do Espectro Autista
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+  This paper records how the DMC model (Dynamics, Mechanics and Components) was
+  applied to the Travessia do Rio mini game of the Plataforma TEA. The game is a
+  digital (plugged) adaptation of Task 1, an unplugged card game used with
+  Problem-Based Learning (PBL) to teach the idea of algorithm. The application is
+  deliberately basic: most elements were already present in the game and were
+  only named and mapped, and one new component, a delivery progress indicator,
+  was added. Points, rankings and timers were left out on purpose, to respect the
+  sensory and pedagogical rules of the project. No evaluation with students has
+  been carried out yet.
+\end{abstract}
+
+\begin{resumo}
+  Este trabalho registra como o modelo DMC (Dinâmicas, Mecânicas e Componentes)
+  foi aplicado ao mini jogo Travessia do Rio da Plataforma TEA. O jogo é uma
+  adaptação digital (plugada) da Tarefa 1, um jogo de cartas desplugado usado com
+  Aprendizagem Baseada em Problemas (ABP) para trabalhar a ideia de algoritmo. A
+  aplicação é deliberadamente básica: a maior parte dos elementos já existia no
+  jogo e foi apenas nomeada e mapeada, e um componente novo, o indicador de
+  progresso de entregas, foi acrescentado. Pontos, ranqueamento e cronômetro
+  ficaram de fora de propósito, para respeitar as regras sensoriais e
+  pedagógicas do projeto. Ainda não houve avaliação com estudantes.
+\end{resumo}
+
+\section{Introdução}
+
+A Plataforma TEA é uma plataforma web gamificada para ensinar lógica de
+programação e Pensamento Computacional a estudantes com Transtorno do Espectro
+Autista (TEA). O mini jogo Travessia do Rio é um dos jogos autônomos da
+plataforma, voltado à ideia de algoritmo como passo a passo: repetição, decisão
+e verificação.
+
+O jogo não nasceu do zero. Ele é a versão plugada da Tarefa 1 do conjunto de
+atividades do projeto, uma atividade desplugada \cite{bell2009} conduzida com
+Aprendizagem Baseada em Problemas (ABP) \cite{barrows1986,hmelo2004}, descrita no
+plano de aula \texttt{travessia-rio.tex} (diretório \texttt{docs/desplugadas}).
+Este documento registra a aplicação do modelo DMC \cite{werbach2012} a essa
+adaptação, no diretório \texttt{docs/plugadas}.
+
+\section{O modelo DMC}
+
+O modelo DMC organiza a gamificação em três níveis, do mais abstrato ao mais
+concreto \cite{werbach2012}:
+
+\begin{itemize}
+  \item \textbf{Dinâmicas}: aspectos gerais do sistema, que não aparecem
+        diretamente na tela, como restrições, progressão e narrativa;
+  \item \textbf{Mecânicas}: os processos que movem a ação e o engajamento, como
+        desafios, recursos, \textit{feedback} e turnos;
+  \item \textbf{Componentes}: as instâncias concretas das dinâmicas e mecânicas,
+        como níveis, avatares e indicadores.
+\end{itemize}
+
+Gamificação, aqui, é o uso de elementos de design de jogos em contextos que não
+são jogos \cite{deterding2011}. No projeto, esses elementos passam antes por um
+filtro sensorial: o que não tem respaldo em evidência nasce desligado ou fica de
+fora.
+
+\section{Da atividade desplugada ao jogo plugado}
+
+A Tarefa 1 usa tabuleiro, peças e fluxograma em papel. Cinco personagens com
+pesos diferentes (Lobo, Ovelha, Alface, Cachorro e Galinha) atravessam um rio em
+um barco de peso máximo 3, conduzido pelo Fazendeiro, sob quatro regras de
+conflito (R1 a R4) e com um tanque de combustível limitado. A rodada 1 é um
+aquecimento sem o Lobo, com 7 gotas, e a rodada 2 é o jogo completo, com 13
+gotas. As melhores soluções têm 5 e 11 travessias, respectivamente.
+
+A Tabela~\ref{tab:adaptacao} resume o que foi mantido e o que mudou na
+adaptação.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{O que a versão plugada herda da Tarefa 1 e o que muda.}
+\label{tab:adaptacao}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+\toprule
+\textbf{Elemento} & \textbf{Desplugada} & \textbf{Plugada} \\
+\midrule
+Regras e rodadas & R1 a R4, rodadas 1 e 2 & Mantidas, com os mesmos números \\
+Verificação & O fiscal confere a margem sem o barco & O jogo confere sozinho e desfaz a travessia inválida \\
+Combustível & Gotas riscadas à mão & Tanque na tela; a gota gasta continua gasta \\
+Dicas & Cartas entregues pelo docente, com desconto na nota & Cartas virtuais; o desconto só é registrado em evento \\
+Papéis e Ficha & Operador, fiscal, anotador e Ficha & Sem papéis; o registro vira eventos estruturados \\
+Fluxograma & Produto do grupo & Fora do jogo; segue no material desplugado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Aplicação do DMC}
+
+A aplicação do DMC foi mantida simples. Primeiro, verificou-se o que o jogo já
+tinha: ele não declarava o modelo, mas várias mecânicas já existiam, herdadas da
+Tarefa 1. O trabalho consistiu em mapear esses elementos nos três níveis e
+acrescentar um componente que faltava.
+
+\subsection{Dinâmicas}
+
+\begin{itemize}
+  \item \textbf{Restrição:} o barco tem peso máximo e o combustível é limitado.
+        É a restrição que transforma o enigma em problema de planejamento.
+  \item \textbf{Progressão:} a passagem da rodada 1 para a rodada 2 aumenta a
+        complexidade (entra o Lobo, o tanque cresce) e é medida só em relação ao
+        que o próprio estudante já fez.
+  \item \textbf{Narrativa:} a fazenda e o Fazendeiro dão contexto sem texto longo.
+        Os personagens são desenhos; o nome vai para o leitor de tela.
+\end{itemize}
+
+\subsection{Mecânicas}
+
+\begin{itemize}
+  \item \textbf{Desafio:} levar todos à margem direita sem violar R1 a R4.
+  \item \textbf{Recurso:} as gotas de combustível, gastas a cada travessia,
+        inclusive as desfeitas.
+  \item \textbf{\textit{Feedback}:} o conflito aparece na margem, com uma frase
+        descritiva e reversível (``Travessia desfeita. Quer tentar outra
+        carga?''). Não há ``errado'', ``falhou'' nem sinal vermelho grande.
+  \item \textbf{Ajuda:} cartas de dica viradas sob demanda, que ficam abertas
+        para serem relidas.
+  \item \textbf{Turnos e tentativa:} cada travessia é uma jogada; é possível
+        recomeçar a rodada quando se quiser.
+\end{itemize}
+
+\subsection{Componentes}
+
+\begin{itemize}
+  \item \textbf{Níveis:} as duas rodadas.
+  \item \textbf{Avatares:} os cinco personagens, com o peso em um número no canto.
+  \item \textbf{Tanque de combustível:} indicador de gotas restantes.
+  \item \textbf{Cartas de dica:} três na rodada 1 e cinco na rodada 2.
+  \item \textbf{Indicador de progresso de entregas (novo):} mostra quantos
+        personagens já estão na margem direita (por exemplo, ``2 de 5''). Sobe
+        e desce conforme a carga atravessa em um sentido ou no outro, e uma
+        travessia desfeita não conta como entrega.
+\end{itemize}
+
+A Tabela~\ref{tab:dmc} reúne o mapa completo.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{DMC aplicado à Travessia do Rio.}
+\label{tab:dmc}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{4.0cm}@{}}
+\toprule
+\textbf{Dinâmica} & \textbf{Mecânica} & \textbf{Componente} \\
+\midrule
+Restrição & Recurso limitado & Tanque de combustível; peso do barco \\
+Restrição & Desafio com regras & Regras de conflito R1 a R4 \\
+Progressão & Níveis & Rodadas 1 e 2 \\
+Progressão & \textit{Feedback} de avanço & Indicador de entregas (novo) \\
+Narrativa & Personagens & Avatares na fazenda \\
+Apoio & Ajuda sob demanda & Cartas de dica \\
+Apoio & \textit{Feedback} não punitivo & Mensagem de conflito e desfazer \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{O que ficou de fora de propósito}
+
+O projeto tem regras que limitam a gamificação, em linha com a evidência sobre
+TEA que orienta a plataforma. Por isso, não foram aplicados:
+
+\begin{itemize}
+  \item \textbf{pontos, \textit{badges} e ranqueamento}: não há comparação entre
+        estudantes, e a progressão é sempre relativa ao próprio histórico. O
+        jogo continua sem pontuação, como a atividade desplugada (a ``nota'' era
+        só do docente);
+  \item \textbf{cronômetro e contagem regressiva}: a pressão de tempo não existe
+        no jogo;
+  \item \textbf{efeitos extras}: nenhuma animação ou som novo foi acrescentado;
+        o indicador de progresso é estático.
+\end{itemize}
+
+\section{Registro de dados}
+
+O jogo já registra eventos estruturados quando há aluno logado (início de
+rodada, travessias, carga, dicas, conclusão e abandono). O indicador de entregas
+é derivado do estado do jogo e não gera evento próprio. O desconto de cada dica,
+que na atividade desplugada reduzia a nota, é gravado no evento de pedido de
+dica para o docente cruzar depois, sem aparecer para o estudante.
+
+\section{Considerações finais}
+
+O modelo DMC foi aplicado de forma básica à Travessia do Rio: os elementos
+existentes foram nomeados e mapeados, e o único componente novo foi o indicador
+de progresso de entregas. A adaptação preserva as regras, os números e a lógica
+da Tarefa 1 e acrescenta a verificação automática e o \textit{feedback} não
+punitivo.
+
+Como limitações, a aplicação não foi testada com estudantes com TEA, e os
+efeitos da gamificação sobre engajamento e aprendizagem não foram medidos. Como
+trabalho futuro, propõem-se um teste de uso em turma e a avaliação do
+indicador de progresso com os registros de eventos já coletados.
+
+\bibliographystyle{sbc}
+\begin{thebibliography}{9}
+
+\bibitem{barrows1986}
+Barrows, H. S. (1986). A taxonomy of problem-based learning methods.
+\textit{Medical Education}, 20(6):481--486.
+
+\bibitem{bell2009}
+Bell, T., Alexander, J., Freeman, I., and Grimley, M. (2009). Computer science
+unplugged: school students doing real computing without computers.
+\textit{The New Zealand Journal of Applied Computing and Information
+Technology}, 13(1):20--29.
+
+\bibitem{deterding2011}
+Deterding, S., Dixon, D., Khaled, R., and Nacke, L. (2011). From game design
+elements to gamefulness: defining ``gamification''. In \textit{Proceedings of the
+15th International Academic MindTrek Conference}, pages 9--15. ACM.
+
+\bibitem{hmelo2004}
+Hmelo-Silver, C. E. (2004). Problem-based learning: what and how do students
+learn? \textit{Educational Psychology Review}, 16(3):235--266.
+
+\bibitem{werbach2012}
+Werbach, K. and Hunter, D. (2012). \textit{For the Win: How Game Thinking Can
+Revolutionize Your Business}. Wharton Digital Press, Philadelphia.
+
+\end{thebibliography}
+
+\end{document}

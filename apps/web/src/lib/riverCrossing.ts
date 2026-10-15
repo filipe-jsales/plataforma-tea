@@ -92,6 +92,10 @@ export function findConflicts(present: PieceId[]): ConflictRule[] {
   );
 }
 
+export function deliveredCount(state: RiverState): number {
+  return piecesOnBank(state, 'D').length;
+}
+
 export function hasWon(state: RiverState): boolean {
   return ROUNDS[state.round].pieces.every((piece) => state.bank[piece] === 'D');
 }

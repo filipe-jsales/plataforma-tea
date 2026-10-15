@@ -67,6 +67,17 @@ describe('RiverCrossingPage', () => {
     expect(onBank('D', 'Galinha')).not.toBeNull();
   });
 
+  it('mostra quantos personagens já estão na margem direita e atualiza a cada travessia', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user);
+    expect(screen.getByRole('img', { name: 'Na margem direita: 0 de 5 personagens' })).toBeInTheDocument();
+    await user.click(piece('Alface'));
+    await user.click(piece('Galinha'));
+    await cross(user);
+    expect(await screen.findByRole('img', { name: 'Na margem direita: 2 de 5 personagens' })).toBeInTheDocument();
+  });
+
   it('rodada 1 começa sem o Lobo e com 7 gotas', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -138,6 +149,18 @@ describe('RiverCrossingPage', () => {
     expect(screen.getByTestId('boat')).toHaveAttribute('data-side', 'E');
     expect(await fuel(12)).toBeInTheDocument();
     expect(onBank('E', 'Ovelha')).not.toBeNull();
+    expect(screen.getByText(/A Galinha bicou a Alface!/)).toBeInTheDocument();
+    expect(screen.getByText(/Quer tentar outra carga\?/)).toBeInTheDocument();
+  });
+
+  it('as regras de conflito ficam visíveis durante a partida, só as da rodada', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await start(user, 1);
+    const reminder = screen.getByRole('region', { name: 'Regras de conflito' });
+    expect(reminder).toHaveTextContent('R2.');
+    expect(reminder).toHaveTextContent('R4.');
+    expect(reminder).not.toHaveTextContent('R1.');
   });
 
   it('travessia válida desembarca a carga na outra margem', async () => {

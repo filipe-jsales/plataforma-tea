@@ -69,6 +69,44 @@
   color: var(--color-border);
 }
 
+.river-reminder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.river-reminder__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.river-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.river-progress__steps {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.river-progress__step {
+  width: 1.1rem;
+  height: 0.6rem;
+  border-radius: 3px;
+  border: 1px solid var(--color-border);
+}
+
+.river-progress__step[data-done='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .river {
   display: grid;
   grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 1.3fr) minmax(8rem, 1fr);

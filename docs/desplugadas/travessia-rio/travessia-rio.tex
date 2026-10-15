@@ -1,0 +1,1051 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazilian]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,left=3cm,right=2cm,top=3cm,bottom=2cm]{geometry}
+\usepackage{setspace}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+
+\setstretch{1.25}
+\setlength{\parindent}{1.25cm}
+\setlist{itemsep=2pt,topsep=4pt}
+\usepackage{pdflscape}
+% ===============================================================
+% Material desplugado: ícones, peças, barco, tabuleiro (TikZ)
+% ===============================================================
+\usepackage{graphicx}
+\usetikzlibrary{decorations.pathmorphing,shapes.geometric,arrows.meta}
+
+% ---------- Ícones (desenhados em torno da origem, ~2 x 2 unidades) ----------
+\newcommand{\iconeFazendeiro}{%
+  \fill[red!65!black!70] (-0.72,-0.95) -- (-0.62,-0.42) -- (0.62,-0.42) -- (0.72,-0.95) -- cycle;
+  \fill[blue!65!black] (-0.38,-0.95) -- (-0.34,-0.42) -- (0.34,-0.42) -- (0.38,-0.95) -- cycle;
+  \fill[orange!35!pink] (0,0) circle (0.5);
+  \fill[black] (-0.18,0.0) circle (0.05);
+  \fill[black] (0.18,0.0) circle (0.05);
+  \draw[thick,line cap=round] (-0.17,-0.2) .. controls (-0.07,-0.3) and (0.07,-0.3) .. (0.17,-0.2);
+  \fill[yellow!75!orange] (-0.42,0.36) .. controls (-0.42,1.0) and (0.42,1.0) .. (0.42,0.36) -- cycle;
+  \fill[yellow!75!orange] (0,0.36) ellipse (0.85 and 0.16);
+  \draw[orange!50!black,thin] (0,0.36) ellipse (0.85 and 0.16);
+  \fill[red!70!black] (-0.42,0.42) rectangle (0.42,0.56);
+}
+
+\newcommand{\iconeLobo}{%
+  \draw[fill=gray!55,draw=black!70,thick,line join=round]
+    (-0.78,-0.05) -- (-0.88,0.98) -- (-0.28,0.58) -- (0.28,0.58) -- (0.88,0.98)
+    -- (0.78,-0.05) -- (0.4,-0.78) -- (-0.4,-0.78) -- cycle;
+  \fill[pink!70] (-0.74,0.72) -- (-0.5,0.55) -- (-0.72,0.32) -- cycle;
+  \fill[pink!70] (0.74,0.72) -- (0.5,0.55) -- (0.72,0.32) -- cycle;
+  \fill[gray!15] (0,-0.42) ellipse (0.42 and 0.33);
+  \fill[yellow!85!orange] (-0.34,0.2) ellipse (0.14 and 0.08);
+  \fill[yellow!85!orange] (0.34,0.2) ellipse (0.14 and 0.08);
+  \fill[black] (-0.34,0.2) circle (0.04);
+  \fill[black] (0.34,0.2) circle (0.04);
+  \fill[black] (0,-0.2) ellipse (0.11 and 0.08);
+  \draw[black,thick] (0,-0.27) -- (0,-0.42);
+  \draw[black,thick] (-0.22,-0.5) .. controls (-0.1,-0.42) .. (0,-0.42)
+    .. controls (0.1,-0.42) .. (0.22,-0.5);
+  \fill[white] (-0.17,-0.46) -- (-0.1,-0.63) -- (-0.03,-0.44) -- cycle;
+  \fill[white] (0.17,-0.46) -- (0.1,-0.63) -- (0.03,-0.44) -- cycle;
+}
+
+\newcommand{\iconeOvelha}{%
+  \foreach \x/\y in {-0.55/0.25, 0/0.5, 0.55/0.25, -0.65/-0.2, 0.65/-0.2, -0.35/-0.55, 0.35/-0.55}
+    \draw[fill=white,draw=gray!70,thick] (\x,\y) circle (0.4);
+  \fill[white] (0,0) circle (0.62);
+  \fill[gray!45!black] (-0.45,-0.02) ellipse (0.19 and 0.09);
+  \fill[gray!45!black] (0.45,-0.02) ellipse (0.19 and 0.09);
+  \fill[gray!45!black] (0,-0.22) ellipse (0.3 and 0.4);
+  \fill[white] (-0.12,-0.12) circle (0.05);
+  \fill[white] (0.12,-0.12) circle (0.05);
+  \fill[pink!60] (0,-0.46) ellipse (0.1 and 0.06);
+}
+
+\newcommand{\iconeAlface}{%
+  \foreach \a in {0,72,144,216,288}{%
+    \begin{scope}[rotate=\a]
+      \draw[fill=green!55!black!85,draw=green!25!black,thick] (0,0.12) ellipse (0.34 and 0.8);
+    \end{scope}}
+  \foreach \a in {36,108,180,252,324}{%
+    \begin{scope}[rotate=\a]
+      \draw[fill=lime!70!green,draw=green!30!black] (0,0.06) ellipse (0.27 and 0.56);
+    \end{scope}}
+  \fill[lime!45!yellow] (0,0) circle (0.22);
+}
+
+\newcommand{\iconeCachorro}{%
+  \fill[brown!55!black,rotate around={18:(-0.7,0.0)}] (-0.7,0.0) ellipse (0.22 and 0.55);
+  \fill[brown!55!black,rotate around={-18:(0.7,0.0)}] (0.7,0.0) ellipse (0.22 and 0.55);
+  \draw[fill=brown!55!orange,draw=brown!40!black,thick] (0,0.0) ellipse (0.62 and 0.66);
+  \fill[brown!35!black] (0.28,0.32) ellipse (0.18 and 0.2);
+  \fill[brown!15!white] (0,-0.28) ellipse (0.36 and 0.28);
+  \fill[red!70] (0,-0.48) ellipse (0.08 and 0.1);
+  \fill[black] (0,-0.15) ellipse (0.13 and 0.09);
+  \draw[black,thick] (0,-0.24) -- (0,-0.34);
+  \draw[black,thick] (-0.14,-0.4) .. controls (-0.06,-0.34) .. (0,-0.34)
+    .. controls (0.06,-0.34) .. (0.14,-0.4);
+  \fill[black] (-0.25,0.15) circle (0.07);
+  \fill[black] (0.25,0.15) circle (0.07);
+  \fill[white] (-0.27,0.18) circle (0.02);
+  \fill[white] (0.23,0.18) circle (0.02);
+}
+
+\newcommand{\iconeGalinha}{%
+  \draw[orange!80!black,line width=1.5pt] (-0.22,-0.72) -- (-0.22,-0.95) -- (-0.38,-0.97);
+  \draw[orange!80!black,line width=1.5pt] (0.22,-0.72) -- (0.22,-0.95) -- (0.38,-0.97);
+  \draw[fill=white,draw=gray!60,thick] (0,-0.1) circle (0.72);
+  \draw[fill=gray!15,draw=gray!50] (-0.6,-0.2) ellipse (0.2 and 0.38);
+  \draw[fill=gray!15,draw=gray!50] (0.6,-0.2) ellipse (0.2 and 0.38);
+  \fill[red!75] (-0.18,0.6) circle (0.13);
+  \fill[red!75] (0,0.7) circle (0.15);
+  \fill[red!75] (0.18,0.6) circle (0.13);
+  \fill[black] (-0.28,0.3) circle (0.06);
+  \fill[black] (0.28,0.3) circle (0.06);
+  \fill[red!75] (0,-0.2) ellipse (0.07 and 0.1);
+  \fill[orange] (-0.15,0.15) -- (0.15,0.15) -- (0,-0.1) -- cycle;
+}
+
+% ---------- Peças (comandos de desenho; origem no canto inferior esquerdo) ----------
+% Peça quadrada (peso 1): cor, ícone, nome, peso
+\newcommand{\pecaS}[4]{%
+  \draw[rounded corners=4pt,line width=1pt,draw=#1!70!black,fill=#1!12] (0,0) rectangle (2.6,2.6);
+  \begin{scope}[shift={(1.3,1.38)},scale=0.82] #2 \end{scope}
+  \node[font=\bfseries\scriptsize,text=#1!50!black] at (1.3,0.24) {#3};
+  \node[draw=#1!70!black,fill=white,rounded corners=2pt,inner sep=2pt,font=\bfseries\scriptsize,text=#1!50!black,anchor=north west] at (0.1,2.5) {peso #4};
+}
+
+% Peça larga (peso 2): cor, ícone, nome, descrição
+\newcommand{\pecaL}[4]{%
+  \draw[rounded corners=4pt,line width=1pt,draw=#1!70!black,fill=#1!12] (0,0) rectangle (5.4,2.6);
+  \begin{scope}[shift={(1.3,1.38)},scale=0.82] #2 \end{scope}
+  \node[font=\bfseries\large,text=#1!50!black,anchor=west] at (2.75,1.65) {#3};
+  \node[font=\small,text=#1!50!black,anchor=west] at (2.75,1.0) {#4};
+  \node[draw=#1!70!black,fill=white,rounded corners=2pt,inner sep=2pt,font=\bfseries\scriptsize,text=#1!50!black,anchor=north west] at (0.1,2.5) {peso 2};
+  \node[font=\scriptsize,text=#1!50!black,anchor=west] at (2.75,0.4) {ocupa 2 espaços};
+}
+
+% Barco (8,6 x 3,4 cm): três espaços de 2,8 cm; o primeiro traz o Fazendeiro
+\newcommand{\barcoCmd}{%
+  \draw[rounded corners=8pt,line width=1.2pt,draw=brown!60!black,fill=brown!30] (0,0) rectangle (8.6,3.4);
+  \draw[fill=white!85!brown,draw=brown!60!black,thick] (0.1,0.62) rectangle (2.9,3.3);
+  \draw[dashed,draw=brown!60!black,thick,fill=white] (2.9,0.62) rectangle (8.5,3.3);
+  \draw[dotted,brown!60!black,thick] (5.7,0.62) -- (5.7,3.3);
+  \begin{scope}[shift={(1.5,2.1)},scale=0.85] \iconeFazendeiro \end{scope}
+  \node[font=\bfseries\scriptsize,text=brown!50!black] at (1.5,1.08) {Fazendeiro};
+  \node[font=\bfseries\scriptsize,text=brown!50!black] at (1.5,0.80) {peso 1};
+  \node[font=\scriptsize,text=brown!50!black] at (4.3,2.0) {espaço de carga};
+  \node[font=\scriptsize,text=brown!50!black] at (4.3,1.6) {(cabe peso 1)};
+  \node[font=\scriptsize,text=brown!50!black] at (7.1,2.0) {espaço de carga};
+  \node[font=\scriptsize,text=brown!50!black] at (7.1,1.6) {(cabe peso 1)};
+  \node[font=\bfseries\small,text=brown!40!black] at (4.3,0.31) {BARCO: peso máximo 3};
+}
+
+% Kit completo de um grupo (origem no canto superior esquerdo, 8,6 x 12,1 cm)
+\newcommand{\kitCmd}{%
+  \begin{scope}[shift={(0,-2.6)}]\pecaL{gray}{\iconeLobo}{Lobo}{Predador}\end{scope}
+  \begin{scope}[shift={(5.7,-2.6)}]\pecaS{green}{\iconeAlface}{Alface}{1}\end{scope}
+  \begin{scope}[shift={(0,-5.4)}]\pecaL{blue}{\iconeOvelha}{Ovelha}{Herbívora}\end{scope}
+  \begin{scope}[shift={(5.7,-5.4)}]\pecaS{brown}{\iconeCachorro}{Cachorro}{1}\end{scope}
+  \begin{scope}[shift={(0,-8.2)}]\pecaS{orange}{\iconeGalinha}{Galinha}{1}\end{scope}
+  \node[font=\scriptsize,text width=5.3cm,align=left,anchor=west] at (3.0,-6.9)
+    {Recortar pelo contorno. Peça larga = peso 2; peça quadrada = peso 1. O Fazendeiro já está impresso no barco.};
+  \begin{scope}[shift={(0,-12.1)}]\barcoCmd\end{scope}
+}
+
+% Folha de peças: quatro kits por página (A4 retrato, margens de 1,5 cm)
+\newcommand{\paginapecas}{%
+  \begin{tikzpicture}
+    \begin{scope}[shift={(0,0)}]\kitCmd\end{scope}
+    \begin{scope}[shift={(9.2,0)}]\kitCmd\end{scope}
+    \begin{scope}[shift={(0,-13.4)}]\kitCmd\end{scope}
+    \begin{scope}[shift={(9.2,-13.4)}]\kitCmd\end{scope}
+  \end{tikzpicture}}
+
+% ---------- Gota de combustível ----------
+\newcommand{\gota}[4]{% x, y, cor, rótulo
+  \begin{scope}[shift={(#1,#2)}]
+    \draw[thick,fill=#3] (0,0.62) .. controls (0.12,0.35) and (0.45,0.12) .. (0.45,-0.22)
+      arc (0:-180:0.45) .. controls (-0.45,0.12) and (-0.12,0.35) .. (0,0.62) -- cycle;
+    \node[font=\large\bfseries] at (0,-0.2) {#4};
+  \end{scope}}
+
+% ---------- Tabuleiro (27,7 x 19 cm, para A4 paisagem com margens de 0,9 cm) ----------
+\newcommand{\linharegra}[6]{% y, id, ícone A, ícone B, texto, largura do texto
+  \node[font=\large\bfseries,text=violet!70!black] at (10.05,#1) {#2};
+  \begin{scope}[shift={(11.2,#1)},scale=0.5]#3\end{scope}
+  \node[font=\Large\bfseries] at (12.1,#1) {$\times$};
+  \begin{scope}[shift={(13.0,#1)},scale=0.5]#4\end{scope}
+  \node[anchor=west,text width=#6,font=\footnotesize] at (13.75,#1) {#5};
+}
+
+\newcommand{\tabuleiro}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  % fundos
+  \fill[green!12] (0,2.8) rectangle (9.2,17.2);
+  \fill[green!12] (18.5,2.8) rectangle (27.7,17.2);
+  \fill[cyan!18]  (9.2,2.8) rectangle (18.5,17.2);
+  \draw[cyan!50!blue!60,decorate,decoration={snake,amplitude=0.6mm,segment length=6mm},thick] (9.4,3.0) -- (9.4,17.0);
+  \draw[cyan!50!blue!60,decorate,decoration={snake,amplitude=0.6mm,segment length=6mm},thick] (18.3,3.0) -- (18.3,17.0);
+  \draw[thick,black!60] (0,2.8) rectangle (27.7,17.2);
+  \draw[thick,black!60] (9.2,2.8) -- (9.2,17.2);
+  \draw[thick,black!60] (18.5,2.8) -- (18.5,17.2);
+  % título
+  \fill[blue!60!black] (0,17.4) rectangle (27.7,19);
+  \node[white,font=\Huge\bfseries] at (13.85,18.2) {TRAVESSIA DO RIO};
+  % margens
+  \node[font=\Large\bfseries,text=green!40!black] at (4.6,16.65) {MARGEM ESQUERDA (E)};
+  \node[font=\Large\bfseries,text=green!40!black] at (23.1,16.65) {MARGEM DIREITA (D)};
+  \foreach \c in {0,1,2}{\foreach \r in {0,1,2}{
+    \draw[dashed,green!40!black,thick] ({0.4+2.8*\c},{16.1-2.8*(\r+1)}) rectangle ++(2.8,2.8);
+    \draw[dashed,green!40!black,thick] ({18.9+2.8*\c},{16.1-2.8*(\r+1)}) rectangle ++(2.8,2.8);
+  }}
+  % cais do barco
+  \draw[dashed,brown!60!black,very thick] (0.3,3.6) rectangle (8.9,7.0);
+  \draw[dashed,brown!60!black,very thick] (18.8,3.6) rectangle (27.4,7.0);
+  \node[font=\small\bfseries,text=brown!50!black] at (4.6,3.2) {CAIS E: posição do barco};
+  \node[font=\small\bfseries,text=brown!50!black] at (23.1,3.2) {CAIS D: posição do barco};
+  % painel de regras
+  \draw[rounded corners=8pt,fill=white,draw=black!50,thick] (9.6,3.4) rectangle (18.1,16.8);
+  \node[font=\large\bfseries] at (13.85,16.2) {REGRAS DE CONFLITO};
+  \node[font=\scriptsize,text width=8.0cm,align=center,anchor=north] at (13.85,15.8)
+    {Valem para qualquer par de pe\c{c}as na margem em que o Fazendeiro (isto \'e, o barco) \emph{n\~ao} est\'a, mesmo com outras pe\c{c}as junto.};
+  \linharegra{13.3}{R1}{\iconeLobo}{\iconeOvelha}{Lobo devora Ovelha, \textbf{exceto} se o Cachorro estiver na margem.}{3.15cm}
+  \begin{scope}[shift={(17.65,13.3)},scale=0.4]\iconeCachorro\end{scope}
+  \draw[gray!40] (9.9,12.1) -- (17.8,12.1);
+  \linharegra{10.9}{R2}{\iconeOvelha}{\iconeAlface}{Ovelha devora Alface.}{3.9cm}
+  \draw[gray!40] (9.9,9.7) -- (17.8,9.7);
+  \linharegra{8.5}{R3}{\iconeGalinha}{\iconeAlface}{Galinha bica Alface.}{3.9cm}
+  \draw[gray!40] (9.9,7.3) -- (17.8,7.3);
+  \linharegra{6.1}{R4}{\iconeCachorro}{\iconeGalinha}{Cachorro ataca Galinha.}{3.9cm}
+  \node[font=\scriptsize,text width=7.8cm,align=center] at (13.85,4.3)
+    {Pe\c{c}a larga = peso 2 $\cdot$ pe\c{c}a quadrada = peso 1\\
+     Barco: peso m\'aximo 3 (Fazendeiro, peso 1, mais carga de at\'e peso 2)};
+  % combustível
+  \fill[yellow!15] (0,0) rectangle (27.7,2.6);
+  \draw[thick,black!60] (0,0) rectangle (27.7,2.6);
+  \node[anchor=west,font=\small\bfseries] at (0.3,2.2)
+    {TANQUE DE COMBUSTÍVEL: risque uma gota a cada travessia, mesmo as que forem desfeitas};
+  \node[anchor=east,font=\scriptsize] at (27.4,2.2)
+    {Rodada 1: use as gotas 1 a 7. Rodada 2: use as 13 gotas.};
+  \foreach \i in {1,...,13}{
+    \gota{{1.4+2.0*(\i-1)}}{0.85}{orange!20}{\i}
+  }
+  \gota{21.4}{0.85}{yellow!60}{11}
+  \gota{25.4}{0.85}{red!20}{13}
+  \node[font=\scriptsize\bfseries,text=black!70] at (1.4,1.78) {tanque cheio};
+  \node[font=\scriptsize\bfseries,text=orange!60!black] at (21.4,1.78) {consumo mínimo};
+  \node[font=\scriptsize\bfseries,text=red!70!black] at (25.4,1.78) {tanque vazio};
+\end{tikzpicture}}
+
+% ---------- Carta de dica (5,0 x 3,9 cm) ----------
+\newcommand{\dica}[4][2]{% [rodada] número, desconto na nota, texto
+  \begin{tikzpicture}[baseline=0]
+    \draw[rounded corners=6pt,thick,fill=yellow!10,draw=black!70] (0,0) rectangle (5.0,5.2);
+    \node[anchor=north west,font=\bfseries\large] at (0.2,5.05) {Dica #2};
+    \node[anchor=north east,font=\scriptsize] at (4.8,5.0) {rodada #1};
+    \node[anchor=north west,font=\scriptsize\itshape] at (0.2,4.52) {desconta #3 da nota};
+    \node[anchor=north west,text width=4.5cm,font=\small,align=left] at (0.25,4.05) {#4};
+  \end{tikzpicture}}
+
+
+% ---------------------------------------------------------------
+% Macro para cartas impressas (5,0 cm x 6,4 cm)
+% #1 cor | #2 título | #3 subtítulo | #4 corpo
+% ---------------------------------------------------------------
+\newcommand{\carta}[4]{%
+\begin{minipage}[t]{5.0cm}
+\begin{tcolorbox}[enhanced, colback=white, colframe=#1, colbacktitle=#1,
+  coltitle=white, title={\bfseries #2}, halign title=center, boxrule=1pt,
+  arc=2.5mm, height=6.4cm, valign=top, left=2mm, right=2mm, top=1.5mm,
+  bottom=1mm, fontupper=\small, halign=flush left]
+\textbf{#3}\par\smallskip
+#4
+\end{tcolorbox}
+\end{minipage}}
+
+% ---------- Fluxograma da rotina de verificação ----------
+\newcommand{\lacunaS}{\rule{2.4cm}{0.4pt}\\[0.45cm]\rule{2.4cm}{0.4pt}\\[0.45cm]\rule{2.4cm}{0.4pt}}
+\newcommand{\lacunaL}{\rule{3.8cm}{0.4pt}\\[0.45cm]\rule{3.8cm}{0.4pt}}
+
+\newcommand{\fluxograma}[4]{% decisão da carga, decisão da regra, ação de desfazer, decisão final
+\begin{tikzpicture}[
+  caixa/.style={draw,rounded corners=4pt,thick,fill=blue!6,text width=4.4cm,align=center,minimum height=1.0cm,font=\small},
+  decisao/.style={draw,diamond,aspect=2.0,thick,fill=yellow!14,text width=3.0cm,align=center,inner sep=1pt,font=\small},
+  seta/.style={-{Stealth[length=2.2mm]},thick},
+  rot/.style={font=\footnotesize\bfseries,fill=white,inner sep=1pt}]
+  \node[caixa,fill=green!14] (ini) at (3,0) {Início: peças na margem E, tanque cheio};
+  \node[caixa] (esc) at (3,-1.7) {Escolher a carga};
+  \node[decisao] (d1) at (3,-4.3) {#1};
+  \node[caixa] (atr) at (3,-7.5) {Atravessar e riscar 1 gota de combustível (tanque vazio: recomeçar)};
+  \node[decisao] (d2) at (3,-10.7) {#2};
+  \node[caixa] (des) at (10.4,-10.7) {#3};
+  \node[caixa] (reg) at (3,-14.0) {Registrar a travessia na Ficha};
+  \node[decisao] (d3) at (3,-17.0) {#4};
+  \node[caixa,fill=green!14] (fim) at (3,-20.0) {Fim};
+  \draw[seta] (ini) -- (esc);
+  \draw[seta] (esc) -- (d1);
+  \draw[seta] (d1.south) -- node[rot,right=2pt]{Sim} (atr.north);
+  \draw[seta] (atr) -- (d2);
+  \draw[seta] (d2.east) -- node[rot,above]{Sim} (des.west);
+  \draw[seta] (d2.south) -- node[rot,right=2pt]{Não} (reg.north);
+  \draw[seta] (reg) -- (d3);
+  \draw[seta] (d3.south) -- node[rot,right=2pt]{Sim} (fim.north);
+  \draw[thick] (d1.east) -- node[rot,above]{Não} (13.6,-4.3);
+  \draw[thick] (d3.east) -- node[rot,above]{Não} (13.6,-17.0);
+  \draw[thick] (des.east) -- (13.6,-10.7);
+  \draw[thick] (13.6,-17.0) -- (13.6,-4.3);
+  \draw[seta] (13.6,-4.3) |- (esc.east);
+\end{tikzpicture}}
+
+\title{\textbf{Plano de Aula}\\[4pt]
+\large Travessia do Rio: um jogo de cartas desplugado\\
+para trabalhar a ideia de algoritmo com Aprendizagem Baseada em Problemas}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5cm}
+
+% ===============================================================
+\section{Identificação}
+
+\begin{tabular}{@{}>{\bfseries}p{4.9cm}p{9.8cm}@{}}
+Componente curricular & Educação em Computação \\
+Instituição/Programa  & \rule[-2pt]{7cm}{0.4pt} \\
+Docente(s)            & \rule[-2pt]{7cm}{0.4pt} \\
+Duração               & 45 minutos \\
+Público               & Estudantes de mestrado de áreas diversas; não se exige conhecimento prévio de Computação \\
+Organização           & Grupos de três a quatro estudantes, de preferência com formações diferentes \\
+Metodologia           & Aprendizagem Baseada em Problemas, com um único problema de curta duração \\
+Recurso               & Atividade desplugada: tabuleiro, peças e fluxograma em papel \\
+Tema                  & Algoritmo como passo a passo: repetição, decisão e verificação \\
+\end{tabular}
+
+% ===============================================================
+\section{Justificativa}
+
+O problema da travessia do rio com o lobo, a ovelha e a alface é um enigma
+antigo, tradicionalmente atribuído a Alcuíno de York. Na forma
+original, a solução aparece rápido por tentativa e erro e tem 7 travessias.
+Esta proposta usa o enigma como pretexto para discutir o que é um algoritmo, ou
+seja, um passo a passo que qualquer pessoa consegue executar sem precisar
+interpretá-lo. Para isso o jogo foi ampliado: são cinco personagens com pesos
+diferentes, um barco com apenas dois espaços de carga, uma regra com exceção (o
+Cachorro protege a Ovelha do Lobo, mas ameaça a Galinha) e um tanque de
+combustível limitado. A melhor solução tem 11 travessias, valor confirmado por
+programa de computador antes da elaboração deste plano.
+
+A turma reúne estudantes de várias áreas, e por isso a atividade não depende de
+conteúdos de Computação. Pede-se aos grupos que descrevam com clareza o que
+fazem a cada travessia, percebam o que se repete e onde há decisões do tipo
+``se isto, então aquilo'', e representem essa rotina em um fluxograma simples.
+A atividade é desplugada, no sentido de \textit{Computer Science Unplugged}
+\cite{bell2009}. A aula segue a Aprendizagem Baseada em Problemas: o
+problema é apresentado antes de qualquer explicação, os estudantes trabalham em
+pequenos grupos, definem por conta própria como resolvê-lo e o docente atua
+como facilitador, e não como transmissor de conteúdo \cite{barrows1986,hmelo2004},
+no quadro das metodologias ativas \cite{bacich2018}. Dentro dos 40 minutos, o
+problema é deliberadamente fechado e com regras explícitas; o caráter aberto
+de um problema real é atendido apenas em parte.
+
+% ===============================================================
+\section{Objetivos de aprendizagem}
+
+Os objetivos usam verbos da taxonomia de Bloom revisada \cite{anderson2001}.
+Ao final da aula, espera-se que o estudante seja capaz de:
+
+\begin{enumerate}[label=\arabic*.]
+  \item descrever, em linguagem simples, um passo a passo para resolver um
+        problema com regras;
+  \item identificar, nesse passo a passo, o que se repete e onde há decisões
+        do tipo ``se\ldots então'';
+  \item verificar cada ação contra as regras e corrigir o rumo quando houver erro;
+  \item representar o passo a passo em um fluxograma simples e a situação do
+        jogo em um diagrama de duas margens;
+  \item discutir o uso do jogo como recurso didático em turmas de formações
+        diferentes.
+\end{enumerate}
+
+% ===============================================================
+\section{Problema norteador e produto}
+
+\textbf{Problema:} como escrever um passo a passo que qualquer pessoa
+consiga seguir para levar todos à outra margem sem quebrar nenhuma regra e
+gastando pouco combustível?
+
+\textbf{Produto:} a Ficha de Registro do grupo (Apêndice B), com as travessias
+anotadas, o fluxograma da rotina de verificação preenchido e as respostas às
+questões.
+
+% ===============================================================
+\section{O jogo}
+
+\subsection{Componentes}
+
+O material completo, com ilustrações originais, está no Apêndice~A, pronto para
+imprimir e recortar. Cada grupo recebe:
+
+\begin{itemize}
+  \item 1 tabuleiro em A4 paisagem (Figura~\ref{fig:tabuleiro}), com as duas
+        margens (nove espaços cada), os cais do barco, as regras de conflito
+        R1 a R4 e o tanque de combustível de 13 gotas;
+  \item 5 peças de personagem (Figura~\ref{fig:pecas}): Lobo e Ovelha são peças
+        largas, de peso 2; Alface, Cachorro e Galinha são peças quadradas, de
+        peso 1;
+  \item 1 barco que aguenta peso máximo 3, com três espaços de peso 1. O
+        primeiro é ocupado pelo Fazendeiro, que nunca sai do barco;
+  \item 1 regulamento de uma página e a Ficha de Registro;
+  \item 8 cartas de dica (3 para a rodada 1 e 5 para a rodada 2), guardadas pelo docente e entregues quando pedidas.
+\end{itemize}
+
+O peso de cada peça aparece no tamanho dela e em uma etiqueta numerada. Como o
+barco tem só dois espaços de carga, o peso máximo se confere olhando, sem fazer
+conta.
+
+O material usa três palavras distintas, e vale explicitá-las aos grupos. O
+\textit{peso} diz quanto a peça ocupa no barco. A \textit{gota} mede o
+combustível gasto, uma por travessia. Os \textit{pontos} só existem na
+\textit{nota} da avaliação, atribuída pelo docente. O jogo em si não tem
+pontuação.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{\tabuleiro}
+\caption{Tabuleiro do jogo, reduzido. A versão em tamanho real está no
+Apêndice~A.}
+\label{fig:tabuleiro}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\resizebox{0.5\textwidth}{!}{\begin{tikzpicture}\kitCmd\end{tikzpicture}}
+\caption{Peças e barco de um grupo, reduzidos.}
+\label{fig:pecas}
+\end{figure}
+
+\subsection{Papéis no grupo}
+
+Em cada rodada, os integrantes se dividem em papéis, que trocam de mãos na
+rodada seguinte:
+
+\begin{itemize}
+  \item o \textit{operador} move as peças e o barco;
+  \item o \textit{fiscal} lê as regras R1 a R4 e confere cada travessia antes de
+        ela ser aceita;
+  \item o \textit{anotador} preenche a Ficha;
+  \item o \textit{guardião do combustível} risca uma gota a cada travessia; em
+        grupos de três, o anotador também faz isso.
+\end{itemize}
+
+O fiscal faz, na prática, o trabalho de validação que o fluxograma vai
+descrever depois. Dividir assim o trabalho dá a todos algo a fazer, qualquer que
+seja a formação.
+
+\subsection{Regras}
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Objetivo.} Levar o Lobo, a Ovelha, a Alface, o Cachorro e a
+        Galinha da margem E para a margem D sem quebrar nenhuma regra de
+        conflito e sem esvaziar o tanque.
+  \item \textbf{Rodadas.} A rodada 1 é um aquecimento: o Lobo fica fora do jogo e
+        o tanque tem 7 gotas. Na rodada 2 entram todos os personagens e o
+        tanque tem 13 gotas.
+  \item \textbf{Preparação.} As peças começam nos espaços da margem E e o barco,
+        no cais E. As regras R1 a R4 estão impressas no centro do tabuleiro.
+  \item \textbf{Travessia.} Só o Fazendeiro conduz o barco, e ele nunca o deixa.
+        O barco aguenta peso total 3, e o Fazendeiro pesa 1. Sobra peso 2 para
+        a carga: uma peça larga (peso 2: Lobo ou Ovelha), até duas peças
+        quadradas (peso 1 cada: Alface, Cachorro, Galinha) ou nenhuma carga. Ao
+        atravessar, o barco passa de um cais ao outro e a carga desembarca na
+        margem de chegada.
+  \item \textbf{Verificação.} Logo após cada travessia, o fiscal examina a
+        margem em que o barco \emph{não} está. Se alguma regra se aplicar a
+        ela, a travessia é inválida e deve ser desfeita. Na margem em que o
+        barco está, e dentro dele, não há conflito. As regras valem para
+        qualquer par de peças dessa margem, mesmo que haja outras peças junto.
+        Só o Fazendeiro evita o conflito, e a única exceção é o Cachorro, que
+        protege a Ovelha do Lobo (R1).
+  \item \textbf{Combustível.} Cada travessia gasta uma gota, inclusive as que
+        forem desfeitas. Se o tanque esvaziar antes de todos chegarem à margem
+        D, o grupo recomeça a rodada e anota a tentativa anterior no verso da
+        Ficha.
+  \item \textbf{Planejamento.} Simular as travessias no papel é permitido e não
+        gasta combustível.
+  \item \textbf{Dicas.} Há dicas para cada rodada (três na rodada 1 e cinco na
+        rodada 2), que podem ser pedidas ao docente. Cada uma reduz a nota do
+        grupo: 0,25, 0,50 e 0,75 ponto na rodada 1; 0,25, 0,25, 0,50, 0,50 e
+        0,75 ponto na rodada 2, na ordem das cartas.
+\end{enumerate}
+
+% ===============================================================
+\section{Cronograma da aula (40 minutos)}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{8.7cm}@{}}
+\toprule
+\textbf{Tempo} & \textbf{Fase} & \textbf{Atividades} \\
+\midrule
+0 a 5 min   & Apresentação      & Apresentação do problema, formação dos grupos e dos papéis, leitura do regulamento e demonstração de uma travessia no quadro, com a verificação feita em voz alta. \\
+5 a 11 min  & Rodada 1          & Aquecimento sem o Lobo, com tanque de 7 gotas. Os grupos conhecem as peças e a rotina de verificação. \\
+11 a 26 min & Rodada 2          & Jogo completo, com tanque de 13 gotas. Registro das travessias na Ficha. \\
+26 a 34 min & Fluxograma        & Parte 2 da Ficha: preencher o fluxograma da rotina de verificação. Parte 3: responder à Q1. \\
+34 a 40 min & Socialização      & Dois grupos apresentam seus fluxogramas; comparação (Q2) e fechamento (Q3, que pode ser concluída em casa). \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A divisão de tempo é uma estimativa e não foi testada com estudantes. Convém
+fazer um pré-teste com um grupo pequeno antes da aplicação, principalmente da
+rodada 2.
+
+% ===============================================================
+\section{Condução da aula}
+
+\begin{itemize}
+  \item Na demonstração inicial, execute uma travessia no quadro dizendo em voz
+        alta cada verificação. É essa fala que os grupos vão depois transformar
+        em fluxograma.
+  \item Forme grupos mistos, com pelo menos uma pessoa menos familiarizada com
+        Computação em cada um, e peça que o papel de fiscal passe por todos.
+  \item A estratégia da versão clássica (levar primeiro a Ovelha) quebra uma
+        regra. Na rodada 2 existe um único primeiro movimento válido, e descobri-lo
+        é uma boa discussão sobre verificar antes de agir.
+  \item A solução exige uma viagem sem carga e voltas com carga. A Alface, por
+        exemplo, cruza o rio cinco vezes. Vale comentar que andar para trás
+        também faz parte do plano.
+  \item Quando um grupo terminar cedo, ofereça as cartas de perturbação da
+        seção de extensões.
+  \item Antes da Parte 2, mostre em um minuto os dois símbolos do fluxograma: o
+        retângulo é uma ação e o losango é uma pergunta de sim ou não.
+  \item Na socialização, projete ou distribua o fluxograma de referência do
+        Apêndice~C e a ficha preenchida do Apêndice~D só depois de os grupos
+        apresentarem os seus, para que a comparação parta do que eles mesmos
+        construíram.
+\end{itemize}
+
+% ===============================================================
+\section{Ideias de computação trabalhadas}
+
+\begin{itemize}
+  \item \textit{Algoritmo:} um passo a passo claro o bastante para que outra
+        pessoa o execute sem adivinhar nada \cite{wing2006}.
+  \item \textit{Repetição:} escolher a carga, atravessar e conferir se repetem
+        até que todos estejam na margem D.
+  \item \textit{Condição:} cada verificação é uma pergunta de sim ou não que
+        leva a caminhos diferentes.
+  \item \textit{Validação:} conferir cada ação contra as regras antes de
+        aceitá-la.
+  \item \textit{Depuração:} desfazer uma travessia inválida, achar o motivo e
+        tentar de outro jeito.
+  \item \textit{Diagrama e fluxograma:} o quadro das duas margens mostra a
+        situação do jogo, e o fluxograma mostra a rotina.
+  \item \textit{Otimização simples:} procurar o menor consumo de combustível.
+\end{itemize}
+
+% ===============================================================
+\section{Avaliação}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{8.2cm}c>{\raggedright\arraybackslash}p{4.6cm}@{}}
+\toprule
+\textbf{Critério} & \textbf{Pontos da nota} & \textbf{Evidência na Ficha} \\
+\midrule
+Solução válida da rodada 2 (3,0 pontos com 11 travessias válidas; 2,0 pontos com 13) & 3,0 & Parte 1 \\
+Fluxograma completo e coerente com o que o grupo fez & 3,0 & Parte 2 \\
+Identificação da repetição e das verificações no fluxograma & 2,0 & Parte 2 \\
+Análise de erros e reflexão didática & 2,0 & Q1 a Q3 \\
+\midrule
+\textbf{Total} & \textbf{10,0} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Descontos por dica: 0,25, 0,50 e 0,75 ponto na rodada 1; 0,25, 0,25, 0,50, 0,50 e 0,75 ponto na rodada 2, conforme a regra 8.
+
+% ===============================================================
+\section{Extensões}
+
+\subsection{Cartas de perturbação}
+
+Para completar o ciclo de resolução do problema fora da sala, cada grupo escolhe uma
+alteração das regras, prevê o efeito e depois confere. Os resultados abaixo
+foram obtidos com o programa usado na validação do jogo.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.1}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{9.5cm}>{\raggedright\arraybackslash}p{4.5cm}@{}}
+\toprule
+\textbf{Alteração} & \textbf{Resultado} \\
+\midrule
+O Cachorro deixa de proteger a Ovelha (R1 sem exceção) & Sem solução \\
+Peso máximo do barco igual a 2 & Sem solução \\
+Nova regra: Lobo $\times$ Galinha & Sem solução \\
+Remoção de R3 (Galinha $\times$ Alface) & Mínimo de 9 travessias \\
+Remoção de R4 (Cachorro $\times$ Galinha) & Mínimo de 9 travessias \\
+Peso máximo do barco igual a 4 & Mínimo de 5 travessias \\
+Lobo com peso 3 e peso máximo do barco igual a 4 & Mínimo de 7 travessias \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Para turmas com formação técnica}
+
+Quem já estudou grafos pode representar cada situação do jogo (quem está em cada
+margem e de que lado está o barco) como um círculo, e cada travessia válida como
+uma linha entre dois círculos. Das 64 combinações possíveis, 28 são válidas e 26
+podem ser alcançadas a partir do início. Uma busca em largura \cite{russell2020}
+encontra o caminho mais curto, de 11 travessias. Todo caminho tem número
+ímpar de travessias, e por isso 13 é o primeiro limite acima do mínimo.
+
+% ===============================================================
+\section{Gabarito (uso do docente)}
+
+Legenda: L = Lobo, O = Ovelha, A = Alface, C = Cachorro, G = Galinha. O
+Fazendeiro acompanha todas as travessias.
+
+\textbf{Rodada 1} (sem o Lobo, mínimo de 5 travessias): A e C (E$\rightarrow$D),
+viagem vazia (D$\rightarrow$E), O (E$\rightarrow$D), A (D$\rightarrow$E), A e G
+(E$\rightarrow$D). A outra solução ótima é a inversa (A e G, A, O, vazia, A e C).
+
+\textbf{Rodada 2} (mínimo de 11 travessias):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.0}
+\small
+\begin{tabular}{@{}rllll@{}}
+\toprule
+\textbf{N.º} & \textbf{Sentido} & \textbf{Carga} & \textbf{Margem E} & \textbf{Margem D} \\
+\midrule
+0  & início              & nenhuma & L, O, A, C, G & nenhum        \\
+1  & E$\rightarrow$D     & A, G    & L, O, C       & A, G          \\
+2  & D$\rightarrow$E     & A       & L, O, C, A    & G             \\
+3  & E$\rightarrow$D     & O       & L, C, A       & G, O          \\
+4  & D$\rightarrow$E     & nenhuma & L, C, A       & G, O          \\
+5  & E$\rightarrow$D     & L       & C, A          & G, O, L       \\
+6  & D$\rightarrow$E     & O       & C, A, O       & G, L          \\
+7  & E$\rightarrow$D     & A, C    & O             & G, L, A, C    \\
+8  & D$\rightarrow$E     & G       & O, G          & L, A, C       \\
+9  & E$\rightarrow$D     & O       & G             & L, A, C, O    \\
+10 & D$\rightarrow$E     & A       & G, A          & L, C, O       \\
+11 & E$\rightarrow$D     & A, G    & nenhum        & L, O, A, C, G \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item Existem exatamente duas soluções com 11 travessias. A segunda coincide
+        com a primeira nas travessias 1 a 3 e segue com: G (D$\rightarrow$E),
+        A e C (E$\rightarrow$D), O (D$\rightarrow$E), L (E$\rightarrow$D),
+        viagem vazia (D$\rightarrow$E), O (E$\rightarrow$D), A
+        (D$\rightarrow$E), A e G (E$\rightarrow$D).
+  \item O primeiro movimento válido da rodada 2 é único: levar A e G. Qualquer
+        outra carga deixa na margem E um par em conflito.
+  \item As dicas estão no Apêndice A. Na rodada 2, as dicas 2 e 3 levam ao
+        primeiro movimento (A e G) e a dica 5 sugere anotar as margens, o que
+        revela ciclos.
+\end{itemize}
+
+\textbf{Fluxograma esperado.} A Parte 2 da Ficha, com os quatro quadros
+preenchidos, está no Apêndice~C. Os textos dos grupos podem variar, mas a
+estrutura deve ser a mesma. O registro das travessias (Parte 1), também preenchido, está no
+Apêndice~D.
+
+% ===============================================================
+\begingroup\footnotesize\setstretch{1.05}
+\begin{thebibliography}{9}
+
+\bibitem{anderson2001}
+ANDERSON, L. W.; KRATHWOHL, D. R. (org.). \textbf{A taxonomy for learning,
+teaching, and assessing}: a revision of Bloom's taxonomy of educational
+objectives. New York: Longman, 2001.
+
+\bibitem{bacich2018}
+BACICH, L.; MORAN, J. (org.). \textbf{Metodologias ativas para uma educação
+inovadora}: uma abordagem teórico-prática. Porto Alegre: Penso, 2018.
+
+\bibitem{barrows1986}
+BARROWS, H. S. A taxonomy of problem-based learning methods.
+\textbf{Medical Education}, v. 20, n. 6, p. 481-486, 1986.
+
+\bibitem{bell2009}
+BELL, T.; ALEXANDER, J.; FREEMAN, I.; GRIMLEY, M. Computer science unplugged:
+school students doing real computing without computers. \textbf{The New Zealand
+Journal of Applied Computing and Information Technology}, v. 13, n. 1,
+p. 20-29, 2009.
+
+\bibitem{hmelo2004}
+HMELO-SILVER, C. E. Problem-based learning: what and how do students learn?
+\textbf{Educational Psychology Review}, v. 16, n. 3, p. 235-266, 2004.
+
+\bibitem{russell2020}
+RUSSELL, S.; NORVIG, P. \textbf{Artificial intelligence}: a modern approach.
+4. ed. Hoboken: Pearson, 2020.
+
+\bibitem{wing2006}
+WING, J. M. Computational thinking. \textbf{Communications of the ACM}, v. 49,
+n. 3, p. 33-35, 2006.
+
+\end{thebibliography}
+\endgroup
+
+% ===============================================================
+\appendix
+\clearpage
+\section{Material desplugado para impressão}
+
+\subsection{Orientações de preparação}
+
+O material foi desenhado para ser impresso e recortado antes da aula. As
+ilustrações são originais e foram feitas em TikZ, de modo que este mesmo arquivo
+\LaTeX{} gera o conjunto completo.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.15}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{7.6cm}@{}}
+\toprule
+\textbf{Item} & \textbf{Quantidade} & \textbf{Observações} \\
+\midrule
+Tabuleiro (primeira folha de material) & 1 por grupo & Imprimir em A4, orientação paisagem, \textbf{escala 100\%} (sem ``ajustar à página''), pois as peças foram dimensionadas para encaixar nos espaços. \\
+Folha de peças e barco (segunda folha de material) & 1 folha para cada 4 grupos & Papel de 180 g/m$^2$ ou colada em papel-cartão. Recortar pelo contorno. \\
+Cartas de dica (abaixo) & 1 conjunto por turma & Recortar e entregar somente quando pedidas (regra 8). \\
+Regulamento (A.2) & 1 por grupo & Uma página. \\
+Ficha de registro (Apêndice B) & 1 por grupo & Três páginas. \\
+Fluxograma e ficha de referência (Apêndices C e D) & 1 cópia para o docente & Uso do docente. Podem ser projetados na socialização. \\
+Lápis e tesoura & um de cada por grupo & O lápis serve para riscar as gotas de combustível. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Exemplo: para 20 estudantes em grupos de 4, imprimem-se 5 tabuleiros, 2 folhas
+de peças (a segunda usada pela metade), 1 conjunto de dicas (8 cartas), 5 regulamentos e 5
+fichas.
+
+\clearpage
+\subsubsection*{Cartas de dica (recortar)}
+
+\noindent\textbf{Rodada 1}\par\smallskip
+\noindent
+\dica[1]{1}{0,25 ponto}{Há dois primeiros movimentos válidos. Descubram quais são eliminando os outros, um a um, pelas regras.}
+\hfill
+\dica[1]{2}{0,50 ponto}{Sem o Lobo, os conflitos são Ovelha com Alface, Galinha com Alface e Cachorro com Galinha. Os dois primeiros barcos levam a Alface e mais uma peça.}
+\hfill
+\dica[1]{3}{0,75 ponto}{A Ovelha atravessa sozinha. Quando ela chega à margem D, a Alface não pode estar lá: a Alface volta no barco. Depois falta levar as duas peças que ficaram.}
+
+\bigskip\noindent\textbf{Rodada 2}\par\smallskip
+\noindent
+\dica{1}{0,25 ponto}{Há um único primeiro movimento válido. Descubram qual é eliminando os outros, um a um, pelas regras.}
+\hfill
+\dica{2}{0,25 ponto}{Olhem a margem E depois que o barco sai. Alface com Ovelha ou com Galinha é conflito. Se a Alface ficar, sempre sobra um conflito: ela vai no primeiro barco.}
+\hfill
+\dica{3}{0,50 ponto}{A Alface vai, mas sozinha não basta: Cachorro e Galinha ficariam juntos. Se o Cachorro for, Lobo e Ovelha ficam sem protetor. Então a Galinha vai: Alface e Galinha.}
+
+\bigskip\noindent
+\dica{4}{0,50 ponto}{Nem toda travessia precisa levar carga, e trazer alguém de volta pode ser necessário. Procurem situações em que o Cachorro protege a Ovelha.}
+\hfill
+\dica{5}{0,75 ponto}{Anotem quem está em cada margem depois de cada travessia. Se uma situação já apareceu antes, vocês estão andando em círculo.}
+\hfill
+\hspace{5.0cm}
+
+
+% ---- Tabuleiro: página A4 paisagem em tamanho real ----
+\clearpage
+\newgeometry{margin=0.9cm,nohead,nofoot}
+\begin{landscape}
+\thispagestyle{empty}
+\noindent\tabuleiro
+\end{landscape}
+
+% ---- Peças e barco: quatro kits por folha ----
+\clearpage
+\newgeometry{margin=1.5cm,nohead,nofoot}
+\thispagestyle{empty}
+\noindent\paginapecas
+\clearpage
+\restoregeometry
+
+\subsection{Regulamento para os estudantes}
+
+\begin{tcolorbox}[colback=white,colframe=blue!50!black,coltitle=white,
+  colbacktitle=blue!50!black,title={\bfseries Travessia do Rio},
+  boxrule=1pt,arc=3mm,fontupper=\small\setstretch{1.12}]
+\textbf{Objetivo.} Levar o Lobo, a Ovelha, a Alface, o Cachorro e a Galinha da
+margem E para a margem D sem quebrar nenhuma regra e sem esvaziar o tanque de
+combustível. O jogo acaba quando as cinco peças estiverem na margem D.
+
+\smallskip
+\textbf{Três palavras do jogo.} \textit{Peso} é quanto a peça ocupa no barco.
+\textit{Gota} é o combustível gasto, uma por travessia. O jogo não tem pontos: só
+a nota do docente usa essa palavra.
+
+\smallskip
+\textbf{Papéis.} Cada pessoa assume um papel e todos trocam na rodada 2.
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=2pt]
+  \item \textbf{Operador:} move as peças e o barco.
+  \item \textbf{Fiscal:} confere cada travessia contra as regras R1 a R4.
+  \item \textbf{Anotador:} preenche a Ficha.
+  \item \textbf{Guardião do combustível:} risca uma gota a cada travessia. Em
+        grupos de três, o anotador também faz isso.
+\end{itemize}
+
+\smallskip
+\begin{enumerate}[leftmargin=*,label=\textbf{\arabic*.},itemsep=4pt]
+  \item \textbf{Rodadas.} Na rodada 1, o Lobo fica fora do jogo e o tanque tem
+        7 gotas. Na rodada 2, todos jogam e o tanque tem 13 gotas.
+  \item \textbf{Início.} As peças ficam nos espaços da margem E e o barco, no
+        cais E.
+  \item \textbf{O barco.} Aguenta peso total 3. O primeiro espaço é do
+        Fazendeiro, que pesa 1 e nunca sai do barco. Nos outros dois cabem uma
+        peça larga (peso 2), até duas peças quadradas (peso 1 cada) ou nenhuma
+        carga.
+  \item \textbf{Travessia.} Carreguem o barco e movam-no para o outro cais. A
+        carga desembarca na margem de chegada.
+  \item \textbf{Conflitos.} Depois de cada travessia, o fiscal examina a margem
+        em que o barco \emph{não} está. Se alguma regra R1 a R4 (centro do
+        tabuleiro) se aplicar a ela, a travessia é inválida e deve ser
+        desfeita. Na margem em que o barco está, e dentro dele, não há
+        conflito. As regras valem para qualquer par de peças da margem, mesmo
+        que haja outras peças junto: só o Fazendeiro evita o conflito, e a
+        única exceção é o Cachorro, que protege a Ovelha do Lobo (R1).
+  \item \textbf{Combustível.} Cada travessia gasta uma gota, mesmo se for
+        desfeita. Se o tanque esvaziar, recomecem a rodada e anotem a tentativa
+        anterior no verso da Ficha.
+  \item \textbf{Planejamento.} Simular no papel é permitido e não gasta
+        combustível.
+  \item \textbf{Dicas.} Há dicas para cada rodada (três na rodada 1 e cinco na
+        rodada 2), que podem ser pedidas ao docente. Cada uma reduz a nota do
+        grupo: 0,25, 0,50 e 0,75 ponto na rodada 1; 0,25, 0,25, 0,50, 0,50 e
+        0,75 ponto na rodada 2, na ordem das cartas.
+  \item \textbf{Registro.} Anotem na Ficha as travessias, preencham o
+        fluxograma e respondam às questões Q1 a Q3.
+\end{enumerate}
+\end{tcolorbox}
+
+\clearpage
+
+% ===============================================================
+\section{Ficha de registro do grupo}
+
+\noindent\textbf{Grupo:} \rule[-2pt]{3cm}{0.4pt}
+
+\smallskip
+\noindent\textbf{Integrantes:} \rule[-2pt]{\dimexpr\linewidth-3.2cm\relax}{0.4pt}
+
+\subsection*{Parte 1: registro das travessias}
+
+Anote quem está em cada margem depois de cada travessia e quantas gotas restam
+no tanque.
+
+\begin{tcolorbox}[colback=gray!8,colframe=gray!60,boxrule=0.6pt,arc=1.5mm,
+  left=2mm,right=2mm,top=1mm,bottom=1mm,fontupper=\small\setstretch{1.1}]
+\textbf{Legenda.} \textbf{L} = Lobo, \textbf{O} = Ovelha, \textbf{A} = Alface,
+\textbf{C} = Cachorro, \textbf{G} = Galinha. \textbf{E} = margem esquerda,
+\textbf{D} = margem direita. Sentido do barco: E$\rightarrow$D ou
+D$\rightarrow$E.
+\end{tcolorbox}
+
+\smallskip
+\noindent\textbf{Rodada 1} (sem o Lobo; tanque de 7 gotas)
+
+\begin{singlespace}
+\begingroup\centering
+\renewcommand{\arraystretch}{1.25}
+\small
+\begin{tabular}{|c|c|p{2.3cm}|p{3.3cm}|p{3.3cm}|c|}
+\hline
+\textbf{N.º} & \textbf{Sentido} & \textbf{Carga} & \textbf{Margem E} & \textbf{Margem D} & \textbf{Gotas} \\
+\hline
+0 & & & O, A, C, G & & 7 \\ \hline
+1 & & & & & \\ \hline
+2 & & & & & \\ \hline
+3 & & & & & \\ \hline
+4 & & & & & \\ \hline
+5 & & & & & \\ \hline
+6 & & & & & \\ \hline
+7 & & & & & \\ \hline
+\end{tabular}
+\par\endgroup
+\end{singlespace}
+
+\smallskip
+\noindent\textbf{Rodada 2} (todos os personagens; tanque de 13 gotas)
+
+\begin{singlespace}
+\begingroup\centering
+\renewcommand{\arraystretch}{1.25}
+\small
+\begin{tabular}{|c|c|p{2.3cm}|p{3.3cm}|p{3.3cm}|c|}
+\hline
+\textbf{N.º} & \textbf{Sentido} & \textbf{Carga} & \textbf{Margem E} & \textbf{Margem D} & \textbf{Gotas} \\
+\hline
+0 & & & L, O, A, C, G & & 13 \\ \hline
+1 & & & & & \\ \hline
+2 & & & & & \\ \hline
+3 & & & & & \\ \hline
+4 & & & & & \\ \hline
+5 & & & & & \\ \hline
+6 & & & & & \\ \hline
+7 & & & & & \\ \hline
+8 & & & & & \\ \hline
+9 & & & & & \\ \hline
+10 & & & & & \\ \hline
+11 & & & & & \\ \hline
+12 & & & & & \\ \hline
+13 & & & & & \\ \hline
+\end{tabular}
+\par\endgroup
+\end{singlespace}
+
+\newpage
+\subsection*{Parte 2: a rotina de verificação}
+
+O fluxograma abaixo descreve o que o grupo faz a cada travessia. Complete os
+quadros em branco. Cada losango é uma pergunta que se responde com sim ou não;
+cada retângulo é uma ação. Escreva como se estivesse explicando para alguém que
+nunca jogou.
+
+\begin{center}
+\resizebox{!}{0.7\textheight}{\fluxograma
+  {\lacunaS}
+  {\lacunaS}
+  {\lacunaL}
+  {\lacunaS}}
+\end{center}
+
+\newpage
+\subsection*{Parte 3: questões}
+
+\begin{enumerate}[label=\textbf{Q\arabic*.}, leftmargin=1.2cm, itemsep=4.2cm]
+  \item Conte uma tentativa que deu errado. O que o grupo percebeu e o que
+        mudou na tentativa seguinte?
+  \item Compare seu fluxograma com o de outro grupo. O que é igual e o que é
+        diferente? Os dois levariam ao mesmo resultado?
+  \item Que ideias de Computação apareceram neste jogo sem precisar de um
+        computador? Você usaria a atividade com outro público? O que mudaria?
+\end{enumerate}
+
+% ===============================================================
+\clearpage
+\section{Fluxograma de referência (uso do docente)}
+
+A figura reproduz a Parte 2 da Ficha com os quatro quadros preenchidos. Use-a
+na socialização para conferir os fluxogramas dos grupos. Ela é uma rotina
+válida, não a única possível.
+
+\begin{center}
+\resizebox{!}{0.6\textheight}{\fluxograma
+  {A carga cabe nos 2 espaços?}
+  {Alguma regra (R1 a R4) se aplica à margem sem o barco?}
+  {Desfazer a travessia (a gota não volta)}
+  {Todas as peças estão na margem D?}}
+\end{center}
+
+\begin{tcolorbox}[colback=white,colframe=blue!50!black,boxrule=0.8pt,arc=2mm,
+  left=3mm,right=3mm,top=1.5mm,bottom=1.5mm,fontupper=\small\setstretch{1.1}]
+\textbf{Ao comparar com o fluxograma de um grupo, confira:}
+\begin{itemize}[leftmargin=*,itemsep=1pt,topsep=3pt]
+  \item \textbf{a repetição:} todo caminho que não termina volta a ``Escolher a
+        carga'', e só a pergunta final, respondida com sim, encerra o jogo;
+  \item \textbf{as duas verificações} antes de aceitar a travessia: a da carga
+        e a das regras na margem sem o barco;
+  \item \textbf{o desfazer:} a travessia inválida é desfeita, mas a gota
+        continua gasta;
+  \item \textbf{perguntas de sim ou não:} ``Alguém seria devorado ou atacado?''
+        serve; ``A jogada foi boa?'' não serve.
+\end{itemize}
+\end{tcolorbox}
+
+% ===============================================================
+\clearpage
+\section{Ficha preenchida (uso do docente)}
+
+\newcommand{\pre}[1]{\textcolor{blue!60!black}{#1}}
+
+Registro válido da Parte 1 da Ficha, com o preenchimento em azul. A Parte 2
+preenchida está no Apêndice~C. Há outras soluções válidas, de 11 ou 13
+travessias, e um grupo pode registrar um caminho diferente e estar correto.
+Em cada linha, confira se a margem sem o barco não viola nenhuma regra, se a
+carga cabe e se as gotas descem uma por travessia.
+
+\noindent\textbf{Grupo:} \pre{Exemplo} \hfill
+\textbf{Integrantes:} \pre{quatro pessoas, um papel cada uma}
+
+\smallskip
+\noindent{\small\textbf{Legenda.} \textbf{L} = Lobo, \textbf{O} = Ovelha, \textbf{A} = Alface,
+\textbf{C} = Cachorro, \textbf{G} = Galinha. \textbf{E} = margem esquerda,
+\textbf{D} = margem direita.}
+
+\smallskip
+\noindent\textbf{Rodada 1} (sem o Lobo; tanque de 7 gotas)
+
+\begin{singlespace}
+\begingroup\centering
+\renewcommand{\arraystretch}{1.3}
+\small
+\begin{tabular}{|c|c|p{2.3cm}|p{3.3cm}|p{3.3cm}|c|}
+\hline
+\textbf{N.º} & \textbf{Sentido} & \textbf{Carga} & \textbf{Margem E} & \textbf{Margem D} & \textbf{Gotas} \\
+\hline
+0 & \pre{início} & \pre{nenhuma} & \pre{O, A, C, G} & \pre{nenhum} & \pre{7} \\ \hline
+1 & \pre{E$\rightarrow$D} & \pre{A, C} & \pre{O, G} & \pre{A, C} & \pre{6} \\ \hline
+2 & \pre{D$\rightarrow$E} & \pre{nenhuma} & \pre{O, G} & \pre{A, C} & \pre{5} \\ \hline
+3 & \pre{E$\rightarrow$D} & \pre{O} & \pre{G} & \pre{O, A, C} & \pre{4} \\ \hline
+4 & \pre{D$\rightarrow$E} & \pre{A} & \pre{A, G} & \pre{O, C} & \pre{3} \\ \hline
+5 & \pre{E$\rightarrow$D} & \pre{A, G} & \pre{nenhum} & \pre{O, A, C, G} & \pre{2} \\ \hline
+6 & & & & & \\ \hline
+7 & & & & & \\ \hline
+\end{tabular}
+\par\endgroup
+\end{singlespace}
+
+\smallskip
+\noindent\textbf{Rodada 2} (todos os personagens; tanque de 13 gotas)
+
+\begin{singlespace}
+\begingroup\centering
+\renewcommand{\arraystretch}{1.3}
+\small
+\begin{tabular}{|c|c|p{2.3cm}|p{3.3cm}|p{3.3cm}|c|}
+\hline
+\textbf{N.º} & \textbf{Sentido} & \textbf{Carga} & \textbf{Margem E} & \textbf{Margem D} & \textbf{Gotas} \\
+\hline
+0 & \pre{início} & \pre{nenhuma} & \pre{L, O, A, C, G} & \pre{nenhum} & \pre{13} \\ \hline
+1 & \pre{E$\rightarrow$D} & \pre{A, G} & \pre{L, O, C} & \pre{A, G} & \pre{12} \\ \hline
+2 & \pre{D$\rightarrow$E} & \pre{A} & \pre{L, O, A, C} & \pre{G} & \pre{11} \\ \hline
+3 & \pre{E$\rightarrow$D} & \pre{O} & \pre{L, A, C} & \pre{O, G} & \pre{10} \\ \hline
+4 & \pre{D$\rightarrow$E} & \pre{nenhuma} & \pre{L, A, C} & \pre{O, G} & \pre{9} \\ \hline
+5 & \pre{E$\rightarrow$D} & \pre{L} & \pre{A, C} & \pre{L, O, G} & \pre{8} \\ \hline
+6 & \pre{D$\rightarrow$E} & \pre{O} & \pre{O, A, C} & \pre{L, G} & \pre{7} \\ \hline
+7 & \pre{E$\rightarrow$D} & \pre{A, C} & \pre{O} & \pre{L, A, C, G} & \pre{6} \\ \hline
+8 & \pre{D$\rightarrow$E} & \pre{G} & \pre{O, G} & \pre{L, A, C} & \pre{5} \\ \hline
+9 & \pre{E$\rightarrow$D} & \pre{O} & \pre{G} & \pre{L, O, A, C} & \pre{4} \\ \hline
+10 & \pre{D$\rightarrow$E} & \pre{A} & \pre{A, G} & \pre{L, O, C} & \pre{3} \\ \hline
+11 & \pre{E$\rightarrow$D} & \pre{A, G} & \pre{nenhum} & \pre{L, O, A, C, G} & \pre{2} \\ \hline
+12 & & & & & \\ \hline
+13 & & & & & \\ \hline
+\end{tabular}
+\par\endgroup
+\end{singlespace}
+
+\smallskip
+\noindent\footnotesize\textbf{Verso da Ficha (exemplo).} Antes de mover as peças,
+o grupo simulou no papel levar a Ovelha primeiro. A margem E ficaria com Lobo,
+Alface, Cachorro e Galinha, sem o barco: a Galinha bica a Alface (R3) e o
+Cachorro ataca a Galinha (R4). Descartaram a ideia sem gastar gota, e o único
+primeiro movimento que sobrou foi levar a Alface e a Galinha.
+\normalsize
+
+\end{document}
