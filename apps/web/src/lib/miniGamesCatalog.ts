@@ -1,4 +1,4 @@
-import type { ContentCategory } from './contentCategory';
+import type { ContentCategory, ContentSubcategory } from './contentCategory';
 
 // CC1 - catálogo de mini jogos do lado do ALUNO. Continua hardcoded no
 // frontend de propósito (mesma decisão já em produção antes desta feature -
@@ -17,6 +17,9 @@ export interface MiniGameCatalogEntry {
   title: string;
   entryPath: string;
   category: ContentCategory;
+  subcategory: ContentSubcategory;
+  // Só em `specific_subjects`: a matéria sob a qual o jogo é listado.
+  topic?: string;
 }
 
 export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
@@ -25,6 +28,7 @@ export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
     title: 'Fábrica de Pedaços Iguais',
     entryPath: '/minigame/fractions/use',
     category: 'informatica_educacional',
+    subcategory: 'use_modify_create',
   },
   // MJ10 - 1º conteúdo de Educação em Computação da plataforma (BNCC
   // EM13CO09) - preenche a seção que, até aqui, só mostrava o placeholder
@@ -34,6 +38,7 @@ export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
     title: 'Ferramentas do Mundo do Trabalho',
     entryPath: '/minigame/work-tools/use',
     category: 'educacao_computacao',
+    subcategory: 'use_modify_create',
   },
   // Jogo à parte da sequência Use-Modify-Create: atividade desplugada de
   // algoritmo (repetição, decisão e verificação), sem backend nem
@@ -43,5 +48,17 @@ export const MINI_GAMES_CATALOG: MiniGameCatalogEntry[] = [
     title: 'Travessia do Rio',
     entryPath: '/minigame/river-crossing',
     category: 'educacao_computacao',
+    subcategory: 'specific_subjects',
+    topic: 'Algoritmos',
+  },
+  // Experimento de Banco de Dados II (Unidade III). Também tem rota pública
+  // (/jogo/escalonador) para uso em sala sem login.
+  {
+    key: 'scheduler_detective',
+    title: 'Detetive do Escalonador',
+    entryPath: '/minigame/scheduler',
+    category: 'educacao_computacao',
+    subcategory: 'specific_subjects',
+    topic: 'Banco de Dados',
   },
 ];

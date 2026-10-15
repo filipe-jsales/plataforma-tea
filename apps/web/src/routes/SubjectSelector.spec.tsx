@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -209,5 +209,40 @@ describe('SubjectSelector - categorização Informática Educacional × Educaç�
 
     const gameSection = (await screen.findByText('Ferramentas do Mundo do Trabalho')).closest('section');
     expect(gameSection).toHaveTextContent('Educação em Computação');
+  });
+
+  it('agrupa em categoria > subcategoria > matéria, com Banco de Dados sob Matérias específicas', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+    await screen.findByText(/onde você quer entrar/i);
+
+    const category = screen.getByRole('heading', { level: 2, name: /Educação em Computação/ }).parentElement!;
+    const subcategories = within(category).getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    expect(subcategories).toEqual(['Ver, mudar e criar', 'Matérias específicas']);
+
+    const specific = within(category).getByRole('heading', { level: 3, name: 'Matérias específicas' }).parentElement!;
+    const subjectNames = within(specific).getAllByRole('heading', { level: 4 }).map((h) => h.textContent);
+    expect(subjectNames).toEqual(['Algoritmos', 'Banco de Dados']);
+
+    const database = within(specific).getByRole('heading', { level: 4, name: 'Banco de Dados' }).parentElement!;
+    expect(within(database).getByRole('link', { name: 'Detetive do Escalonador' })).toHaveAttribute(
+      'href',
+      '/minigame/scheduler',
+    );
+  });
+
+  it('não mostra subcategoria vazia: Informática Educacional só tem "Ver, mudar e criar"', async () => {
+    mockedGet.mockResolvedValueOnce([]);
+    mockedGet.mockResolvedValueOnce([]);
+
+    renderPage();
+    await screen.findByText(/onde você quer entrar/i);
+
+    const category = screen.getByRole('heading', { level: 2, name: /Informática na Computação/ }).parentElement!;
+    expect(within(category).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      'Ver, mudar e criar',
+    ]);
   });
 });
