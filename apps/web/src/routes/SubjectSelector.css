@@ -57,3 +57,20 @@
   display: flex;
   justify-content: center;
 }
+
+/* Categoria (h2) > subcategoria (h3) > matéria (h4): cada nível um degrau
+   tipográfico abaixo, todos centralizados como o título da categoria. */
+.subject-selector__subcategory {
+  margin-top: var(--space-4);
+}
+
+.subject-selector__subcategory-title,
+.subject-selector__topic-title {
+  text-align: center;
+}
+
+.subject-selector__topic-title {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  opacity: 0.85;
+}

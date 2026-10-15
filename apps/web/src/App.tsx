@@ -46,6 +46,10 @@ const WorkToolsGamePage = lazy(() => import('./routes/minigame/work-tools/WorkTo
 // Travessia do Rio (Educação em Computação) - jogo autônomo, só frontend.
 const RiverCrossingPage = lazy(() => import('./routes/minigame/river-crossing/RiverCrossingPage'))
 
+// Detetive do Escalonador (Educação em Computação > Matérias específicas >
+// Banco de Dados) - jogo autônomo, só frontend, com rota pública.
+const SchedulerGamePage = lazy(() => import('./routes/minigame/scheduler/SchedulerGamePage'))
+
 // DS2 - guia vivo do design system: ferramenta de dev, só registrada em modo
 // dev (o `import()` fica atrás de `import.meta.env.DEV`, que o Vite elimina
 // no build de produção).
@@ -194,6 +198,26 @@ function App() {
         element={
           <Suspense fallback={null}>
             <RiverCrossingPage standalone />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/minigame/scheduler"
+        element={
+          <RequireAuth roles={['student']}>
+            <Suspense fallback={null}>
+              <SchedulerGamePage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      {/* Acesso público ao Detetive do Escalonador (experimento em sala, sem
+          login): fora do RequireAuth, sem layout do app e sem eventos. */}
+      <Route
+        path="/jogo/escalonador"
+        element={
+          <Suspense fallback={null}>
+            <SchedulerGamePage standalone />
           </Suspense>
         }
       />

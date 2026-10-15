@@ -5,7 +5,11 @@ import { apiClient } from '../lib/apiClient';
 import { logEvent } from '../lib/logEvent';
 import type { AvailableChallengeForStudent } from '../lib/challengeAllocationTypes';
 import type { ContentCategory } from '../lib/contentCategory';
-import { CONTENT_CATEGORY_STUDENT_LABEL } from '../lib/contentCategory';
+import {
+  CONTENT_CATEGORY_STUDENT_LABEL,
+  CONTENT_SUBCATEGORY_ORDER,
+  CONTENT_SUBCATEGORY_STUDENT_LABEL,
+} from '../lib/contentCategory';
 import { MINI_GAMES_CATALOG } from '../lib/miniGamesCatalog';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Badge, Button, LinkButton, SelectableCard } from '../components/ui';
@@ -110,28 +114,55 @@ export function SubjectSelector() {
               <p className="subject-selector__category-empty">Em breve, novidades por aqui.</p>
             )}
 
-            {hasItems && (
-              <ul className="subject-selector__list">
-                {categoryTopics.map((topic) => (
-                  <li key={topic.topicId}>
-                    <SelectableCard
-                      icon={<BookOpenCheck color="#000000" strokeWidth={1.75} />}
-                      selected={selected?.topicId === topic.topicId}
-                      onSelect={() => setSelected(topic)}
-                    >
-                      {topic.name}
-                    </SelectableCard>
-                  </li>
-                ))}
-                {categoryMiniGames.map((game) => (
-                  <li key={game.key}>
-                    <LinkButton to={game.entryPath} variant="secondary" icon={<Gamepad2 color="#000000" strokeWidth={1.75} />}>
-                      {game.title}
-                    </LinkButton>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* Categoria > subcategoria > matéria. Os módulos curriculares
+                da API pertencem sempre à trilha "Ver, mudar e criar"; os
+                mini jogos declaram a própria subcategoria (e, em "Matérias
+                específicas", a matéria) no catálogo. */}
+            {CONTENT_SUBCATEGORY_ORDER.map((subcategory) => {
+              const subTopics = subcategory === 'use_modify_create' ? categoryTopics : [];
+              const subGames = categoryMiniGames.filter((game) => game.subcategory === subcategory);
+              if (subTopics.length === 0 && subGames.length === 0) return null;
+
+              // "Ver, mudar e criar" é uma lista só; "Matérias específicas"
+              // se divide por matéria (Algoritmos, Banco de Dados...).
+              const subjects =
+                subcategory === 'use_modify_create' ? [''] : [...new Set(subGames.map((game) => game.topic ?? ''))];
+
+              return (
+                <div key={subcategory} className="subject-selector__subcategory">
+                  <h3 className="subject-selector__subcategory-title">
+                    {CONTENT_SUBCATEGORY_STUDENT_LABEL[subcategory]}
+                  </h3>
+                  {subjects.map((subject) => (
+                    <div key={subject || 'default'}>
+                      {subject && <h4 className="subject-selector__topic-title">{subject}</h4>}
+                      <ul className="subject-selector__list">
+                        {subTopics.map((topic) => (
+                          <li key={topic.topicId}>
+                            <SelectableCard
+                              icon={<BookOpenCheck color="#000000" strokeWidth={1.75} />}
+                              selected={selected?.topicId === topic.topicId}
+                              onSelect={() => setSelected(topic)}
+                            >
+                              {topic.name}
+                            </SelectableCard>
+                          </li>
+                        ))}
+                        {subGames
+                          .filter((game) => subcategory === 'use_modify_create' || (game.topic ?? '') === subject)
+                          .map((game) => (
+                            <li key={game.key}>
+                              <LinkButton to={game.entryPath} variant="secondary" icon={<Gamepad2 color="#000000" strokeWidth={1.75} />}>
+                                {game.title}
+                              </LinkButton>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </section>
         );
       })}

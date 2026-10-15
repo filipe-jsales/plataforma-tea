@@ -2323,3 +2323,51 @@ header/sidebar/footer do app e sem o botão "Voltar", via `standalone` em
 há aluno. A rota `/minigame/river-crossing` (dentro da plataforma) continua
 exigindo login de aluno. Para eventos anônimos seria preciso um endpoint
 público novo no backend (ver o padrão de `/events/pre-login`).
+
+
+## Catálogo em categoria > subcategoria > matéria e o Detetive do Escalonador (2026-10)
+
+**Hierarquia do `SubjectSelector`:** categoria (`ContentCategory`) >
+subcategoria (`ContentSubcategory`, `lib/contentCategory.ts`) > matéria
+(`MiniGameCatalogEntry.topic`, só em `specific_subjects`). Todo mini jogo novo
+em `lib/miniGamesCatalog.ts` declara `category` e `subcategory` (e `topic`, se
+for matéria específica). Módulos curriculares vindos da API ficam sempre em
+`use_modify_create`. Subcategoria sem item não renderiza. Rótulo do aluno para
+`use_modify_create` é "Ver, mudar e criar" (regra 3: nunca os termos técnicos
+do framework na tela do aluno).
+
+Hoje: Informática Educacional > Ver, mudar e criar (módulos de blocos, Fábrica
+de Pedaços Iguais). Educação em Computação > Ver, mudar e criar (Ferramentas do
+Mundo do Trabalho) e > Matérias específicas > Algoritmos (Travessia do Rio) e
+Banco de Dados (Detetive do Escalonador).
+
+**Detetive do Escalonador** (Banco de Dados II, Unidade III): jogo autônomo,
+só frontend, mesmo padrão da Travessia do Rio.
+
+- Rotas: `/jogo/escalonador` (pública, sem login, sem layout do app, nenhum
+  evento enviado) e `/minigame/scheduler` (dentro do app, só aluno, com
+  "Voltar"). Mesmo componente (`routes/minigame/scheduler/SchedulerGamePage`,
+  `standalone`), carregado com `React.lazy`.
+- `lib/scheduler/engine.ts` é lógica pura: `simulate` executa o escalonamento
+  (com before-image para `ROLLBACK`), `serialOps` monta a execução serial
+  (ordem da primeira aparição de cada transação) e `analyzeSchedule`
+  classifica a anomalia e devolve as operações-causa. **O cenário nunca
+  declara a própria anomalia**: quem classifica é o analisador, e
+  `scenarios.spec.ts` confere, para dezenas de sementes, que cada template
+  produz o tipo esperado e que valor real != serial só quando há anomalia.
+- `lib/scheduler/scenarios.ts`: 13 templates com números sorteados, em 3
+  níveis (1: 2 transações e 1 item; 2: dois itens ou agregação; 3: 3
+  transações ou 4 itens). `buildSession(6|8|10)` mistura as três anomalias e
+  casos limpos e nunca reduz a dificuldade ao longo da sessão.
+- `lib/scheduler/anomalies.ts` guarda as definições exatas da disciplina usadas
+  no feedback; não parafrasear.
+- Sensorial: a revelação linha a linha é manual ("Próxima operação") por
+  padrão; "Revelar automaticamente" (1,2 s por linha) é opt-in e nasce do
+  `motionEnabled`. A animação da linha nova só roda com o modo automático
+  ligado. Feedback sem "errado": "Quase lá...". Pontos (1 por previsão serial,
+  valor real e classificação) existem só na sessão em tela, sem ranking nem
+  tempo limite.
+- Identidade visual própria (teal `#2E6D8E`, âmbar `#A85F22`, fundo `#F8F7F2`,
+  títulos serifados) aplicada por tokens dentro de `.scheduler-game`, então
+  `Button`/`TextField` herdam a paleta sem CSS próprio. O destaque de causa
+  usa borda + ícone + texto "Causa:", nunca só cor.

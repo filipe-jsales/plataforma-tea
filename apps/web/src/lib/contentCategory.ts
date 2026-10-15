@@ -20,3 +20,17 @@ export const CONTENT_CATEGORY_STUDENT_LABEL: Record<ContentCategory, string> = {
   informatica_educacional: 'Informática na Computação',
   educacao_computacao: 'Educação em Computação',
 };
+
+// Subcategoria dentro de cada categoria. `use_modify_create` é a trilha
+// guiada em 3 etapas; `specific_subjects` reúne conteúdo de uma matéria
+// própria (Banco de Dados, Algoritmos...), agrupado por `topic`. Rótulo do
+// aluno em linguagem de aluno ("Ver, mudar e criar"), nunca os termos
+// técnicos do framework (regra 3 de docs/ai/rules/coding-rule.md).
+export type ContentSubcategory = 'use_modify_create' | 'specific_subjects';
+
+export const CONTENT_SUBCATEGORY_ORDER: ContentSubcategory[] = ['use_modify_create', 'specific_subjects'];
+
+export const CONTENT_SUBCATEGORY_STUDENT_LABEL: Record<ContentSubcategory, string> = {
+  use_modify_create: 'Ver, mudar e criar',
+  specific_subjects: 'Matérias específicas',
+};

@@ -1,0 +1,95 @@
+.schedule-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--sched-border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.95rem, 0.9rem + 0.35vw, 1.2rem);
+}
+
+.schedule-table th,
+.schedule-table td {
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--sched-border);
+}
+
+.schedule-table thead th {
+  background: var(--sched-teal);
+  color: #ffffff;
+  font-family: var(--sched-serif);
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+}
+
+.schedule-table tbody th {
+  font-weight: 600;
+  color: var(--sched-teal);
+  white-space: nowrap;
+}
+
+.schedule-table code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.schedule-table__op {
+  min-width: 11rem;
+}
+
+.schedule-table__result {
+  display: block;
+  color: var(--sched-muted);
+  font-size: 0.85em;
+}
+
+.schedule-table__db {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.schedule-table__row[data-latest='true'] {
+  background: color-mix(in srgb, var(--sched-teal) 8%, #ffffff);
+}
+
+.scheduler-game[data-animated='true'] .schedule-table__row[data-latest='true'] {
+  animation: schedule-row-in 350ms ease-out;
+}
+
+.schedule-table__row[data-culprit='true'] {
+  background: color-mix(in srgb, var(--sched-amber) 14%, #ffffff);
+  box-shadow: inset 4px 0 0 var(--sched-amber);
+}
+
+.schedule-table__culprit {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  color: var(--sched-amber);
+  font-size: 0.85em;
+}
+
+.schedule-table__culprit svg {
+  flex: none;
+  margin-top: 0.1rem;
+}
+
+/* Só anima quando o jogador liga "Revelar automaticamente" (opt-in, ver
+   data-animated na raiz da página). */
+@keyframes schedule-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

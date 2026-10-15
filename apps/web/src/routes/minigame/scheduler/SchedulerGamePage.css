@@ -1,0 +1,156 @@
+/* Identidade visual dos slides de Banco de Dados II (Unidade III): azul
+   petróleo, âmbar para alertas, fundo claro e títulos serifados. As cores
+   entram como tokens do design system dentro desta página, então Button,
+   TextField e afins herdam a paleta sem CSS próprio. */
+.scheduler-game.staff-theme {
+  --sched-teal: #2e6d8e;
+  --sched-amber: #a85f22;
+  --sched-bg: #f8f7f2;
+  --sched-border: #d9d6cb;
+  --sched-muted: #5c6670;
+  --sched-serif: Georgia, 'Source Serif 4', 'Times New Roman', serif;
+
+  --color-primary: var(--sched-teal);
+  --color-primary-hover: #245a76;
+  --color-warning: var(--sched-amber);
+  --color-bg: var(--sched-bg);
+
+  min-height: 100vh;
+  background: var(--sched-bg);
+  padding: var(--space-4);
+  /* Cresce com a largura para ler bem no projetor sem quebrar no notebook. */
+  font-size: clamp(1rem, 0.9rem + 0.4vw, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.scheduler-game h1,
+.scheduler-game h2,
+.scheduler-game h3 {
+  font-family: var(--sched-serif);
+  color: var(--sched-teal);
+}
+
+.scheduler-game__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.scheduler-game__eyebrow {
+  margin: 0;
+  color: var(--sched-muted);
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scheduler-game__status {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--sched-teal);
+}
+
+.scheduler-game__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: #ffffff;
+  border: 1px solid var(--sched-border);
+  border-radius: 8px;
+}
+
+.scheduler-game__panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.scheduler-game__steps {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.scheduler-game__start,
+.scheduler-game__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.scheduler-game__transactions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3);
+}
+
+.scheduler-game__transaction {
+  padding: var(--space-3);
+  background: var(--sched-bg);
+  border: 1px solid var(--sched-border);
+  border-radius: 6px;
+}
+
+.scheduler-game__transaction ol {
+  margin: 0;
+  padding-left: 1.4rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.scheduler-game__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+}
+
+.scheduler-game__choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.scheduler-game__choices legend {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.scheduler-game__breakdown {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Definição formal em destaque, com borda âmbar além do texto (nunca só cor). */
+.scheduler-game__definition {
+  padding: var(--space-3);
+  border-left: 4px solid var(--sched-amber);
+  background: color-mix(in srgb, var(--sched-amber) 8%, #ffffff);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.scheduler-game__definition h3 {
+  margin: 0;
+  color: var(--sched-amber);
+}
