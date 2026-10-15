@@ -2314,6 +2314,14 @@ se virar objeto de coleta de pesquisa).
   `river_round_completed` / `river_fuel_depleted` (RD-C) e `river_abandoned`
   (RD-E, só números brutos, regra 7).
 
+### Travessia do Rio: DMC
+
+Gamificação básica pelo modelo DMC (Dinâmicas, Mecânicas, Componentes),
+documentada em `docs/plugadas/travessia-rio/travessia-rio-dmc.tex` (adaptação
+plugada da Tarefa 1, ABP desplugada). Único componente novo:
+`DeliveryProgress` ("N de M" na margem direita, `deliveredCount` em
+`lib/riverCrossing.ts`), estático e sem pontos, ranking ou timer (regras 1 e 5).
+
 ### Travessia do Rio: acesso público (mini teste em turma)
 
 `/jogo/travessia` abre o jogo **sem login**, fora do `RequireAuth` (sem

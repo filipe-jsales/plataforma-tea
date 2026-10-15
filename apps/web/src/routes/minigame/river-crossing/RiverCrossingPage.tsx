@@ -6,6 +6,7 @@ import {
   BookOpen,
   ClipboardList,
   Droplet,
+  Flag,
   Fuel,
   Lightbulb,
   Play,
@@ -36,6 +37,7 @@ import {
   canAddToCargo,
   createInitialState,
   cross,
+  deliveredCount,
   piecesOnBank,
   type Bank,
   type ConflictRule,
@@ -68,7 +70,7 @@ import './RiverCrossingPage.css';
 // Duração do barco atravessando (casa com a transição de `left` no CSS) e
 // tempo que o conflito fica visível antes de a travessia ser desfeita.
 export const CROSSING_MS = 700;
-export const CONFLICT_MS = 1500;
+export const CONFLICT_MS = 3000;
 
 export interface RiverCrossingTiming {
   crossingMs: number;
@@ -278,9 +280,10 @@ export function RiverCrossingPage({
       if (outcome.conflicts.length > 0) {
         sound('conflict');
         setConflictBank(origin);
+        const conflictMessage = `${conflictText(outcome.conflicts)} Conflito na margem ${origin === 'E' ? 'esquerda' : 'direita'}.`;
         setFeedback({
           kind: 'retry',
-          text: `${conflictText(outcome.conflicts)} Conflito na margem ${origin === 'E' ? 'esquerda' : 'direita'}. A travessia será desfeita, mas a gota continua gasta.`,
+          text: `${conflictMessage} A travessia será desfeita, mas a gota continua gasta.`,
         });
         later(() => {
           setConflictBank(null);
@@ -290,9 +293,12 @@ export function RiverCrossingPage({
           if (outcome.outcome === 'lost') {
             sound('lose');
             setResult('lost');
-            setFeedback(null);
           } else {
-            setFeedback({ kind: 'info', text: 'Travessia desfeita. Quer tentar outra carga?' });
+            // A mensagem do conflito fica até o próximo gesto do aluno, para dar tempo de ler.
+            setFeedback({
+              kind: 'retry',
+              text: `${conflictMessage} Travessia desfeita, e a gota continua gasta. Quer tentar outra carga?`,
+            });
           }
         }, timing.conflictMs);
         return;
@@ -378,6 +384,7 @@ export function RiverCrossingPage({
           <strong>{state.round === 1 ? 'Rodada 1: sem o Lobo' : 'Rodada 2: jogo completo'}</strong>
         </Text>
         <FuelTank fuel={state.fuel} total={ROUNDS[state.round].fuel} />
+        <DeliveryProgress delivered={deliveredCount(state)} total={ROUNDS[state.round].pieces.length} />
         <ToggleSwitch
           id="river-sound"
           icon={<Volume2 />}
@@ -389,6 +396,8 @@ export function RiverCrossingPage({
           }}
         />
       </section>
+
+      <RulesReminder round={state.round} />
 
       <div className="river" data-testid="river">
         <BankView
@@ -675,6 +684,41 @@ function FuelTank({ fuel, total }: { fuel: number; total: number }) {
       </span>
       <span aria-hidden="true">
         {fuel} de {total}
+      </span>
+    </div>
+  );
+}
+
+// Regras sempre à vista durante a partida, sem precisar abrir "Ver regras".
+function RulesReminder({ round }: { round: RoundId }) {
+  const pieces = ROUNDS[round].pieces;
+  const rules = CONFLICT_RULES.filter((rule) => pieces.includes(rule.predator) && pieces.includes(rule.prey));
+  return (
+    <section className="river-reminder" aria-label="Regras de conflito">
+      <Heading level={2}>Regras de conflito</Heading>
+      <ul className="river-reminder__list">
+        {rules.map((rule) => (
+          <li key={rule.id}>
+            <strong>{rule.id}.</strong> {rule.description}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// Progresso relativo só à própria partida (sem comparação entre alunos).
+function DeliveryProgress({ delivered, total }: { delivered: number; total: number }) {
+  return (
+    <div className="river-progress" role="img" aria-label={`Na margem direita: ${delivered} de ${total} personagens`}>
+      <Flag aria-hidden="true" />
+      <span className="river-progress__steps" aria-hidden="true">
+        {Array.from({ length: total }, (_, index) => (
+          <span key={index} className="river-progress__step" data-done={index < delivered ? 'true' : undefined} />
+        ))}
+      </span>
+      <span aria-hidden="true">
+        {delivered} de {total}
       </span>
     </div>
   );

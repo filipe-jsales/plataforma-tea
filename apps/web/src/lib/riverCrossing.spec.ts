@@ -6,6 +6,7 @@ import {
   piecesOnBank,
   createInitialState,
   cross,
+  deliveredCount,
   findConflicts,
   type PieceId,
   type RiverState,
@@ -35,6 +36,22 @@ describe('findConflicts', () => {
 
   it('vale para qualquer par da margem, mesmo com outras peças junto', () => {
     expect(findConflicts(['wolf', 'lettuce', 'chicken']).map((r) => r.id)).toEqual(['R3']);
+  });
+});
+
+describe('deliveredCount', () => {
+  it('conta só as peças que já estão na margem D, e volta a diminuir se uma peça retorna', () => {
+    const start = createInitialState(2);
+    expect(deliveredCount(start)).toBe(0);
+    const afterFirst = cross(start, ['lettuce', 'chicken']).settled;
+    expect(deliveredCount(afterFirst)).toBe(2);
+    const afterReturn = cross(afterFirst, ['lettuce']).settled;
+    expect(deliveredCount(afterReturn)).toBe(1);
+  });
+
+  it('uma travessia desfeita por conflito não conta como entrega', () => {
+    const undone = cross(createInitialState(2), ['dog']).settled;
+    expect(deliveredCount(undone)).toBe(0);
   });
 });
 
